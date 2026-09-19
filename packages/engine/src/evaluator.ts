@@ -9,7 +9,8 @@ import type { AgentProfile, AgentVote, Creative, CreativeDimension } from '@sink
  * inteligencia en GAIA, que es justo lo que la hace única.
  */
 export interface Evaluator {
-  evaluate(agent: AgentProfile, creative: Creative): Promise<AgentVote>;
+  /** Devuelve UN voto por dimensión prioritaria del agente. */
+  evaluate(agent: AgentProfile, creative: Creative): Promise<AgentVote[]>;
 }
 
 /**
@@ -17,27 +18,29 @@ export interface Evaluator {
  * tener un "piso" cuando GAIA no está disponible. NO es la fuente de
  * inteligencia real — GAIA reemplaza esto en producción.
  *
- * Aplica una heurística simple sobre el texto del copy: longitud, signos de
- * urgencia y presencia de cifras. Diseñado para ser predecible, no bueno.
+ * Cada agente vota sobre TODAS sus dimensiones prioritarias, con una
+ * heurística simple sobre el texto del copy, para producir un desglose
+ * más rico que un solo voto.
  */
 export class HeuristicEvaluator implements Evaluator {
-  async evaluate(agent: AgentProfile, creative: Creative): Promise<AgentVote> {
-    const score = this.scoreFor(creative.copy, agent.priorities);
-    const dim = agent.priorities[0];
-    return {
+  async evaluate(agent: AgentProfile, creative: Creative): Promise<AgentVote[]> {
+    return agent.priorities.map((dimension) => ({
       agentId: agent.id,
-      dimension: dim,
-      score,
-      rationale: `Heurística: copy de ${creative.copy.length} caracteres`,
-    };
+      dimension,
+      score: this.scoreFor(creative.copy, dimension),
+      rationale: `Heurística: copy de ${creative.copy.length} caracteres (dimensión ${dimension})`,
+    }));
   }
 
-  private scoreFor(copy: string, priorities: CreativeDimension[]): number {
+  private scoreFor(copy: string, dimension: CreativeDimension): number {
     let s = 50;
     if (copy.length >= 40 && copy.length <= 300) s += 15;
     if (/\d/.test(copy)) s += 10;
-    if (/(ahora|hoy|últim|solo|por tiempo limitado|before)/i.test(copy)) s += 10;
-    if (priorities.includes('credibilidad') && copy.length < 200) s += 5;
+    if (/(ahora|hoy|últim|solo|por tiempo limitado)/i.test(copy)) {
+      s += dimension === 'gancho' || dimension === 'urgencia' ? 15 : 5;
+    }
+    if (dimension === 'credibilidad' && copy.length < 200) s += 5;
+    if (dimension === 'claridad' && copy.length > 20 && copy.length < 250) s += 5;
     return Math.max(0, Math.min(100, s));
   }
 }

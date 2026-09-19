@@ -3,7 +3,6 @@ import type {
   Creative,
   Score,
   SwarmResult,
-  SwarmVerdict,
 } from '@sinkroo/core';
 import { clampScore, deriveVerdict, CREATIVE_DIMENSIONS } from '@sinkroo/core';
 import type { Evaluator } from './evaluator.js';
@@ -16,8 +15,9 @@ export interface SwarmEngineOptions {
 /**
  * Sinkroo Engine — motor de enjambre.
  *
- * Dado una pieza creativa y un enjambre de agentes, cada agente vota y el
- * motor agrega los votos en un score ponderado 0..100 con veredicto.
+ * Dado una pieza creativa y un enjambre de agentes, cada agente vota sobre
+ * sus dimensiones prioritarias y el motor agrega los votos en un score
+ * ponderado 0..100 con veredicto.
  *
  * Diseño (decisiones deliberadas):
  *  - El Engine NO decide qué tan buena es una pieza: delega en el Evaluator
@@ -39,9 +39,10 @@ export class SwarmEngine {
 
   /** Evalúa una pieza y devuelve el resultado agregado del enjambre. */
   async evaluate(creative: Creative): Promise<SwarmResult> {
-    const votes = [];
+    const votes: SwarmResult['votes'] = [];
     for (const agent of this.agents) {
-      votes.push(await this.evaluator.evaluate(agent, creative));
+      const agentVotes = await this.evaluator.evaluate(agent, creative);
+      votes.push(...agentVotes);
     }
 
     const overallScore = this.weightedOverall(votes);
@@ -57,7 +58,7 @@ export class SwarmEngine {
     };
   }
 
-  /** Promedio ponderado global (peso por agente, media por dimensión). */
+  /** Promedio ponderado global (peso por agente, media sobre todos los votos). */
   private weightedOverall(votes: SwarmResult['votes']): Score {
     const weightByAgent = new Map(this.agents.map((a) => [a.id, a.weight ?? 1]));
     let sum = 0;

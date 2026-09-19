@@ -5,21 +5,19 @@ import type { Evaluator } from '@sinkroo/engine';
  * GaiaEvaluator — el "cerebro" del enjambre.
  *
  * En producción, GAIA encarna a cada agente del enjambre, juzga la pieza
- * contra el perfil del agente, y devuelve un voto razonado.
- *
- * Este archivo define el CONTRATO: una función `judge` que GAIA provee. La
- * implementación concreta (llamada al modelo GAIA) se inyecta — así el
- * motor queda limpio y testeable, y la inteligencia vive en GAIA.
+ * contra el perfil del agente, y devuelve votos razonados (uno por dimensión
+ * prioritaria). Este archivo define el CONTRATO: GAIA provee una función
+ * `judge`. La implementación concreta (llamada al modelo GAIA) se inyecta.
  */
 
-/** Firma de la función que GAIA implementa: (agente, pieza) -> voto. */
-export type GaiaJudgeFn = (agent: AgentProfile, creative: Creative) => Promise<AgentVote>;
+/** Firma de la función que GAIA implementa: (agente, pieza) -> votos. */
+export type GaiaJudgeFn = (agent: AgentProfile, creative: Creative) => Promise<AgentVote[]>;
 
 /** Envuelve la función de GAIA en un Evaluator compatible con el Engine. */
 export class GaiaEvaluator implements Evaluator {
   constructor(private readonly judge: GaiaJudgeFn) {}
 
-  async evaluate(agent: AgentProfile, creative: Creative): Promise<AgentVote> {
+  async evaluate(agent: AgentProfile, creative: Creative): Promise<AgentVote[]> {
     return this.judge(agent, creative);
   }
 }
