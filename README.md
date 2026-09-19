@@ -39,3 +39,36 @@ node scripts/verify-engine.mjs
 ```
 
 Debe imprimir `overallScore` + `verdict` y terminar con `OK: verificaciones pasaron`.
+
+---
+
+## Estado del proyecto
+
+### Etapa 0 — Fundación ✅
+Monorepo npm workspaces + contrato de datos + `Sinkroo Engine` (motor de enjambre determinista).
+
+### Etapa 1 — Núcleo vivo ✅
+- **`packages/gaia`** — `GaiaEvaluator` con dos backends intercambiables:
+  - `HttpGaiaClient` → endpoint real de GAIA (chat completions).
+  - `LocalGaiaClient` → fallback determinista offline.
+  - Fábrica `createGaiaEvaluator({ endpoint?, client? })`.
+- **`apps/api`** — Fastify + PostgreSQL:
+  - `GET /health`
+  - `POST /api/swarm/evaluate` → enjambre completo → veredicto.
+  - Esquema núcleo: `users`, `products`, `creatives`, `swarm_results`.
+
+### Cómo correr
+```bash
+npm install
+npm run build          # core → engine → gaia → api
+npm run verify         # verifica motor + GAIA
+node apps/api/dist/index.js   # levanta la API en :3000
+```
+
+### Conexión a GAIA real
+Cuando exista el endpoint, se activa por entorno, sin tocar código:
+```bash
+export GAIA_ENDPOINT_URL=https://tu-gaia.orijins.app/v1
+export DATABASE_URL=postgres://usuario:clave@host:5432/sinkroo
+```
+Sin `GAIA_ENDPOINT_URL`, el enjambre corre con el fallback local (siempre operativo).
