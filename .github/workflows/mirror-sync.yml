@@ -1,0 +1,33 @@
+name: mirror-sync
+
+on:
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download mirror files
+        run: |
+          BASE="https://sinkroo--mauricioassetium.orijins.app"
+          mkdir -p assets
+          curl -fsSL "$BASE/index.html" -o index.html
+          curl -fsSL "$BASE/404.html" -o 404.html
+          curl -fsSL "$BASE/assets/index-Dc5S4vKq.js" -o assets/index-Dc5S4vKq.js
+          curl -fsSL "$BASE/assets/index-DrMjPhry.css" -o assets/index-DrMjPhry.css
+          curl -fsSL "$BASE/assets/logo.png" -o assets/logo.png
+          curl -fsSL "$BASE/6.png" -o 6.png
+          curl -fsSL "$BASE/67.png" -o 67.png
+          curl -fsSL "$BASE/sinkroo-logo.png" -o sinkroo-logo.png
+          for n in 1 2 3 4; do curl -fsSL "$BASE/2.1%20($n).png" -o "2.1 ($n).png"; done
+          for n in 1 2 3 4 5 6 7; do curl -fsSL "$BASE/3%20($n).png" -o "3 ($n).png"; done
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Mirror sinkroo.pages.dev files" || echo "No changes"
+          git push
