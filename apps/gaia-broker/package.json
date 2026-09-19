@@ -1,0 +1,22 @@
+{
+  "name": "@sinkroo/gaia-broker",
+  "version": "0.1.0",
+  "description": "Capa conectora de GAIA — encapsula el razonamiento de IA detrás de una sola interfaz intercambiable",
+  "type": "module",
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@sinkroo/core": "0.1.0",
+    "@sinkroo/engine": "0.1.0",
+    "@sinkroo/gaia": "0.1.0",
+    "fastify": "^4.28.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "tsx": "^4.19.0"
+  }
+}

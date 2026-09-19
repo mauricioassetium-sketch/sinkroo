@@ -72,3 +72,13 @@ export GAIA_ENDPOINT_URL=https://tu-gaia.orijins.app/v1
 export DATABASE_URL=postgres://usuario:clave@host:5432/sinkroo
 ```
 Sin `GAIA_ENDPOINT_URL`, el enjambre corre con el fallback local (siempre operativo).
+
+### Capa conectora (GaiaBroker)
+`apps/gaia-broker` encapsula el razonamiento de IA detrás de una sola interfaz.
+Orden de resolución del "cerebro":
+1. `GAIA_ENDPOINT_URL` → endpoint real de orijins (futuro).
+2. `PROVIDER_BASE_URL` + `PROVIDER_API_KEY` → cualquier LLM chat-completions.
+3. fallback local (siempre operativo).
+
+`apps/api` ahora delega el juicio al broker (via `BROKER_URL`), en lugar de duplicar lógica.
+Endpoints: broker `POST /evaluate`, `GET /healthz`. Ver `apps/gaia-broker/.env.example`.
