@@ -1,0 +1,24 @@
+{
+  "name": "@sinkroo/gaia",
+  "version": "0.1.0",
+  "description": "Cliente orquestador GAIA <-> Sinkroo: GAIA implementa el Evaluator del enjambre",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@sinkroo/core": "0.1.0",
+    "@sinkroo/engine": "0.1.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0"
+  }
+}
