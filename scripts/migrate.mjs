@@ -1,8 +1,15 @@
 /**
- * Applies the basic Stage 1 schema to PostgreSQL.
+ * Applies the Sinkroo schema to PostgreSQL.
+ *
+ * Single source of truth: apps/api/src/lib/schema.ts (migrate()). This file
+ * only wires a pg Pool to that migration — no SQL lives here.
+ *
  * Requires DATABASE_URL in the environment. Idempotent (CREATE TABLE IF NOT EXISTS).
+ *
+ * Tables: businesses, products, conversations, conversation_messages
+ *         (+ indexes idx_products_business, idx_conversations_lead, idx_messages_conversation).
  */
-import { SCHEMA_SQL } from '../apps/api/dist/lib/schema.sql.js';
+import { migrate } from '../apps/api/dist/lib/schema.js';
 import pg from 'pg';
 
 const { Pool } = pg;
@@ -11,8 +18,8 @@ const pool = new Pool({
 });
 
 try {
-  await pool.query(SCHEMA_SQL);
-  console.log('OK: schema applied (users, products, creatives, swarm_results)');
+  await migrate(pool);
+  console.log('OK: schema applied (businesses, products, conversations, conversation_messages)');
 } catch (e) {
   console.error('Error applying schema:', e.message);
   process.exit(1);
