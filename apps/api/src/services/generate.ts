@@ -1,0 +1,65 @@
+import type { Pool } from 'pg';
+
+/**
+ * Servicio de generación de creativos (M4).
+ *
+ * Toma un productId, levanta el producto + su negocio desde la DB (M1),
+ * arma el brief y delega la generación en el GaiaBroker. Devuelve las
+ * variantes de copy. La API solo traduce datos y hace de puente.
+ */
+
+export interface GeneratedCreative {
+  copy: string;
+}
+
+export interface GenerateInput {
+  productId: string;
+  count?: number;
+}
+
+export interface GenerateResult {
+  productId: string;
+  variants: string[];
+  brain: string;
+  count: number;
+}
+
+const BROKER_URL = process.env.BROKER_URL ?? 'http://127.0.0.1:3100';
+
+export async function generateForProduct(db: Pool, input: GenerateInput): Promise<GenerateResult> {
+  const { productId, count = 5 } = input;
+
+  // 1) Levantar producto + negocio (M1)
+  const prod = await db.query(
+    `SELECT p.*, b.description AS business_description, b.audience AS business_audience,
+            b.tone AS business_tone, b.name AS business_name
+       FROM products p JOIN businesses b ON b.id = p.business_id
+      WHERE p.id = $1`,
+    [productId],
+  );
+  if (prod.rows.length === 0) throw new Error('producto no encontrado');
+  const p = prod.rows[0];
+
+  // 2) Armar el brief para el broker
+  const brief = {
+    productName: p.name,
+    usp: p.usp || p.offer || p.business_description || '',
+    offer: p.offer || undefined,
+    audience: p.business_audience || undefined,
+    tone: p.business_tone || undefined,
+    channel: 'meta',
+    cta: p.cta || undefined,
+  };
+
+  // 3) Delegar generación al broker (HTTP)
+  const res = await fetch(`${BROKER_URL}/generate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...brief, count }),
+    signal: AbortSignal.timeout(60_000),
+  });
+  if (!res.ok) throw new Error(`Broker respondió ${res.status}: ${await res.text()}`);
+
+  const data = (await res.json()) as { variants: string[]; brain: string; count: number };
+  return { productId, variants: data.variants, brain: data.brain, count: data.count };
+}

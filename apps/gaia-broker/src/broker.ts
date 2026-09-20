@@ -1,14 +1,14 @@
 import type { AgentProfile, Creative, SwarmResult } from '@sinkroo/core';
 import { SwarmEngine, DEFAULT_AGENTS } from '@sinkroo/engine';
 import type { Evaluator } from '@sinkroo/engine';
-import { createProvider, type ReasoningProvider } from './providers.js';
+import { createProvider, type ReasoningProvider, type CreativeBrief } from './providers.js';
 
 /**
  * GaiaBroker — el cerebro detrás de una única interfaz.
  *
  * Recibe un creative y devuelve el veredicto del enjambre, usando el provider
  * activo (LLM real o endpoint GAIA). El resto del sistema NO sabe qué hay
- * detrás: solo llama a evaluate().
+ * detrás: solo llama a evaluate() o generateCreatives().
  */
 export class GaiaBroker {
   private readonly engine: SwarmEngine;
@@ -28,6 +28,11 @@ export class GaiaBroker {
 
   async evaluate(creative: Creative): Promise<SwarmResult> {
     return this.engine.evaluate(creative);
+  }
+
+  /** M4 — Genera N variantes de copy a partir de un brief de producto. */
+  async generateCreatives(brief: CreativeBrief, count = 5): Promise<string[]> {
+    return this.provider.generate(brief, count);
   }
 
   /** Adapta un ReasoningProvider a la interfaz Evaluator del motor. */

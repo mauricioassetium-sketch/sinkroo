@@ -1,10 +1,11 @@
 import Fastify from 'fastify';
 import { GaiaBroker } from './broker.js';
+import type { CreativeBrief } from './providers.js';
 
 /**
  * Servicio HTTP del broker de GAIA.
- * El motor (u otros servicios) llama aquí para obtener juicio de IA.
- * Endpoint: POST /evaluate  { copy, id?, imageUrl?, channel?, audience? }
+ * - POST /evaluate  { copy, id?, imageUrl?, channel?, audience? }  → veredicto del enjambre
+ * - POST /generate  { productName, usp, offer?, audience?, tone?, channel?, cta?, count? }  → variantes de copy
  */
 
 const broker = new GaiaBroker();
@@ -34,6 +35,17 @@ async function build() {
       return { ...result, brain: broker.brain };
     },
   );
+
+  // M4 — Generación de creativos a partir de un brief de producto
+  app.post<{ Body: CreativeBrief & { count?: number } }>('/generate', async (req, reply) => {
+    const b = req.body;
+    if (!b?.productName || !b?.usp) {
+      return reply.code(400).send({ error: 'productName y usp son obligatorios' });
+    }
+    const count = Number(b.count ?? 5);
+    const variants = await broker.generateCreatives(b, count);
+    return { variants, brain: broker.brain, count: variants.length };
+  });
 
   return app;
 }
