@@ -1,6 +1,7 @@
 import Fastify from 'fastify';
 import { GaiaBroker } from './broker.js';
 import type { CreativeBrief } from './providers.js';
+import type { ConversationState } from '@sinkroo/core';
 
 /**
  * GAIA broker HTTP service.
@@ -48,6 +49,14 @@ async function build() {
       audience: req.body.audience,
     });
     return result;
+  });
+
+  // M6 — Conversational sales turn
+  app.post<{ Body: ConversationState }>('/converse', async (req, reply) => {
+    if (!req.body?.conversationId || !req.body?.history) {
+      return reply.code(400).send({ error: 'conversationId and history are required' });
+    }
+    return broker.converse(req.body);
   });
 
   // M4 — Creative generation from a product brief

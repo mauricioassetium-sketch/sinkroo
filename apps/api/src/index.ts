@@ -7,6 +7,7 @@ import { businessRoutes } from './routes/businesses';
 import { productRoutes } from './routes/products';
 import { generateRoutes } from './routes/generate';
 import { predictRoutes } from './routes/predict';
+import { webhookRoutes } from './routes/webhook';
 
 const PORT = Number(process.env.PORT ?? 3000);
 const DATABASE_URL = process.env.DATABASE_URL ?? 'postgres://sinkroo:sinkroo@localhost:5432/sinkroo';
@@ -21,6 +22,7 @@ export async function buildApp() {
   productRoutes(app, db);
   generateRoutes(app, db);
   predictRoutes(app, db);
+  webhookRoutes(app, db);
 
   try { await migrate(db); } catch (e: any) { app.log.warn(`migration pending: ${e.message}`); }
 

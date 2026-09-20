@@ -1,5 +1,6 @@
 import type { AgentProfile, AgentVote, Creative, CreativeDimension } from '@sinkroo/core';
 import { clampScore } from '@sinkroo/core';
+import type { ConversationStage, Sender } from '@sinkroo/core';
 
 /**
  * GAIA connector layer — reasoning AND generation providers.
@@ -16,6 +17,13 @@ export interface ReasoningProvider {
   judge(agent: AgentProfile, creative: Creative): Promise<AgentVote[]>;
   /** Generates copy variants from a product brief. */
   generate(brief: CreativeBrief, count: number): Promise<string[]>;
+  /**
+   * M6 — one conversational sales turn. Given the sales context and the
+   * recent history, responds with the agent's reply and the detected move.
+   * Returns null when the brain cannot converse (provider is generation-only);
+   * callers MUST fall back to the LocalProvider conversation.
+   */
+  converse?(ctx: SalesTurn): Promise<SalesConversationReply>;
 }
 
 /** Generation brief (M4): product + unique angle + audience + channel. */
@@ -27,6 +35,35 @@ export interface CreativeBrief {
   tone?: string;
   channel?: string;
   cta?: string;
+}
+
+/** One conversational turn the agent reasons over (M6). */
+export interface SalesTurn {
+  /** Current sales stage. */
+  stage: ConversationStage;
+  /** Recent history, oldest first. */
+  history: Array<{ sender: Sender; text: string }>;
+  /** Sales context (product, price, tone, language). */
+  context: {
+    businessName: string;
+    productName: string;
+    priceLabel?: string;
+    usp?: string;
+    tone?: string;
+    language?: string;
+    paymentUrl?: string;
+  };
+  /** Current lead score (0..100), to help the agent gauge interest. */
+  leadScore: number;
+}
+
+/** The agent's reply plus the machine-readable move it implies. */
+export interface SalesConversationReply {
+  reply: string;
+  nextStage: ConversationStage;
+  leadScoreDelta: number;
+  intent: string;
+  requestPayment: boolean;
 }
 
 /** Common config for a chat-completions-style provider. */
@@ -101,6 +138,61 @@ export class ChatProvider implements ReasoningProvider {
 
     const content = await this.chat(system, `Generate ${n} variants.`, 0.8);
     return this.parseVariants(content, n);
+  }
+
+  async converse(turn: SalesTurn): Promise<SalesConversationReply> {
+    const system = this.salesSystemPrompt(turn);
+    const history = turn.history.map((m) => `${m.sender === 'lead' ? 'Lead' : 'Agent'}: ${m.text}`).join('\n');
+    const user = [
+      `Conversation so far:\n${history || '(start of conversation)'}`,
+      ``,
+      `Stage: ${turn.stage} — leadScore ${turn.leadScore}`,
+      `The lead just sent the LAST message above. Reply as the agent.`,
+    ].join('\n');
+
+    const content = await this.chat(system, user, 0.5);
+    const parsed = this.parseJson(content) as {
+      reply?: string;
+      nextStage?: string;
+      leadScoreDelta?: number;
+      intent?: string;
+      requestPayment?: boolean;
+    };
+    if (!parsed.reply) throw new Error('[provider] missing "reply"');
+    return {
+      reply: String(parsed.reply).trim(),
+      nextStage: (parsed.nextStage as ConversationStage) ?? turn.stage,
+      leadScoreDelta: Number(parsed.leadScoreDelta ?? 0),
+      intent: String(parsed.intent ?? ''),
+      requestPayment: Boolean(parsed.requestPayment),
+    };
+  }
+
+  private salesSystemPrompt(turn: SalesTurn): string {
+    const c = turn.context;
+    const lang = c.language || 'es';
+    return [
+      `You are ${c.businessName}'s warm, sharp sales agent selling "${c.productName}".`,
+      `Always reply in ${lang}. Keep replies short (2-4 sentences), human, no lists.`,
+      ``,
+      `Offer: ${c.usp || '(highlight the strongest benefit)'}`,
+      `Price: ${c.priceLabel || '(reveal only when asked or at closing)'}`,
+      `Tone: ${c.tone || 'friendly and direct'}`,
+      `Payment link available: ${c.paymentUrl ? 'yes' : 'no (do not mention payment yet)'}`,
+      ``,
+      `Sales stages and what to do for each:`,
+      `- greeting: welcome, ask one light opening question.`,
+      `- qualification: uncover problem, budget, timeline, authority — listen more than talk.`,
+      `- presentation: recap their need, present the solution, 3 benefits max, offer a demo/next step.`,
+      `- objection: acknowledge, reframe, add social proof, ask "does this address your concern?".`,
+      `- closing: recap the offer, remove friction, point to the payment link when available.`,
+      `- follow_up: check in, offer value, keep the door open.`,
+      ``,
+      `Detect the lead's signal and reply with STRICT JSON:`,
+      `{"reply":"<your message>","nextStage":"<stage>","leadScoreDelta":<int>,"intent":"<short label>","requestPayment":<bool>}`,
+      `- nextStage: where to go next (may stay).`,
+      `- requestPayment: true ONLY at closing when ready to pay.`,
+    ].join('\n');
   }
 
   /** Calls the chat/completions endpoint and returns the first message text. */
@@ -182,6 +274,78 @@ export class LocalProvider implements ReasoningProvider {
       score: this.score(copy, d),
       rationale: `Copy ${copy.length} chars (dimension ${d})`,
     }));
+  }
+
+  async converse(turn: SalesTurn): Promise<SalesConversationReply> {
+    const c = turn.context;
+    const last = turn.history[turn.history.length - 1]?.text?.toLowerCase() ?? '';
+    // Simple deterministic funnel: pick reply by stage + signal.
+    let reply: string;
+    let nextStage = turn.stage;
+    let intent = 'generic';
+    let delta = 0;
+    let requestPayment = false;
+
+    if (/(^|\s)(hi|hola|hello|hey|buenas|interested|interesad)/.test(last)) {
+      reply = `Hi! Thanks for reaching out about ${c.productName}. Quick question: what are you looking to solve?`;
+      nextStage = 'qualification';
+      intent = 'greeting';
+    } else if (/(expensiv|caro|price|precio|costo|cost)/.test(last)) {
+      reply = `Totally fair concern. ${c.productName}${c.usp ? ` — ${c.usp}.` : ' is built for outcomes, not just features.'} Does that address your worry?`;
+      nextStage = 'objection';
+      intent = 'objection_price';
+    } else if (/(no me convence|not sure|doubt|duda|pensar|think)/.test(last)) {
+      reply = `Take your time. Just so you know, ${c.usp ? c.usp : 'most clients see results quickly'}. Anything specific holding you back?`;
+      nextStage = 'objection';
+      intent = 'objection_hesitation';
+    } else if (/(yes|si|ok|deal|count me in|avanza|proceed|buy|comprar|dale|let's go|vamos)/.test(last)) {
+      reply = c.paymentUrl
+        ? `Awesome — you can lock it in right here: ${c.paymentUrl}`
+        : `Awesome! I'll set everything up. Stand by for the next step.`;
+      nextStage = 'closing';
+      intent = 'closing_signal';
+      delta = 20;
+      requestPayment = true;
+    } else if (/(demo|mas info|más info|tell me more|cuentame|detalles|details)/.test(last)) {
+      reply = `${c.usp ? c.usp + '. ' : ''}Here's the short version: ${c.productName} helps you get the outcome without the usual headache. Want me to walk you through it?`;
+      nextStage = 'presentation';
+      intent = 'info_request';
+    } else {
+      switch (turn.stage) {
+        case 'greeting':
+          reply = `Welcome! I help people get the most out of ${c.productName}. What are you looking for today?`;
+          nextStage = 'qualification';
+          intent = 'open';
+          break;
+        case 'qualification':
+          reply = `Got it. On a scale of 1-10, how urgent is this for you right now?`;
+          intent = 'qualify';
+          delta = 10;
+          break;
+        case 'presentation':
+          reply = `${c.productName}${c.priceLabel ? ` — ${c.priceLabel}` : ''}. ${c.usp || 'Built to deliver, not just promise.'} Shall we move forward?`;
+          nextStage = 'closing';
+          intent = 'pitch';
+          break;
+        case 'objection':
+          reply = `Makes sense. What would it take for you to feel confident moving forward?`;
+          intent = 'probe';
+          break;
+        case 'closing':
+          reply = c.paymentUrl
+            ? `Ready when you are: ${c.paymentUrl}`
+            : `Alright, let's finalize — I'll send you everything you need.`;
+          intent = 'close';
+          requestPayment = true;
+          break;
+        case 'follow_up':
+          reply = `Quick check-in — how's everything feeling so far? Anything I can clarify?`;
+          intent = 'check_in';
+          break;
+      }
+    }
+
+    return { reply, nextStage, leadScoreDelta: delta, intent, requestPayment };
   }
 
   async generate(brief: CreativeBrief, count: number): Promise<string[]> {

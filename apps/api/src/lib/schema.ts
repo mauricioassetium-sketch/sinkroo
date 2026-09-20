@@ -43,6 +43,26 @@ export interface Product {
   created_at: Date;
 }
 
+export interface Conversation {
+  id: string;
+  business_id: string;
+  lead_phone: string;
+  stage: string;
+  status: string;
+  lead_score: number;
+  last_message_at: Date;
+  created_at: Date;
+}
+
+export interface ConversationMessageRow {
+  id: string;
+  conversation_id: string;
+  sender: string;
+  text: string;
+  intent: string | null;
+  created_at: Date;
+}
+
 export async function migrate(db: Pool): Promise<void> {
   await db.query(`
     CREATE TABLE IF NOT EXISTS businesses (
@@ -73,5 +93,28 @@ export async function migrate(db: Pool): Promise<void> {
     );
 
     CREATE INDEX IF NOT EXISTS idx_products_business ON products(business_id);
+
+    CREATE TABLE IF NOT EXISTS conversations (
+      id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      business_id     UUID REFERENCES businesses(id) ON DELETE CASCADE,
+      lead_phone      TEXT NOT NULL,
+      stage           TEXT NOT NULL DEFAULT 'greeting',
+      status          TEXT NOT NULL DEFAULT 'active',
+      lead_score      INT  NOT NULL DEFAULT 0,
+      last_message_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE TABLE IF NOT EXISTS conversation_messages (
+      id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+      sender          TEXT NOT NULL,
+      text            TEXT NOT NULL,
+      intent          TEXT,
+      created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_conversations_lead ON conversations(lead_phone);
+    CREATE INDEX IF NOT EXISTS idx_messages_conversation ON conversation_messages(conversation_id, created_at);
   `);
 }

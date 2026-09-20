@@ -3,6 +3,8 @@ import { SwarmEngine, DEFAULT_AGENTS } from '@sinkroo/engine';
 import type { Evaluator } from '@sinkroo/engine';
 import { createProvider, type ReasoningProvider, type CreativeBrief } from './providers.js';
 import { predictPreSpend, type PreSpendPrediction } from './predict.js';
+import { SalesAgent } from './conversation.js';
+import type { ConversationState, SalesAgentResult } from '@sinkroo/core';
 
 /**
  * GaiaBroker — the brain behind a single interface.
@@ -14,6 +16,7 @@ import { predictPreSpend, type PreSpendPrediction } from './predict.js';
 export class GaiaBroker {
   private readonly engine: SwarmEngine;
   private readonly provider: ReasoningProvider;
+  private readonly sales: SalesAgent;
 
   constructor(options?: { provider?: ReasoningProvider; agents?: AgentProfile[] }) {
     this.provider = options?.provider ?? createProvider();
@@ -21,6 +24,7 @@ export class GaiaBroker {
       agents: options?.agents ?? DEFAULT_AGENTS,
       evaluator: this.toEvaluator(this.provider),
     });
+    this.sales = new SalesAgent(this.provider);
   }
 
   get brain(): string {
@@ -34,6 +38,11 @@ export class GaiaBroker {
   /** M4 — Generates N copy variants from a product brief. */
   async generateCreatives(brief: CreativeBrief, count = 5): Promise<string[]> {
     return this.provider.generate(brief, count);
+  }
+
+  /** M6 — One conversational sales turn. */
+  async converse(state: ConversationState): Promise<SalesAgentResult> {
+    return this.sales.converse(state);
   }
 
   /** M3 — Evaluates and predicts pre-spend performance in a single step. */
