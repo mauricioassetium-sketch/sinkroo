@@ -1,0 +1,45 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: sinkroo
+      POSTGRES_PASSWORD: sinkroo
+      POSTGRES_DB: sinkroo
+    ports:
+      - "5432:5432"
+    volumes:
+      - sinkroo_pg:/var/lib/postgresql/data
+      # pgcrypto para gen_random_uuid
+      - ./apps/api/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sinkroo"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build: .
+    environment:
+      DATABASE_URL: postgres://sinkroo:sinkroo@db:5432/sinkroo
+      PORT: "3000"
+      BROKER_URL: http://gaia-broker:3100
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  gaia-broker:
+    build:
+      context: apps/gaia-broker
+    environment:
+      PORT: "3100"
+      # Gemini (o provider que elijas) — rellena al desplegar
+      PROVIDER_BASE_URL: ${PROVIDER_BASE_URL:-}
+      PROVIDER_API_KEY: ${PROVIDER_API_KEY:-}
+      PROVIDER_MODEL: ${PROVIDER_MODEL:-gemini-3.6-flash}
+    ports:
+      - "3100:3100"
+
+volumes:
+  sinkroo_pg:

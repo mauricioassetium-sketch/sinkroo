@@ -43,8 +43,11 @@ const RUBRIC: Record<CreativeDimension, string> = {
 /** Provider genérico tipo chat-completions (funciona con OpenAI, Groq, DeepSeek, etc.) */
 export class ChatProvider implements ReasoningProvider {
   readonly name: string;
+  private retries: number;
+  private readonly maxRetries = 5;
   constructor(private readonly cfg: ChatProviderConfig) {
     this.name = `${cfg.model} @ ${cfg.baseUrl}`;
+    this.retries = this.maxRetries;
   }
 
   async judge(agent: AgentProfile, creative: Creative): Promise<AgentVote[]> {
@@ -78,7 +81,15 @@ export class ChatProvider implements ReasoningProvider {
       signal: AbortSignal.timeout(this.cfg.timeoutMs ?? 30_000),
     });
 
-    if (!res.ok) throw new Error(`[${this.name}] HTTP ${res.status}: ${await res.text()}`);
+    if (!res.ok) {
+      // Reintentar sobre 429/503 (alta demanda en capa gratuita) con backoff.
+      if ((res.status === 429 || res.status === 503) && this.retries > 0) {
+        await new Promise((r) => setTimeout(r, 900 * (this.maxRetries - this.retries + 1)));
+        this.retries--;
+        return this.judge(agent, creative);
+      }
+      throw new Error(`[${this.name}] HTTP ${res.status}: ${await res.text()}`);
+    }
 
     const json = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
     const content = json.choices?.[0]?.message?.content;
