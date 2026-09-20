@@ -18,7 +18,9 @@ services:
       retries: 10
 
   api:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     environment:
       DATABASE_URL: postgres://sinkroo:sinkroo@db:5432/sinkroo
       PORT: "3000"
@@ -31,7 +33,8 @@ services:
 
   gaia-broker:
     build:
-      context: apps/gaia-broker
+      context: .
+      dockerfile: apps/gaia-broker/Dockerfile
     environment:
       PORT: "3100"
       # Gemini (o provider que elijas) — rellena al desplegar

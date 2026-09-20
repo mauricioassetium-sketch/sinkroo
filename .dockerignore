@@ -1,0 +1,18 @@
+node_modules
+**/node_modules
+dist
+**/dist
+.git
+*.tsbuildinfo
+.env
+.env.*
+*.log
+# Imágenes y assets pesados no necesarios para el build
+*.png
+*.jpg
+*.jpeg
+*.webp
+assets/
+docs/
+.github/
+scripts/
