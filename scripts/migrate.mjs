@@ -1,6 +1,6 @@
 /**
- * Aplica el esquema básico de Etapa 1 a PostgreSQL.
- * Requiere DATABASE_URL en el entorno. Idempotente (CREATE TABLE IF NOT EXISTS).
+ * Applies the basic Stage 1 schema to PostgreSQL.
+ * Requires DATABASE_URL in the environment. Idempotent (CREATE TABLE IF NOT EXISTS).
  */
 import { SCHEMA_SQL } from '../apps/api/dist/lib/schema.sql.js';
 import pg from 'pg';
@@ -12,9 +12,9 @@ const pool = new Pool({
 
 try {
   await pool.query(SCHEMA_SQL);
-  console.log('OK: esquema aplicado (users, products, creatives, swarm_results)');
+  console.log('OK: schema applied (users, products, creatives, swarm_results)');
 } catch (e) {
-  console.error('Error aplicando esquema:', e.message);
+  console.error('Error applying schema:', e.message);
   process.exit(1);
 } finally {
   await pool.end();

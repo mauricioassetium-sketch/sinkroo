@@ -5,11 +5,11 @@ import { createProvider, type ReasoningProvider, type CreativeBrief } from './pr
 import { predictPreSpend, type PreSpendPrediction } from './predict.js';
 
 /**
- * GaiaBroker — el cerebro detrás de una única interfaz.
+ * GaiaBroker — the brain behind a single interface.
  *
- * Recibe un creative y devuelve el veredicto del enjambre, usando el provider
- * activo (LLM real o endpoint GAIA). El resto del sistema NO sabe qué hay
- * detrás: solo llama a evaluate() o generateCreatives().
+ * Receives a creative and returns the swarm verdict, using the active provider
+ * (real LLM or GAIA endpoint). The rest of the system does NOT know what is
+ * behind it: it only calls evaluate() or generateCreatives().
  */
 export class GaiaBroker {
   private readonly engine: SwarmEngine;
@@ -31,19 +31,19 @@ export class GaiaBroker {
     return this.engine.evaluate(creative);
   }
 
-  /** M4 — Genera N variantes de copy a partir de un brief de producto. */
+  /** M4 — Generates N copy variants from a product brief. */
   async generateCreatives(brief: CreativeBrief, count = 5): Promise<string[]> {
     return this.provider.generate(brief, count);
   }
 
-  /** M3 — Evalúa y predice desempeño pre-spend en un solo paso. */
+  /** M3 — Evaluates and predicts pre-spend performance in a single step. */
   async predict(creative: Creative): Promise<{ swarm: SwarmResult; prediction: PreSpendPrediction; brain: string }> {
     const swarm = await this.engine.evaluate(creative);
     const prediction = predictPreSpend(swarm, creative);
     return { swarm, prediction, brain: this.provider.name };
   }
 
-  /** Adapta un ReasoningProvider a la interfaz Evaluator del motor. */
+  /** Adapts a ReasoningProvider to the engine's Evaluator interface. */
   private toEvaluator(provider: ReasoningProvider): Evaluator {
     return {
       evaluate: (agent, creative) => provider.judge(agent, creative),

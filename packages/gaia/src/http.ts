@@ -3,22 +3,22 @@ import { clampScore } from '@sinkroo/core';
 import { systemPrompt, userPrompt } from './prompt.js';
 
 /**
- * Cliente HTTP genérico hacia el cerebro de GAIA.
+ * Generic HTTP client toward the GAIA brain.
  *
- * GAIA puede exponerse como un endpoint compatible con OpenAI Chat Completions
- * (o uno propio). Este adapter escribe a ese contrato: envía el prompt del
- * agente y parsea la respuesta JSON. Cambiar de proveedor = cambiar baseUrl + key,
- * nada más.
+ * GAIA may be exposed as an OpenAI Chat Completions-compatible endpoint (or a
+ * custom one). This adapter writes to that contract: sends the agent prompt
+ * and parses the JSON response. Switching providers = changing baseUrl + key,
+ * nothing more.
  */
 
 export interface GaiaEndpointConfig {
-  /** URL base del endpoint (ej. https://tu-gaia.orijins.app/v1). */
+  /** Endpoint base URL (e.g. https://your-gaia.orijins.app/v1). */
   baseUrl: string;
-  /** Modelo a invocar. */
+  /** Model to call. */
   model: string;
-  /** Token de autorización (opcional para endpoints abiertos). */
+  /** Authorization token (optional for open endpoints). */
   apiKey?: string;
-  /** Timeout ms por llamada. */
+  /** Timeout ms per call. */
   timeoutMs?: number;
 }
 
@@ -27,18 +27,18 @@ export interface GaiaEndpointClient {
 }
 
 const DIMENSIONS = new Set<CreativeDimension>([
-  'claridad', 'gancho', 'credibilidad', 'urgencia',
-  'relevancia', 'diferenciacion', 'emocion', 'ccr',
+  'clarity', 'hook', 'credibility', 'urgency',
+  'relevance', 'differentiation', 'emotion', 'ctr',
 ]);
 
-/** Resultado parseado de una sola decisión del modelo. */
+/** Parsed result of a single model decision. */
 interface RawVote {
   dimension?: string;
   score?: number | string;
   rationale?: string;
 }
 
-/** Cliente real: llama al endpoint de GAIA por HTTP. */
+/** Real client: calls the GAIA endpoint over HTTP. */
 export class HttpGaiaClient implements GaiaEndpointClient {
   constructor(private readonly cfg: GaiaEndpointConfig) {}
 
@@ -64,34 +64,34 @@ export class HttpGaiaClient implements GaiaEndpointClient {
     });
 
     if (!res.ok) {
-      throw new Error(`GAIA endpoint respondió ${res.status}: ${await res.text()}`);
+      throw new Error(`GAIA endpoint responded ${res.status}: ${await res.text()}`);
     }
 
     const json = (await res.json()) as {
       choices?: Array<{ message?: { content?: string } }>;
     };
     const content = json.choices?.[0]?.message?.content;
-    if (!content) throw new Error('GAIA endpoint no devolvió contenido');
+    if (!content) throw new Error('GAIA endpoint returned no content');
 
     return this.parseVotes(content, agent);
   }
 
-  /** Parsea el JSON del modelo y lo normaliza a AgentVote[]. */
+  /** Parses the model JSON and normalizes into AgentVote[]. */
   private parseVotes(raw: string, agent: AgentProfile): AgentVote[] {
-    // El modelo puede envolver en ```json``` a pesar del response_format.
+    // The model may wrap in ```json``` despite response_format.
     const cleaned = raw.replace(/```(?:json)?/gi, '').trim();
     let parsed: unknown;
     try {
       parsed = JSON.parse(cleaned);
     } catch {
-      // último recurso: extraer el primer objeto JSON
+      // last resort: extract the first JSON object
       const m = cleaned.match(/\{[\s\S]*\}/);
-      if (!m) throw new Error('No se pudo parsear la respuesta de GAIA como JSON');
+      if (!m) throw new Error('Could not parse GAIA response as JSON');
       parsed = JSON.parse(m[0]);
     }
 
     const votes = (parsed as { votes?: RawVote[] })?.votes;
-    if (!Array.isArray(votes)) throw new Error('Respuesta de GAIA sin array "votes"');
+    if (!Array.isArray(votes)) throw new Error('GAIA response missing "votes" array');
 
     return votes
       .filter((v) => v.dimension && DIMENSIONS.has(v.dimension as CreativeDimension))
@@ -105,10 +105,10 @@ export class HttpGaiaClient implements GaiaEndpointClient {
 }
 
 /**
- * Fallback local determinista — usado cuando NO hay endpoint configurado.
- * Es un evaluador de referencia más rico que la heurística base: produce
- * votos razonados por dimensión para que el enjambre corra completo.
- * Lo reemplazamos por HttpGaiaClient en cuanto exista URL+key.
+ * Deterministic local fallback — used when NO endpoint is configured.
+ * A richer reference evaluator than the base heuristic: produces reasoned
+ * per-dimension votes so the swarm runs complete. Replaced by HttpGaiaClient
+ * as soon as URL+key exist.
  */
 export class LocalGaiaClient implements GaiaEndpointClient {
   async judge(agent: AgentProfile, creative: Creative): Promise<AgentVote[]> {
@@ -125,23 +125,23 @@ export class LocalGaiaClient implements GaiaEndpointClient {
     let s = 55;
     if (copy.length >= 40 && copy.length <= 300) s += 12;
     if (/\d/.test(copy)) s += 8;
-    const urgent = /(ahora|hoy|últim|solo|por tiempo limitado|queda)/i.test(copy);
-    if (d === 'gancho') s += /^.{0,5}[¿¡]?[A-ZÁÉÍÓÚ]/.test(copy) ? 6 : 0;
-    if (d === 'urgencia' && urgent) s += 15;
-    if (d === 'gancho' && urgent) s += 8;
-    if (d === 'claridad' && copy.length > 20 && copy.length < 250) s += 6;
-    if (d === 'credibilidad' && copy.length < 200) s += 6;
-    if (d === 'ccr' && /\d/.test(copy)) s += 6;
-    if (d === 'relevancia' && /(para|tu|usted|vos|ti)/i.test(copy)) s += 6;
+    const urgent = /(now|today|last|only|limited time|left)/i.test(copy);
+    if (d === 'hook') s += /^.{0,5}[!?]?[A-Z]/.test(copy) ? 6 : 0;
+    if (d === 'urgency' && urgent) s += 15;
+    if (d === 'hook' && urgent) s += 8;
+    if (d === 'clarity' && copy.length > 20 && copy.length < 250) s += 6;
+    if (d === 'credibility' && copy.length < 200) s += 6;
+    if (d === 'ctr' && /\d/.test(copy)) s += 6;
+    if (d === 'relevance' && /(for|you|your|yours)/i.test(copy)) s += 6;
     return clampScore(s);
   }
 
   private rationaleFor(copy: string, d: CreativeDimension): string {
-    const base = `Copy de ${copy.length} caracteres`;
-    if (d === 'gancho') return `${base}: apertura ${copy.length > 5 ? 'con' : 'sin'} intención de retención.`;
-    if (d === 'claridad') return `${base}: mensaje ${copy.length >= 20 ? 'legible' : 'demasiado corto'}.`;
-    if (d === 'urgencia') return `${base}: ${/(ahora|hoy|solo|últim)/i.test(copy) ? 'con' : 'sin'} disparador de urgencia.`;
-    if (d === 'credibilidad') return `${base}: tono ${copy.length < 200 ? 'contenido' : 'excesivo'}.`;
-    return `${base}: evaluación de referencia (dimensión ${d}).`;
+    const base = `Copy of ${copy.length} chars`;
+    if (d === 'hook') return `${base}: opening ${copy.length > 5 ? 'with' : 'without'} retention intent.`;
+    if (d === 'clarity') return `${base}: message ${copy.length >= 20 ? 'legible' : 'too short'}.`;
+    if (d === 'urgency') return `${base}: ${/(now|today|only|last)/i.test(copy) ? 'with' : 'without'} urgency trigger.`;
+    if (d === 'credibility') return `${base}: tone ${copy.length < 200 ? 'restrained' : 'excessive'}.`;
+    return `${base}: reference evaluation (dimension ${d}).`;
   }
 }

@@ -22,7 +22,7 @@ export async function buildApp() {
   generateRoutes(app, db);
   predictRoutes(app, db);
 
-  try { await migrate(db); } catch (e: any) { app.log.warn(`migración pendiente: ${e.message}`); }
+  try { await migrate(db); } catch (e: any) { app.log.warn(`migration pending: ${e.message}`); }
 
   return app;
 }

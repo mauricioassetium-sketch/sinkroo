@@ -3,9 +3,9 @@ import { GaiaBroker } from './broker.js';
 import type { CreativeBrief } from './providers.js';
 
 /**
- * Servicio HTTP del broker de GAIA.
- * - POST /evaluate  { copy, id?, imageUrl?, channel?, audience? }  → veredicto del enjambre
- * - POST /generate  { productName, usp, offer?, audience?, tone?, channel?, cta?, count? }  → variantes de copy
+ * GAIA broker HTTP service.
+ * - POST /evaluate  { copy, id?, imageUrl?, channel?, audience? }  → swarm verdict
+ * - POST /generate  { productName, usp, offer?, audience?, tone?, channel?, cta?, count? }  → copy variants
  */
 
 const broker = new GaiaBroker();
@@ -23,7 +23,7 @@ async function build() {
     '/evaluate',
     async (req, reply) => {
       if (!req.body?.copy || req.body.copy.length < 10) {
-        return reply.code(400).send({ error: 'copy requerido (mín 10 caracteres)' });
+        return reply.code(400).send({ error: 'copy required (min 10 characters)' });
       }
       const result = await broker.evaluate({
         id: req.body.id ?? `cre-${Date.now()}`,
@@ -36,10 +36,10 @@ async function build() {
     },
   );
 
-  // M3 — Validación pre-spend: juzga Y predice desempeño en un paso
+  // M3 — Pre-spend validation: judges AND predicts performance in one step
   app.post<{ Body: { copy: string; channel?: string; audience?: string } }>('/predict', async (req, reply) => {
     if (!req.body?.copy || req.body.copy.length < 10) {
-      return reply.code(400).send({ error: 'copy requerido (mín 10 caracteres)' });
+      return reply.code(400).send({ error: 'copy required (min 10 characters)' });
     }
     const result = await broker.predict({
       id: `pre-${Date.now()}`,
@@ -50,11 +50,11 @@ async function build() {
     return result;
   });
 
-  // M4 — Generación de creativos a partir de un brief de producto
+  // M4 — Creative generation from a product brief
   app.post<{ Body: CreativeBrief & { count?: number } }>('/generate', async (req, reply) => {
     const b = req.body;
     if (!b?.productName || !b?.usp) {
-      return reply.code(400).send({ error: 'productName y usp son obligatorios' });
+      return reply.code(400).send({ error: 'productName and usp are required' });
     }
     const count = Number(b.count ?? 5);
     const variants = await broker.generateCreatives(b, count);

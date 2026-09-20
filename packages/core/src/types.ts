@@ -1,100 +1,100 @@
 /**
- * Contrato de datos de Sinkroo.
+ * Sinkroo data contract.
  *
- * Todo lo que cruza la frontera entre GAIA (orquestador), el Sinkroo Engine
- * (motor de enjambre) y la API pasa por estos tipos. Cambiarlos es una
- * decisión de arquitectura, no un detalle local.
+ * Everything crossing the boundary between GAIA (orchestrator), the Sinkroo
+ * Engine (swarm engine) and the API goes through these types. Changing them
+ * is an architecture decision, not a local detail.
  */
 
-/** Puntaje 0..100. 0 = catastrófico, 100 = impecable. */
+/** Score 0..100. 0 = catastrophic, 100 = flawless. */
 export type Score = number;
 
-/** Dimensión que un agente evalúa sobre una pieza creativa. */
+/** Dimension an agent scores on a creative piece. */
 export const CREATIVE_DIMENSIONS = [
-  'claridad',
-  'gancho',
-  'credibilidad',
-  'urgencia',
-  'relevancia',
-  'diferenciacion',
-  'emocion',
-  'ccr', // click-through-rate estimado (conversión)
+  'clarity',
+  'hook',
+  'credibility',
+  'urgency',
+  'relevance',
+  'differentiation',
+  'emotion',
+  'ctr', // estimated click-through-rate (conversion)
 ] as const;
 
 export type CreativeDimension = (typeof CREATIVE_DIMENSIONS)[number];
 
-/** Una pieza creativa que se somete al enjambre. */
+/** A creative piece submitted to the swarm. */
 export interface Creative {
-  /** id estable de la pieza. */
+  /** Stable id for the piece. */
   id: string;
-  /** Copy / texto del anuncio. */
+  /** Ad copy / text. */
   copy: string;
-  /** URL de la imagen (opcional en Etapa 0). */
+  /** Image URL (optional in Stage 0). */
   imageUrl?: string;
-  /** Mensaje de voz / toma de locución (opcional en Etapa 0). */
+  /** Voice message / voiceover take (optional in Stage 0). */
   voiceUrl?: string;
-  /** Contexto mínimo: a quién va dirigida. */
+  /** Minimal context: who it targets. */
   audience?: string;
-  /** Canal objetivo (meta, google, tiktok...). */
+  /** Target channel (meta, google, tiktok...). */
   channel?: string;
 }
 
-/** Perfil de un agente del enjambre: a quién representa. */
+/** Swarm agent profile: who it embodies. */
 export interface AgentProfile {
   id: string;
-  /** Rol / persona que encarna (ej. 'comprador_impulsivo', 'cm_esceptico'). */
+  /** Role / persona it embodies (e.g. 'impulsive_buyer', 'skeptical_cm'). */
   persona: string;
-  /** Peso relativo del voto de este agente (default 1). */
+  /** Relative weight of this agent's vote (default 1). */
   weight?: number;
-  /** Criterios que prioriza este agente. */
+  /** Dimensions this agent prioritizes. */
   priorities: CreativeDimension[];
 }
 
-/** Voto individual de un agente sobre una pieza. */
+/** A single agent vote on a piece. */
 export interface AgentVote {
   agentId: string;
   dimension: CreativeDimension;
   score: Score;
-  /** Razonamiento en lenguaje natural del agente. */
+  /** Agent's natural-language reasoning. */
   rationale: string;
 }
 
-/** Resultado del enjambre sobre una pieza creativa. */
+/** Swarm result for a creative piece. */
 export interface SwarmResult {
   creativeId: string;
-  /** Promedio ponderado global 0..100. */
+  /** Weighted global average 0..100. */
   overallScore: Score;
-  /** Desglose por dimensión (promedios ponderados). */
+  /** Per-dimension breakdown (weighted averages). */
   dimensionScores: Record<CreativeDimension, Score>;
-  /** Votos individuales (trazabilidad completa). */
+  /** Individual votes (full traceability). */
   votes: AgentVote[];
-  /** Veredicto legible derivado del score. */
+  /** Human-readable verdict derived from the score. */
   verdict: SwarmVerdict;
-  /** Timestamp de la evaluación. */
+  /** Evaluation timestamp. */
   evaluatedAt: string;
 }
 
 export type SwarmVerdict =
-  | { kind: 'go'; label: 'Aprobar y lanzar' }
-  | { kind: 'review'; label: 'Revisar antes de lanzar' }
-  | { kind: 'stop'; label: 'Rehacer' };
+  | { kind: 'go'; label: 'Approve & launch' }
+  | { kind: 'review'; label: 'Review before launch' }
+  | { kind: 'stop'; label: 'Rework' };
 
-/** Umbrales de decisión (ajustables, centralizados aquí). */
+/** Decision thresholds (tunable, centralized here). */
 export const SCORE_THRESHOLDS = {
-  /** >= 80 → aprobar. */
+  /** >= 80 → approve. */
   GO: 80,
-  /** >= 60 → revisar. */
+  /** >= 60 → review. */
   REVIEW: 60,
 } as const;
 
-/** Deriva el veredicto a partir de un score. */
+/** Derives the verdict from a score. */
 export function deriveVerdict(score: Score): SwarmVerdict {
-  if (score >= SCORE_THRESHOLDS.GO) return { kind: 'go', label: 'Aprobar y lanzar' };
-  if (score >= SCORE_THRESHOLDS.REVIEW) return { kind: 'review', label: 'Revisar antes de lanzar' };
-  return { kind: 'stop', label: 'Rehacer' };
+  if (score >= SCORE_THRESHOLDS.GO) return { kind: 'go', label: 'Approve & launch' };
+  if (score >= SCORE_THRESHOLDS.REVIEW) return { kind: 'review', label: 'Review before launch' };
+  return { kind: 'stop', label: 'Rework' };
 }
 
-/** Clamp de un score al rango 0..100. */
+/** Clamp a score to the 0..100 range. */
 export function clampScore(n: number): Score {
   return Math.max(0, Math.min(100, Math.round(n)));
 }

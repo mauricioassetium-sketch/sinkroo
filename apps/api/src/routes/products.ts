@@ -1,13 +1,13 @@
 import type { FastifyInstance } from 'fastify';
 import type { Pool } from 'pg';
 
-// M1 — Productos: alta y lectura (precio opcional, isPrimary resalta)
+// M1 — Products: create and read (price optional, isPrimary highlights)
 
 export async function productRoutes(app: FastifyInstance, db: Pool) {
   app.post('/api/products', async (req, reply) => {
     const p = req.body as Record<string, any>;
     if (!p?.businessId || !p?.name) {
-      return reply.status(400).send({ error: 'businessId y name son obligatorios' });
+      return reply.status(400).send({ error: 'businessId and name are required' });
     }
     const { rows } = await db.query(
       `INSERT INTO products (business_id, name, category, price, price_unit, offer, usp, cta, image_url, is_primary)

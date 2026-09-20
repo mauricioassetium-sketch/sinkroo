@@ -1,11 +1,11 @@
 import pg from 'pg';
 
 /**
- * Cliente PostgreSQL.
+ * PostgreSQL client.
  *
- * Etapa 1: capa mínima de acceso. Usa una conexión por pool con DATABASE_URL.
- * El esquema completo (15 tablas del spec) llega en Etapa 2; aquí dejamos el
- * patrón de migración y cuatro tablas núcleo para probar el flujo.
+ * Stage 1: minimal access layer. Uses a pooled connection via DATABASE_URL.
+ * The full schema (15 spec tables) arrives in Stage 2; here we keep the
+ * migration pattern and four core tables to exercise the flow.
  */
 
 const { Pool } = pg;
@@ -15,7 +15,7 @@ export const pool = new Pool({
   max: 10,
 });
 
-/** Query helper tipado básico. */
+/** Basic typed query helper. */
 export async function query<T = Record<string, unknown>>(
   text: string,
   params: unknown[] = [],
@@ -24,7 +24,7 @@ export async function query<T = Record<string, unknown>>(
   return r.rows as T[];
 }
 
-/** Ejecuta un comando sin retorno (DDL/DML). */
+/** Runs a command with no return (DDL/DML). */
 export async function execute(text: string, params: unknown[] = []): Promise<void> {
   await pool.query(text, params);
 }

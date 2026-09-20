@@ -12,12 +12,12 @@ interface EvaluateBody {
 export async function swarmRoutes(app: FastifyInstance) {
   /**
    * POST /swarm/evaluate
-   * Recibe un creative y devuelve el veredicto del enjambre.
+   * Receives a creative and returns the swarm verdict.
    */
   app.post<{ Body: EvaluateBody }>('/swarm/evaluate', async (req, reply) => {
     const { id, copy, imageUrl, channel, audience } = req.body;
     if (!copy || typeof copy !== 'string' || copy.length < 10) {
-      return reply.code(400).send({ error: 'copy requerido (mín 10 caracteres)' });
+      return reply.code(400).send({ error: 'copy required (min 10 characters)' });
     }
     const result = await evaluateCreative({
       id: id ?? `cre-${Date.now()}`,

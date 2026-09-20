@@ -1,36 +1,36 @@
 import type { AgentProfile } from '@sinkroo/core';
 
 /**
- * Enjambre por defecto: un conjunto de personas que cubren los ángulos
- * relevantes al juzgar una pieza creativa de marketing.
+ * Default swarm: a set of personas covering the relevant angles when judging
+ * a marketing creative piece.
  *
- * Cada agente tiene prioridades distintas; el motor agrega sus votos.
- * Se pueden inyectar enjambres custom vía SwarmEngine({ agents }).
+ * Each agent has distinct priorities; the engine aggregates their votes.
+ * Custom swarms can be injected via SwarmEngine({ agents }).
  */
 export const DEFAULT_AGENTS: AgentProfile[] = [
   {
-    id: 'comprador_impulsivo',
-    persona: 'Comprador impulsivo',
-    priorities: ['gancho', 'emocion', 'urgencia'],
+    id: 'impulsive_buyer',
+    persona: 'Impulsive buyer',
+    priorities: ['hook', 'emotion', 'urgency'],
   },
   {
-    id: 'cm_esceptico',
-    persona: 'Community manager escéptico',
-    priorities: ['credibilidad', 'claridad'],
+    id: 'skeptical_cm',
+    persona: 'Skeptical community manager',
+    priorities: ['credibility', 'clarity'],
   },
   {
-    id: 'analista_datos',
-    persona: 'Analista de performance',
-    priorities: ['ccr', 'relevancia', 'diferenciacion'],
+    id: 'data_analyst',
+    persona: 'Performance analyst',
+    priorities: ['ctr', 'relevance', 'differentiation'],
   },
   {
-    id: 'marca_guardian',
-    persona: 'Guardián de marca',
-    priorities: ['credibilidad', 'claridad', 'diferenciacion'],
+    id: 'brand_guardian',
+    persona: 'Brand guardian',
+    priorities: ['credibility', 'clarity', 'differentiation'],
   },
   {
-    id: 'copywriter_senior',
-    persona: 'Copywriter senior',
-    priorities: ['gancho', 'claridad', 'diferenciacion'],
+    id: 'senior_copywriter',
+    persona: 'Senior copywriter',
+    priorities: ['hook', 'clarity', 'differentiation'],
   },
 ];

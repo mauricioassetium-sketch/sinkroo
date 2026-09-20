@@ -1,9 +1,9 @@
 /**
- * Esquema núcleo de Etapa 1 (adaptado del spec v1.2, tablas mínimas para
- * ejercitar el flujo end-to-end). El resto del modelo (15 tablas) se añade en
- * proceso. Todas las tablas con created_at y claves foráneas tipadas.
+ * Core Stage 1 schema (adapted from spec v1.2, minimal tables to exercise the
+ * end-to-end flow). The rest of the model (15 tables) is added in process. All
+ * tables carry created_at and typed foreign keys.
  *
- * Usado por `npm run migrate` para crear la base desde cero (idempotente).
+ * Used by `npm run migrate` to create the database from scratch (idempotent).
  */
 export const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS users (

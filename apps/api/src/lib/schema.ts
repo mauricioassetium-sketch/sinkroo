@@ -1,7 +1,7 @@
 import type { Pool } from 'pg';
 
-// Esquema de Sinkroo — tablas en inglés (convención de código).
-// Diseño M1: Business -> Product -> Creative -> SwarmResult
+// Sinkroo schema — English tables (code convention).
+// M1 design: Business -> Product -> Creative -> SwarmResult
 
 export type Industry =
   | 'real_estate' | 'beauty' | 'health' | 'ecommerce' | 'saas'

@@ -13,17 +13,18 @@ export interface SwarmEngineOptions {
 }
 
 /**
- * Sinkroo Engine — motor de enjambre.
+ * Sinkroo Engine — swarm engine.
  *
- * Dado una pieza creativa y un enjambre de agentes, cada agente vota sobre
- * sus dimensiones prioritarias y el motor agrega los votos en un score
- * ponderado 0..100 con veredicto.
+ * Given a creative piece and a swarm of agents, each agent votes on its
+ * priority dimensions and the engine aggregates the votes into a weighted
+ * 0..100 score with a verdict.
  *
- * Diseño (decisiones deliberadas):
- *  - El Engine NO decide qué tan buena es una pieza: delega en el Evaluator
- *    (GAIA). El Engine solo orquesta y agrega de forma determinista.
- *  - El agregado es un promedio ponderado por agente y por dimensión.
- *  - Salida tipada y trazable (cada voto queda registrado).
+ * Design (deliberate decisions):
+ *  - The Engine does NOT decide how good a piece is: it delegates to the
+ *    Evaluator (GAIA). The Engine only orchestrates and aggregates
+ *    deterministically.
+ *  - Aggregation is a weighted average per agent and per dimension.
+ *  - Typed, traceable output (every vote is recorded).
  */
 export class SwarmEngine {
   private readonly agents: AgentProfile[];
@@ -32,12 +33,12 @@ export class SwarmEngine {
   constructor(options: SwarmEngineOptions) {
     this.agents = options.agents ?? [];
     if (this.agents.length === 0) {
-      throw new Error('SwarmEngine requiere al menos un agente');
+      throw new Error('SwarmEngine requires at least one agent');
     }
     this.evaluator = options.evaluator;
   }
 
-  /** Evalúa una pieza y devuelve el resultado agregado del enjambre. */
+  /** Evaluates a piece and returns the aggregated swarm result. */
   async evaluate(creative: Creative): Promise<SwarmResult> {
     const votes: SwarmResult['votes'] = [];
     for (const agent of this.agents) {
@@ -58,7 +59,7 @@ export class SwarmEngine {
     };
   }
 
-  /** Promedio ponderado global (peso por agente, media sobre todos los votos). */
+  /** Global weighted average (per-agent weight, mean over all votes). */
   private weightedOverall(votes: SwarmResult['votes']): Score {
     const weightByAgent = new Map(this.agents.map((a) => [a.id, a.weight ?? 1]));
     let sum = 0;
@@ -72,7 +73,7 @@ export class SwarmEngine {
     return clampScore(sum / totalWeight);
   }
 
-  /** Promedio ponderado por dimensión. */
+  /** Weighted average per dimension. */
   private dimensionAggregates(
     votes: SwarmResult['votes'],
   ): Record<(typeof CREATIVE_DIMENSIONS)[number], Score> {

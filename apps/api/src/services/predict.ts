@@ -2,9 +2,9 @@ import type { Pool } from 'pg';
 import type { SwarmResult } from '@sinkroo/core';
 
 /**
- * Servicio de validación pre-spend (M3).
- * Delega la predicción en el GaiaBroker (endpoint /predict), que juzga
- * el copy con el enjambre y emite el score predictivo de desempeño.
+ * Pre-spend validation service (M3).
+ * Delegates the prediction to GaiaBroker (endpoint /predict), which judges
+ * the copy with the swarm and emits the predictive performance score.
  */
 
 export interface PredictInput {
@@ -37,6 +37,6 @@ export async function predictPreSpend(input: PredictInput): Promise<PredictResul
     body: JSON.stringify(input),
     signal: AbortSignal.timeout(90_000),
   });
-  if (!res.ok) throw new Error(`Broker respondió ${res.status}: ${await res.text()}`);
+  if (!res.ok) throw new Error(`Broker responded ${res.status}: ${await res.text()}`);
   return (await res.json()) as PredictResult;
 }

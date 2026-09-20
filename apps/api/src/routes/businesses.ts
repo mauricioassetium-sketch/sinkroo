@@ -1,13 +1,13 @@
 import type { FastifyInstance } from 'fastify';
 import type { Pool } from 'pg';
 
-// M1 — Ingestión de negocio: alta y lectura de negocios
+// M1 — Business ingestion: create and read businesses
 
 export async function businessRoutes(app: FastifyInstance, db: Pool) {
   app.post('/api/businesses', async (req, reply) => {
     const b = req.body as Record<string, any>;
     if (!b?.name || !b?.description) {
-      return reply.status(400).send({ error: 'name y description son obligatorios' });
+      return reply.status(400).send({ error: 'name and description are required' });
     }
     const { rows } = await db.query(
       `INSERT INTO businesses (name, industry, description, audience, tone, channels, logo)
@@ -26,7 +26,7 @@ export async function businessRoutes(app: FastifyInstance, db: Pool) {
   app.get('/api/businesses/:id', async (req, reply) => {
     const { id } = req.params as { id: string };
     const b = await db.query('SELECT * FROM businesses WHERE id = $1', [id]);
-    if (b.rows.length === 0) return reply.status(404).send({ error: 'negocio no encontrado' });
+    if (b.rows.length === 0) return reply.status(404).send({ error: 'business not found' });
     const p = await db.query(
       'SELECT * FROM products WHERE business_id = $1 ORDER BY is_primary DESC, created_at ASC', [id]
     );

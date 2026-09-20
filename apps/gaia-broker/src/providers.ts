@@ -2,23 +2,23 @@ import type { AgentProfile, AgentVote, Creative, CreativeDimension } from '@sink
 import { clampScore } from '@sinkroo/core';
 
 /**
- * Capa conectora de GAIA — providers de razonamiento Y generación.
+ * GAIA connector layer — reasoning AND generation providers.
  *
- * El broker expone UNA interfaz (`ReasoningProvider`) y detrás puede haber
- * cualquier cerebro de IA: un LLM (OpenAI/Anthropic/Gemini/Groq), o el endpoint
- * real de GAIA-orijins cuando exista. Cambiar de cerebro = cambiar el provider,
- * sin tocar el motor ni la API.
+ * The broker exposes ONE interface (`ReasoningProvider`) and behind it any AI
+ * brain can live: an LLM (OpenAI/Anthropic/Gemini/Groq), or the real
+ * GAIA-orijins endpoint when it exists. Switching brains = switching the
+ * provider, without touching the engine or the API.
  */
 
 export interface ReasoningProvider {
   readonly name: string;
-  /** Juzga una pieza desde el lugar de un agente (dimensiones priorizadas). */
+  /** Judges a piece from an agent's standpoint (prioritized dimensions). */
   judge(agent: AgentProfile, creative: Creative): Promise<AgentVote[]>;
-  /** Genera variantes de copy a partir de un brief de producto. */
+  /** Generates copy variants from a product brief. */
   generate(brief: CreativeBrief, count: number): Promise<string[]>;
 }
 
-/** Brief de generación (M4): producto + ángulo único + público + canal. */
+/** Generation brief (M4): product + unique angle + audience + channel. */
 export interface CreativeBrief {
   productName: string;
   usp: string;
@@ -29,7 +29,7 @@ export interface CreativeBrief {
   cta?: string;
 }
 
-/** Configuración común de un provider tipo chat-completions. */
+/** Common config for a chat-completions-style provider. */
 export interface ChatProviderConfig {
   baseUrl: string;
   model: string;
@@ -39,22 +39,22 @@ export interface ChatProviderConfig {
 }
 
 const DIMENSIONS = new Set<CreativeDimension>([
-  'claridad', 'gancho', 'credibilidad', 'urgencia',
-  'relevancia', 'diferenciacion', 'emocion', 'ccr',
+  'clarity', 'hook', 'credibility', 'urgency',
+  'relevance', 'differentiation', 'emotion', 'ctr',
 ]);
 
 const RUBRIC: Record<CreativeDimension, string> = {
-  claridad: '¿Se entiende el mensaje a la primera?',
-  gancho: '¿Las primeras palabras detienen el scroll?',
-  credibilidad: '¿Suena creíble y verificable?',
-  urgencia: '¿Hay razón real para actuar ahora?',
-  relevancia: '¿Le habla directo al público objetivo?',
-  diferenciacion: '¿Se distingue de la competencia?',
-  emocion: '¿Provoca reacción emocional?',
-  ccr: '¿Probabilidad de clic?',
+  clarity: 'Is the message understood on first read?',
+  hook: 'Do the first words stop the scroll?',
+  credibility: 'Does it sound credible and verifiable?',
+  urgency: 'Is there a real reason to act now?',
+  relevance: 'Does it speak directly to the target audience?',
+  differentiation: 'Does it stand out from competitors?',
+  emotion: 'Does it trigger an emotional response?',
+  ctr: 'Click probability?',
 };
 
-/** Provider genérico tipo chat-completions (OpenAI, Groq, DeepSeek, Gemini-compatible, etc.) */
+/** Generic chat-completions provider (OpenAI, Groq, DeepSeek, Gemini-compatible, etc.) */
 export class ChatProvider implements ReasoningProvider {
   readonly name: string;
   private retries: number;
@@ -67,43 +67,43 @@ export class ChatProvider implements ReasoningProvider {
   async judge(agent: AgentProfile, creative: Creative): Promise<AgentVote[]> {
     const dims = agent.priorities.map((d) => `- ${d}: ${RUBRIC[d]}`).join('\n');
     const system = [
-      `Eres un evaluador de anuncios encarnando a: "${agent.persona}".`,
-      `Juzga la pieza desde ese lugar, sin filtros corporativos.`,
-      `Evalúa SOLO estas dimensiones:`,
+      `You are an ad evaluator embodying: "${agent.persona}".`,
+      `Judge the piece from that standpoint, with no corporate filters.`,
+      `Evaluate ONLY these dimensions:`,
       dims,
-      `Responde JSON estricto: {"votes":[{"dimension":"<nombre>","score":<0-100>,"rationale":"<1 frase>"}]}`,
+      `Respond with strict JSON: {"votes":[{"dimension":"<nombre>","score":<0-100>,"rationale":"<1 frase>"}]}`,
     ].join('\n');
 
-    const content = await this.chat(system, `Copy: ${creative.copy || '(sin copy)'}`, 0.4);
+    const content = await this.chat(system, `Copy: ${creative.copy || '(no copy)'}`, 0.4);
     return this.parseVotes(content, agent);
   }
 
   async generate(brief: CreativeBrief, count: number): Promise<string[]> {
     const n = Math.max(1, Math.min(count, 10));
     const system = [
-      `Eres un copywriter senior de performance.`,
-      `Genera ${n} variantes de copy de anuncio para el siguiente producto.`,
+      `You are a senior performance copywriter.`,
+      `Generate ${n} ad copy variants for the following product.`,
       ``,
       `Producto: ${brief.productName}`,
-      `Propuesta única (USP): ${brief.usp || '(sin especificar — resáltala si la hay)'}`,
-      `Oferta/gancho: ${brief.offer || '(sin oferta)'}`,
-      `Público: ${brief.audience || '(general)'}`,
-      `Tono: ${brief.tone || 'directo, cercano y claro'}`,
-      `Canal: ${brief.channel || 'meta'}`,
-      `CTA: ${brief.cta || 'actúa ahora'}`,
+      `Unique selling proposition (USP): ${brief.usp || '(unspecified — highlight it if present)'}`,
+      `Offer/hook: ${brief.offer || '(no offer)'}`,
+      `Audience: ${brief.audience || '(general)'}`,
+      `Tone: ${brief.tone || 'direct, warm and clear'}`,
+      `Channel: ${brief.channel || 'meta'}`,
+      `CTA: ${brief.cta || 'act now'}`,
       ``,
-      `Reglas:`,
-      `- Cada variante debe ser distinta (distinto ángulo/gancho), no parafraseo de la anterior.`,
-      `- Apóyate SIEMPRE en la USP para que no sea un copy genérico.`,
-      `- 60-160 caracteres por variante.`,
-      `- Responde JSON estricto: {"variants":["<copy 1>","<copy 2>",...]}`,
+      `Rules:`,
+      `- Each variant must be distinct (different angle/hook), not a paraphrase of the previous.`,
+      `- ALWAYS lean on the USP so the copy is not generic.`,
+      `- 60-160 characters per variant.`,
+      `- Respond with strict JSON: {"variants":["<copy 1>","<copy 2>",...]}`,
     ].join('\n');
 
-    const content = await this.chat(system, `Genera ${n} variantes.`, 0.8);
+    const content = await this.chat(system, `Generate ${n} variants.`, 0.8);
     return this.parseVariants(content, n);
   }
 
-  /** Llama al endpoint chat/completions y devuelve el texto del primer mensaje. */
+  /** Calls the chat/completions endpoint and returns the first message text. */
   private async chat(system: string, user: string, temperature: number): Promise<string> {
     const body = {
       model: this.cfg.model,
@@ -137,14 +137,14 @@ export class ChatProvider implements ReasoningProvider {
 
     const json = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
     const content = json.choices?.[0]?.message?.content;
-    if (!content) throw new Error(`[${this.name}] sin contenido`);
+    if (!content) throw new Error(`[${this.name}] no content`);
     return content;
   }
 
   private parseVotes(raw: string, agent: AgentProfile): AgentVote[] {
     const parsed = this.parseJson(raw);
     const votes = (parsed as { votes?: Array<{ dimension?: string; score?: number | string; rationale?: string }> })?.votes;
-    if (!Array.isArray(votes)) throw new Error('[provider] sin "votes"');
+    if (!Array.isArray(votes)) throw new Error('[provider] missing "votes"');
     return votes
       .filter((v) => v.dimension && DIMENSIONS.has(v.dimension as CreativeDimension))
       .map((v) => ({ agentId: agent.id, dimension: v.dimension as CreativeDimension, score: clampScore(Number(v.score ?? 0)), rationale: String(v.rationale ?? '') }));
@@ -153,7 +153,7 @@ export class ChatProvider implements ReasoningProvider {
   private parseVariants(raw: string, count: number): string[] {
     const parsed = this.parseJson(raw);
     const arr = (parsed as { variants?: string[] })?.variants;
-    if (!Array.isArray(arr) || arr.length === 0) throw new Error('[provider] sin "variants"');
+    if (!Array.isArray(arr) || arr.length === 0) throw new Error('[provider] missing "variants"');
     return arr
       .map((v) => String(v).trim())
       .filter((v) => v.length >= 20)
@@ -163,13 +163,13 @@ export class ChatProvider implements ReasoningProvider {
   private parseJson(raw: string): unknown {
     const cleaned = raw.replace(/```(?:json)?/gi, '').trim();
     try { return JSON.parse(cleaned); }
-    catch { const m = cleaned.match(/\{[\s\S]*\}/); if (!m) throw new Error('[provider] JSON inválido'); return JSON.parse(m[0]); }
+    catch { const m = cleaned.match(/\{[\s\S]*\}/); if (!m) throw new Error('[provider] invalid JSON'); return JSON.parse(m[0]); }
   }
 }
 
 /**
- * Provider local determinista — SIEMPRE disponible como fallback.
- * No es IA real; es el piso que evita que el sistema se caiga sin red.
+ * Deterministic local provider — ALWAYS available as a fallback.
+ * Not real AI; it is the floor that keeps the system from failing offline.
  */
 export class LocalProvider implements ReasoningProvider {
   readonly name = 'local (fallback)';
@@ -180,14 +180,14 @@ export class LocalProvider implements ReasoningProvider {
       agentId: agent.id,
       dimension: d,
       score: this.score(copy, d),
-      rationale: `Copy ${copy.length} chars (dimensión ${d})`,
+      rationale: `Copy ${copy.length} chars (dimension ${d})`,
     }));
   }
 
   async generate(brief: CreativeBrief, count: number): Promise<string[]> {
     const n = Math.max(1, Math.min(count, 10));
     const base = brief.usp ? ` ${brief.usp}.` : '';
-    const cta = brief.cta || 'Descúbrelo hoy';
+    const cta = brief.cta || 'Discover it today';
     const out: string[] = [];
     for (let i = 0; i < n; i++) {
       const hook = this.hooks[i % this.hooks.length];
@@ -197,27 +197,27 @@ export class LocalProvider implements ReasoningProvider {
   }
 
   private hooks = [
-    'Deja de buscar.',
-    'Última oportunidad:',
-    'Esto cambia todo:',
-    'Lo que nadie te dijo:',
-    'Atención:',
+    'Stop searching.',
+    'Last chance:',
+    'This changes everything:',
+    'What nobody told you:',
+    'Attention:',
   ];
 
   private score(copy: string, d: CreativeDimension): number {
     let s = 55;
     if (copy.length >= 40 && copy.length <= 300) s += 12;
     if (/\d/.test(copy)) s += 8;
-    if (/(ahora|hoy|solo|últim)/i.test(copy)) { if (d === 'urgencia' || d === 'gancho') s += 12; }
-    if (d === 'claridad' && copy.length > 20 && copy.length < 250) s += 6;
-    if (d === 'credibilidad' && copy.length < 200) s += 6;
+    if (/(now|today|only|last)/i.test(copy)) { if (d === 'urgency' || d === 'hook') s += 12; }
+    if (d === 'clarity' && copy.length > 20 && copy.length < 250) s += 6;
+    if (d === 'credibility' && copy.length < 200) s += 6;
     return clampScore(s);
   }
 }
 
 /**
- * Fábrica: elige el provider según entorno.
- * Prioridad: GAIA_ENDPOINT_URL (orijins real) > PROVIDER_* (LLM) > local.
+ * Factory: picks the provider from the environment.
+ * Priority: GAIA_ENDPOINT_URL (real orijins) > PROVIDER_* (LLM) > local.
  */
 export function createProvider(): ReasoningProvider {
   const ori = process.env.GAIA_ENDPOINT_URL;

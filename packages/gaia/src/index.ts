@@ -10,22 +10,23 @@ import {
 import { systemPrompt, userPrompt } from './prompt.js';
 
 /**
- * GaiaEvaluator — el "cerebro" del enjambre Sinkroo.
+ * GaiaEvaluator — the "brain" of the Sinkroo swarm.
  *
- * Implementa la interfaz `Evaluator` del Engine: para cada agente del enjambre,
- * GAIA encarna su persona, juzga la pieza y devuelve votos razonados (uno por
- * dimensión prioritaria). La inteligencia vive en GAIA; el Engine solo orquesta.
+ * Implements the Engine's `Evaluator` interface: for each swarm agent, GAIA
+ * embodies its persona, judges the piece and returns reasoned votes (one per
+ * priority dimension). The intelligence lives in GAIA; the Engine only
+ * orchestrates.
  *
- * Dos backends intercambiables:
- *   - HttpGaiaClient  → llama a un endpoint real de GAIA (chat completions).
- *   - LocalGaiaClient → fallback determinista (sin red, para tests/offline).
- * Elegir cuál se usa es tarea de createGaiaEvaluator() según config/entorno.
+ * Two interchangeable backends:
+ *   - HttpGaiaClient  → calls a real GAIA endpoint (chat completions).
+ *   - LocalGaiaClient → deterministic fallback (offline, for tests/offline).
+ * Choosing which one is used is createGaiaEvaluator()'s job per config/env.
  */
 
-/** Firma de bajo nivel: (agente, pieza) -> votos. */
+/** Low-level signature: (agent, piece) -> votes. */
 export type GaiaJudgeFn = (agent: AgentProfile, creative: Creative) => Promise<AgentVote[]>;
 
-/** Envuelve un cliente en un Evaluator compatible con el Engine. */
+/** Wraps a client into an Engine-compatible Evaluator. */
 export class GaiaEvaluator implements Evaluator {
   constructor(private readonly client: GaiaEndpointClient) {}
 
@@ -35,17 +36,17 @@ export class GaiaEvaluator implements Evaluator {
 }
 
 export interface GaiaOptions {
-  /** Config del endpoint GAIA. Si se omite, usa el fallback local. */
+  /** GAIA endpoint config. If omitted, the local fallback is used. */
   endpoint?: GaiaEndpointConfig;
-  /** Inyectar un cliente custom (para tests o integraciones especiales). */
+  /** Inject a custom client (for tests or special integrations). */
   client?: GaiaEndpointClient;
 }
 
 /**
- * Fábrica: construye un GaiaEvaluator listo para enjambrar.
- * - Si hay `client`, lo usa tal cual.
- * - Si hay `endpoint`, usa HttpGaiaClient.
- * - Si no hay nada, usa LocalGaiaClient (corre offline, siempre).
+ * Factory: builds a swarm-ready GaiaEvaluator.
+ * - If there is a `client`, uses it as-is.
+ * - If there is an `endpoint`, uses HttpGaiaClient.
+ * - With neither, uses LocalGaiaClient (runs offline, always).
  */
 export function createGaiaEvaluator(options: GaiaOptions = {}): GaiaEvaluator {
   const client =
@@ -54,7 +55,7 @@ export function createGaiaEvaluator(options: GaiaOptions = {}): GaiaEvaluator {
   return new GaiaEvaluator(client);
 }
 
-/** Helper para construir un voto tipado (clamp + forma canónica). */
+/** Helper to build a typed vote (clamp + canonical shape). */
 export function makeVote(
   agent: AgentProfile,
   score: number,

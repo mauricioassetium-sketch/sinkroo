@@ -1,54 +1,54 @@
 import type { AgentProfile, Creative, CreativeDimension } from '@sinkroo/core';
 
 /**
- * Prompts de GAIA para el enjambre.
+ * GAIA prompts for the swarm.
  *
- * Armar el prompt de cada agente por separado es lo que hace a GAIA distinta
- * de una heurística: GAIA ENCARNA a cada persona y juzga desde ese lugar.
- * El prompt traduce el perfil del agente (persona + prioridades) a una tarea
- * de evaluación concreta, pidiendo un voto razonado por cada dimensión.
+ * Building each agent's prompt separately is what makes GAIA different from a
+ * heuristic: GAIA EMBODIES each persona and judges from that standpoint. The
+ * prompt translates the agent profile (persona + priorities) into a concrete
+ * evaluation task, asking for a reasoned vote per dimension.
  */
 
-/** Rúbrica corta por dimensión, para guiar el juicio del agente. */
+/** Short per-dimension rubric to guide the agent's judgment. */
 const RUBRIC: Record<CreativeDimension, string> = {
-  claridad:
-    '¿Se entiende el mensaje a la primera? ¿Sin ambigüedad ni jerga que confunda?',
-  gancho:
-    '¿Las primeras palabras detienen el scroll? ¿Provocan curiosidad o deseo inmediato?',
-  credibilidad:
-    '¿Suena creíble y verificable? ¿Evita promesas exageradas que generan desconfianza?',
-  urgencia:
-    '¿Hay una razón real para actuar ahora y no después? ¿Sin caer en presión barata?',
-  relevancia:
-    '¿Le habla directamente al público objetivo y a su dolor/contexto?',
-  diferenciacion:
-    '¿Se distingue de la competencia? ¿Tiene un ángulo propio o es genérico?',
-  emocion:
-    '¿Genera una reacción emocional (deseo, alivio, aspiración, seguridad)?',
-  ccr: '¿Qué tan probable es que alguien haga clic? ¿La promesa + llamado a la acción son fuertes?',
+  clarity:
+    'Is the message understood on first read? No ambiguity or confusing jargon?',
+  hook:
+    'Do the first words stop the scroll? Do they spark curiosity or immediate desire?',
+  credibility:
+    'Does it sound credible and verifiable? Does it avoid exaggerated promises that breed distrust?',
+  urgency:
+    'Is there a real reason to act now rather than later? Without resorting to cheap pressure?',
+  relevance:
+    'Does it speak directly to the target audience and their pain/context?',
+  differentiation:
+    'Does it stand out from the competition? Has its own angle or is it generic?',
+  emotion:
+    'Does it trigger an emotional response (desire, relief, aspiration, safety)?',
+  ctr: 'How likely is someone to click? Is the promise + call to action strong?',
 };
 
-/** Construye el prompt del sistema para un agente. */
+/** Builds the system prompt for an agent. */
 export function systemPrompt(agent: AgentProfile): string {
   const dims = agent.priorities.map((d) => `- ${d}: ${RUBRIC[d]}`).join('\n');
   return [
-    `Eres un evaluador de anuncios encarnando a: "${agent.persona}".`,
-    `Juzga la pieza únicamente desde ese lugar, SIN filtros corporativos.`,
+    `You are an ad evaluator embodying: "${agent.persona}".`,
+    `Judge the piece solely from that standpoint, with NO corporate filters.`,
     ``,
-    `Debes evaluar SOLO estas dimensiones (las que tu perfil prioriza):`,
+    `You must evaluate ONLY these dimensions (the ones your profile prioritizes):`,
     dims,
     ``,
-    `Salida OBLIGATORIA: devuelve JSON estricto, sin markdown ni prosa, con la forma:`,
-    `{"votes":[{"dimension":"<nombre>","score":<0-100>,"rationale":"<1 frase en español, por qué>"}]}`,
-    `Un voto POR dimensión prioritaria. scores enteros 0-100. rationale corto y específico a la pieza.`,
+    `MANDATORY output: return strict JSON, no markdown or prose, in this shape:`,
+    `{"votes":[{"dimension":"<name>","score":<0-100>,"rationale":"<1 sentence in English, why>"}]}`,
+    `One vote PER priority dimension. Integer scores 0-100. Short, piece-specific rationale.`,
   ].join('\n');
 }
 
-/** Construye el prompt del usuario (la pieza a juzgar). */
+/** Builds the user prompt (the piece to judge). */
 export function userPrompt(creative: Creative): string {
-  const parts = [`Copy del anuncio:`, creative.copy || '(sin copy)'];
-  if (creative.audience) parts.push(`Audiencia objetivo: ${creative.audience}`);
-  if (creative.channel) parts.push(`Canal: ${creative.channel}`);
-  if (creative.imageUrl) parts.push(`Imagen (URL): ${creative.imageUrl}`);
+  const parts = [`Ad copy:`, creative.copy || '(no copy)'];
+  if (creative.audience) parts.push(`Target audience: ${creative.audience}`);
+  if (creative.channel) parts.push(`Channel: ${creative.channel}`);
+  if (creative.imageUrl) parts.push(`Image (URL): ${creative.imageUrl}`);
   return parts.join('\n');
 }

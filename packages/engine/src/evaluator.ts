@@ -1,26 +1,25 @@
 import type { AgentProfile, AgentVote, Creative, CreativeDimension } from '@sinkroo/core';
 
 /**
- * Evaluador = la función que, dado un agente y una pieza, produce un voto.
+ * Evaluator = the function that, given an agent and a piece, produces votes.
  *
- * En la Etapa 0, GAIA es quien implementa esta interfaz: GAIA encarna a cada
- * agente y juzga la pieza. El Engine solo orquesta (reparte, recoge, agrega).
- * Esta separación mantiene el motor determinista y testeable, y deja la
- * inteligencia en GAIA, que es justo lo que la hace única.
+ * At Stage 0, GAIA implements this interface: GAIA embodies each agent and
+ * judges the piece. The Engine only orchestrates (dispatches, collects,
+ * aggregates). This separation keeps the engine deterministic and testable,
+ * and leaves the intelligence in GAIA — exactly what makes it unique.
  */
 export interface Evaluator {
-  /** Devuelve UN voto por dimensión prioritaria del agente. */
+  /** Returns ONE vote per priority dimension of the agent. */
   evaluate(agent: AgentProfile, creative: Creative): Promise<AgentVote[]>;
 }
 
 /**
- * Evaluador determinista de referencia (sin IA). Útil para tests y para
- * tener un "piso" cuando GAIA no está disponible. NO es la fuente de
- * inteligencia real — GAIA reemplaza esto en producción.
+ * Deterministic reference evaluator (no AI). Useful for tests and as a
+ * "floor" when GAIA is unavailable. NOT the real intelligence — GAIA
+ * replaces this in production.
  *
- * Cada agente vota sobre TODAS sus dimensiones prioritarias, con una
- * heurística simple sobre el texto del copy, para producir un desglose
- * más rico que un solo voto.
+ * Each agent votes on ALL its priority dimensions with a simple heuristic
+ * over the copy text, to produce a richer breakdown than a single vote.
  */
 export class HeuristicEvaluator implements Evaluator {
   async evaluate(agent: AgentProfile, creative: Creative): Promise<AgentVote[]> {
@@ -28,7 +27,7 @@ export class HeuristicEvaluator implements Evaluator {
       agentId: agent.id,
       dimension,
       score: this.scoreFor(creative.copy, dimension),
-      rationale: `Heurística: copy de ${creative.copy.length} caracteres (dimensión ${dimension})`,
+      rationale: `Heuristic: copy of ${creative.copy.length} chars (dimension ${dimension})`,
     }));
   }
 
@@ -36,11 +35,11 @@ export class HeuristicEvaluator implements Evaluator {
     let s = 50;
     if (copy.length >= 40 && copy.length <= 300) s += 15;
     if (/\d/.test(copy)) s += 10;
-    if (/(ahora|hoy|últim|solo|por tiempo limitado)/i.test(copy)) {
-      s += dimension === 'gancho' || dimension === 'urgencia' ? 15 : 5;
+    if (/(now|today|last|only|limited time)/i.test(copy)) {
+      s += dimension === 'hook' || dimension === 'urgency' ? 15 : 5;
     }
-    if (dimension === 'credibilidad' && copy.length < 200) s += 5;
-    if (dimension === 'claridad' && copy.length > 20 && copy.length < 250) s += 5;
+    if (dimension === 'credibility' && copy.length < 200) s += 5;
+    if (dimension === 'clarity' && copy.length > 20 && copy.length < 250) s += 5;
     return Math.max(0, Math.min(100, s));
   }
 }
