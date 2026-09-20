@@ -36,6 +36,20 @@ async function build() {
     },
   );
 
+  // M3 — Validación pre-spend: juzga Y predice desempeño en un paso
+  app.post<{ Body: { copy: string; channel?: string; audience?: string } }>('/predict', async (req, reply) => {
+    if (!req.body?.copy || req.body.copy.length < 10) {
+      return reply.code(400).send({ error: 'copy requerido (mín 10 caracteres)' });
+    }
+    const result = await broker.predict({
+      id: `pre-${Date.now()}`,
+      copy: req.body.copy,
+      channel: req.body.channel ?? 'meta',
+      audience: req.body.audience,
+    });
+    return result;
+  });
+
   // M4 — Generación de creativos a partir de un brief de producto
   app.post<{ Body: CreativeBrief & { count?: number } }>('/generate', async (req, reply) => {
     const b = req.body;

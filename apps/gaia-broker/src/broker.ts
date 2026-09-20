@@ -2,6 +2,7 @@ import type { AgentProfile, Creative, SwarmResult } from '@sinkroo/core';
 import { SwarmEngine, DEFAULT_AGENTS } from '@sinkroo/engine';
 import type { Evaluator } from '@sinkroo/engine';
 import { createProvider, type ReasoningProvider, type CreativeBrief } from './providers.js';
+import { predictPreSpend, type PreSpendPrediction } from './predict.js';
 
 /**
  * GaiaBroker — el cerebro detrás de una única interfaz.
@@ -33,6 +34,13 @@ export class GaiaBroker {
   /** M4 — Genera N variantes de copy a partir de un brief de producto. */
   async generateCreatives(brief: CreativeBrief, count = 5): Promise<string[]> {
     return this.provider.generate(brief, count);
+  }
+
+  /** M3 — Evalúa y predice desempeño pre-spend en un solo paso. */
+  async predict(creative: Creative): Promise<{ swarm: SwarmResult; prediction: PreSpendPrediction; brain: string }> {
+    const swarm = await this.engine.evaluate(creative);
+    const prediction = predictPreSpend(swarm, creative);
+    return { swarm, prediction, brain: this.provider.name };
   }
 
   /** Adapta un ReasoningProvider a la interfaz Evaluator del motor. */
