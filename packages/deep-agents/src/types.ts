@@ -12,7 +12,10 @@ export type UserId = string;
 export type DeepAgentId =
   | 'market-analyst'
   | 'marketing-strategist'
-  | 'creative-strategist';
+  | 'creative-strategist'
+  | 'sales-closer'
+  | 'media-buyer'
+  | 'performance-analyst';
 
 /** Contexto del negocio del usuario — la memoria "fría" que alimenta al agente. */
 export interface BusinessContext {
@@ -66,4 +69,7 @@ export const DEEP_AGENT_IDS: readonly DeepAgentId[] = [
   'market-analyst',
   'marketing-strategist',
   'creative-strategist',
+  'sales-closer',
+  'media-buyer',
+  'performance-analyst',
 ];

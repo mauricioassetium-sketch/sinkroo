@@ -7,9 +7,15 @@
 
 import { ChatRuntime, resolveChatConfigFromEnv } from './chat-runtime.js';
 import { MarketAnalystAgent, MarketingStrategistAgent, CreativeStrategistAgent, DeepAgent } from './agents.js';
+import { SalesCloserAgent, MockPaymentProvider } from './sales-closer.js';
+import { MediaBuyerAgent, InMemoryMetaClient } from './media-buyer.js';
+import { PerformanceAnalystAgent } from './performance-analyst.js';
 import type { DeepAgentId, ChatRuntimeConfig } from './types.js';
 
 export { DeepAgent, MarketAnalystAgent, MarketingStrategistAgent, CreativeStrategistAgent };
+export { SalesCloserAgent, MockPaymentProvider } from './sales-closer.js';
+export { MediaBuyerAgent, InMemoryMetaClient } from './media-buyer.js';
+export { PerformanceAnalystAgent } from './performance-analyst.js';
 export { ChatRuntime, resolveChatConfigFromEnv } from './chat-runtime.js';
 export type { DeepAgentId, DeepAgentTask, DeepAgentResult, BusinessContext, ChatRuntimeConfig, UserId } from './types.js';
 export { resultSchema } from './agents.js';
@@ -24,6 +30,12 @@ export function createDeepAgent(id: DeepAgentId, runtime?: ChatRuntime): DeepAge
       return new MarketingStrategistAgent(rt);
     case 'creative-strategist':
       return new CreativeStrategistAgent(rt);
+    case 'sales-closer':
+      return new SalesCloserAgent(rt) as unknown as DeepAgent;
+    case 'media-buyer':
+      return new MediaBuyerAgent(rt) as unknown as DeepAgent;
+    case 'performance-analyst':
+      return new PerformanceAnalystAgent(rt) as unknown as DeepAgent;
     default: {
       const _exhaustive: never = id;
       throw new Error(`[deep-agents] unknown agent: ${_exhaustive}`);

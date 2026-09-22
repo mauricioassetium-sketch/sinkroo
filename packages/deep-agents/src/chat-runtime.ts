@@ -41,11 +41,17 @@ export function resolveChatConfigFromEnv(env: NodeJS.ProcessEnv = process.env): 
   return undefined;
 }
 
+/** BaseUrl sentinel del runtime sin credenciales — los grafos lo detectan y usan plantillas. */
+export const OFFLINE_BASE_URL = 'http://offline.invalid';
+
 export class ChatRuntime {
   private retries: number;
   private readonly maxRetries = 3;
+  /** True cuando no hay credenciales: los grafos saltan el LLM y usan determinismo. */
+  readonly offline: boolean;
   constructor(private readonly cfg: ChatRuntimeConfig) {
     this.retries = this.maxRetries;
+    this.offline = cfg.baseUrl === OFFLINE_BASE_URL;
   }
 
   /** Llamada chat-completions con salida JSON estricta (response_format json_object). */
