@@ -2,7 +2,7 @@
   "name": "sinkroo",
   "version": "0.1.0",
   "private": true,
-  "description": "Sinkroo — plataforma de pre-validación de anuncios con enjambres de agentes orquestados por GAIA",
+  "description": "Sinkroo \u2014 plataforma de pre-validaci\u00f3n de anuncios con enjambres de agentes orquestados por GAIA",
   "type": "module",
   "workspaces": [
     "packages/*",
@@ -10,11 +10,11 @@
   ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",
-    "verify": "node scripts/verify-engine.mjs && node scripts/verify-gaia.mjs",
+    "verify": "node scripts/verify-engine.mjs && node scripts/verify-gaia.mjs && node scripts/verify-deep-agents.mjs",
     "migrate": "node scripts/migrate.mjs"
   },
   "devDependencies": {
-    "@types/node": "^26.6.2",
+    "@types/node": "^20.19.43",
     "@types/pg": "^8.23.1"
   }
 }
