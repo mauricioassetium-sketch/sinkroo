@@ -10,13 +10,16 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
+    "@langchain/core": "^1.2.12",
+    "@langchain/langgraph": "^1.4.17",
     "@sinkroo/core": "0.1.0",
     "@sinkroo/engine": "0.1.0",
     "@sinkroo/gaia": "0.1.0",
-    "fastify": "^4.28.0"
+    "fastify": "^4.28.0",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
-    "typescript": "^5.5.0",
-    "tsx": "^4.19.0"
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.0"
   }
 }
