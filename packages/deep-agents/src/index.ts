@@ -18,6 +18,9 @@ export { MediaBuyerAgent, InMemoryMetaClient } from './media-buyer.js';
 export { PerformanceAnalystAgent } from './performance-analyst.js';
 export { ChatRuntime, resolveChatConfigFromEnv } from './chat-runtime.js';
 export type { DeepAgentId, DeepAgentTask, DeepAgentResult, BusinessContext, ChatRuntimeConfig, UserId } from './types.js';
+export type { SalesTurnState, SalesRoute } from './sales-closer.js';
+export type { CampaignBrief, CampaignMetrics, MetaClient, MetricsWithDerived, MediaBuyerReport } from './media-buyer.js';
+export type { PredictionSnapshot, ActualResults, CalibrationReport } from './performance-analyst.js';
 export { resultSchema } from './agents.js';
 
 /** Crea un Deep Agent por su id. `runtime` si ya tienes uno; si no, se resuelve de env. */

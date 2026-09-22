@@ -16,7 +16,8 @@
     "@sinkroo/engine": "0.1.0",
     "@sinkroo/gaia": "0.1.0",
     "fastify": "^4.28.0",
-    "zod": "^4.6.5"
+    "zod": "^4.6.5",
+    "@sinkroo/deep-agents": "0.1.0"
   },
   "devDependencies": {
     "tsx": "^4.19.0",

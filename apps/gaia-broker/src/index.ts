@@ -1,6 +1,9 @@
+import './crypto-polyfill.js';
 import Fastify from 'fastify';
 import { GaiaBroker } from './broker.js';
 import type { CreativeBrief } from './providers.js';
+import { BROKER_AGENT_IDS, type BrokerAgentId } from './deep-agents.js';
+const broker_agent_ids: string[] = [...BROKER_AGENT_IDS, 'sales-closer'];
 import type { ConversationState } from '@sinkroo/core';
 
 /**
@@ -18,6 +21,7 @@ async function build() {
     status: 'ok',
     service: 'gaia-broker',
     brain: broker.brain,
+    deepBrain: broker.deepBrain,
   }));
 
   app.post<{ Body: { copy: string; id?: string; imageUrl?: string; channel?: string; audience?: string } }>(
@@ -69,6 +73,29 @@ async function build() {
     const variants = await broker.generateCreatives(b, count);
     return { variants, brain: broker.brain, count: variants.length };
   });
+
+  // Deep Agents (LangGraph) — corre un agente por id con la task del body.
+  // Body: { userId, instruction, context, data? }
+  app.post<{ Body: { userId: string; instruction: string; context?: Record<string, unknown>; data?: Record<string, unknown> } }>(
+    '/agents/:id',
+    async (req, reply) => {
+      const id = (req.params as { id: string }).id;
+      const b = req.body;
+      if (!broker_agent_ids.includes(id)) {
+        return reply.code(404).send({ error: `unknown agent "${id}"`, available: broker_agent_ids });
+      }
+      if (!b?.userId || !b?.instruction) {
+        return reply.code(400).send({ error: 'userId and instruction are required' });
+      }
+      const task = {
+        instruction: b.instruction,
+        context: { userId: b.userId, ...(b.context ?? {}) },
+        data: b.data,
+      };
+      const result = await broker.runAgent(id as BrokerAgentId, task);
+      return { agentId: id, result, deepBrain: broker.deepBrain };
+    },
+  );
 
   return app;
 }

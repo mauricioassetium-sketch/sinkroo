@@ -116,7 +116,7 @@ export class PerformanceAnalystAgent {
   private graph = this.build();
 
   private numericSummary(real: number, predicted: number, deviation: number, correction: number, bias: string): string {
-    const predictedStr = predicted > 0 ? ' $' + predicted.toFixed(2) : 'n/a';
+    const predictedStr = predicted > 0 ? '$' + predicted.toFixed(2) : 'n/a';
     const realStr = real > 0 ? ' $' + real.toFixed(2) : 'n/a (no conversions yet)';
     return `Miro predicted${predictedStr} CPA; actual${realStr}. Deviation ${deviation.toFixed(2)}x (${bias}). New calibration: ${correction.toFixed(3)}.`;
   }
