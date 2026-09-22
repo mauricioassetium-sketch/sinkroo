@@ -84,9 +84,18 @@ export class MarketAnalystAgent extends DeepAgent {
           '',
           'Respond strict JSON: {"summary":"<2-4 frases>","actions":["<recomendación>"],"insights":{"opportunity":"<...>","audience":"<...>","competition":"<...>"}}',
         ].join('\n');
-        const r = await self.runtime.json<z.infer<typeof resultSchema>>(sys, user);
-        const p = resultSchema.safeParse(r);
-        const d = p.success ? p.data : { summary: 'No se pudo analizar el mercado.', actions: [], insights: {} };
+        let d: z.infer<typeof resultSchema>;
+        if (self.runtime.offline) {
+          d = {
+            summary: `Análisis preliminar de ${c.businessName ?? 'tu negocio'} en modo determinista: sin cerebro LLM disponible. ${state.instruction}`,
+            actions: ['Conectar credenciales del LLM para análisis completo', 'Validar audiencia objetivo con datos propios'],
+            insights: { opportunity: 'Modo offline: análisis de mercado pendiente hasta conectar el cerebro.', audience: c.audience ?? 'general', competition: 'sin datos' },
+          };
+        } else {
+          const r = await self.runtime.json<z.infer<typeof resultSchema>>(sys, user);
+          const p = resultSchema.safeParse(r);
+          d = p.success ? p.data : { summary: 'No se pudo analizar el mercado.', actions: [], insights: {} };
+        }
         return { draft: { ...pushTrace(state.draft, 'analyze'), ...d } };
       })
       .addEdge(START, 'analyze')
@@ -120,9 +129,18 @@ export class MarketingStrategistAgent extends DeepAgent {
           '',
           'Respond strict JSON: {"summary":"<2-4 frases>","actions":["<decisión>"],"insights":{"positioning":"<...>","offer":"<...>","budget":"<...>"}}',
         ].join('\n');
-        const r = await self.runtime.json<z.infer<typeof resultSchema>>(sys, user);
-        const p = resultSchema.safeParse(r);
-        const d = p.success ? p.data : { summary: 'No se pudo definir estrategia.', actions: [], insights: {} };
+        let d: z.infer<typeof resultSchema>;
+        if (self.runtime.offline) {
+          d = {
+            summary: `Estrategia preliminar para ${c.businessName ?? 'tu negocio'} en modo determinista. ${state.instruction}`,
+            actions: ['Definir posicionamiento con el market-analyst con LLM activo', 'Arrancar con presupuesto de prueba pequeño y medir antes de escalar'],
+            insights: { positioning: 'Modo offline: posicionamiento pendiente.', offer: c.usp ?? 'sin USP', budget: 'empezar pequeño, escalar con datos' },
+          };
+        } else {
+          const r = await self.runtime.json<z.infer<typeof resultSchema>>(sys, user);
+          const p = resultSchema.safeParse(r);
+          d = p.success ? p.data : { summary: 'No se pudo definir estrategia.', actions: [], insights: {} };
+        }
         return { draft: { ...pushTrace(state.draft, 'strategize'), ...d } };
       })
       .addEdge(START, 'strategize')
@@ -155,9 +173,22 @@ export class CreativeStrategistAgent extends DeepAgent {
           '',
           'Respond strict JSON: {"summary":"<2-4 frases del concepto>","actions":["<variant 1>","<variant 2>","<variant 3>"],"insights":{"angle":"<...>"}}',
         ].join('\n');
-        const r = await self.runtime.json<z.infer<typeof resultSchema>>(sys, user);
-        const p = resultSchema.safeParse(r);
-        const d = p.success ? p.data : { summary: 'No se pudo generar copy.', actions: [], insights: {} };
+        let d: z.infer<typeof resultSchema>;
+        if (self.runtime.offline) {
+          d = {
+            summary: `Tres variantes de copy deterministas para ${c.productName ?? 'tu producto'}. ${state.instruction}`,
+            actions: [
+              `${c.usp ?? 'Resultados reales'} — sin promesas vacías.`,
+              `${c.productName ?? 'Tu producto'}: probalo ${c.audience ? `si sos ${c.audience}` : 'hoy'} y decidí con datos.`,
+              `Cambio real en ${c.businessName ?? 'tu negocio'} o te devolvemos la diferencia.`,
+            ],
+            insights: { angle: 'Modo offline: USP directo como ángulo principal.' },
+          };
+        } else {
+          const r = await self.runtime.json<z.infer<typeof resultSchema>>(sys, user);
+          const p = resultSchema.safeParse(r);
+          d = p.success ? p.data : { summary: 'No se pudo generar copy.', actions: [], insights: {} };
+        }
         return { draft: { ...pushTrace(state.draft, 'generate'), ...d } };
       })
       .addEdge(START, 'generate')

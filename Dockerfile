@@ -11,6 +11,7 @@ COPY tsconfig.base.json ./
 COPY packages/core/package.json packages/core/
 COPY packages/engine/package.json packages/engine/
 COPY packages/gaia/package.json packages/gaia/
+COPY packages/deep-agents/package.json packages/deep-agents/
 COPY apps/api/package.json apps/api/
 COPY apps/gaia-broker/package.json apps/gaia-broker/
 
