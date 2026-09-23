@@ -46,12 +46,6 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
               <div className="hdr-s hero-sub">
                 Te estoy vigilando la tienda <b>24/7</b>. Mirá lo que hice hoy.
               </div>
-              <div className="hero-chips">
-                <span className="hero-chip hot">● {AGENTES.filter(a => a.estado === 'trabajando').length} de los 6 agentes trabajando ahora</span>
-                <span className="hero-chip">14 revisiones hoy</span>
-                {pendientes.length > 0 && <span className="hero-chip amber">{pendientes.length} decisiones esperan tu OK</span>}
-                {criticas > 0 && <span className="hero-chip red">{criticas} alarmas críticas</span>}
-              </div>
             </div>
           </div>
         </div>
@@ -72,6 +66,29 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
             Crear la primera →
           </button>
         </div>
+      </div>
+
+      {/* ====================== LA TIRA DE ESTADO ====================== */}
+      {/* Una sola línea con el estado de ahora. Antes eran 4 pastillas bajo el saludo y cargaban
+          el hero; acá se leen de un vistazo y no compiten con el nombre ni con los números. */}
+      <div className="tira">
+        <span className="tira-item">
+          <span className="dot-live" />
+          <b style={{ color: 'var(--green)' }}>{AGENTES.filter(a => a.estado === 'trabajando').length} de {AGENTES.length}</b>
+          <span>agentes trabajando ahora</span>
+        </span>
+        <span className="tira-sep" />
+        <span className="tira-item"><b>14</b><span>revisiones hoy</span></span>
+        <span className="tira-sep" />
+        <span className="tira-item">
+          <b style={{ color: pendientes.length ? 'var(--amber)' : 'var(--green)' }}>{pendientes.length}</b>
+          <span>{pendientes.length === 1 ? 'decisión espera tu OK' : 'decisiones esperan tu OK'}</span>
+        </span>
+        <span className="tira-sep" />
+        <span className="tira-item">
+          <b style={{ color: criticas ? 'var(--red)' : 'var(--green)' }}>{criticas}</b>
+          <span>{criticas === 1 ? 'alarma crítica' : 'alarmas críticas'}</span>
+        </span>
       </div>
 
       {/* ====================== EL MOTOR ANDANDO ====================== */}
