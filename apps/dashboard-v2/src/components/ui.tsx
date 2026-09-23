@@ -5,8 +5,8 @@ export function Badge({ children, tone = 'purple' }: { children: ReactNode; tone
   return <span className={`badge badge-${tone}`}>{children}</span>;
 }
 
-export function Button({ children, onClick, variant = 'primary', className = '', disabled, style }: { children: ReactNode; onClick?: () => void; variant?: 'primary'|'ghost'|'outline'|'danger'; className?: string; disabled?: boolean; style?: any }) {
-  return <button className={`btn btn-${variant} ${className}`} onClick={onClick} disabled={disabled} style={style}>{children}</button>;
+export function Button({ children, onClick, variant = 'primary', className = '', disabled, style, title }: { children: ReactNode; onClick?: () => void; variant?: 'primary'|'ghost'|'outline'|'danger'; className?: string; disabled?: boolean; style?: any; title?: string }) {
+  return <button className={`btn btn-${variant} ${className}`} onClick={onClick} disabled={disabled} style={style} title={title}>{children}</button>;
 }
 
 export function Toast({ show, text }: { show: boolean; text: string }) {

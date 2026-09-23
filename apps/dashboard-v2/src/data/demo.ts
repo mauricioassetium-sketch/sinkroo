@@ -549,6 +549,63 @@ export const CREDITOS_MOV = [
   { detalle: 'Campaña: Retargeting', fecha: '20 Sep', cantidad: -60, tipo: 'salida' as const },
 ];
 
+// ---------------------------------------------------------------------------------------------
+// EL MOTOR ANDANDO — mercado secundario predictivo (portado del dashboard original)
+// La propuesta se prueba en un mercado simulado ANTES de gastar un peso.
+// ---------------------------------------------------------------------------------------------
+
+export const ETAPAS_MOTOR = [
+  { t: 'Ingesta', d: 'La propuesta entra al mercado para ser probada.' },
+  { t: 'Reacción', d: 'El mercado reacciona como lo haría tu audiencia real.' },
+  { t: 'Debate', d: 'Los bots discuten pros y contras en el chat lateral.' },
+  { t: 'Votación', d: 'Cada bot vota positivo o negativo y suma su score.' },
+  { t: 'Ranking', d: 'La propuesta se ordena contra las demás del lote.' },
+  { t: 'Veredicto', d: 'Se decide publicar o descartar antes de salir live.' },
+];
+
+export const PIEZAS_MOTOR = [
+  { n: 'propuesta_imagen_01', t: 'Imagen', e: '🖼️' },
+  { n: 'propuesta_reel_v2', t: 'Reel', e: '🎬' },
+  { n: 'propuesta_video_a', t: 'Video', e: '📹' },
+  { n: 'propuesta_paleta_v3', t: 'Paleta', e: '🎨' },
+  { n: 'propuesta_publicacion', t: 'Publicación', e: '📝' },
+  { n: 'propuesta_reel_antes_despues', t: 'Reel', e: '🎬' },
+  { n: 'propuesta_video_demo', t: 'Video', e: '📹' },
+];
+
+export const CHAT_MOTOR = [
+  { t: 'positivo', m: 'Los colores de esta pieza conectan con el nicho. +1' },
+  { t: 'positivo', m: 'El ángulo de venta está alineado con la intención real. Me gusta' },
+  { t: 'negativo', m: 'El titular se pierde en móvil. No la veo ganando' },
+  { t: 'analisis', m: 'Estimando retención del primer segundo en 72%…' },
+  { t: 'positivo', m: 'El hook de los primeros 3s engancha. Voto a favor' },
+  { t: 'negativo', m: 'La oferta llega tarde en el reel. Riesgo de caída' },
+  { t: 'analisis', m: 'Comparando esta contra 3 propuestas previas del lote' },
+  { t: 'positivo', m: 'Contraste y legibilidad sólidos en escritorio y móvil' },
+  { t: 'negativo', m: 'La paleta no resuena con la audiencia objetivo. Rechazo' },
+  { t: 'analisis', m: 'Simulando reacción esperada de 500 observadores' },
+  { t: 'positivo', m: 'CPA proyectado cae bajo el umbral. Vale publicar' },
+  { t: 'positivo', m: 'Señal de compra real detectada en los comentarios simulados' },
+];
+
+export const VOTOS_MOTOR = ['Aprueba', 'Rechaza', 'Aprueba con reserva', 'Neutro'];
+
+// ---------------------------------------------------------------------------------------------
+// QUÉ HACE CADA BOTÓN — para que no haya que adivinar
+// ---------------------------------------------------------------------------------------------
+
+export const CONSECUENCIA: Record<string, string> = {
+  a1: 'Aplicar pausa el conjunto "lookalike frío" y mueve sus $40/día al conjunto que sí convierte. Podés deshacerlo 24 h.',
+  a2: 'Responder manda el mensaje por tu WhatsApp real. "Dejar que Rumi responda" la envía sin que la leas antes.',
+  a3: 'Ver variantes abre las 6 piezas que Nia escribió con el ángulo de ingredientes. Silenciar la esconde 7 días.',
+  a4: 'Ver créditos muestra qué los consumió. Auto-recarga paga el próximo paquete cuando bajes de 500.',
+  a5: 'Crear campaña deja el borrador listo sin gastar nada todavía: publicar sigue necesitando tu OK.',
+  a6: 'Deshacer reactiva el conjunto tal como estaba a las 03:12, con su presupuesto original.',
+  d1: 'Aprobar publica la campaña y empieza a gastar $30/día. Ajustar la deja lista sin publicar.',
+  d2: 'Aprobar sube el presupuesto a $54/día por 7 días. "Ajustar a 20%" sube a $48/día.',
+  d3: 'Enviar link manda el cobro de $59 por WhatsApp. Descartar lo deja sin enviar y avisa a Rumi.',
+};
+
 export const TAREAS_EXCLUIDAS = [
   'No pedimos margen de ganancia ni frecuencia de compra: los inferimos de tus ventas y conversaciones.',
   'No te pedimos que subas documentos para que "la IA los lea".',

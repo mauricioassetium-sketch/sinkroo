@@ -72,7 +72,7 @@ export function ViewMercado({ setToast }: { setToast: (t: string) => void }) {
         <span className="csec-t">Qué ángulos están funcionando en tu nicho</span>
         <span className="csec-s">De qué habla el mercado cuando vende lo que vos vendés</span>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 13 }}>
+      <div className="duo">
         {ANGULOS.map(a => (
           <Card key={a.nombre}>
             <div className="row spread">

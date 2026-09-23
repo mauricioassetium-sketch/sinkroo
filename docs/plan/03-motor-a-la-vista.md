@@ -315,3 +315,31 @@ Si la métrica 3 es baja, el motor entretiene pero no sirve. Si la 4 es baja, el
    comprensible que 11 votos sueltos. *Recomiendo 5 personas.*
 5. **¿"Lux/Rex/Nia/Kai/Sol/Rumi" llevan avatar humano o ícono?** Avatar humano sube la sensación
    de equipo y baja la de software. *Recomiendo avatar.*
+
+---
+
+## 11. Dónde vive el vidrio del motor en la interfaz (definido en el dashboard v2)
+
+El "mercado secundario predictivo" —las 6 etapas, el sentimiento, el score en vivo, la votación y
+el feed de observadores— **es el vidrio del motor hecho pantalla**: es la única vista donde se ve
+un trabajo puntual ocurriendo de principio a fin. Por eso:
+
+- Vive en **"Tu día" (Hoy)**, justo después del hero, **antes** de las alarmas. Es la prueba visual
+  de que el producto trabaja, y el usuario tiene que verla sin buscarla.
+- El hero dice *"te estoy vigilando la tienda 24/7"*; el bloque de abajo **lo demuestra en vivo**.
+  Uno promete, el otro prueba. Van juntos y en ese orden.
+- **No se repite en otra vista.** El panel de expertos de Campañas muestra el *resultado* (las
+  opiniones), este bloque muestra el *proceso* (el mercado reaccionando). Mismo motor, dos planos.
+- La sección conserva sus números altos (500 observadores) porque **ya no son telemetría vacía**:
+  ahora cada reacción está anclada a la pieza y a la etapa, y hay un botón para ver por qué votó
+  cada uno.
+
+### Cambio de criterio respecto de `02-simplificacion.md` §1.4
+
+En el doc 02 recomendé plegar "Inteligencia Predictiva" dentro de Campañas. **Corregido:** la
+sección no se pliega — se **promueve** al lugar más visible del dashboard principal. Razón: es lo
+que convence al usuario de que el motor trabaja, y "el ser humano cree lo que ve".
+
+Lo que sí se despliega de la vista original (Lux, Rex, Nia, Kai, Sol, Rumi con carga en vivo,
+"tormenta colectiva", 12 inteligencias) se mantiene según el doc 02: los agentes quedan, la
+parafernalia no.

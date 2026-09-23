@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Card, Badge, Button } from '../components/ui';
-import { KpiRow, type Vista } from '../components/Layout';
-import { I_Check, I_ArrowRight, I_Wallet, I_Eye, I_Vote, I_Chat, I_Megaphone, I_Question, I_Credit, I_Users, I_Star, I_Sun } from '../components/icons';
+import { MotorEnVivo } from '../components/MotorEnVivo';
+import { SinkrooMark, I_Check, I_ArrowRight, I_Wallet, I_Eye, I_Vote, I_Chat, I_Megaphone, I_Question, I_Credit, I_Users, I_Star, I_Sun, I_Zap, I_Trend, I_Clock } from '../components/icons';
+import type { Vista } from '../components/Layout';
 import {
-  TENANT, ALARMAS, DECISIONES, AGENTES, NUMEROS, MIENTRAS_NO_ESTABAS, BITACORA, MODOS, TAREAS_EXCLUIDAS,
+  TENANT, ALARMAS, DECISIONES, AGENTES, NUMEROS, MIENTRAS_NO_ESTABAS, BITACORA, MODOS, TAREAS_EXCLUIDAS, CONSECUENCIA,
   type Modo, type Severidad,
 } from '../data/demo';
 
@@ -17,197 +18,256 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
   const alarmas = alarmasExtra ? ALARMAS : ALARMAS.slice(0, 3);
   const pendientes = DECISIONES.filter(d => !hechas.includes(d.id));
   const modoNombre = MODOS.find(m => m.key === modo)?.nombre ?? '';
+  const criticas = ALARMAS.filter(a => a.severidad === 'critico').length;
 
-  const resolver = (id: string, txt: string) => {
-    setHechas([...hechas, id]);
-    setToast(txt);
-  };
+  const resolver = (id: string, txt: string) => { setHechas([...hechas, id]); setToast(txt); };
 
   return (
-    <>
-      {/* ============ ENCABEZADO ============ */}
-      <div className="card" style={{ display: 'flex', gap: 18, alignItems: 'center', flexWrap: 'wrap' }}>
-        <div style={{ flex: 1, minWidth: 260 }}>
-          <div className="ttl" style={{ fontSize: 22 }}>Buen día, {TENANT.usuario.split(' ')[0]} 👋</div>
-          <div className="sub" style={{ marginTop: 4, lineHeight: 1.5 }}>
-            Mientras dormías el motor trabajó <b style={{ color: 'var(--green)' }}>3 acciones</b> y evitó ~$180 de gasto sin retorno.
-            Hoy hay <b style={{ color: 'var(--amber)' }}>{pendientes.length} decisiones</b> que sólo podés tomar vos.
+    <div className="dash">
+      {/* ============================================================================ */}
+      {/* HERO — logo, bienvenida y los números del día (fiel al original)              */}
+      {/* ============================================================================ */}
+      <div className="hero card">
+        <div className="hero-side">
+          <div className="hero-greet">
+            <SinkrooMark size={104} radius={52} />
+            <div>
+              <div className="hero-live" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span className="dot-live" /> TU AGENTE ESTÁ ACTIVO
+                <button className="tour-start-btn" title="Recorré el panel con Sinkroo"
+                  onClick={() => setToast('Tour guiado del panel (demo)')}>▶ Iniciar tour</button>
+              </div>
+              <div className="hdr-t" style={{ fontSize: 24, lineHeight: 1.2 }}>
+                Hola {TENANT.usuario.split(' ')[0]}, soy <span className="grad-text" style={{ fontWeight: 900 }}>Sinkroo</span> 👋
+              </div>
+              <div className="hdr-s">Te estoy vigilando la tienda 24/7. Mirá lo que hice hoy.</div>
+            </div>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          <Badge tone="purple">Modo {modoNombre}</Badge>
-          <Badge tone="green">6 agentes activos</Badge>
-          <Badge tone="amber">{TENANT.diasAutonomia} días de autonomía</Badge>
+
+        <div className="hero-metrics">
+          <div className="hero-metric">
+            <div className="metric">47</div>
+            <div className="m-label">Ventas</div>
+            <div className="m-desc">concretadas hoy</div>
+          </div>
+          <div className="hero-metric">
+            <div className="metric">3.8x</div>
+            <div className="m-label">ROAS</div>
+            <div className="m-desc">retorno por cada $1 invertido</div>
+          </div>
+          <div className="hero-metric">
+            <div className="metric">84</div>
+            <div className="m-label">Score</div>
+            <div className="m-desc">calidad del creativo aprobado</div>
+          </div>
+        </div>
+
+        <div className="hero-ad">
+          <div className="hero-ad-tag">PUBLICIDAD</div>
+          <div className="hero-ad-title">Más marcas, una cuenta</div>
+          <div className="hero-ad-sub">Con Sinkroo Agency, operás hasta 8 marcas desde una sola cuenta, white label incluido.</div>
+          <button className="hero-ad-btn" title="Ver los planes de agencia" onClick={() => setVista('cuenta')}>Ver planes →</button>
         </div>
       </div>
 
-      {/* ============ 0 · MIENTRAS NO ESTABAS (protagonista en modo Automático) ============ */}
-      {modo === 'auto' && <MientrasNoEstabas primera />}
+      {/* ============================================================================ */}
+      {/* EL MOTOR ANDANDO — el vidrio del motor                                        */}
+      {/* ============================================================================ */}
+      <div className="csec" style={{ marginTop: 6 }}>
+        <span className="csec-n">▶</span>
+        <span className="csec-t">El motor andando</span>
+        <span className="csec-c purple">en vivo</span>
+        <span className="csec-s">Tu propuesta se prueba en un mercado simulado antes de gastar un peso</span>
+      </div>
+      <MotorEnVivo setToast={setToast} />
 
-      {/* ============ 1 · ALARMAS ============ */}
+      {/* ============================================================================ */}
+      {/* MÓDULOS — máximo 2 por fila                                                   */}
+      {/* ============================================================================ */}
+
       <div className="csec">
         <span className="csec-n">1</span>
-        <span className="csec-t">Alarmas</span>
-        <span className="csec-c">{ALARMAS.filter(a => a.severidad === 'critico').length}</span>
-        <span className="csec-s">Lo que se rompe o pierde plata ahora</span>
+        <span className="csec-t">Lo que necesita tu atención</span>
+        <span className="csec-c">{criticas}</span>
+        <span className="csec-s">Cada botón dice qué hace antes de que lo toques</span>
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
-        {alarmas.map(a => <Alarma key={a.id} a={a} setToast={setToast} />)}
-      </div>
-      {!alarmasExtra && (
-        <div style={{ marginTop: 10 }}>
-          <button className="btn btn-ghost btn-sm" onClick={() => setAlarmasExtra(true)}>
-            Ver {ALARMAS.length - 3} alarmas más <I_ArrowRight size={13} />
-          </button>
-        </div>
-      )}
+      <div className="grid-2">
+        {/* ---- ALARMAS ---- */}
+        <Card
+          title={<span className="row" style={{ gap: 8 }}><I_Zap size={14} style={{ color: 'var(--red)' }} /> Alarmas</span>}
+          action={<Badge tone="red">{criticas} críticas</Badge>}
+        >
+          <div className="col-stack">
+            {alarmas.map(a => (
+              <div key={a.id} className={`alarm ${a.severidad}`}>
+                <div className="alarm-head">
+                  <span className={`alarm-sev ${a.severidad}`}>{SEV_LB[a.severidad]}</span>
+                  <span className="alarm-when">{a.cuando}</span>
+                </div>
+                <div className="alarm-title" style={{ minWidth: 0 }}>{a.titulo}</div>
+                <div className="alarm-money">
+                  <span className="ico" style={{ color: 'var(--amber)' }}><I_Wallet size={14} /></span>
+                  <span><b style={{ color: 'var(--amber)' }}>Por qué importa: </b>{a.impacto}</span>
+                </div>
+                <div className="alarm-sug"><b>Qué sugiere la IA: </b>{a.sugerencia}</div>
+                <div className="alarm-acts">
+                  {a.acciones.map((ac, i) => (
+                    <Button key={i} variant={i === 0 ? 'primary' : 'ghost'} className="btn-sm"
+                      title={CONSECUENCIA[a.id] ?? `Ejecuta: ${ac}`}
+                      onClick={() => setToast(`${ac} → ${a.titulo} (demo)`)}>
+                      {i === 0 ? <I_Check size={13} /> : null} {ac}
+                    </Button>
+                  ))}
+                </div>
+                <div className="alarm-src" style={{ marginLeft: 0 }}>{a.origen}</div>
+              </div>
+            ))}
+          </div>
+          {!alarmasExtra && (
+            <div style={{ marginTop: 12 }}>
+              <Button variant="ghost" className="btn-sm" title="Muestra las 3 alarmas restantes, incluidas las oportunidades"
+                onClick={() => setAlarmasExtra(true)}>
+                Ver {ALARMAS.length - 3} alarmas más <I_ArrowRight size={13} />
+              </Button>
+            </div>
+          )}
+        </Card>
 
-      {/* ============ 2 · TU DECISIÓN ============ */}
-      <div className="csec">
-        <span className="csec-n">2</span>
-        <span className="csec-t">Tu decisión</span>
-        {pendientes.length > 0
-          ? <span className="csec-c amber">{pendientes.length}</span>
-          : <span className="badge badge-green" style={{ fontSize: 10 }}>al día</span>}
-        <span className="csec-s">Lo que el motor dejó listo y espera tu OK</span>
+        {/* ---- TU DECISIÓN ---- */}
+        <Card
+          title={<span className="row" style={{ gap: 8 }}><I_Vote size={14} style={{ color: 'var(--amber)' }} /> Tu decisión</span>}
+          action={pendientes.length > 0 ? <Badge tone="amber">{pendientes.length} esperan</Badge> : <Badge tone="green">al día</Badge>}
+        >
+          {pendientes.length === 0 ? (
+            <div className="col-empty"><I_Check size={15} /> Nada te espera. El motor siguió trabajando solo.</div>
+          ) : (
+            <div className="col-stack">
+              {pendientes.map(d => <Decision key={d.id} d={d} onResolver={resolver} />)}
+            </div>
+          )}
+        </Card>
       </div>
-      {pendientes.length === 0 ? (
-        <Card>
-          <div className="empty-note">
-            <I_Check size={15} /> Nada te espera. El motor siguió trabajando solo.
+
+      <div className="grid-2" style={{ marginTop: 16 }}>
+        {/* ---- LOS 6 AGENTES ---- */}
+        <Card
+          title={<span className="row" style={{ gap: 8 }}><I_Users size={14} style={{ color: 'var(--purple3)' }} /> El motor, agente por agente</span>}
+          action={<Badge tone="green">3 trabajando</Badge>}
+        >
+          <div className="work">
+            {AGENTES.map(a => <AgenteRow key={a.id} a={a} setToast={setToast} />)}
+          </div>
+          <div className="acc-why">
+            Cada botón abre <b>el artefacto</b> que produjo ese agente: el informe, las variantes o el porqué de la decisión.
+            Nada de acá es un estado — es trabajo terminado y revisable.
           </div>
         </Card>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
-          {pendientes.map(d => <Decision key={d.id} d={d} onResolver={resolver} />)}
-        </div>
-      )}
 
-      {/* ============ 3 · EL MOTOR ============ */}
-      <div className="csec">
-        <span className="csec-n">3</span>
-        <span className="csec-t">El motor</span>
-        <span className="csec-c purple">en vivo</span>
-        <span className="csec-s">Qué está haciendo cada agente, sobre qué tuyo y qué produjo</span>
-      </div>
-      <Card action={<span className="tiny muted">todo trazable a un evento real</span>}>
-        <div className="work">
-          {AGENTES.map(a => <AgenteRow key={a.id} a={a} setToast={setToast} />)}
-        </div>
-      </Card>
-
-      {/* ============ 4 · LOS NÚMEROS ============ */}
-      <div className="csec">
-        <span className="csec-n">4</span>
-        <span className="csec-t">Los números</span>
-        <span className="csec-s">Dinero · alcance · calidad · conversaciones · recursos</span>
-      </div>
-      <div className="numbar">
-        {NUMEROS.map((n, i) => (
-          <KpiRow key={i} icon={ICONO_AREA[n.area] ?? <I_Star size={14} />} label={n.label} value={n.valor} sub={`${n.delta} vs mes pasado`} color={n.color} />
-        ))}
+        {/* ---- EL MODELO EN NÚMEROS ---- */}
+        <Card
+          title={<span className="row" style={{ gap: 8 }}><I_Trend size={14} style={{ color: 'var(--green)' }} /> El modelo en números</span>}
+          action={<Badge tone="purple">este mes</Badge>}
+        >
+          <div>
+            {NUMEROS.map((n, i) => (
+              <div key={i} className="nrow">
+                <span style={{ color: n.color, display: 'flex', flexShrink: 0 }}>{ICONO_AREA[n.area] ?? <I_Star size={15} />}</span>
+                <span className="nrow-lb">
+                  {n.label}
+                  <span className="tiny muted" style={{ display: 'block' }}>{n.area}</span>
+                </span>
+                <span className="nrow-v">{n.valor}</span>
+                <span className={`nrow-d ${n.up ? 'up' : 'down'}`}>{n.delta}</span>
+              </div>
+            ))}
+          </div>
+          <div className="acc-why">
+            Todos salen de tus conexiones reales: Meta Ads, tu WhatsApp y tu tienda.{' '}
+            <b>Días de autonomía</b> es cuánto puede seguir trabajando el motor con los créditos que tenés.
+          </div>
+        </Card>
       </div>
 
-      {/* ============ 5 · MIENTRAS NO ESTABAS ============ */}
-      {modo !== 'auto' && <MientrasNoEstabas />}
+      <div className="grid-2" style={{ marginTop: 16 }}>
+        {/* ---- MIENTRAS NO ESTABAS ---- */}
+        <Card
+          title={<span className="row" style={{ gap: 8 }}><I_Sun size={14} style={{ color: 'var(--green)' }} /> Mientras no estabas</span>}
+          action={<Badge tone="green">modo {modoNombre}</Badge>}
+        >
+          <MientrasNoEstabas modo={modo} />
+        </Card>
 
-      {/* ============ 6 · LA BITÁCORA ============ */}
-      <div className="csec">
-        <span className="csec-n">6</span>
-        <span className="csec-t">La bitácora</span>
-        <span className="csec-s">Todo lo que se hizo, con su porqué y su deshacer</span>
-      </div>
-      <Card
-        action={
-          <button className="btn btn-ghost btn-sm" onClick={() => setBitacoraCompleta(!bitacoraCompleta)}>
-            {bitacoraCompleta ? 'Ver menos' : 'Ver toda la semana'}
-          </button>
-        }
-      >
-        <div className="tl">
-          {(bitacoraCompleta ? BITACORA : BITACORA.slice(0, 5)).map(b => (
-            <div key={b.id} className="tl-item">
-              <span className="tl-dot" style={{ background: b.color }} />
-              <span className="tl-time">{b.cuando}</span>
-              <div className="tl-body">
-                <div className="tl-text">
-                  <b style={{ color: b.color }}>{b.agente}</b> {b.texto}
-                </div>
-                <div className="tl-anchor">
-                  <span>📎 {b.ancla}</span>
-                  {b.artefacto && (
-                    <span className="tl-undo" onClick={() => setToast(`Abriendo: ${b.artefacto} (demo)`)}>{b.artefacto}</span>
-                  )}
-                  {b.autonomia === 'auto' && <span className="tiny muted">decidido solo</span>}
-                  {b.autonomia === 'shared' && <span className="tiny muted">con tu OK</span>}
+        {/* ---- LA BITÁCORA ---- */}
+        <Card
+          title={<span className="row" style={{ gap: 8 }}><I_Clock size={14} style={{ color: 'var(--purple3)' }} /> La bitácora</span>}
+          action={
+            <Button variant="ghost" className="btn-sm" title="Muestra todo lo que hizo el motor en la semana"
+              onClick={() => setBitacoraCompleta(!bitacoraCompleta)}>
+              {bitacoraCompleta ? 'Ver menos' : 'Ver la semana'}
+            </Button>
+          }
+        >
+          <div className="tl">
+            {(bitacoraCompleta ? BITACORA : BITACORA.slice(0, 5)).map(b => (
+              <div key={b.id} className="tl-item">
+                <span className="tl-dot" style={{ background: b.color }} />
+                <span className="tl-time">{b.cuando}</span>
+                <div className="tl-body">
+                  <div className="tl-text"><b style={{ color: b.color }}>{b.agente}</b> {b.texto}</div>
+                  <div className="tl-anchor">
+                    <span>📎 {b.ancla}</span>
+                    {b.artefacto && <span className="tl-undo" onClick={() => setToast(`${b.artefacto} (demo)`)}>{b.artefacto}</span>}
+                    {b.autonomia === 'auto' && <span className="tiny muted">decidido solo</span>}
+                    {b.autonomia === 'shared' && <span className="tiny muted">con tu OK</span>}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-      </Card>
+            ))}
+          </div>
+          <div className="acc-why">
+            <b>Deshacer</b> aparece solo en las acciones reversibles y dura 24 h. Es lo que hace seguro el modo Automático:
+            si el motor se equivoca, el costo es un clic.
+          </div>
+        </Card>
+      </div>
 
-      {/* ============ LO QUE ESTE MODELO YA NO TE PIDE ============ */}
-      <div className="csec">
-        <span className="csec-n">✓</span>
-        <span className="csec-t">Lo que este modelo ya no te pide</span>
-        <span className="csec-s">Comparado con el dashboard anterior</span>
-      </div>
-      <Card>
-        <div className="strike-list">
-          {TAREAS_EXCLUIDAS.map((t, i) => (
-            <div key={i} className="strike-item">
-              <I_Check size={14} />
-              <span>{t}</span>
-            </div>
-          ))}
-        </div>
-      </Card>
+      <div className="grid-2" style={{ marginTop: 16 }}>
+        {/* ---- LO QUE YA NO TE PIDE ---- */}
+        <Card
+          title={<span className="row" style={{ gap: 8 }}><I_Check size={14} style={{ color: 'var(--green)' }} /> Lo que este modelo ya no te pide</span>}
+          action={<Badge tone="muted">vs. el dashboard anterior</Badge>}
+        >
+          <div className="strike-list">
+            {TAREAS_EXCLUIDAS.map((t, i) => (
+              <div key={i} className="strike-item"><I_Check size={14} /><span>{t}</span></div>
+            ))}
+          </div>
+        </Card>
 
-      <div className="row" style={{ marginTop: 20, gap: 10, flexWrap: 'wrap' }}>
-        <Button onClick={() => setVista('conversaciones')}>
-          <I_Chat size={14} /> Ver conversaciones
-        </Button>
-        <Button variant="outline" onClick={() => setVista('campanas')}>
-          <I_Megaphone size={14} /> Ver campañas
-        </Button>
-        <Button variant="ghost" onClick={() => setVista('cuenta')}>
-          Ajustar cuánto decide la IA <I_ArrowRight size={13} />
-        </Button>
-      </div>
-      <div className="tiny muted" style={{ marginTop: 14, display: 'flex', gap: 7, alignItems: 'center' }}>
-        <I_Question size={13} /> Todo lo que ves acá está trazado a un evento real del motor. En la demo los datos son ilustrativos, pero cada bloque tiene su contraparte en el back.
-      </div>
-    </>
-  );
-}
-
-// =============================================================================================
-// ALARMA — cuatro partes: qué pasó · por qué importa en $ · qué sugiere · qué podés hacer
-// =============================================================================================
-function Alarma({ a, setToast }: { a: typeof ALARMAS[number]; setToast: (t: string) => void }) {
-  return (
-    <div className={`alarm ${a.severidad}`}>
-      <div className="alarm-head">
-        <span className={`alarm-sev ${a.severidad}`}>{SEV_LB[a.severidad]}</span>
-        <span className="alarm-title">{a.titulo}</span>
-        <span className="alarm-when">{a.cuando}</span>
-      </div>
-      <div className="alarm-money">
-        <span className="ico" style={{ color: 'var(--amber)' }}><I_Wallet size={14} /></span>
-        <span><b style={{ color: 'var(--amber)' }}>Por qué importa: </b>{a.impacto}</span>
-      </div>
-      <div className="alarm-sug">
-        <b>Qué sugiere la IA: </b>{a.sugerencia}
-      </div>
-      <div className="alarm-acts">
-        {a.acciones.map((ac, i) => (
-          <Button key={i} variant={i === 0 ? 'primary' : 'ghost'} className="btn-sm"
-            onClick={() => setToast(`${ac} → resuelto (demo)`)}>
-            {i === 0 ? <I_Check size={13} /> : null} {ac}
-          </Button>
-        ))}
-        <span className="alarm-src">{a.origen}</span>
+        {/* ---- POR DÓNDE SEGUIR ---- */}
+        <Card
+          title={<span className="row" style={{ gap: 8 }}><I_Question size={14} style={{ color: 'var(--purple3)' }} /> Por dónde seguir</span>}
+        >
+          <div className="col-stack">
+            <Button onClick={() => setVista('campanas')} title="Ver tus campañas y el panel de expertos de cada pieza">
+              <I_Megaphone size={14} /> Ver campañas y el panel de expertos
+            </Button>
+            <Button variant="outline" onClick={() => setVista('conversaciones')} title="Ver los chats que atienden tus agentes">
+              <I_Chat size={14} /> Ver conversaciones
+            </Button>
+            <Button variant="ghost" onClick={() => setVista('mercado')} title="Qué está haciendo tu competencia ahora">
+              <I_Trend size={14} /> Ver mercado
+            </Button>
+            <Button variant="ghost" onClick={() => setVista('cuenta')} title="Elegir cuánto decide la IA y cuánto decidís vos">
+              <I_Credit size={14} /> Ajustar cuánto decide la IA <I_ArrowRight size={13} />
+            </Button>
+          </div>
+          <div className="acc-why">
+            Cada botón te lleva a la sección donde se resuelve ese tema. <b>Cuenta y autonomía</b> es donde elegís
+            si la IA decide sola o te pide permiso antes de gastar.
+          </div>
+        </Card>
       </div>
     </div>
   );
@@ -223,25 +283,21 @@ function Decision({ d, onResolver }: { d: typeof DECISIONES[number]; onResolver:
       <div className="dec-head">
         <span className="dec-av" style={{ background: d.agenteColor }}>{d.agente[0]}</span>
         <span className="dec-agent" style={{ color: d.agenteColor }}>{d.agente}</span>
-        <button className="btn btn-ghost btn-sm" onClick={() => setAbierto(!abierto)}>
-          <I_Eye size={13} /> {abierto ? 'Ocultar el panel' : 'Ver el panel de expertos'}
-        </button>
-        <span className="dec-since">espera desde hace 9 min</span>
+        <Button variant="ghost" className="btn-sm" title="Muestra cómo votó el panel de expertos sobre esta acción"
+          onClick={() => setAbierto(!abierto)}>
+          <I_Eye size={13} /> {abierto ? 'Ocultar el panel' : 'Ver el panel'}
+        </Button>
       </div>
       <div className="dec-title">{d.titulo}</div>
       <div className="dec-det">{d.detalle}</div>
-      <div className="dec-impact">
-        <b style={{ color: 'var(--green)' }}>Si lo aprobás: </b>{d.impacto}
-      </div>
+      <div className="dec-impact"><b style={{ color: 'var(--green)' }}>Si lo aprobás: </b>{d.impacto}</div>
 
       {abierto && (
         <div className="dec-panel">
           <div className="dec-panel-top">
             <I_Vote size={14} style={{ color: 'var(--purple3)' }} />
             <b>El panel revisó esta acción antes de proponértela</b>
-            <Badge tone={d.panel.dudaron === 0 ? 'green' : 'amber'}>
-              {d.panel.aprobaron} de {d.panel.total} a favor
-            </Badge>
+            <Badge tone={d.panel.dudaron === 0 ? 'green' : 'amber'}>{d.panel.aprobaron} de {d.panel.total} a favor</Badge>
           </div>
           <div className="dec-obj">
             {d.panel.dudaron > 0 ? <><b>El más duro dijo:</b> «{d.panel.objeccion}»</> : d.panel.objeccion}
@@ -252,11 +308,13 @@ function Decision({ d, onResolver }: { d: typeof DECISIONES[number]; onResolver:
       <div className="dec-acts">
         {d.acciones.map((ac, i) => (
           <Button key={i} variant={i === 0 ? 'primary' : 'ghost'} className="btn-sm"
+            title={CONSECUENCIA[d.id] ?? `Ejecuta: ${ac}`}
             onClick={() => onResolver(d.id, `${ac}: ${d.titulo} (demo)`)}>
             {i === 0 ? <I_Check size={13} /> : null} {ac}
           </Button>
         ))}
       </div>
+      <div className="acc-why">{CONSECUENCIA[d.id]}</div>
     </div>
   );
 }
@@ -273,18 +331,18 @@ function AgenteRow({ a, setToast }: { a: typeof AGENTES[number]; setToast: (t: s
         <div className="work-top">
           <span className="work-name">{a.nombre}</span>
           <span className="work-role">{a.rol}</span>
-          <span className="work-anchor">{a.ancla}</span>
           {a.estado === 'trabajando' && <Badge tone="green">trabajando</Badge>}
           {a.estado === 'esperando_ok' && <Badge tone="amber">espera tu OK</Badge>}
           {a.estado === 'al_dia' && <Badge tone="muted">al día</Badge>}
         </div>
+        <div className="work-anchor" style={{ marginTop: 7, display: 'inline-block' }}>{a.ancla}</div>
         <div className="work-what">{a.accion}</div>
         <div className="work-res"><b>→ </b>{a.resultado}</div>
         <div className="work-foot">
-          <Button variant="ghost" className="btn-sm" onClick={() => setToast(`${a.artefacto} (demo)`)}>
+          <Button variant="ghost" className="btn-sm" title={`Abre: ${a.artefacto}`}
+            onClick={() => setToast(`${a.artefacto} (demo)`)}>
             <I_ArrowRight size={12} /> {a.artefacto}
           </Button>
-          <span className="tiny muted">decide {a.autonomia === 'auto' ? 'solo' : a.autonomia === 'shared' ? 'con tu OK' : 'bajo tu mano'}</span>
           <span className="work-when">{a.cuando}</span>
         </div>
       </div>
@@ -293,32 +351,17 @@ function AgenteRow({ a, setToast }: { a: typeof AGENTES[number]; setToast: (t: s
 }
 
 // =============================================================================================
-// MIENTRAS NO ESTABAS
+// MIENTRAS NO ESTABAS — la contracara del modo Automático
 // =============================================================================================
-function MientrasNoEstabas({ primera = false }: { primera?: boolean }) {
+function MientrasNoEstabas({ modo }: { modo: Modo }) {
   const m = MIENTRAS_NO_ESTABAS;
   return (
     <>
-      {primera && (
-        <div className="csec">
-          <span className="csec-n">★</span>
-          <span className="csec-t">Mientras no estabas</span>
-          <span className="csec-s">Estás en Automático: el motor trabajó solo y te lo cuenta</span>
-        </div>
-      )}
-      {!primera && (
-        <div className="csec">
-          <span className="csec-n">5</span>
-          <span className="csec-t">Mientras no estabas</span>
-          <span className="csec-s">Desde {m.desde}</span>
-        </div>
-      )}
-      <div className="mwb">
+      <div className="mwb" style={{ border: 'none', background: 'transparent', padding: 0 }}>
         <div className="mwb-top">
-          <I_Sun size={16} style={{ color: 'var(--green)' }} />
-          <b style={{ fontSize: 14 }}>El motor trabajó sin vos</b>
-          <Badge tone="green">{m.acciones.length} acciones autónomas</Badge>
-          {m.esperan > 0 && <Badge tone="amber">{m.esperan} decisión espera tu OK</Badge>}
+          {modo === 'auto'
+            ? <><I_Check size={15} style={{ color: 'var(--green)' }} /><b style={{ fontSize: 13.5 }}>Trabajó solo y te lo cuenta</b></>
+            : <><I_Zap size={15} style={{ color: 'var(--amber)' }} /><b style={{ fontSize: 13.5 }}>Esto hizo solo desde {m.desde}</b></>}
         </div>
         <div className="mwb-grid">
           <div className="mwb-k">
@@ -330,7 +373,7 @@ function MientrasNoEstabas({ primera = false }: { primera?: boolean }) {
             <div className="mwb-k-v">{m.gasto}</div>
           </div>
           <div className="mwb-k">
-            <div className="mwb-k-lb">Ventas atribuidas</div>
+            <div className="mwb-k-lb">Ventas</div>
             <div className="mwb-k-v" style={{ color: 'var(--green)' }}>{m.ventas}</div>
           </div>
         </div>
@@ -338,24 +381,26 @@ function MientrasNoEstabas({ primera = false }: { primera?: boolean }) {
           {m.acciones.map((ac, i) => (
             <div key={i} className="mwb-item">
               <span style={{ color: 'var(--green)', flexShrink: 0 }}><I_Check size={14} /></span>
-              <span className="tx">
-                {ac.txt}
-                <small>{ac.detalle}</small>
-              </span>
+              <span className="tx">{ac.txt}<small>{ac.detalle}</small></span>
               <span className="hr">{ac.cuando}</span>
               {ac.undo && <span className="tl-undo">deshacer</span>}
             </div>
           ))}
         </div>
       </div>
+      <div className="acc-why">
+        {modo === 'auto'
+          ? <>Estás en <b>Automático</b>: el motor decide y ejecuta sin preguntarte. Todas las acciones de acá son reversibles 24 h.</>
+          : <>Estás en <b>{MODOS.find(x => x.key === modo)?.nombre}</b>: el motor decide, pero <b>te pide OK</b> antes de publicar o gastar. Por eso tenés {DECISIONES.length} decisiones esperando en la columna de al lado.</>}
+      </div>
     </>
   );
 }
 
 const ICONO_AREA: Record<string, any> = {
-  Dinero: <I_Wallet size={14} />,
-  Alcance: <I_Users size={14} />,
-  Calidad: <I_Star size={14} />,
-  Conversaciones: <I_Chat size={14} />,
-  Recursos: <I_Credit size={14} />,
+  Dinero: <I_Wallet size={15} />,
+  Alcance: <I_Users size={15} />,
+  Calidad: <I_Star size={15} />,
+  Conversaciones: <I_Chat size={15} />,
+  Recursos: <I_Credit size={15} />,
 };

@@ -128,7 +128,7 @@ export function ViewCampanas({ setToast, modo }: { setToast: (t: string) => void
         <span className="csec-t">Campañas activas</span>
         <span className="csec-s">Qué corre, cuánto gasta y cuántos artefactos produjo el motor</span>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 13 }}>
+      <div className="duo">
         {CAMPANAS.map(c => (
           <Card key={c.id}>
             <div className="row spread" style={{ alignItems: 'flex-start' }}>

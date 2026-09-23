@@ -130,7 +130,7 @@ export function ViewCuenta({ setToast, modo, setModo }: { setToast: (t: string) 
         <span className="csec-t">Conexiones</span>
         <span className="csec-s">Todo lo externo es tuyo: conectás tu propia API, no la nuestra</span>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(310px, 1fr))', gap: 13 }}>
+      <div className="duo">
         {CONEXIONES.map(c => (
           <Card key={c.key}
             title={<span className="row" style={{ gap: 9 }}><span style={{ fontSize: 17 }}>{c.emoji}</span>{c.nombre}</span>}

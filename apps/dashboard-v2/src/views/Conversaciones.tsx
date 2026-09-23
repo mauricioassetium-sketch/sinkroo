@@ -144,7 +144,7 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
         <span className="csec-t">Automatizaciones</span>
         <span className="csec-s">Lo que antes era un "tipo de campaña" y no debía serlo: esto trabaja solo</span>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 13 }}>
+      <div className="duo">
         {FLUJOS.map(f => (
           <Card key={f.id}
             title={<span className="row" style={{ gap: 8 }}><I_Zap size={14} style={{ color: 'var(--purple3)' }} />{f.nombre}</span>}
