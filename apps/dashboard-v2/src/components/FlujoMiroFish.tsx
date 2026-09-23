@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, Badge, Button } from './ui';
 import {
-  I_Robot, I_Search, I_Sparkle, I_Vote, I_Rocket, I_Check, I_Play, I_Refresh,
+  I_Robot, I_Search, I_Sparkle, I_Vote, I_Rocket, I_Check, I_Refresh,
   I_ChevDn, I_ChevUp, I_Film, I_Image, I_File, I_Target, I_Camera,
 } from './icons';
 import { INVESTIGACION, OPCIONES, PERFILES, ranking, puntaje, CUANTAS_PASAN, type Opcion } from '../data/mirofish';
@@ -55,6 +55,10 @@ export function FlujoMiroFish({ modo, setToast, nombre, esAnuncio }: {
     }, 3900);
   };
 
+  // Al llegar acá el trabajo ya arrancó solo: en el paso 1 el usuario apretó Iniciar.
+  // No hay botón para empezar en esta pantalla: eso era lo que confundía.
+  useEffect(() => { arrancar(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
+
   const accionDice = modo === 'auto'
     ? 'Se publican solas y quedan en la bitácora, reversibles 24 h'
     : modo === 'shared'
@@ -80,21 +84,20 @@ export function FlujoMiroFish({ modo, setToast, nombre, esAnuncio }: {
           <div className="row" style={{ gap: 11, flex: 1, minWidth: 240 }}>
             <span style={{ color: 'var(--purple3)', flexShrink: 0, marginTop: 2 }}><I_Robot size={20} /></span>
             <div style={{ minWidth: 0 }}>
-              <div className="bt">Cómo trabaja Sinkroo con «{nombre}»</div>
+              <div className="bt">Ya está en marcha «{nombre}»: acá es donde pasa todo</div>
               <div className="bs">
-                Investiga quién trae más leads y <b>con qué colores</b>, escribe los prompts de cada imagen y video,
-                arma <b>5 opciones de publicación</b> y se las pasa a MiroFish. Los agentes las votan,
-                quedan <b>ordenadas del 1 al 5</b> y las <b>3 primeras</b> pasan a producción.
+                Subiste la info en el paso 1 y apretaste <b>Iniciar</b>. Ahora no hay nada que tocar:
+                Sinkroo investiga quién trae más leads y <b>con qué colores</b>, escribe los prompts de cada
+                imagen y video, arma <b>5 opciones</b> y MiroFish las vota y las ordena <b>del 1 al 5</b>.
+                Vos decidís después, en la galería.
               </div>
             </div>
           </div>
           <div className="row" style={{ gap: 9, flexWrap: 'wrap' }}>
-            <Button className="btn-sm" disabled={nivel > 0 && nivel < 4}
-              title={nivel === 4 ? 'Vuelve a correr todo el proceso desde cero' : 'Investiga, crea las 5 opciones y las pasa a MiroFish'}
-              onClick={arrancar}>
-              {nivel === 4 ? <><I_Refresh size={13} /> Hacerlo de nuevo</> : nivel > 0 ? 'Trabajando…' : <><I_Play size={13} /> Que Sinkroo lo haga</>}
-            </Button>
-            {nivel === 4 && <Badge tone="green">listo</Badge>}
+            {nivel === 4
+              ? <Button variant="outline" className="btn-sm" title="Vuelve a investigar y crea 5 opciones nuevas, desde cero"
+                  onClick={arrancar}><I_Refresh size={13} /> Otra ronda</Button>
+              : <Badge tone="purple">{nivel === 0 ? 'arrancando…' : 'trabajando solo…'}</Badge>}
           </div>
         </div>
 
