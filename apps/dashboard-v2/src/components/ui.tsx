@@ -47,7 +47,7 @@ export function Card({ children, className = '', title, action, tour }: { childr
   return (
     <div className={`card ${className}`} data-tour={tour}>
       {(title || action) && <div className="card-head"><div className="card-title">{title}</div>{action}</div>}
-      {children}
+      <div className="card-b">{children}</div>
     </div>
   );
 }

@@ -97,6 +97,15 @@ export function ViewCampanas({ setToast, modo }: { setToast: (t: string) => void
               </div>
             );
           })}
+          <div className="bs" style={{ marginTop: 12 }}>
+            El panel puntúa <b>cada pieza antes de publicarse</b>: arriba de 80 sale, entre 60 y 80 vuelve con la
+            objeción más votada, y abajo de 60 no se gasta un peso.
+          </div>
+          <div className="datos-row" style={{ marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--border)' }}>
+            <div className="dato"><span className="dato-l">Piezas puntuadas este mes</span><span className="dato-v">31</span></div>
+            <div className="dato"><span className="dato-l">Aprobadas</span><span className="dato-v" style={{ color: 'var(--green)' }}>18</span></div>
+            <div className="dato"><span className="dato-l">Frenadas a tiempo</span><span className="dato-v" style={{ color: 'var(--amber)' }}>13</span></div>
+          </div>
           <div className="acc-why">
             <b>Una pieza que no pasa el panel nunca se publica.</b> El orden importa: primero convence al mercado simulado, después gasta tu dinero.
           </div>
@@ -137,6 +146,10 @@ export function ViewCampanas({ setToast, modo }: { setToast: (t: string) => void
               <Progress pct={c.pct} color={c.pct > 70 ? 'amber' : 'purple'} />
             </div>
 
+            <div className="datos-row" style={{ marginTop: 12, paddingTop: 11, borderTop: '1px solid var(--border)' }}>
+              <div className="dato"><span className="dato-l">Costo por venta</span><span className="dato-v">$2,10</span></div>
+              <div className="dato"><span className="dato-l">Últimos 7 días</span><span className="dato-v" style={{ color: c.roas === '—' ? 'var(--muted)' : 'var(--green)' }}>{c.roas === '—' ? 'sin datos' : c.roas}</span></div>
+            </div>
             <div className="row" style={{ gap: 8, marginTop: 13, flexWrap: 'wrap' }}>
               <Button variant="ghost" className="btn-sm" title={`Ver las ${c.artefactos} piezas de esta campaña`}
                 onClick={() => setToast(`Artefactos de "${c.nombre}" (demo)`)}><I_File size={12} /> Ver piezas</Button>
@@ -181,6 +194,14 @@ export function ViewCampanas({ setToast, modo }: { setToast: (t: string) => void
             Nia escribe el anuncio, el panel lo puntúa, y{' '}
             {modo === 'auto' ? 'Kai lo publica y te avisa' : modo === 'shared' ? 'Kai te pide el OK antes de publicar' : 'Kai te deja la campaña lista para que la publiques vos'}.
             <b> Vos no llenás nada.</b>
+          </div>
+          <div>
+            <div className="bs" style={{ marginBottom: 9 }}>Frases que ya funcionan:</div>
+            <div className="guards">
+              <div className="guard"><I_Check size={14} style={{ color: 'var(--purple3)', flexShrink: 0 }} /><span className="guard-lb">«Vender el pack completo en CABA a mujeres de 25 a 40 con $20 por día»<small>la que está cargada arriba</small></span></div>
+              <div className="guard"><I_Check size={14} style={{ color: 'var(--purple3)', flexShrink: 0 }} /><span className="guard-lb">«Recuperar a los que abandonaron el carrito esta semana»<small>esto crea una automatización, no una campaña</small></span></div>
+              <div className="guard"><I_Check size={14} style={{ color: 'var(--purple3)', flexShrink: 0 }} /><span className="guard-lb">«Volver a mostrarle el serum a los que ya lo vieron»<small>retargeting con el mismo creativo</small></span></div>
+            </div>
           </div>
           <div className="row" style={{ gap: 9, marginTop: 13, flexWrap: 'wrap' }}>
             <Button className="btn-sm" title="Nia escribe 6 variantes a partir de esa frase"

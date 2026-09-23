@@ -90,6 +90,15 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
             ))}
           </div>
 
+          <div className="datos-row" style={{ marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--border)' }}>
+            <div className="dato"><span className="dato-l">Cliente hace</span><span className="dato-v">4 meses</span></div>
+            <div className="dato"><span className="dato-l">Compras</span><span className="dato-v" style={{ color: 'var(--green)' }}>3</span></div>
+            <div className="dato"><span className="dato-l">Ticket promedio</span><span className="dato-v">$8.400</span></div>
+          </div>
+          <div className="bs" style={{ marginTop: 11 }}>
+            El agente ya sabe esto antes de contestar: cada conversación lleva el historial del cliente pegado.
+          </div>
+
           <div className="alarm" style={{ marginTop: 14, borderLeft: '3px solid var(--purple2)', background: 'rgba(168,85,247,.05)' }}>
             <div className="alarm-head">
               <span className="alarm-sev oportunidad">LO QUE PROPONE EL AGENTE</span>
@@ -163,6 +172,19 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
               onClick={() => setToast('Token probado ahora: sigue funcionando (demo)')}><I_Check size={13} /> Probar conexión</Button>
             <Button variant="ghost" className="btn-sm" title="Reemplaza el token por uno nuevo"
               onClick={() => setToast('Reemplazar token (demo)')}><I_Plus size={13} /> Reemplazar token</Button>
+          </div>
+          <div>
+            <div className="bs" style={{ marginBottom: 9 }}>Qué habilita esta conexión en el motor:</div>
+            <div className="row" style={{ gap: 7, flexWrap: 'wrap' }}>
+              {['enviar mensaje', 'leer respuestas', 'enviar plantillas', 'marcar etiquetas', 'derivar a un humano'].map(c => (
+                <span key={c} className="badge badge-purple" style={{ fontSize: 9.5 }}>{c}</span>
+              ))}
+            </div>
+          </div>
+          <div className="datos-row" style={{ marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--border)' }}>
+            <div className="dato"><span className="dato-l">Guardado</span><span className="dato-v">cifrado</span></div>
+            <div className="dato"><span className="dato-l">Última prueba</span><span className="dato-v" style={{ color: 'var(--green)' }}>hace 2 min</span></div>
+            <div className="dato"><span className="dato-l">Se revoca desde</span><span className="dato-v">tu Meta</span></div>
           </div>
           <div className="acc-why">
             Tu token se guarda cifrado y <b>se prueba antes de guardarse</b>. Ninguna pantalla de Sinkroo lo vuelve a mostrar.

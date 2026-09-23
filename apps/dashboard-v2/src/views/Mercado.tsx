@@ -50,6 +50,18 @@ export function ViewMercado({ setToast }: { setToast: (t: string) => void }) {
                 onClick={() => setToast('Informe completo (demo)')}>Ver el informe</Button>
             </div>
           </div>
+          <div>
+            <div className="bs" style={{ marginBottom: 9 }}>Qué leyó Lux para llegar a esto:</div>
+            <div className="guards">
+              <div className="guard"><I_Eye size={14} style={{ color: 'var(--purple3)', flexShrink: 0 }} /><span className="guard-lb">Anuncios activos de tus competidores<small>biblioteca pública de Meta · hoy 06:00</small></span><span className="guard-val">47</span></div>
+              <div className="guard"><I_Trend size={14} style={{ color: 'var(--amber)', flexShrink: 0 }} /><span className="guard-lb">Cambios de precio esta semana<small>contra el precio de la semana pasada</small></span><span className="guard-val" style={{ color: 'var(--amber)' }}>3</span></div>
+              <div className="guard"><I_Star size={14} style={{ color: 'var(--purple3)', flexShrink: 0 }} /><span className="guard-lb">Ángulos nuevos que aparecieron<small>no estaban hace 30 días</small></span><span className="guard-val">2</span></div>
+            </div>
+          </div>
+          <div className="datos-row" style={{ marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--border)' }}>
+            <div className="dato"><span className="dato-l">Costo del clic hoy</span><span className="dato-v">$2,10</span></div>
+            <div className="dato"><span className="dato-l">Si te siguen en precio</span><span className="dato-v" style={{ color: 'var(--amber)' }}>+$340/sem</span></div>
+          </div>
           <div className="acc-why">
             Lux lee la biblioteca pública de anuncios de tus competidores <b>todos los días</b>.
             No adivina: compara anuncios reales que están corriendo ahora.
@@ -143,6 +155,15 @@ export function ViewMercado({ setToast }: { setToast: (t: string) => void }) {
             <div className="strike-item"><I_Eye size={14} /><span><b style={{ color: 'var(--txt)' }}>Era lo más vistoso y lo menos accionable.</b> Saber dónde están las tiendas de tu competencia no cambia ninguna decisión de campaña. Saber que bajaron 15% y se fueron a video, sí.</span></div>
             <div className="strike-item"><I_Zap size={14} /><span><b style={{ color: 'var(--txt)' }}>Costo cero contra costo mensual.</b> Google Maps exige cuenta de GCP con facturación activa; la biblioteca de anuncios de Meta es pública y gratis.</span></div>
             <div className="strike-item"><I_Star size={14} /><span><b style={{ color: 'var(--txt)' }}>Si algún día lo querés, entra como integración BYO.</b> No se descarta para siempre: se saca del camino crítico.</span></div>
+          </div>
+          <div className="datos-row" style={{ marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--border)' }}>
+            <div className="dato"><span className="dato-l">Costo de tenerlo</span><span className="dato-v">$0 hoy</span></div>
+            <div className="dato"><span className="dato-l">Decisión que cambia</span><span className="dato-v" style={{ color: 'var(--muted)' }}>ninguna</span></div>
+            <div className="dato"><span className="dato-l">Se puede recuperar</span><span className="dato-v" style={{ color: 'var(--green)' }}>sí, cuando quieras</span></div>
+          </div>
+          <div className="bs" style={{ marginTop: 12 }}>
+            Si lo querés, se conecta <b>con tu propia cuenta de Google</b>: nos das la clave, no la compartimos
+            con nadie y podés revocarla desde tu panel de Google cuando quieras.
           </div>
           <div className="row" style={{ marginTop: 14, gap: 9, flexWrap: 'wrap' }}>
             <Button variant="outline" className="btn-sm" title="Conectás tu propia API de Google y el mapa vuelve"

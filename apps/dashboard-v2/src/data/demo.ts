@@ -308,6 +308,8 @@ export const PANEL_PIEZAS: { titulo: string; tipo: string; score: number; veredi
   { titulo: 'Testimonio Valeria', tipo: 'Video 22s', score: 81, veredicto: 'go', emoji: '💬' },
   { titulo: 'Oferta 2x1 Lanzamiento', tipo: 'Imagen', score: 64, veredicto: 'review', emoji: '🎁' },
   { titulo: 'Rutina 3 pasos', tipo: 'Carrusel', score: 52, veredicto: 'stop', emoji: '🧖' },
+  { titulo: 'Envío gratis desde $15.000', tipo: 'Imagen', score: 76, veredicto: 'review', emoji: '🚚' },
+  { titulo: 'Antes y Después — Protector solar', tipo: 'Video 15s', score: 88, veredicto: 'go', emoji: '☀️' },
 ];
 
 // ---------------------------------------------------------------------------------------------
@@ -624,4 +626,6 @@ export const TAREAS_EXCLUIDAS = [
   'No te pedimos que subas documentos para que "la IA los lea".',
   'No hay mapa de Google ni integraciones que no uses.',
   'No vas a ver 15 tipos de campaña ni 218 casillas por llenar.',
+  'No pedimos que conectes nada que no vayas a usar: cada conexión declara qué habilita.',
+  'No hay que aprobar nada dos veces: si una acción es reversible, el motor puede hacerla solo.',
 ];

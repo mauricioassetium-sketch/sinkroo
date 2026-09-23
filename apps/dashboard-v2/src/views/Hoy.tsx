@@ -101,6 +101,15 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
                 Ver {ALARMAS.length - 3} alarmas más <I_ArrowRight size={13} />
               </Button>
             )}
+            <div className="datos-row" style={{ marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--border)' }}>
+              <div className="dato"><span className="dato-l">Revisiones de hoy</span><span className="dato-v">14</span></div>
+              <div className="dato"><span className="dato-l">En riesgo si no actuás</span><span className="dato-v" style={{ color: 'var(--amber)' }}>$180</span></div>
+              <div className="dato"><span className="dato-l">Resueltas solas</span><span className="dato-v" style={{ color: 'var(--green)' }}>6</span></div>
+            </div>
+            <div className="acc-why">
+              La vigilancia corre <b>cada 15 minutos</b> y no gasta IA: compara tus números contra los de ayer.
+              Solo cuando algo se sale de lo normal entra un agente a mirarlo.
+            </div>
           </div>
         </Card>
 
@@ -126,11 +135,11 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
       </div>
       <div className="duo">
         <Card
-          title={<span className="row" style={{ gap: 8 }}><I_Users size={14} style={{ color: 'var(--purple3)' }} /> El motor, agente por agente</span>}
-          action={<Badge tone="green">3 trabajando</Badge>}
+          title={<span className="row" style={{ gap: 8 }}><I_Users size={14} style={{ color: 'var(--purple3)' }} /> El motor · estrategia y creatividad</span>}
+          action={<Badge tone="green">2 trabajando</Badge>}
         >
           <div className="work">
-            {AGENTES.map(a => <AgenteRow key={a.id} a={a} setToast={setToast} />)}
+            {AGENTES.slice(0, 3).map(a => <AgenteRow key={a.id} a={a} setToast={setToast} />)}
           </div>
           <div className="acc-why">
             Cada botón abre <b>el artefacto</b> que produjo ese agente: el informe, las variantes o el porqué.
@@ -148,6 +157,18 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
                 serie={n.serie} color={n.color} up={n.up} />
             ))}
           </div>
+          <div className="datos-row" style={{ marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--border)' }}>
+            <div className="dato"><span className="dato-l">Acumulado del mes</span><span className="dato-v" style={{ color: 'var(--green)' }}>{MES.acumulado}</span></div>
+            <div className="dato"><span className="dato-l">Crecimiento mensual</span><span className="dato-v" style={{ color: 'var(--green)' }}>+28%</span></div>
+            <div className="dato"><span className="dato-l">Dato más viejo</span><span className="dato-v">hace 12 meses</span></div>
+          </div>
+          <div>
+            <div className="bs" style={{ marginBottom: 8 }}>Lo que más se movió este mes, contra el mes pasado:</div>
+            <BarRow label="Ventas" valor={18} max={22} sufijo="%" color="var(--green)" formato="+18" />
+            <BarRow label="Alcance" valor={22} max={22} sufijo="%" color="var(--purple2)" formato="+22" />
+            <BarRow label="ROAS" valor={12} max={22} sufijo="%" color="var(--green)" formato="+12" />
+            <BarRow label="Autonomía" valor={9} max={22} sufijo=" días" color="var(--amber)" formato="-9" />
+          </div>
           <div className="acc-why">
             Todos salen de tus conexiones reales: Meta Ads, tu WhatsApp y tu tienda.{' '}
             <b>Días de autonomía</b> es cuánto puede seguir trabajando el motor con los créditos que tenés.
@@ -158,21 +179,29 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
       {/* ====================== FILA 3: EVOLUCIÓN Y CALIDAD ====================== */}
       <div className="csec">
         <span className="csec-n">3</span>
-        <span className="csec-t">Cómo viene el mes y tu calidad</span>
-        <span className="csec-s">Lo que creció y qué tan buenas son tus piezas</span>
+        <span className="csec-t">El motor y la calidad de tus piezas</span>
+        <span className="csec-s">Quién produce y qué tan bueno es lo que produce</span>
       </div>
       <div className="duo">
         <Card
-          title={<span className="row" style={{ gap: 8 }}><I_Trend size={14} style={{ color: 'var(--green)' }} /> Ventas por mes</span>}
-          action={<Badge tone="green">{MES.acumulado} acumulado</Badge>}
+          title={<span className="row" style={{ gap: 8 }}><I_Users size={14} style={{ color: 'var(--purple3)' }} /> El motor · medios y ventas</span>}
+          action={<Badge tone="amber">1 espera tu OK</Badge>}
         >
-          <Bars data={MES.ventas} labels={MES.labels} color="#22c55e" fmt={v => `${(v / 1000).toFixed(1)}K`} />
-          <div className="datos-row" style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
-            <div className="dato"><span className="dato-l">Promedio por mes</span><span className="dato-v">{MES.promedio}</span></div>
-            <div className="dato"><span className="dato-l">Último mes</span><span className="dato-v" style={{ color: 'var(--green)' }}>$4.280</span></div>
-            <div className="dato"><span className="dato-l">Crecimiento</span><span className="dato-v" style={{ color: 'var(--green)' }}>+28%</span></div>
+          <div className="work">
+            {AGENTES.slice(3).map(a => <AgenteRow key={a.id} a={a} setToast={setToast} />)}
           </div>
-          <div className="acc-why">Cada barra es un mes cerrado. <b>El crecimiento es real</b>: sale de las ventas que entraron por tus conexiones.</div>
+          <div>
+            <div className="bs" style={{ marginBottom: 9 }}>Lo que dejó este equipo hoy, listo para revisar:</div>
+            <div className="guards">
+              <div className="guard"><I_Check size={14} style={{ color: 'var(--green)', flexShrink: 0 }} /><span className="guard-lb">Presupuesto reasignado a la campaña que mejor rinde<small>Kai · hace 3 h · reversible</small></span><span className="guard-val" style={{ color: 'var(--green)' }}>+7,3x</span></div>
+              <div className="guard"><I_Check size={14} style={{ color: 'var(--green)', flexShrink: 0 }} /><span className="guard-lb">Informe de resultados de la semana<small>Sol · hace 5 h</small></span><span className="guard-val">1</span></div>
+              <div className="guard"><I_Check size={14} style={{ color: 'var(--green)', flexShrink: 0 }} /><span className="guard-lb">Clientes que quedaron a un mensaje de comprar<small>Rumi · hace 20 min</small></span><span className="guard-val" style={{ color: 'var(--amber)' }}>4</span></div>
+            </div>
+          </div>
+          <div className="acc-why">
+            Estos tres son los que <b>gastan, miden y venden</b>: Kai mueve el presupuesto, Sol te dice qué funcionó
+            y Rumi atiende a quien escribe. Si algo pasa de su techo, te lo pide antes de hacerlo.
+          </div>
         </Card>
 
         <Card
@@ -210,17 +239,38 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
       {/* ====================== FILA 4: AUTONOMÍA Y MEMORIA ====================== */}
       <div className="csec">
         <span className="csec-n">4</span>
-        <span className="csec-t">Autonomía y memoria</span>
-        <span className="csec-s">Qué hizo solo y todo lo que podés revisar</span>
+        <span className="csec-t">Cómo viene el mes y qué hizo solo</span>
+        <span className="csec-s">El crecimiento y las acciones que tomó sin vos</span>
       </div>
       <div className="duo">
+        <Card
+          title={<span className="row" style={{ gap: 8 }}><I_Trend size={14} style={{ color: 'var(--green)' }} /> Ventas por mes</span>}
+          action={<Badge tone="green">{MES.acumulado} acumulado</Badge>}
+        >
+          <Bars data={MES.ventas} labels={MES.labels} color="#22c55e" fmt={v => `${(v / 1000).toFixed(1)}K`} />
+          <div className="datos-row" style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
+            <div className="dato"><span className="dato-l">Promedio por mes</span><span className="dato-v">{MES.promedio}</span></div>
+            <div className="dato"><span className="dato-l">Último mes</span><span className="dato-v" style={{ color: 'var(--green)' }}>$4.280</span></div>
+            <div className="dato"><span className="dato-l">Crecimiento</span><span className="dato-v" style={{ color: 'var(--green)' }}>+28%</span></div>
+          </div>
+          <div className="acc-why">Cada barra es un mes cerrado. <b>El crecimiento es real</b>: sale de las ventas que entraron por tus conexiones.</div>
+        </Card>
+
         <Card
           title={<span className="row" style={{ gap: 8 }}><I_Sun size={14} style={{ color: 'var(--green)' }} /> Mientras no estabas</span>}
           action={<Badge tone="green">modo {modoNombre}</Badge>}
         >
           <MientrasNoEstabas modo={modo} />
         </Card>
+      </div>
 
+      {/* ====================== FILA 5: CIERRE ====================== */}
+      <div className="csec">
+        <span className="csec-n">5</span>
+        <span className="csec-t">Memoria y cierre</span>
+        <span className="csec-s">Todo lo que podés revisar y lo que este modelo ya no te pide</span>
+      </div>
+      <div className="duo">
         <Card
           title={<span className="row" style={{ gap: 8 }}><I_Clock size={14} style={{ color: 'var(--purple3)' }} /> La bitácora</span>}
           action={
@@ -251,10 +301,7 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
             si el motor se equivoca, el costo es un clic.
           </div>
         </Card>
-      </div>
 
-      {/* ====================== FILA 5: CIERRE ====================== */}
-      <div className="duo" style={{ marginTop: 16 }}>
         <Card
           title={<span className="row" style={{ gap: 8 }}><I_Check size={14} style={{ color: 'var(--green)' }} /> Lo que este modelo ya no te pide</span>}
           action={<Badge tone="muted">vs. el dashboard anterior</Badge>}
@@ -264,24 +311,25 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
               <div key={i} className="strike-item"><I_Check size={14} /><span>{t}</span></div>
             ))}
           </div>
-        </Card>
-
-        <Card
-          title={<span className="row" style={{ gap: 8 }}><I_Question size={14} style={{ color: 'var(--purple3)' }} /> Por dónde seguir</span>}
-        >
-          <div className="duo">
-            <Button onClick={() => setVista('campanas')} title="Ver tus campañas y el panel de expertos de cada pieza">
-              <I_Megaphone size={14} /> Campañas
-            </Button>
-            <Button variant="outline" onClick={() => setVista('conversaciones')} title="Ver los chats que atienden tus agentes">
-              <I_Chat size={14} /> Conversaciones
-            </Button>
-            <Button variant="ghost" onClick={() => setVista('mercado')} title="Qué está haciendo tu competencia ahora">
-              <I_Trend size={14} /> Mercado
-            </Button>
-            <Button variant="ghost" onClick={() => setVista('cuenta')} title="Elegir cuánto decide la IA y cuánto decidís vos">
-              <I_Credit size={14} /> Autonomía
-            </Button>
+          <div>
+            <div className="row" style={{ gap: 8, marginBottom: 10 }}>
+              <I_Question size={14} style={{ color: 'var(--purple3)' }} />
+              <b className="bt">Por dónde seguir</b>
+            </div>
+            <div className="duo">
+              <Button onClick={() => setVista('campanas')} title="Ver tus campañas y el panel de expertos de cada pieza">
+                <I_Megaphone size={14} /> Campañas
+              </Button>
+              <Button variant="outline" onClick={() => setVista('conversaciones')} title="Ver los chats que atienden tus agentes">
+                <I_Chat size={14} /> Conversaciones
+              </Button>
+              <Button variant="ghost" onClick={() => setVista('mercado')} title="Qué está haciendo tu competencia ahora">
+                <I_Trend size={14} /> Mercado
+              </Button>
+              <Button variant="ghost" onClick={() => setVista('cuenta')} title="Elegir cuánto decide la IA y cuánto decidís vos">
+                <I_Credit size={14} /> Autonomía
+              </Button>
+            </div>
           </div>
           <div className="acc-why">
             Cada botón te lleva a la sección donde se resuelve ese tema. <b>Autonomía</b> es donde elegís

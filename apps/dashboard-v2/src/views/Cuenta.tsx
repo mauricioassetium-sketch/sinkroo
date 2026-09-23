@@ -127,6 +127,15 @@ export function ViewCuenta({ setToast, modo, setModo }: { setToast: (t: string) 
               </div>
             ))}
           </div>
+          <div className="datos-row" style={{ marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--border)' }}>
+            <div className="dato"><span className="dato-l">Cortes por freno este mes</span><span className="dato-v">7</span></div>
+            <div className="dato"><span className="dato-l">Plata que evitaron</span><span className="dato-v" style={{ color: 'var(--green)' }}>$180</span></div>
+            <div className="dato"><span className="dato-l">Te pidió permiso</span><span className="dato-v" style={{ color: 'var(--amber)' }}>2 veces</span></div>
+          </div>
+          <div className="bs" style={{ marginTop: 11 }}>
+            Los frenos no son castigos: son lo que te permite dejar el modo Automático prendido sin estar mirando.
+            Cada vez que uno se activa, el motor te lo cuenta en la bitácora con el motivo.
+          </div>
           <div className="acc-why">
             Aplican <b>incluso en Automático</b>. Si esto se pudiera desactivar, el modo Automático no debería existir:
             un bug que toca presupuestos sin techo cuesta plata real.
@@ -186,6 +195,7 @@ export function ViewCuenta({ setToast, modo, setModo }: { setToast: (t: string) 
           </div>
         </Card>
 
+        <div className="col">
         <Card
           title={<span className="row" style={{ gap: 8 }}><I_Credit size={14} style={{ color: 'var(--amber)' }} /> Créditos</span>}
           action={<Badge tone="amber">{TENANT.creditos.toLocaleString('es-AR')} disponibles</Badge>}
@@ -212,24 +222,40 @@ export function ViewCuenta({ setToast, modo, setModo }: { setToast: (t: string) 
               </div>
             ))}
           </div>
+          <div className="datos-row" style={{ marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--border)' }}>
+            <div className="dato"><span className="dato-l">Se repone</span><span className="dato-v" style={{ color: 'var(--green)' }}>automático</span></div>
+            <div className="dato"><span className="dato-l">Próxima recarga</span><span className="dato-v">al bajar de 500</span></div>
+            <div className="dato"><span className="dato-l">Consumo por día</span><span className="dato-v">150 créditos</span></div>
+          </div>
           <div className="acc-why">
             <b>Días de autonomía</b> es la traducción de los créditos a algo que se entiende:
             cuánto puede seguir trabajando el motor si no recargás.
           </div>
         </Card>
-      </div>
 
-      <div className="card" style={{ marginTop: 16, display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap', background: 'linear-gradient(120deg, rgba(168,85,247,.09), transparent)' }}>
-        <I_Sun size={20} style={{ color: 'var(--purple3)' }} />
-        <div style={{ flex: 1, minWidth: 240 }}>
-          <div className="bt">Podés cambiar el modo en cualquier momento</div>
-          <div className="bs" style={{ marginTop: 4 }}>
-            Si te cansa aprobar, pasás a Automático. Si algo te asusta, volvés a Compartido.
-            <b> Nada de lo que el motor hizo se pierde al cambiar de modo.</b>
+        <div className="card" style={{ background: 'linear-gradient(120deg, rgba(168,85,247,.09), transparent)' }}>
+          <div className="row" style={{ gap: 12, alignItems: 'flex-start' }}>
+            <I_Sun size={20} style={{ color: 'var(--purple3)', flexShrink: 0 }} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="bt">Podés cambiar el modo en cualquier momento</div>
+              <div className="bs" style={{ marginTop: 4 }}>
+                Si te cansa aprobar, pasás a Automático. Si algo te asusta, volvés a Compartido.
+                <b> Nada de lo que el motor hizo se pierde al cambiar de modo.</b>
+              </div>
+            </div>
+          </div>
+          <div className="row" style={{ gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+            <Button variant="outline" className="btn-sm" title="Muestra los cambios de modo que hiciste y cuándo"
+              onClick={() => setToast('Historial de cambios de modo (demo)')}>Ver historial</Button>
+            <Button variant="ghost" className="btn-sm" title="Vuelve al modo recomendado, el que te pide OK antes de gastar"
+              onClick={() => { setModo('shared'); setToast('Modo Compartido activado'); }}>Volver a Compartido</Button>
+          </div>
+          <div className="row" style={{ gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+            <Badge tone="purple">Cambiar de modo no borra nada</Badge>
+            <Badge tone="green">Podés volver cuando quieras</Badge>
           </div>
         </div>
-        <Button variant="outline" className="btn-sm" title="Muestra los cambios de modo que hiciste y cuándo"
-          onClick={() => setToast('Historial de cambios de modo (demo)')}>Ver historial</Button>
+        </div>
       </div>
     </div>
   );
