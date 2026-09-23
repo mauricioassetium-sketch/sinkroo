@@ -74,6 +74,29 @@ export function Gauge({ pct, label, detalle, color }: { pct: number; label: stri
 }
 
 /** Métrica con su sparkline: el patrón base de todo el dashboard. */
+/** Métrica con diagrama circular: el anillo muestra qué tan cerca está de su meta. */
+export function MetricaAnillo({ label, valor, delta, pct, meta, color = '#a855f7', up = true }: {
+  label: string; valor: string; delta?: string; pct: number; meta?: string; color?: string; up?: boolean;
+}) {
+  const p = Math.max(0, Math.min(100, pct));
+  const c = p >= 80 ? 'var(--green)' : p >= 60 ? 'var(--amber)' : 'var(--red)';
+  return (
+    <div className="metrica-r">
+      <div className="ring" style={{ width: 76, height: 76, ['--p' as any]: p, ['--c' as any]: c }}>
+        <div className="ring-in">
+          <div className="ring-v" style={{ color: c, fontSize: 16, letterSpacing: '-.5px' }}>{p}%</div>
+        </div>
+      </div>
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <div className="metrica-lb">{label}</div>
+        <div className="metrica-v" style={{ color }}>{valor}</div>
+        {meta && <div className="metrica-meta">{meta}</div>}
+        {delta && <div className={`metrica-d ${up ? 'up' : 'down'}`}>{delta}</div>}
+      </div>
+    </div>
+  );
+}
+
 export function Metrica({ label, valor, delta, serie, color = '#a855f7', sub, up = true }: {
   label: string; valor: string; delta?: string; serie?: number[]; color?: string; sub?: string; up?: boolean;
 }) {

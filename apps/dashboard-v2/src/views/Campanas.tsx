@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Card, Badge, Button, Progress } from '../components/ui';
 import { ViewHead, Bars, Ring, BarRow, Gauge } from '../components/viz';
 import { Publicar } from '../components/Publicar';
+import { FlujoMiroFish } from '../components/FlujoMiroFish';
+import { Stepper, IngestaManual, Galeria, PASOS_CAMPANA, type PasoCampana } from '../components/CampanaPasos';
 import { I_Megaphone, I_Palette, I_Check, I_Vote, I_File, I_Zap, I_Trend, I_Eye } from '../components/icons';
 import type { Vista } from '../components/Layout';
 import { CAMPANAS, PANEL_ULTIMO, PANEL_PIEZAS, type Modo } from '../data/demo';
@@ -10,6 +12,8 @@ const GASTO = [40, 30, 12, 18, 9];
 const GASTO_LB = CAMPANAS.map(c => c.nombre.split(' ')[0]);
 
 export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: string) => void; modo: Modo; setVista: (v: Vista) => void }) {
+  const [paso, setPaso] = useState<PasoCampana>(1);
+  const listos = PASOS_CAMPANA.filter(p => p.n < paso).map(p => p.n) as PasoCampana[];
   const [abierto, setAbierto] = useState(true);
   const p = PANEL_ULTIMO;
   const colorScore = (s: number) => (s >= 80 ? 'var(--green)' : s >= 60 ? 'var(--amber)' : 'var(--red)');
@@ -22,7 +26,7 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
       <ViewHead
         icon={<I_Megaphone size={19} />}
         titulo="Campañas"
-        sub="Todo lo que publicás en tus redes: anuncios pagos, posts, historias, mensajes, lanzamientos. El motor lo crea y el panel lo aprueba antes de gastar un peso."
+        sub="Es un flujo por etapas: subís lo que tenés, Sinkroo crea, MiroFish vota y vos decidís mirando las piezas."
         nums={[
           { v: String(CAMPANAS.length), l: 'campañas' },
           { v: `$${diario}`, l: 'invertido por día', c: 'var(--green)' },
@@ -31,14 +35,42 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
         ]}
       />
 
-      {/* ============ ★★ EL CORAZÓN: QUÉ QUERÉS PUBLICAR ★★ ============ */}
+      {/* ==================== EL FLUJO, POR ETAPAS ==================== */}
+      <Stepper actual={paso} ir={setPaso} listos={listos} />
+
+      {paso === 1 && <IngestaManual setToast={setToast} ir={setPaso} />}
+
+      {paso === 2 && (
+        <>
+          <div className="csec" style={{ marginTop: 16 }}>
+            <span className="csec-n">2</span>
+            <span className="csec-t">Decile a Sinkroo qué querés</span>
+            <span className="csec-s">Él elige el tipo de campaña, el ángulo y el público, y crea todo</span>
+          </div>
+          <Publicar setToast={setToast} modo={modo} irAConversaciones={() => setVista('conversaciones')} soloIngesta />
+        </>
+      )}
+
+      {paso === 3 && (
+        <>
+          <div className="csec" style={{ marginTop: 16 }}>
+            <span className="csec-n">3</span>
+            <span className="csec-t">MiroFish</span>
+            <span className="csec-c purple">5 perfiles</span>
+            <span className="csec-s">Investiga el mercado, crea 5 opciones y las votan</span>
+          </div>
+          <FlujoMiroFish modo={modo} setToast={setToast} nombre="tu campaña" esAnuncio />
+        </>
+      )}
+
+      {paso === 4 && <Galeria modo={modo} setToast={setToast} ir={setPaso} />}
+
+      {paso === 5 && (<>
       <div className="csec" style={{ marginTop: 0 }}>
-        <span className="csec-n">★</span>
-        <span className="csec-t">Qué querés publicar</span>
-        <span className="csec-c purple">7 formas</span>
-        <span className="csec-s">Subí lo que necesitás: el motor lo crea, el panel lo aprueba y sale a tus redes</span>
+        <span className="csec-n">5</span>
+        <span className="csec-t">Tus campañas y el panel</span>
+        <span className="csec-s">Lo que está corriendo y el veredicto de la última pieza</span>
       </div>
-      <Publicar setToast={setToast} modo={modo} irAConversaciones={() => setVista('conversaciones')} />
 
       {/* ============ EL PANEL Y LAS PIEZAS ============ */}
       <div className="csec" style={{ marginTop: 26 }}>
@@ -264,6 +296,7 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
           </div>
         </Card>
       </div>
+      </>)}
     </div>
   );
 }

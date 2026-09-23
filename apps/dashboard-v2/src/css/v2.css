@@ -399,6 +399,54 @@
 .link-row { flex-wrap: wrap; }
 .link-row .input { flex: 1 1 200px; min-width: 0; }
 
+/* =============================================================================================
+   CAMPAÑAS POR ETAPAS — el paso a paso y la galería de piezas
+   ============================================================================================= */
+
+/* ---------- Los 5 pasos ---------- */
+.pasos { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+@media (max-width: 1150px) { .pasos { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 620px) { .pasos { grid-template-columns: minmax(0, 1fr); } }
+.paso { display: flex; align-items: center; gap: 9px; padding: 10px 12px; border-radius: 11px; cursor: pointer;
+  border: 1px solid var(--border); background: var(--bg2); text-align: left; color: var(--txt);
+  transition: all .18s; min-width: 0; }
+.paso:hover { border-color: var(--border2); }
+.paso.on { border-color: rgba(168,85,247,.6); background: rgba(168,85,247,.12); }
+.paso.done .paso-n { background: rgba(34,197,94,.18); border-color: rgba(34,197,94,.5); color: var(--green); }
+.paso-n { display: grid; place-items: center; width: 26px; height: 26px; flex-shrink: 0; border-radius: 8px;
+  font-size: 13px; background: var(--bg3); border: 1px solid var(--border2); }
+.paso-t { display: block; font-size: 12px; font-weight: 800; }
+.paso-d { display: block; font-size: 10px; color: var(--muted); line-height: 1.3; }
+.paso.on .paso-t { color: var(--purple3); }
+
+/* ---------- El atajo: dejar que Sinkroo haga todo ---------- */
+.atajo { border: 1.5px solid rgba(168,85,247,.45);
+  background: radial-gradient(circle at 92% 8%, rgba(168,85,247,.22), transparent 60%),
+    linear-gradient(160deg, rgba(168,85,247,.10), transparent 72%); }
+.gal-head { border: 1.5px solid rgba(34,197,94,.35);
+  background: linear-gradient(150deg, rgba(34,197,94,.08), transparent 72%); }
+
+/* ---------- La galería: las piezas creadas, para mirar y decidir ---------- */
+.gal { display: grid; grid-template-columns: repeat(auto-fill, minmax(228px, 1fr)); gap: 14px; margin-top: 16px; }
+.pz { display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: 13px; overflow: hidden;
+  background: var(--card); transition: border-color .18s, box-shadow .18s; min-width: 0; }
+.pz.sel { border-color: rgba(34,197,94,.55); box-shadow: 0 0 0 1px rgba(34,197,94,.22); }
+.pz-frame { position: relative; aspect-ratio: 4 / 5; display: flex; flex-direction: column; justify-content: flex-end;
+  padding: 12px; overflow: hidden; }
+.pz-pos { position: absolute; top: 9px; left: 9px; display: grid; place-items: center; width: 26px; height: 26px;
+  border-radius: 50%; background: rgba(0,0,0,.55); color: #fff; font-size: 12px; font-weight: 900; backdrop-filter: blur(3px); }
+.pz-formato { position: absolute; top: 10px; right: 10px; display: inline-flex; align-items: center; gap: 4px;
+  font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; color: #fff;
+  background: rgba(0,0,0,.5); padding: 3px 7px; border-radius: 99px; backdrop-filter: blur(3px); }
+.pz-ico { position: absolute; top: 46%; left: 50%; transform: translate(-50%, -50%); color: rgba(255,255,255,.92); }
+.pz-gancho { font-size: 11.5px; font-weight: 700; line-height: 1.35; color: #fff; text-shadow: 0 1px 8px rgba(0,0,0,.55); }
+.pz-medida { font-size: 9.5px; color: rgba(255,255,255,.78); margin-top: 3px; }
+.pz-body { padding: 10px 11px 12px; display: flex; flex-direction: column; gap: 8px; flex: 1; min-width: 0; }
+.pz-t { font-size: 12.5px; font-weight: 800; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pz-avg { font-size: 15px; font-weight: 900; color: var(--purple3); flex-shrink: 0; font-variant-numeric: tabular-nums; }
+.pz-ficha { border-top: 1px solid var(--border); padding-top: 10px; margin-top: 2px; }
+@media (max-width: 560px) { .gal { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); } }
+
 /* ---------- El motor en vivo y las métricas: se adaptan al ancho disponible ---------- */
 .motor-split { display: grid; grid-template-columns: 1.15fr 1fr; gap: 16px; align-items: start; }
 .motor-kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
@@ -582,6 +630,15 @@
 .metrica-v { grid-column: 1; min-width: 0; font-size: 18px; font-weight: 900; letter-spacing: -.4px; font-variant-numeric: tabular-nums; }
 .metrica-d { grid-column: 2; font-size: 10.5px; font-weight: 700; text-align: right; }
 .metrica-spark + .metrica-v { grid-row: 2; }
+
+/* ---------- Métrica con diagrama circular ---------- */
+.metrica-r { display: flex; align-items: center; gap: 13px; padding: 11px 13px; border: 1px solid var(--border);
+  border-radius: 12px; background: var(--bg2); min-width: 0; }
+.metrica-r .metrica-lb { display: block; }
+.metrica-r .metrica-v { font-size: 19px; }
+.metrica-meta { font-size: 10px; color: var(--muted2); margin-top: 1px; }
+.metrica-r .metrica-d { text-align: left; margin-top: 2px; }
+@media (max-width: 560px) { .metrica-r { gap: 10px; padding: 10px; } .metrica-r .ring { width: 62px !important; height: 62px !important; } }
 
 /* ---------- Cifras del encabezado ---------- */
 .cifras { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; flex: 1; min-width: 260px; }

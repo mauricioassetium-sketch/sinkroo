@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Card, Badge, Button } from '../components/ui';
 import { MotorEnVivo } from '../components/MotorEnVivo';
-import { Bars, Ring, BarRow, Metrica } from '../components/viz';
+import { Bars, Ring, BarRow, MetricaAnillo } from '../components/viz';
 import { usePerfil, nombreDePila } from '../lib/perfil';
 import { SinkrooMark, I_Check, I_ArrowRight, I_Wallet, I_Eye, I_Vote, I_Users, I_Star, I_Sun, I_Zap, I_Trend, I_Clock } from '../components/icons';
 import type { Vista } from '../components/Layout';
@@ -171,8 +171,7 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
         >
           <div className="met-grid">
             {NUMEROS.map((n, i) => (
-              <Metrica key={i} label={n.label} sub={n.area} valor={n.valor} delta={n.delta}
-                serie={n.serie} color={n.color} up={n.up} />
+              <MetricaAnillo key={i} label={n.label} valor={n.valor} delta={n.delta} pct={n.pct} meta={n.meta} color={n.color} up={n.up} />
             ))}
           </div>
           <div className="datos-row" style={{ marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--border)' }}>

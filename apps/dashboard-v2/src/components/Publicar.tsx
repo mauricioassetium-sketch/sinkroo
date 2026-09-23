@@ -19,8 +19,8 @@ function IconoCampo({ tipo }: { tipo: CampoPublicacion['tipo'] }) {
   return <I_File size={17} />;
 }
 
-export function Publicar({ setToast, modo, irAConversaciones }: {
-  setToast: (t: string) => void; modo: Modo; irAConversaciones: () => void;
+export function Publicar({ setToast, modo, irAConversaciones, soloIngesta }: {
+  setToast: (t: string) => void; modo: Modo; irAConversaciones: () => void; soloIngesta?: boolean;
 }) {
   const [formatoKey, setFormatoKey] = useState<FormatoKey>('anuncio');
   const [objetivo, setObjetivo] = useState<ObjetivoCampana>('ventas');
@@ -232,6 +232,7 @@ export function Publicar({ setToast, modo, irAConversaciones }: {
       <FlujoMiroFish modo={modo} setToast={setToast} nombre={nombreDe()} esAnuncio={formato.key === 'anuncio'} />
 
       {/* ==================== LO QUE NO SE PUBLICA ==================== */}
+      {!soloIngesta && (
       <div className="duo" style={{ marginTop: 16 }}>
         <Card
           title={<span className="row" style={{ gap: 8 }}><I_Chat size={14} style={{ color: 'var(--green)' }} /> Esto no se publica: trabaja solo</span>}
@@ -289,6 +290,7 @@ export function Publicar({ setToast, modo, irAConversaciones }: {
           </div>
         </Card>
       </div>
+      )}
     </>
   );
 }
