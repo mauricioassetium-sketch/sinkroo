@@ -97,6 +97,20 @@ export function ViewCreditos({ setToast }: { setToast: (t: string) => void }) {
               onClick={() => { setMetodo(m => m.startsWith('Visa') ? 'Mastercard ···· 8801' : 'Visa ···· 4242'); setToast('Método de pago cambiado'); }}>Cambiar</Button>
           </div>
 
+          <div className="guard">
+            <span style={{ color: 'var(--amber)', flexShrink: 0 }}><I_Shield size={15} /></span>
+            <span className="guard-lb">Si se te acaban
+              <small>El motor se frena solo y te avisa antes: nunca gasta de más ni publica sin saldo</small>
+            </span>
+            <span className="guard-val" style={{ color: 'var(--green)' }}>freno</span>
+          </div>
+
+          <div className="datos-row" style={{ marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--border)' }}>
+            <div className="dato"><span className="dato-l">Consumo por día</span><span className="dato-v">150</span></div>
+            <div className="dato"><span className="dato-l">Última recarga</span><span className="dato-v">hace 12 días</span></div>
+            <div className="dato"><span className="dato-l">Vencen</span><span className="dato-v">a los 12 meses</span></div>
+          </div>
+
           <div className="acc-why">
             El motor <b>se frena solo cuando te quedás sin créditos</b>: no sigue gastando ni publicando.
             Por eso la auto-recarga existe: para que no se detenga justo cuando una campaña está funcionando.

@@ -226,6 +226,19 @@
 .tipo-chip:hover { border-color: var(--border2); color: var(--txt); }
 .tipo-chip.sel { background: rgba(168,85,247,.16); border-color: rgba(168,85,247,.5); color: var(--txt); font-weight: 700; }
 
+/* ---------- Selfie con cámara en vivo (KYC paso 3) ---------- */
+.cam-wrap { display: flex; flex-direction: column; gap: 11px; }
+.cam-video { width: 100%; max-width: 420px; aspect-ratio: 4 / 3; border-radius: 12px; background: #000;
+  object-fit: cover; display: block; border: 1.5px solid var(--purple2); }
+.cam-foto { width: 100%; max-width: 420px; aspect-ratio: 4 / 3; border-radius: 12px; object-fit: cover;
+  display: block; border: 1.5px solid var(--green); }
+.cam-off { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  padding: 22px 16px; border: 1.5px dashed var(--border2); border-radius: 12px; background: var(--bg2); text-align: center; }
+.cam-qr { display: flex; align-items: center; gap: 14px; padding: 12px 14px; border-radius: 12px;
+  border: 1px solid var(--border); background: var(--bg2); }
+.cam-qr-code { display: grid; place-items: center; width: 56px; height: 56px; flex-shrink: 0; border-radius: 9px;
+  background: var(--bg3); border: 1px solid var(--border2); color: var(--purple3); }
+
 /* ---------- Campos del formulario ---------- */
 .campo-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-top: 6px; }
 .mat-campo { margin-bottom: 13px; min-width: 0; }
