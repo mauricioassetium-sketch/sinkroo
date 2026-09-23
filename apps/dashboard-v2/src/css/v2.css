@@ -734,3 +734,15 @@
 .composer-row { display: flex; gap: 8px; align-items: stretch; flex-wrap: wrap; }
 .composer-row .input { flex: 1 1 200px; min-width: 0; }
 .composer-row .btn { flex-shrink: 0; }
+
+/* =============================================================================================
+   CELULAR · el compositor de Conversaciones va fijo abajo.
+   Esta regla tiene que quedar AL FINAL del archivo: la declaración base del .composer está más
+   abajo en el archivo y, a igual especificidad, gana la última. Antes de moverla acá el campo
+   quedaba fuera de la pantalla y había que bajar toda la página para encontrarlo.
+   ============================================================================================= */
+@media (max-width: 880px) {
+  .composer { position: fixed; left: 0; right: 0; bottom: 0; z-index: 45; border-radius: 0;
+    box-shadow: 0 -8px 24px rgba(0,0,0,.35); }
+  .dash { padding-bottom: 108px; }
+}
