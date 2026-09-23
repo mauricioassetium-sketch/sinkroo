@@ -505,6 +505,12 @@
   .toast { left: 12px; right: 12px; bottom: 12px; transform: translateY(80px); max-width: none; }
   .toast.show { transform: translateY(0); }
   .cam-video, .cam-foto { max-width: 100%; }
+
+  /* En celular el compositor queda fijo abajo: escribís desde cualquier lado sin scrollear
+     hasta el final de la conversación. Antes había que bajar toda la página para encontrarlo. */
+  .composer { position: fixed; left: 0; right: 0; bottom: 0; z-index: 45; border-radius: 0;
+    box-shadow: 0 -8px 24px rgba(0,0,0,.35); }
+  .dash { padding-bottom: 96px; }
 }
 
 /* ---------- CELULAR CHICO ---------- */
@@ -701,3 +707,30 @@
   .hero-start { width: 100%; }
   .hero-metrics { min-width: 260px; }
 }
+
+/* =============================================================================================
+   CONVERSACIONES — el compositor de respuesta y los dos modos de atención
+   De acá salen TODOS los mensajes de la conversación abierta: la propuesta de Rumi baja como
+   borrador al compositor, se edita y se manda desde ahí. Antes la única forma de contestar era
+   un botón que enviaba tal cual, y no existía ningún campo de texto.
+   ============================================================================================= */
+
+/* ---------- El hilo de mensajes: crece pero no empuja al compositor fuera de la tarjeta ---------- */
+.hilo { display: flex; flex-direction: column; gap: 10px; max-height: 340px; overflow-y: auto; padding-right: 2px; }
+
+/* ---------- El compositor: campo de texto + Enviar, siempre visible al pie del chat ---------- */
+/* Queda pegado al pie de la ventana mientras la conversación está a la vista. El dueño se quejó
+   de que no veía dónde responder: con la tarjeta larga, el campo quedaba abajo del scroll. */
+.composer { display: flex; flex-direction: column; gap: 9px; position: sticky; bottom: 0; z-index: 2;
+  background: var(--card); box-shadow: 0 -18px 22px -18px rgba(0,0,0,.55); }
+/* La tira de estado: quién atiende ahora y qué pasa si escribís */
+.composer-strip { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 9px 11px;
+  border: 1px solid var(--border); border-radius: 10px; background: var(--bg2); }
+.composer-who { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 800;
+  padding: 3px 9px; border-radius: 99px; white-space: nowrap; }
+.composer-who.ia { background: rgba(34,197,94,.14); color: var(--green); border: 1px solid rgba(34,197,94,.3); }
+.composer-who.yo { background: rgba(245,158,11,.14); color: var(--amber); border: 1px solid rgba(245,158,11,.3); }
+.composer-hint { flex: 1; min-width: 150px; font-size: 11.5px; color: var(--muted); line-height: 1.45; }
+.composer-row { display: flex; gap: 8px; align-items: stretch; flex-wrap: wrap; }
+.composer-row .input { flex: 1 1 200px; min-width: 0; }
+.composer-row .btn { flex-shrink: 0; }
