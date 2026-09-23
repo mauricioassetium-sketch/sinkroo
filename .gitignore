@@ -5,3 +5,6 @@ dist/
 .env.*
 *.log
 !.env.example
+
+# Archivos temporales de las herramientas del agente
+.hermes-tmp.*
