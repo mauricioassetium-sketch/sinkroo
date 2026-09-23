@@ -225,7 +225,7 @@ export function ViewKyc({ setToast }: { setToast: (t: string) => void }) {
             {paso === 1 && (
               <div>
                 <label className="label">Nombre completo, como figura en el documento</label>
-                <input className="input" placeholder="Mauricio Assettium" value={nombre} onChange={e => setNombre(e.target.value)} />
+                <input className="input" placeholder="María Paula" value={nombre} onChange={e => setNombre(e.target.value)} />
               </div>
             )}
 

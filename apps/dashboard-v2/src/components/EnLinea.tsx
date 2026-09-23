@@ -14,7 +14,7 @@ const PUBLICADAS = [
   { titulo: 'El testimonio solo', formato: 'Imagen', red: 'Facebook + WhatsApp', alcance: 5210, clics: 196, roas: 5.1, color: '#4A7C59' },
 ];
 
-export function EnLinea({ setToast }: { setToast: (t: string) => void }) {
+export function EnLinea({ setToast, ir }: { setToast: (t: string) => void; ir?: (p: any) => void }) {
   // Monitoreo en vivo: los números se mueven mientras mirás
   const [tick, setTick] = useState(0);
   useEffect(() => {
@@ -154,7 +154,7 @@ export function EnLinea({ setToast }: { setToast: (t: string) => void }) {
           </div>
           <div className="row" style={{ gap: 9, flexWrap: 'wrap' }}>
             <Button variant="ghost" className="btn-sm" title="Vuelve al principio del flujo con una campaña nueva"
-              onClick={() => setToast('Campaña nueva (demo)')}>Crear una campaña nueva</Button>
+              onClick={() => { if (ir) { ir(1); setToast('Campaña nueva: volvés al paso 1'); } else setToast('Campaña nueva'); }}>Crear una campaña nueva</Button>
           </div>
           <div className="acc-why">
             El ciclo <b>no se corta</b>: lo que se publica alimenta lo que se crea después.

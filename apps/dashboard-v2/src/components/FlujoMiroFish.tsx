@@ -302,8 +302,6 @@ export function FlujoMiroFish({ modo, setToast, esAnuncio }: {
                   )}
                   <Button variant="ghost" className="btn-sm" title="Le pide al motor que rehaga solo la opción 4 y 5 con lo que objetaron los perfiles"
                     onClick={() => setToast('El motor rehace las 2 que no pasaron (demo)')}>Rehacer las 2 que no pasaron</Button>
-                  <Button variant="ghost" className="btn-sm" title="Vuelve a empezar todo el proceso, con otra investigación"
-                    onClick={arrancar}><I_Refresh size={13} /> Otra ronda</Button>
                 </div>
 
                 <div className="acc-why">

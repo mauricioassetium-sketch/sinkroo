@@ -3,9 +3,9 @@ import { Card, Badge, Button } from '../components/ui';
 import { ViewHead, BarRow } from '../components/viz';
 import { I_Gift, I_Copy, I_Check, I_Whatsapp, I_Credit, I_Trophy, I_ArrowRight, I_Users, I_Mail } from '../components/icons';
 import { TENANT } from '../data/demo';
-import { usePerfil } from '../lib/perfil';
+import { usePerfil, inicialesDe } from '../lib/perfil';
 
-const LINK = 'https://sinkroo.ai/r/assetium';
+const LINK = 'https://sinkroo.ai/r/skincare-natural';
 const PREMIO = 250;
 
 type Nodo = { nombre: string; estado: string; pago: boolean; nivel: 1 | 2; };
@@ -122,7 +122,7 @@ export function ViewReferidos({ setToast }: { setToast: (t: string) => void }) {
         >
           <div className="reftree">
             <div className="ref-node root">
-              <div className="av" style={{ width: 36, height: 36, background: 'linear-gradient(135deg,#a855f7,#7e22ce)' }}>AM</div>
+              <div className="av" style={{ width: 36, height: 36, background: `linear-gradient(135deg, ${perfil.color}, ${perfil.color}bb)` }}>{inicialesDe(perfil.nombre)}</div>
               <div style={{ flex: 1 }}>
                 <div className="bt">{perfil.nombre}</div>
                 <div className="tiny muted">vos · Plan {TENANT.plan}</div>

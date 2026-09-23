@@ -154,7 +154,7 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
       <div className="duo">
         <Card
           title={<span className="row" style={{ gap: 8 }}><I_Users size={14} style={{ color: 'var(--purple3)' }} /> El motor · estrategia y creatividad</span>}
-          action={<Badge tone="green">2 trabajando</Badge>}
+          action={<Badge tone="green">{AGENTES.filter(a => a.estado === 'trabajando').length} trabajando</Badge>}
         >
           <div className="work">
             {AGENTES.slice(0, 3).map(a => <AgenteRow key={a.id} a={a} setToast={setToast} />)}
@@ -462,7 +462,9 @@ function MientrasNoEstabas({ modo }: { modo: Modo }) {
       <div className="acc-why">
         {modo === 'auto'
           ? <>Estás en <b>Automático</b>: el motor decide y ejecuta sin preguntarte. Todas las acciones de acá son reversibles 24 h.</>
-          : <>Estás en <b>{MODOS.find(x => x.key === modo)?.nombre}</b>: el motor decide, pero <b>te pide OK</b> antes de publicar o gastar.</>}
+          : modo === 'shared'
+            ? <>Estás en <b>Compartido</b>: el motor decide, pero <b>te pide OK</b> antes de publicar o gastar.</>
+            : <>Estás en <b>Manual</b>: el motor solo te <b>sugiere</b>. Publicás y gastás vos.</>}
       </div>
     </>
   );

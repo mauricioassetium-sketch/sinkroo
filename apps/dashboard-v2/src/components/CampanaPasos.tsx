@@ -162,7 +162,7 @@ export function Galeria({ modo, setToast, ir }: { modo: Modo; setToast: (t: stri
             <Badge tone="purple">{salen.length} seleccionadas</Badge>
             <Button className="btn-sm" disabled={!salen.length}
               title={salen.length ? accionDice : 'Elegí al menos una pieza'}
-              onClick={() => { setToast(`${salen.length} piezas: ${accionDice} (demo)`); }}>
+              onClick={() => { setToast(`${salen.length} piezas: ${accionDice} (demo)`); ir(4); }}>
               <I_Rocket size={13} /> {salen.length === 1 ? 'Publicar la elegida' : `Publicar las ${salen.length}`}
             </Button>
           </div>

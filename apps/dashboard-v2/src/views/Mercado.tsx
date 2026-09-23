@@ -187,7 +187,7 @@ export function ViewMercado({ setToast }: { setToast: (t: string) => void }) {
 
         <Card
           title={<span className="row" style={{ gap: 8 }}><I_Check size={14} style={{ color: 'var(--green)' }} /> Qué hacer con esto</span>}
-          action={<Badge tone="green">3 acciones</Badge>}
+          action={<Badge tone="green">4 acciones</Badge>}
         >
           <div className="col-stack">
             <div className="guard">

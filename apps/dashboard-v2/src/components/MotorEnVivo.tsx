@@ -59,7 +59,7 @@ export function MotorEnVivo({ setToast }: { setToast: (t: string) => void }) {
 
   const pieza = PIEZAS_MOTOR[pos];
   const total = sent.pos + sent.neg + sent.ana;
-  const aprueba = score >= 60;
+  const aprueba = score >= 80;
 
   const cuentaVotos: Record<string, number> = {};
   votos.forEach(v => { cuentaVotos[v.v] = (cuentaVotos[v.v] || 0) + 1; });
@@ -226,8 +226,8 @@ export function MotorEnVivo({ setToast }: { setToast: (t: string) => void }) {
       <div className="row" style={{ gap: 9, marginTop: 12, flexWrap: 'wrap' }}>
         <Button variant={aprueba ? 'primary' : 'outline'} className="btn-sm"
           title="Saca la pieza del filtro y la deja lista para publicar"
-          onClick={() => setToast(aprueba ? `"${pieza.n}" aprobada y lista para publicar (demo)` : 'El score no llega a 60: el sistema la descarta y aprende (demo)')}>
-          <I_Check size={13} /> {aprueba ? 'Sacar del filtro y publicar' : 'Forzar publicación'}
+          onClick={() => setToast(aprueba ? `"${pieza.n}" aprobada y lista para publicar (demo)` : 'El score no llega a 80: no se publica y el motor aprende de esto (demo)')}>
+          <I_Check size={13} /> {aprueba ? 'Sacar del filtro y publicar' : 'Pedir otra ronda al motor'}
         </Button>
         <Button variant="ghost" className="btn-sm"
           title="Abre el detalle de cómo votó cada observador"

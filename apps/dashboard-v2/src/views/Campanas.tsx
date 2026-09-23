@@ -88,7 +88,7 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
 
       {paso === 3 && <Galeria modo={modo} setToast={setToast} ir={setPaso} />}
 
-      {paso === 4 && <EnLinea setToast={setToast} />}
+      {paso === 4 && <EnLinea setToast={setToast} ir={setPaso} />}
 
       {paso === 5 && (<>
       <div className="csec" style={{ marginTop: 0 }}>
@@ -115,7 +115,7 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
               <div className="bt">{p.pieza}</div>
               <div className="bs" style={{ marginTop: 5 }}>{p.criterio} · revisada por 5 perfiles en 8 segundos.</div>
               <div className="row" style={{ gap: 7, marginTop: 11, flexWrap: 'wrap' }}>
-                <Badge tone="purple">11 dimensiones</Badge>
+                <Badge tone="purple">5 perfiles</Badge>
                 <Badge tone="amber">1 objeción</Badge>
               </div>
             </div>
