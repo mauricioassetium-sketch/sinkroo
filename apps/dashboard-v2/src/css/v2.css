@@ -765,13 +765,3 @@
 .anillo-lectura { font-size: 10.5px; line-height: 1.45; color: var(--muted); text-align: left;
   border-top: 1px solid var(--border); padding-top: 7px; margin-top: 2px; }
 @media (max-width: 560px) { .anillo-lectura { text-align: center; } }
-
-/* ---------- Tira de estado (debajo del hero) ---------- */
-/* Una línea, no cuatro pastillas: el número en negrita, la etiqueta en gris y puntos de
-   separación. Se lee de un vistazo y deja el hero para el saludo y los números del día. */
-.tira { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 14px;
-  border: 1px solid var(--border); border-radius: 12px; background: var(--bg2); }
-.tira-item { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); min-width: 0; }
-.tira-item b { font-size: 13.5px; font-weight: 900; color: var(--txt); font-variant-numeric: tabular-nums; }
-.tira-sep { width: 3px; height: 3px; border-radius: 50%; background: var(--border2); flex-shrink: 0; }
-@media (max-width: 560px) { .tira { gap: 8px 10px; padding: 10px; } .tira-sep { display: none; } }
