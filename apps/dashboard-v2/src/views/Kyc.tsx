@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Card, Badge, Button } from '../components/ui';
 import { ViewHead } from '../components/viz';
 import { I_Shield, I_Check, I_ArrowRight, I_Camera, I_Lock, I_Zap, I_Credit, I_Globe, I_Eye, I_Qr, I_Refresh, I_Sun, I_User } from '../components/icons';
-import { TENANT } from '../data/demo';
+import { usePerfil } from '../lib/perfil';
 
 // =============================================================================================
 // MODELO DE KYC — todo se captura con la cámara, en el momento.
@@ -149,6 +149,7 @@ function CapturaCamara({ captura, foto, setFoto }: { captura: Captura; foto: str
 }
 
 export function ViewKyc({ setToast }: { setToast: (t: string) => void }) {
+  const { perfil } = usePerfil();
   const [paso, setPaso] = useState(1);
   const [fotos, setFotos] = useState<Record<string, string>>({});
   const [nombre, setNombre] = useState('');
@@ -331,8 +332,8 @@ export function ViewKyc({ setToast }: { setToast: (t: string) => void }) {
               <span className="guard-lb">Se borran solas<small>A los 90 días de aprobada la verificación.</small></span></div>
           </div>
           <div className="datos-row" style={{ marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--border)' }}>
-            <div className="dato"><span className="dato-l">Cuenta</span><span className="dato-v">{TENANT.cuenta}</span></div>
-            <div className="dato"><span className="dato-l">Titular</span><span className="dato-v">{TENANT.usuario}</span></div>
+            <div className="dato"><span className="dato-l">Cuenta</span><span className="dato-v">{perfil.marca}</span></div>
+            <div className="dato"><span className="dato-l">Titular</span><span className="dato-v">{perfil.nombre}</span></div>
             <div className="dato"><span className="dato-l">Estado</span><span className="dato-v" style={{ color: 'var(--amber)' }}>sin verificar</span></div>
           </div>
           <div className="acc-why">

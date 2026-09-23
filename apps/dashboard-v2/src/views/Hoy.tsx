@@ -2,10 +2,11 @@ import { useState } from 'react';
 import { Card, Badge, Button } from '../components/ui';
 import { MotorEnVivo } from '../components/MotorEnVivo';
 import { Bars, Ring, BarRow, Metrica } from '../components/viz';
+import { usePerfil, nombreDePila } from '../lib/perfil';
 import { SinkrooMark, I_Check, I_ArrowRight, I_Wallet, I_Eye, I_Vote, I_Users, I_Star, I_Sun, I_Zap, I_Trend, I_Clock } from '../components/icons';
 import type { Vista } from '../components/Layout';
 import {
-  TENANT, ALARMAS, DECISIONES, AGENTES, NUMEROS, MIENTRAS_NO_ESTABAS, BITACORA, MODOS, CONSECUENCIA,
+  ALARMAS, DECISIONES, AGENTES, NUMEROS, MIENTRAS_NO_ESTABAS, BITACORA, MODOS, CONSECUENCIA,
   MES, PANEL_PIEZAS,
   type Modo, type Severidad,
 } from '../data/demo';
@@ -13,6 +14,7 @@ import {
 const SEV_LB: Record<Severidad, string> = { critico: 'CRÍTICO', atencion: 'ATENCIÓN', oportunidad: 'OPORTUNIDAD', info: 'RESUELTO SOLO' };
 
 export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) => void; setVista: (v: Vista) => void; modo: Modo }) {
+  const { perfil } = usePerfil();
   const [hechas, setHechas] = useState<string[]>([]);
   const [alarmasExtra, setAlarmasExtra] = useState(false);
   const [bitacoraCompleta, setBitacoraCompleta] = useState(false);
@@ -39,7 +41,7 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
                   onClick={() => setToast('Tour guiado del panel (demo)')}>▶ Iniciar tour</button>
               </div>
               <div className="hdr-t hero-title">
-                Hola {TENANT.usuario.split(' ')[0]}, soy <span className="grad-text">Sinkroo</span> 👋
+                Hola {nombreDePila(perfil.nombre)}, soy <span className="grad-text">Sinkroo</span> 👋
               </div>
               <div className="hdr-s hero-sub">
                 Te estoy vigilando la tienda <b>24/7</b>. Mirá lo que hice hoy.

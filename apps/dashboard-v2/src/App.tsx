@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Layout, type Vista } from './components/Layout';
 import { useTheme } from './lib/theme';
+import { PerfilProvider } from './lib/perfil';
 import { ViewHoy } from './views/Hoy';
 import { ViewCampanas } from './views/Campanas';
 import { ViewConversaciones } from './views/Conversaciones';
@@ -23,7 +24,8 @@ export default function App() {
   };
 
   return (
-    <Layout vista={vista} setVista={setVista} theme={theme} cicloTema={cycle} toast={toast} modo={modo}>
+    <PerfilProvider>
+    <Layout vista={vista} setVista={setVista} theme={theme} cicloTema={cycle} toast={toast} modo={modo} avisar={avisar}>
       {vista === 'hoy' && <ViewHoy setToast={avisar} setVista={setVista} modo={modo} />}
       {vista === 'campanas' && <ViewCampanas setToast={avisar} modo={modo} setVista={setVista} />}
       {vista === 'conversaciones' && <ViewConversaciones setToast={avisar} modo={modo} />}
@@ -33,5 +35,6 @@ export default function App() {
       {vista === 'referidos' && <ViewReferidos setToast={avisar} />}
       {vista === 'kyc' && <ViewKyc setToast={avisar} />}
     </Layout>
+    </PerfilProvider>
   );
 }

@@ -1,6 +1,8 @@
 import { useState, type ReactNode } from 'react';
-import { SinkrooMark, I_Home, I_Megaphone, I_Whatsapp, I_Globe, I_Settings, I_Bell, I_Sun, I_Moon, I_Zap, I_Clock, I_Vote, I_Robot, I_Credit, I_Gift, I_Shield } from './icons';
+import { SinkrooMark, I_Home, I_Megaphone, I_Whatsapp, I_Globe, I_Settings, I_Bell, I_Sun, I_Moon, I_Zap, I_Clock, I_Vote, I_Robot, I_Credit, I_Gift, I_Shield, I_Edit } from './icons';
 import { TENANT, AGENTES, ALARMAS, DECISIONES, MODOS, type Modo } from '../data/demo';
+import { usePerfil, inicialesDe } from '../lib/perfil';
+import { PerfilModal } from './PerfilModal';
 
 export type Vista = 'hoy' | 'campanas' | 'conversaciones' | 'mercado' | 'cuenta' | 'creditos' | 'referidos' | 'kyc';
 
@@ -23,10 +25,12 @@ const NAV_CONF: { key: Vista; nombre: string; Icon: any }[] = [
   { key: 'kyc', nombre: 'Verificación', Icon: I_Shield },
 ];
 
-export function Layout({ vista, setVista, children, theme, cicloTema, toast, modo }: {
+export function Layout({ vista, setVista, children, theme, cicloTema, toast, modo, avisar }: {
   vista: Vista; setVista: (v: Vista) => void; children: ReactNode;
-  theme: string; cicloTema: () => void; toast: string; modo: Modo;
+  theme: string; cicloTema: () => void; toast: string; modo: Modo; avisar?: (t: string) => void;
 }) {
+  const { perfil } = usePerfil();
+  const [perfilAbierto, setPerfilAbierto] = useState(false);
   const [notif, setNotif] = useState(false);
   const trabajando = AGENTES.filter(a => a.estado === 'trabajando').length;
   const esperando = DECISIONES.length;
@@ -44,7 +48,7 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
         </div>
 
         <div className="sb-plan">
-          <div className="sb-plan-name">{TENANT.cuenta}</div>
+          <div className="sb-plan-name">{perfil.marca}</div>
           <div className="tiny muted">Plan {TENANT.plan}</div>
           <div className="row spread" style={{ marginTop: 10 }}>
             <span className="tiny muted">Créditos</span>
@@ -89,13 +93,19 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
           </div>
         ))}
 
-        <div className="sb-user" style={{ marginTop: 'auto' }}>
-          <div className="av" style={{ width: 32, height: 32, fontSize: 12 }}>MP</div>
-          <div style={{ minWidth: 0 }}>
-            <div className="tiny" style={{ fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{TENANT.usuario}</div>
-            <div className="tiny muted">{TENANT.cuenta}</div>
+        <div className="sb-user" onClick={() => setPerfilAbierto(true)} role="button" tabIndex={0}
+          title="Tu perfil: nombre, marca, email, zona horaria y moneda. Se puede editar."
+          onKeyDown={e => { if (e.key === 'Enter') setPerfilAbierto(true); }}>
+          <div className="av" style={{ width: 34, height: 34, fontSize: 12, background: `linear-gradient(135deg, ${perfil.color}, ${perfil.color}bb)` }}>
+            {inicialesDe(perfil.nombre)}
           </div>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div className="tiny" style={{ fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{perfil.nombre}</div>
+            <div className="tiny muted" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{perfil.marca}</div>
+          </div>
+          <span className="sb-edit" title="Editar mi perfil"><I_Edit size={14} /></span>
         </div>
+        <PerfilModal abierto={perfilAbierto} cerrar={() => setPerfilAbierto(false)} avisar={avisar} />
       </aside>
 
       {/* ================= MAIN ================= */}
