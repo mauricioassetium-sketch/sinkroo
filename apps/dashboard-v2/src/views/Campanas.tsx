@@ -4,7 +4,9 @@ import { ViewHead, Bars, Ring, BarRow, Gauge } from '../components/viz';
 import { Publicar } from '../components/Publicar';
 import { FlujoMiroFish } from '../components/FlujoMiroFish';
 import { Stepper, IngestaManual, Galeria, PASOS_CAMPANA, type PasoCampana } from '../components/CampanaPasos';
-import { I_Megaphone, I_Palette, I_Check, I_Vote, I_File, I_Zap, I_Trend, I_Eye } from '../components/icons';
+import { MotorEnVivo } from '../components/MotorEnVivo';
+import { EnLinea } from '../components/EnLinea';
+import { I_Megaphone, I_Palette, I_Check, I_Vote, I_File, I_Zap, I_Trend, I_Eye, I_Robot, I_Play, I_Upload } from '../components/icons';
 import type { Vista } from '../components/Layout';
 import { CAMPANAS, PANEL_ULTIMO, PANEL_PIEZAS, type Modo } from '../data/demo';
 
@@ -13,6 +15,7 @@ const GASTO_LB = CAMPANAS.map(c => c.nombre.split(' ')[0]);
 
 export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: string) => void; modo: Modo; setVista: (v: Vista) => void }) {
   const [paso, setPaso] = useState<PasoCampana>(1);
+  const [manual, setManual] = useState(false);
   const listos = PASOS_CAMPANA.filter(p => p.n < paso).map(p => p.n) as PasoCampana[];
   const [abierto, setAbierto] = useState(true);
   const p = PANEL_ULTIMO;
@@ -38,32 +41,52 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
       {/* ==================== EL FLUJO, POR ETAPAS ==================== */}
       <Stepper actual={paso} ir={setPaso} listos={listos} />
 
-      {paso === 1 && <IngestaManual setToast={setToast} ir={setPaso} />}
+      {paso === 1 && (
+        <>
+          <Card className="atajo">
+            <div className="row spread" style={{ gap: 14, flexWrap: 'wrap', alignItems: 'center' }}>
+              <div className="row" style={{ gap: 11, flex: 1, minWidth: 240 }}>
+                <span style={{ color: 'var(--purple3)', flexShrink: 0 }}><I_Robot size={20} /></span>
+                <div style={{ minWidth: 0 }}>
+                  <div className="bt">Paso 1 · Decile a Sinkroo qué querés</div>
+                  <div className="bs">Subí la info y el material. Sinkroo elige el tipo de campaña, el ángulo y el público, crea todo y lo manda a MiroFish. <b>Todo lo que subas pasa por ahí.</b></div>
+                </div>
+              </div>
+              <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+                <Button title="Arranca: Sinkroo investiga, crea las 5 opciones y las manda a MiroFish"
+                  onClick={() => { setToast('Sinkroo arrancó: ahora lo ves en MiroFish'); setPaso(2); }}>
+                  <I_Play size={14} /> Iniciar
+                </Button>
+                <Button variant="outline" className="btn-sm" title={manual ? 'Volver al camino con Sinkroo' : 'Si ya tenés las imágenes o los videos hechos, subilos y el panel los puntúa'}
+                  onClick={() => setManual(!manual)}>
+                  {manual ? <><I_Robot size={13} /> Mejor que lo haga Sinkroo</> : <><I_Upload size={13} /> Ya tengo todo listo</>}
+                </Button>
+              </div>
+            </div>
+          </Card>
+
+          {manual
+            ? <div style={{ marginTop: 16 }}><IngestaManual setToast={setToast} ir={setPaso} /></div>
+            : <Publicar setToast={setToast} modo={modo} irAConversaciones={() => setVista('conversaciones')} soloIngesta />}
+        </>
+      )}
 
       {paso === 2 && (
         <>
           <div className="csec" style={{ marginTop: 16 }}>
             <span className="csec-n">2</span>
-            <span className="csec-t">Decile a Sinkroo qué querés</span>
-            <span className="csec-s">Él elige el tipo de campaña, el ángulo y el público, y crea todo</span>
-          </div>
-          <Publicar setToast={setToast} modo={modo} irAConversaciones={() => setVista('conversaciones')} soloIngesta />
-        </>
-      )}
-
-      {paso === 3 && (
-        <>
-          <div className="csec" style={{ marginTop: 16 }}>
-            <span className="csec-n">3</span>
             <span className="csec-t">MiroFish</span>
-            <span className="csec-c purple">5 perfiles</span>
-            <span className="csec-s">Investiga el mercado, crea 5 opciones y las votan</span>
+            <span className="csec-c purple">{'5 perfiles'}</span>
+            <span className="csec-s">Todo lo que subiste cae acá: el mercado lo mira, vota y lo ordena del 1 al 5</span>
           </div>
+          <MotorEnVivo setToast={setToast} />
           <FlujoMiroFish modo={modo} setToast={setToast} nombre="tu campaña" esAnuncio />
         </>
       )}
 
-      {paso === 4 && <Galeria modo={modo} setToast={setToast} ir={setPaso} />}
+      {paso === 3 && <Galeria modo={modo} setToast={setToast} ir={setPaso} />}
+
+      {paso === 4 && <EnLinea setToast={setToast} />}
 
       {paso === 5 && (<>
       <div className="csec" style={{ marginTop: 0 }}>

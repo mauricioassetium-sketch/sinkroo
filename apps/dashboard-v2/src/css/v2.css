@@ -420,7 +420,7 @@
 .paso.on .paso-t { color: var(--purple3); }
 
 /* ---------- El atajo: dejar que Sinkroo haga todo ---------- */
-.atajo { border: 1.5px solid rgba(168,85,247,.45);
+.atajo { margin-top: 16px; border: 1.5px solid rgba(168,85,247,.45);
   background: radial-gradient(circle at 92% 8%, rgba(168,85,247,.22), transparent 60%),
     linear-gradient(160deg, rgba(168,85,247,.10), transparent 72%); }
 .gal-head { border: 1.5px solid rgba(34,197,94,.35);
@@ -630,6 +630,19 @@
 .metrica-v { grid-column: 1; min-width: 0; font-size: 18px; font-weight: 900; letter-spacing: -.4px; font-variant-numeric: tabular-nums; }
 .metrica-d { grid-column: 2; font-size: 10.5px; font-weight: 700; text-align: right; }
 .metrica-spark + .metrica-v { grid-row: 2; }
+
+/* ---------- En línea: monitoreo en vivo ---------- */
+.live-head { border: 1.5px solid rgba(34,197,94,.35);
+  background: linear-gradient(150deg, rgba(34,197,94,.08), transparent 72%); }
+.live-nums { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
+.live-n { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 11px;
+  border: 1px solid var(--border); background: var(--bg2); }
+.live-v { font-size: 22px; font-weight: 900; letter-spacing: -.6px; font-variant-numeric: tabular-nums; }
+.live-l { font-size: 10.5px; color: var(--muted); line-height: 1.3; }
+.pub { display: flex; align-items: center; gap: 11px; padding: 11px 0; border-bottom: 1px solid var(--border); min-width: 0; }
+.pub-color { width: 4px; align-self: stretch; border-radius: 3px; flex-shrink: 0; }
+.pub-nums { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 5px; }
+.pub-nums span { font-size: 10.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
 
 /* ---------- Métrica con diagrama circular ---------- */
 .metrica-r { display: flex; align-items: center; gap: 13px; padding: 11px 13px; border: 1px solid var(--border);

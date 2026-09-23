@@ -13,10 +13,10 @@ import type { Modo } from '../data/demo';
 export type PasoCampana = 1 | 2 | 3 | 4 | 5;
 
 export const PASOS_CAMPANA: { n: PasoCampana; t: string; d: string; icono: string }[] = [
-  { n: 1, t: 'Subir todo listo', d: 'Ya tenés las piezas hechas', icono: '📤' },
-  { n: 2, t: 'Que Sinkroo lo cree', d: 'Le das la info y él arma todo', icono: '🤖' },
-  { n: 3, t: 'MiroFish vota', d: 'Investiga, crea 5 y las ordena', icono: '🗳️' },
-  { n: 4, t: 'La galería', d: 'Mirás las piezas y decidís', icono: '🖼️' },
+  { n: 1, t: 'Con Sinkroo', d: 'Subís la info y él arranca', icono: '🤖' },
+  { n: 2, t: 'MiroFish', d: 'Todo pasa por acá: vota y ordena', icono: '🗳️' },
+  { n: 3, t: 'La galería', d: 'Lo que se creó, para decidir', icono: '🖼️' },
+  { n: 4, t: 'En línea', d: 'Monitoreo directo, en vivo', icono: '📡' },
   { n: 5, t: 'Mis campañas', d: 'Lo que ya está corriendo', icono: '📊' },
 ];
 
