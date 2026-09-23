@@ -507,18 +507,29 @@ export const COMPETIDORES = [
   { nombre: 'Green Beauty', anuncios: 4, gasto: 'bajo', precio: 59, leads: 22, propio: false, tend: 'down' as const },
 ];
 
+// pct = de cada 100 anuncios del rubro, cuántos usan ese ángulo. lectura = qué significa para vos.
 export const ANGULOS = [
-  { nombre: 'Resultado', pct: 38, ej: '"Piel pareja en 14 días. Sin filtros."' },
-  { nombre: 'Tecnología', pct: 27, ej: '"Vitamina C estabilizada al 10%. Formulación real."' },
-  { nombre: 'Emoción', pct: 21, ej: '"Volvé a mirarte al espejo con ganas."' },
-  { nombre: 'Precio', pct: 14, ej: '"El mismo activo que las marcas de $90."' },
+  { nombre: 'Resultado', pct: 38, ej: '"Piel pareja en 14 días. Sin filtros."',
+    lectura: 'Vender el resultado, no el producto. Es el más usado porque es el que más convierte: si tu anuncio no dice qué cambia en la piel, arrancás perdiendo.' },
+  { nombre: 'Tecnología', pct: 27, ej: '"Vitamina C estabilizada al 10%. Formulación real."',
+    lectura: 'Hablar del ingrediente y de la fórmula. Sirve para el que compara: le das el argumento técnico que necesita para decidir.' },
+  { nombre: 'Emoción', pct: 21, ej: '"Volvé a mirarte al espejo con ganas."',
+    lectura: 'Apelar a cómo te vas a sentir. Es el que mejor funciona con quien nunca te vio, porque no necesita entender la fórmula.' },
+  { nombre: 'Precio', pct: 14, ej: '"El mismo activo que las marcas de $90."',
+    lectura: 'El que menos se usa, y por algo: competir por precio desgasta el margen y atrae al cliente que se va con el próximo descuento. Usalo como comparación, no como bandera.' },
 ];
 
+// width = índice de 0 a 100 (qué tan fuerte está ese tema contra el máximo del rubro).
+// num = cuánto se movió en 30 días. lectura = qué significa para vos.
 export const TENDENCIAS = [
-  { label: 'Demanda de "serum vitamina C"', num: '+32%', up: true, width: '78%', tag: 'Búsqueda' },
-  { label: 'Formato before/after en alza', num: '+41%', up: true, width: '88%', tag: 'Formato' },
-  { label: 'Crecimiento D2C skincare', num: '+24%', up: true, width: '62%', tag: 'Mercado' },
-  { label: 'Precio de Tienda Norte', num: '-15%', up: false, width: '55%', tag: 'Competencia' },
+  { label: 'Demanda de "serum vitamina C"', num: '+32%', up: true, width: '78%', tag: 'Búsqueda',
+    lectura: 'La gente lo busca un 32% más que el mes pasado. Si tenés ese producto, es tu mejor momento para pautar: ya hay demanda esperando.' },
+  { label: 'Formato before/after en alza', num: '+41%', up: true, width: '88%', tag: 'Formato',
+    lectura: 'El antes y después es el formato que más crece del rubro. Es el que conviene usar hoy, y es el que tu competencia está usando.' },
+  { label: 'Crecimiento D2C skincare', num: '+24%', up: true, width: '62%', tag: 'Mercado',
+    lectura: 'Todo el rubro crece, no es solo tu tienda. Buen momento para subir el techo de inversión, no para bajar precios.' },
+  { label: 'Precio de Tienda Norte', num: '-15%', up: false, width: '55%', tag: 'Competencia',
+    lectura: 'Es el único número que baja: tu competidor más cercano bajó 15% el precio. Si te sigue, te saca el tráfico frío: conviene diferenciar antes que igualar.' },
 ];
 
 // ---------------------------------------------------------------------------------------------

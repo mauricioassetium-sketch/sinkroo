@@ -115,6 +115,11 @@ export function ViewMercado({ setToast }: { setToast: (t: string) => void }) {
           title={<span className="row" style={{ gap: 8 }}><I_Trend size={14} style={{ color: 'var(--green)' }} /> Para dónde va la demanda</span>}
           action={<Badge tone="green">últimos 30 días</Badge>}
         >
+          <div className="como-se-lee">
+            <b>Cómo se lee:</b> cada anillo se llena hasta 100. El número de adentro es el índice de los
+            últimos 30 días contra el máximo del rubro. <b style={{ color: 'var(--green)' }}>Verde</b> = sube,
+            <b style={{ color: 'var(--amber)' }}> ámbar</b> = baja. Y abajo de cada uno, qué significa para vos.
+          </div>
           <div className="anillos">
             {TENDENCIAS.map(t => (
               <div key={t.label} className="anillo">
@@ -125,6 +130,7 @@ export function ViewMercado({ setToast }: { setToast: (t: string) => void }) {
                   <span className="badge badge-muted" style={{ fontSize: 9 }}>{t.tag}</span>
                   <span style={{ fontWeight: 900, fontSize: 12.5, color: t.up ? 'var(--green)' : 'var(--amber)' }}>{t.num}</span>
                 </div>
+                <div className="anillo-lectura">{t.lectura}</div>
               </div>
             ))}
           </div>
@@ -138,12 +144,17 @@ export function ViewMercado({ setToast }: { setToast: (t: string) => void }) {
           title={<span className="row" style={{ gap: 8 }}><I_Star size={14} style={{ color: 'var(--purple3)' }} /> Qué ángulos están funcionando</span>}
           action={<Badge tone="purple">{ANGULOS.length} detectados</Badge>}
         >
+          <div className="como-se-lee">
+            <b>Cómo se lee:</b> el anillo se llena hasta el ángulo más usado. El número de adentro es el
+            <b> % de los anuncios del rubro</b> que usan ese ángulo. No es tu desempeño: es lo que hace el mercado.
+          </div>
           <div className="anillos">
             {ANGULOS.map(a => (
               <div key={a.nombre} className="anillo">
                 <Ring valor={a.pct} max={ANGULOS[0].pct} label="del mercado" size={86} color="var(--purple2)" />
                 <div className="anillo-lb">{a.nombre}</div>
                 <div className="bs" style={{ textAlign: 'center' }}>«{a.ej}»</div>
+                <div className="anillo-lectura">{a.lectura}</div>
               </div>
             ))}
           </div>
