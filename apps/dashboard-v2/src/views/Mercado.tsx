@@ -1,5 +1,5 @@
 import { Card, Badge, Button } from '../components/ui';
-import { ViewHead, BarRow } from '../components/viz';
+import { ViewHead, BarRow, Ring } from '../components/viz';
 import { I_Globe, I_Trend, I_Star, I_Eye, I_Zap, I_Check, I_ArrowRight, I_Plus, I_Users } from '../components/icons';
 import { COMPETIDORES, ANGULOS, TENDENCIAS } from '../data/demo';
 
@@ -115,19 +115,19 @@ export function ViewMercado({ setToast }: { setToast: (t: string) => void }) {
           title={<span className="row" style={{ gap: 8 }}><I_Trend size={14} style={{ color: 'var(--green)' }} /> Para dónde va la demanda</span>}
           action={<Badge tone="green">últimos 30 días</Badge>}
         >
-          {TENDENCIAS.map(t => (
-            <div key={t.label} style={{ padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
-              <div className="row spread" style={{ marginBottom: 7 }}>
-                <span className="row" style={{ gap: 8 }}>
-                  <span className="bt">{t.label}</span>
-                  <Badge tone="muted">{t.tag}</Badge>
-                </span>
-                <span style={{ fontWeight: 900, fontSize: 15, color: t.up ? 'var(--green)' : 'var(--amber)' }}>{t.num}</span>
+          <div className="anillos">
+            {TENDENCIAS.map(t => (
+              <div key={t.label} className="anillo">
+                <Ring valor={Math.round(parseFloat(t.width))} max={100} label="índice" size={86}
+                  color={t.up ? 'var(--green)' : 'var(--amber)'} />
+                <div className="anillo-lb">{t.label}</div>
+                <div className="anillo-pie">
+                  <span className="badge badge-muted" style={{ fontSize: 9 }}>{t.tag}</span>
+                  <span style={{ fontWeight: 900, fontSize: 12.5, color: t.up ? 'var(--green)' : 'var(--amber)' }}>{t.num}</span>
+                </div>
               </div>
-              <BarRow valor={parseFloat(t.width)} max={100} formato={`${t.width}`}
-                color={t.up ? 'var(--green)' : 'var(--amber)'} />
-            </div>
-          ))}
+            ))}
+          </div>
           <div className="acc-why">
             <b>Demanda del mercado, no tu desempeño.</b> Si la demanda sube y tus ventas no, el problema
             no es el mercado: es tu anuncio.
@@ -138,16 +138,15 @@ export function ViewMercado({ setToast }: { setToast: (t: string) => void }) {
           title={<span className="row" style={{ gap: 8 }}><I_Star size={14} style={{ color: 'var(--purple3)' }} /> Qué ángulos están funcionando</span>}
           action={<Badge tone="purple">{ANGULOS.length} detectados</Badge>}
         >
-          {ANGULOS.map(a => (
-            <div key={a.nombre} style={{ padding: '11px 0', borderBottom: '1px solid var(--border)' }}>
-              <div className="row spread" style={{ marginBottom: 7 }}>
-                <span className="bt">{a.nombre}</span>
-                <span style={{ fontWeight: 900, fontSize: 15, color: 'var(--purple3)' }}>{a.pct}%</span>
+          <div className="anillos">
+            {ANGULOS.map(a => (
+              <div key={a.nombre} className="anillo">
+                <Ring valor={a.pct} max={ANGULOS[0].pct} label="del mercado" size={86} color="var(--purple2)" />
+                <div className="anillo-lb">{a.nombre}</div>
+                <div className="bs" style={{ textAlign: 'center' }}>«{a.ej}»</div>
               </div>
-              <BarRow valor={a.pct} max={ANGULOS[0].pct} formato={`${a.pct}%`} color="var(--purple2)" />
-              <div className="bs" style={{ marginTop: 6 }}>«{a.ej}»</div>
-            </div>
-          ))}
+            ))}
+          </div>
           <div className="acc-why">
             De qué habla el mercado cuando vende lo que vos vendés. <b>No es una opinión de Sinkroo</b>:
             es el reparto real de los 47 anuncios que están corriendo en tu nicho.
