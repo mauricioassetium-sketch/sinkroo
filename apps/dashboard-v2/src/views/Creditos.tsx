@@ -116,10 +116,11 @@ export function ViewCreditos({ setToast }: { setToast: (t: string) => void }) {
                 {p.creditos.toLocaleString('es-AR')}
               </span>
               <span className="guard-lb">{p.nombre}{p.popular && <span className="badge badge-purple" style={{ fontSize: 8.5, marginLeft: 6 }}>el más elegido</span>}
-                <small>${p.precio} · ${p.unidad} por crédito · rinde ~{Math.round(p.creditos / 150)} días</small>
+                <small>${p.unidad} por crédito · rinde ~{Math.round(p.creditos / 150)} días</small>
               </span>
+              <span className="guard-val" style={{ flexShrink: 0 }}>${p.precio}</span>
               <Button className="btn-sm" title={`Carga ${p.creditos.toLocaleString('es-AR')} créditos por $${p.precio} con ${metodo}`}
-                onClick={() => recargar(p)}>${p.precio}</Button>
+                onClick={() => recargar(p)}>Recargar</Button>
             </div>
           ))}
           <div className="datos-row" style={{ marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--border)' }}>
