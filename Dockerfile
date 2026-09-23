@@ -14,6 +14,7 @@ COPY packages/gaia/package.json packages/gaia/
 COPY packages/deep-agents/package.json packages/deep-agents/
 COPY apps/api/package.json apps/api/
 COPY apps/gaia-broker/package.json apps/gaia-broker/
+COPY apps/dashboard/package.json apps/dashboard/
 
 RUN npm ci
 
