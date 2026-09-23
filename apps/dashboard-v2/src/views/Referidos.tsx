@@ -56,7 +56,7 @@ export function ViewReferidos({ setToast }: { setToast: (t: string) => void }) {
             Pasale este link a quien le pueda servir. <b>Gana créditos cuando la otra persona paga</b>,
             no cuando se registra: así nadie llena la red de cuentas vacías.
           </div>
-          <div className="row" style={{ gap: 8 }}>
+          <div className="row link-row" style={{ gap: 8 }}>
             <input className="input" value={LINK} readOnly style={{ fontFamily: 'ui-monospace, monospace', fontSize: 12 }} />
             <Button className="btn-sm" title="Copia el link al portapapeles" onClick={copiar}>
               <I_Copy size={14} /> {copiado ? 'Copiado' : 'Copiar'}

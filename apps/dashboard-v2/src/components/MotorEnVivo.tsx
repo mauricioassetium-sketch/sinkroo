@@ -74,7 +74,7 @@ export function MotorEnVivo({ setToast }: { setToast: (t: string) => void }) {
         Tu propuesta se prueba acá antes de salir a internet. Esto es lo que pasa <b>ahora mismo</b>:
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1.15fr 1fr', gap: 16, alignItems: 'start' }}>
+      <div className="motor-split">
         {/* ============ IZQUIERDA: el proceso ============ */}
         <div>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 14, padding: '10px 14px', borderRadius: 12, border: '1px solid rgba(168,85,247,.35)', background: 'rgba(124,58,237,.08)' }}>
@@ -86,7 +86,7 @@ export function MotorEnVivo({ setToast }: { setToast: (t: string) => void }) {
             <Badge tone="purple">Etapa {paso + 1}/6</Badge>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 14 }}>
+          <div className="motor-kpis">
             {/* sentimiento */}
             <div style={{ padding: 10, borderRadius: 10, border: '1px solid var(--border2)', background: 'var(--bg2)' }}>
               <div className="tiny muted" style={{ fontWeight: 700, marginBottom: 6 }}>Sentimiento del mercado</div>
@@ -188,7 +188,7 @@ export function MotorEnVivo({ setToast }: { setToast: (t: string) => void }) {
 
         {/* ============ DERECHA: el mercado reaccionando ============ */}
         <div style={{ border: '1px solid var(--border2)', borderRadius: 12, background: 'var(--bg2)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', borderBottom: '1px solid var(--border2)', background: 'var(--bg3)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', padding: '10px 12px', borderBottom: '1px solid var(--border2)', background: 'var(--bg3)' }}>
             <span style={{ width: 8, height: 8, borderRadius: 999, background: '#ef4444', boxShadow: '0 0 0 3px rgba(239,68,68,.25)', animation: 'livepulse 1.5s infinite' }} />
             <span className="small" style={{ fontWeight: 700 }}>Mercado, reacción en vivo</span>
             <span className="tiny muted" style={{ marginLeft: 'auto' }}>500 observadores</span>

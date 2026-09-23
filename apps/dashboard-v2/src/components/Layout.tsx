@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { SinkrooMark, I_Home, I_Megaphone, I_Whatsapp, I_Globe, I_Settings, I_Bell, I_Sun, I_Moon, I_Zap, I_Clock, I_Vote, I_Robot, I_Credit, I_Gift, I_Shield, I_Edit } from './icons';
+import { SinkrooMark, I_Home, I_Megaphone, I_Whatsapp, I_Globe, I_Settings, I_Bell, I_Sun, I_Moon, I_Zap, I_Clock, I_Vote, I_Robot, I_Credit, I_Gift, I_Shield, I_Edit, I_Menu, I_X } from './icons';
 import { TENANT, AGENTES, ALARMAS, DECISIONES, MODOS, type Modo } from '../data/demo';
 import { usePerfil, inicialesDe } from '../lib/perfil';
 import { PerfilModal } from './PerfilModal';
@@ -31,6 +31,7 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
 }) {
   const { perfil } = usePerfil();
   const [perfilAbierto, setPerfilAbierto] = useState(false);
+  const [menuAbierto, setMenuAbierto] = useState(false);
   const [notif, setNotif] = useState(false);
   const trabajando = AGENTES.filter(a => a.estado === 'trabajando').length;
   const esperando = DECISIONES.length;
@@ -40,11 +41,12 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
   return (
     <div className="app">
       {/* ================= SIDEBAR ================= */}
-      <aside className="sidebar">
+      <aside className={`sidebar ${menuAbierto ? 'abierto' : ''}`}>
         <div className="sb-brand">
           <SinkrooMark size={30} />
           <div className="wordmark">Sinkroo</div>
-          <span className="badge badge-purple" style={{ marginLeft: 'auto', fontSize: 9 }}>v2</span>
+          <button className="sb-close" title="Cerrar el menú" onClick={() => setMenuAbierto(false)}><I_X size={16} /></button>
+          <span className="badge badge-purple sb-v2" style={{ marginLeft: 'auto', fontSize: 9 }}>v2</span>
         </div>
 
         <div className="sb-plan">
@@ -62,7 +64,7 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
 
         <div className="sb-section-label">TRABAJO</div>
         {NAV.slice(0, 4).map(n => (
-          <div key={n.key} className={`nav-item ${vista === n.key ? 'active' : ''}`} onClick={() => setVista(n.key)}>
+          <div key={n.key} className={`nav-item ${vista === n.key ? 'active' : ''}`} onClick={() => { setVista(n.key); setMenuAbierto(false); }}>
             <n.Icon size={17} />
             <span className="nav-label">{n.nombre}</span>
             {n.key === 'conversaciones' && esperando > 0 && (
@@ -73,7 +75,7 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
 
         <div className="sb-section-label" style={{ marginTop: 10 }}>CRECER</div>
         {NAV_CRECER.map(n => (
-          <div key={n.key} className={`nav-item ${vista === n.key ? 'active' : ''}`} onClick={() => setVista(n.key)}>
+          <div key={n.key} className={`nav-item ${vista === n.key ? 'active' : ''}`} onClick={() => { setVista(n.key); setMenuAbierto(false); }}>
             <n.Icon size={17} />
             <span className="nav-label">{n.nombre}</span>
             {n.key === 'creditos' && (
@@ -84,7 +86,7 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
 
         <div className="sb-section-label" style={{ marginTop: 10 }}>CONFIGURACIÓN</div>
         {NAV_CONF.map(n => (
-          <div key={n.key} className={`nav-item ${vista === n.key ? 'active' : ''}`} onClick={() => setVista(n.key)}>
+          <div key={n.key} className={`nav-item ${vista === n.key ? 'active' : ''}`} onClick={() => { setVista(n.key); setMenuAbierto(false); }}>
             <n.Icon size={17} />
             <span className="nav-label">{n.nombre}</span>
             {n.key === 'kyc' && (
@@ -108,10 +110,16 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
         <PerfilModal abierto={perfilAbierto} cerrar={() => setPerfilAbierto(false)} avisar={avisar} />
       </aside>
 
+      {/* En celular el menú se abre encima del contenido */}
+      {menuAbierto && <div className="sb-backdrop" onClick={() => setMenuAbierto(false)} />}
+
       {/* ================= MAIN ================= */}
       <div className="main">
         <header className="topbar v2-topbar">
           <div className="topbar-row">
+            <button className="menu-btn" title="Abrir el menú" onClick={() => setMenuAbierto(true)}>
+              <I_Menu size={18} />
+            </button>
             <div className="titles-wrap">
               <div className="ttl">{tituloVista(vista)}</div>
               <div className="sub">{subtituloVista(vista)}</div>

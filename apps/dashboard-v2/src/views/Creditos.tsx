@@ -152,16 +152,18 @@ export function ViewCreditos({ setToast }: { setToast: (t: string) => void }) {
           title={<span className="row" style={{ gap: 8 }}><I_Credit size={14} style={{ color: 'var(--purple3)' }} /> En qué se van</span>}
           action={<Badge tone="purple">{usados.toLocaleString('es-AR')} usados este mes</Badge>}
         >
-          {CONSUMO.map(c => (
-            <div key={c.l} style={{ padding: '8px 0' }}>
-              <div className="row spread" style={{ marginBottom: 6 }}>
-                <span className="bt">{c.l}</span>
-                <span style={{ fontWeight: 900, fontSize: 14, color: c.c }}>{c.v === 0 ? '0' : c.v.toLocaleString('es-AR')}</span>
+          <div className="grow-list">
+            {CONSUMO.map(c => (
+              <div key={c.l} style={{ padding: '8px 0' }}>
+                <div className="row spread" style={{ marginBottom: 6 }}>
+                  <span className="bt">{c.l}</span>
+                  <span style={{ fontWeight: 900, fontSize: 14, color: c.c }}>{c.v === 0 ? '0' : c.v.toLocaleString('es-AR')}</span>
+                </div>
+                <BarRow valor={c.v} max={180} color={c.c} />
+                <div className="tiny muted" style={{ marginTop: 5 }}>{c.nota}</div>
               </div>
-              <BarRow valor={c.v} max={180} color={c.c} />
-              <div className="tiny muted" style={{ marginTop: 5 }}>{c.nota}</div>
-            </div>
-          ))}
+            ))}
+          </div>
           <div className="acc-why">
             Cada fila es <b>trabajo real, no una tarifa</b>: "piezas y videos" son 6 videos producidos este mes.
             Si ves un consumo que no reconocés, podés abrir la bitácora y ver exactamente qué lo generó.

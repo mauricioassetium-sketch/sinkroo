@@ -179,7 +179,7 @@
   background: linear-gradient(140deg, rgba(34,197,94,.09), transparent 65%); }
 .mwb-top { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
 .mwb-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 11px; margin-top: 14px; }
-@media (max-width: 660px) { .mwb-grid { grid-template-columns: 1fr; } }
+@media (max-width: 660px) { .mwb-grid { grid-template-columns: minmax(0, 1fr); } }
 .mwb-k { background: var(--bg3); border: 1px solid var(--border); border-radius: 10px; padding: 11px; }
 .mwb-k-lb { font-size: 11px; color: var(--muted); }
 .mwb-k-v { font-size: 19px; font-weight: 900; margin-top: 4px; }
@@ -307,6 +307,191 @@
 .hero-start .hero-ad-btn { margin-top: 4px; align-self: flex-start; }
 @media (max-width: 1280px) { .hero-start { width: 200px; padding: 14px; } }
 
+/* =============================================================================================
+   FLUJO DE MIROFISH — investigación, creación, votación y producción
+   ============================================================================================= */
+
+/* ---------- Cabecera con los 4 pasos ---------- */
+.flujo-pasos { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 14px; }
+@media (max-width: 900px) { .flujo-pasos { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.flujo-paso { display: flex; align-items: center; gap: 9px; padding: 9px 11px; border-radius: 10px; min-width: 0;
+  border: 1px solid var(--border); background: var(--bg3); opacity: .55; transition: all .2s; }
+.flujo-paso.on { opacity: 1; border-color: rgba(168,85,247,.55); background: rgba(168,85,247,.10); }
+.flujo-paso.done { opacity: 1; border-color: rgba(34,197,94,.45); background: rgba(34,197,94,.08); }
+.flujo-paso-n { display: grid; place-items: center; width: 22px; height: 22px; flex-shrink: 0; border-radius: 50%;
+  font-size: 11px; font-weight: 900; background: var(--bg2); border: 1px solid var(--border2); color: var(--muted); }
+.flujo-paso.on .flujo-paso-n { background: rgba(168,85,247,.22); border-color: var(--purple2); color: var(--purple3); }
+.flujo-paso.done .flujo-paso-n { background: rgba(34,197,94,.18); border-color: rgba(34,197,94,.5); color: var(--green); }
+.flujo-paso-t { display: block; font-size: 12px; font-weight: 800; }
+.flujo-paso-d { display: block; font-size: 10px; color: var(--muted); line-height: 1.3; }
+
+/* ---------- Esperando y trabajando ---------- */
+.flujo-espera { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  padding: 26px 16px; text-align: center; border: 1.5px dashed var(--border2); border-radius: 12px; background: var(--bg2); }
+.flujo-espera-ico { color: var(--muted); opacity: .6; }
+.flujo-work { display: flex; align-items: center; gap: 9px; padding: 10px 13px; border-radius: 11px;
+  font-size: 12px; font-weight: 700; color: var(--purple3); background: rgba(168,85,247,.09); border: 1px solid rgba(168,85,247,.28); }
+.flujo-puntos { display: inline-flex; gap: 3px; margin-left: auto; }
+.flujo-puntos i { width: 4px; height: 4px; border-radius: 50%; background: var(--purple3); animation: flujoDot 1.1s infinite; }
+.flujo-puntos i:nth-child(2) { animation-delay: .15s; }
+.flujo-puntos i:nth-child(3) { animation-delay: .3s; }
+@keyframes flujoDot { 0%,100% { opacity: .25; transform: translateY(0); } 50% { opacity: 1; transform: translateY(-2px); } }
+
+/* ---------- Paleta del competidor que mejor convierte ---------- */
+.paleta { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 9px; }
+.swatch { display: flex; align-items: center; gap: 9px; padding: 9px 11px; border-radius: 11px;
+  border: 1px solid var(--border); background: var(--bg2); min-width: 0; }
+.swatch-color { width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0; border: 1px solid var(--border2); }
+.swatch-n { display: block; font-size: 12px; font-weight: 800; }
+.swatch-hex { display: block; font-size: 10px; color: var(--muted); font-family: ui-monospace, monospace; }
+
+/* ---------- Opciones creadas (con su prompt) ---------- */
+.ops { display: flex; flex-direction: column; gap: 8px; }
+.op { border: 1px solid var(--border); border-radius: 11px; overflow: hidden; background: var(--bg2); min-width: 0; }
+.op.on { border-color: var(--border2); background: var(--card); }
+.op-head { display: flex; align-items: center; gap: 9px; padding: 10px 12px; cursor: pointer; }
+.op-color { width: 4px; height: 26px; border-radius: 3px; flex-shrink: 0; }
+.op-ico { flex-shrink: 0; display: grid; place-items: center; }
+.op-t { display: block; font-size: 12.5px; font-weight: 800; }
+.op-m { display: block; font-size: 10px; color: var(--muted); }
+.op-chevron { color: var(--muted); flex-shrink: 0; }
+.op-body { padding: 0 12px 12px; border-top: 1px solid var(--border); }
+.op-gancho { font-size: 12px; font-style: italic; color: var(--txt); margin: 10px 0; line-height: 1.45; }
+.op-label { font-size: 9.5px; font-weight: 800; letter-spacing: .7px; text-transform: uppercase; color: var(--purple3); margin-bottom: 5px; }
+.op-prompt { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10.5px; line-height: 1.55;
+  color: var(--muted); background: var(--bg3); border: 1px solid var(--border); border-radius: 9px; padding: 9px 11px; }
+.op-row { display: flex; gap: 9px; margin-top: 9px; align-items: baseline; }
+.op-k { font-size: 10px; font-weight: 800; color: var(--muted); flex-shrink: 0; width: 92px; }
+.op-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+
+/* ---------- El ranking de MiroFish, del 1 al 5 ---------- */
+.rank-votos-head { display: flex; align-items: center; gap: 5px; justify-content: flex-end; margin: 4px 0 6px; }
+.rank-voto-h { font-size: 8.5px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .3px; width: 30px; text-align: center; }
+.rank { display: flex; flex-direction: column; gap: 6px; }
+.rank-row { display: flex; align-items: center; gap: 10px; padding: 9px 11px; border-radius: 11px; min-width: 0;
+  border: 1px solid var(--border); background: var(--bg2); }
+.rank-row.pasa { border-color: rgba(34,197,94,.4); background: rgba(34,197,94,.06); }
+.rank-pos { display: grid; place-items: center; width: 26px; height: 26px; flex-shrink: 0; border-radius: 50%;
+  font-size: 12px; font-weight: 900; background: var(--bg3); border: 1px solid var(--border2); color: var(--muted); }
+.rank-pos.pasa { background: rgba(34,197,94,.18); border-color: rgba(34,197,94,.55); color: var(--green); }
+.rank-t { display: block; font-size: 12px; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rank-m { display: block; font-size: 9.5px; color: var(--muted); }
+.rank-votos { display: flex; gap: 5px; flex-shrink: 0; }
+.rank-voto { width: 30px; text-align: center; font-size: 10.5px; font-weight: 800; padding: 3px 0; border-radius: 6px;
+  background: var(--bg3); color: var(--muted); border: 1px solid var(--border); font-variant-numeric: tabular-nums; }
+.rank-voto.hi { color: var(--green); border-color: rgba(34,197,94,.4); background: rgba(34,197,94,.10); }
+.rank-voto.lo { color: var(--amber); border-color: rgba(245,158,11,.4); background: rgba(245,158,11,.10); }
+.rank-avg { flex-shrink: 0; width: 38px; text-align: right; font-size: 15px; font-weight: 900; color: var(--purple3); font-variant-numeric: tabular-nums; }
+@media (max-width: 1180px) { .rank-votos { display: none; } .rank-voto-h { display: none; } }
+
+/* ---------- Las 3 que salen a producción ---------- */
+.sale { display: flex; align-items: center; gap: 11px; padding: 10px 11px; border-radius: 11px; min-width: 0;
+  border: 1px solid rgba(34,197,94,.32); background: rgba(34,197,94,.05); }
+.sale-pos { font-size: 13px; font-weight: 900; color: var(--green); flex-shrink: 0; width: 26px; }
+.sale-prev { display: grid; place-items: center; width: 38px; height: 38px; flex-shrink: 0; border-radius: 9px; border: 1px solid; }
+
+/* =============================================================================================
+   RESPONSIVE — celular, tablet y pantallas grandes
+   ============================================================================================= */
+
+.mt-16 { margin-top: 16px; }
+/* En celular el link de referido ocupa todo el ancho y el botón va abajo */
+.link-row { flex-wrap: wrap; }
+.link-row .input { flex: 1 1 200px; min-width: 0; }
+
+/* ---------- El motor en vivo y las métricas: se adaptan al ancho disponible ---------- */
+.motor-split { display: grid; grid-template-columns: 1.15fr 1fr; gap: 16px; align-items: start; }
+.motor-kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
+@media (max-width: 1080px) { .motor-split { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 620px) { .motor-kpis { grid-template-columns: minmax(0, 1fr); } }
+
+/* La grilla de métricas se adapta al ancho de SU tarjeta, no al de la pantalla: así la
+   cifra y el sparkline nunca se pisan cuando la columna se angosta. */
+.met-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(212px, 1fr)); gap: 12px; }
+
+/* ---------- El botón de menú y el cerrar: solo en celular ---------- */
+.menu-btn { display: none; align-items: center; justify-content: center; width: 34px; height: 34px; flex-shrink: 0;
+  border-radius: 9px; border: 1px solid var(--border2); background: var(--bg3); color: var(--txt); cursor: pointer; }
+.menu-btn:hover { border-color: var(--purple2); color: var(--purple3); }
+.sb-close { display: none; margin-left: auto; align-items: center; justify-content: center; width: 30px; height: 30px;
+  border-radius: 8px; border: 1px solid var(--border); background: var(--bg3); color: var(--muted); cursor: pointer; }
+.sb-backdrop { position: fixed; inset: 0; z-index: 110; background: rgba(0,0,0,.55); backdrop-filter: blur(2px); }
+
+/* ---------- CELULAR Y TABLET CHICA: el menú pasa a ser una bandeja que se abre encima ---------- */
+@media (max-width: 880px) {
+  .app { display: block; }
+  .sidebar { position: fixed; top: 0; left: 0; bottom: 0; width: 274px; min-width: 274px; height: 100vh;
+    z-index: 120; transform: translateX(-102%); transition: transform .22s ease;
+    box-shadow: 0 0 50px rgba(0,0,0,.55); }
+  .sidebar.abierto { transform: translateX(0); }
+  .menu-btn, .sb-close { display: inline-flex; }
+  .sb-v2 { display: none; }
+  .main { width: 100%; }
+  .content { padding: 14px 12px 44px; }
+  .topbar { padding: 10px 12px; }
+  .topbar-row { flex-wrap: wrap; gap: 8px 10px; }
+  .ticker { display: none; }
+  .ttl { font-size: 15px; }
+  .sub { display: none; }
+
+  /* El hero se apila y el logo baja de tamaño, pero sigue al costado del texto */
+  .hero { flex-direction: column; align-items: stretch; gap: 14px; padding: 18px; }
+  .hero-logo img { width: 86px !important; height: 86px !important; }
+  .hero .hero-greet { gap: 12px; align-items: flex-start; }
+  .hero .hero-title { font-size: 19px; }
+  .hero .hero-sub { font-size: 12.5px; }
+  .hero .hero-metric { padding: 10px 6px; }
+  .hero .metric { font-size: 22px; }
+  .m-desc { display: none; }
+  .hero-start { width: 100%; }
+  .hero-chips { margin-top: 9px; }
+  .hero-chip { font-size: 10px; padding: 4px 8px; }
+
+  /* Encabezados de vista y tarjetas */
+  .vhead { flex-direction: column; align-items: stretch; gap: 12px; padding: 16px; }
+  .cifras { grid-template-columns: repeat(2, minmax(0, 1fr)); min-width: 0; }
+  .card { padding: 15px; }
+  .flujo-pasos { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .perf-grid { grid-template-columns: minmax(0, 1fr); }
+  .op-k { width: 74px; }
+  .toast { left: 12px; right: 12px; bottom: 12px; transform: translateY(80px); max-width: none; }
+  .toast.show { transform: translateY(0); }
+  .cam-video, .cam-foto { max-width: 100%; }
+}
+
+/* ---------- CELULAR CHICO ---------- */
+@media (max-width: 480px) {
+  .content { padding: 12px 10px 40px; }
+  .hero .hero-title { font-size: 17px; }
+  .hero-logo img { width: 70px !important; height: 70px !important; }
+  .hero-metrics { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .hero .metric { font-size: 19px; }
+  .m-label { font-size: 9px; }
+  .cifras { grid-template-columns: minmax(0, 1fr); }
+  .csec-t { font-size: 13px; }
+  .flujo-pasos { grid-template-columns: minmax(0, 1fr); }
+  .rank-avg { width: 30px; font-size: 13px; }
+  .sales-pos, .sale-pos { width: 20px; font-size: 11px; }
+  .guard-val { font-size: 11px; }
+  .op-prompt { font-size: 10px; }
+}
+
+/* ---------- PANTALLAS GRANDES: se aprovecha el ancho sin estirar de más ---------- */
+@media (min-width: 1700px) {
+  .content { padding: 26px 34px 64px; }
+  .dash { max-width: 1800px; margin: 0 auto; width: 100%; }
+}
+@media (min-width: 2100px) {
+  .dash { max-width: 1980px; }
+  .sidebar { width: 268px; min-width: 268px; }
+  .hero .hero-title { font-size: 33px; }
+  .hero .metric { font-size: 38px; }
+  .csec-t { font-size: 17px; }
+}
+@media (min-width: 2600px) {
+  .dash { max-width: 2180px; }
+}
+
 /* ---------- Perfil del sidebar: clickeable y editable ---------- */
 .sb-user { margin-top: auto; cursor: pointer; border-radius: 10px; transition: background .15s, border-color .15s; }
 .sb-user:hover { background: var(--bg3); border-top-color: var(--purple2); }
@@ -317,7 +502,7 @@
 
 /* ---------- Modal de perfil ---------- */
 .perf-grid { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 18px; align-items: start; }
-@media (max-width: 560px) { .perf-grid { grid-template-columns: 1fr; } }
+@media (max-width: 560px) { .perf-grid { grid-template-columns: minmax(0, 1fr); } }
 .perf-av { display: flex; flex-direction: column; align-items: center; }
 .perf-color { width: 22px; height: 22px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; padding: 0; }
 .perf-color.sel { border-color: var(--txt); transform: scale(1.12); }
@@ -347,10 +532,13 @@
 .duo > .card > .card-b > .work,
 .duo > .card > .card-b > .strike-list,
 .duo > .card > .card-b > .mwb-list,
+.duo > .card > .card-b > .col-stack,
+.duo > .card > .card-b > .grow-list,
 .col > .card > .card-b > .tl,
-.col > .card > .card-b > .guards {
+.col > .card > .card-b > .guards,
+.col > .card > .card-b > .grow-list {
   flex: 1 1 auto; display: flex; flex-direction: column; justify-content: space-around; }
-@media (max-width: 980px) { .duo { grid-template-columns: 1fr; }
+@media (max-width: 980px) { .duo { grid-template-columns: minmax(0, 1fr); }
   .duo > .card > .card-b { justify-content: flex-start; } }
 
 /* =============================================================================================

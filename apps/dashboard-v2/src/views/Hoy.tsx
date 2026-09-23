@@ -169,7 +169,7 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
           title={<span className="row" style={{ gap: 8 }}><I_Trend size={14} style={{ color: 'var(--green)' }} /> El modelo en números</span>}
           action={<Badge tone="purple">este mes</Badge>}
         >
-          <div className="duo">
+          <div className="met-grid">
             {NUMEROS.map((n, i) => (
               <Metrica key={i} label={n.label} sub={n.area} valor={n.valor} delta={n.delta}
                 serie={n.serie} color={n.color} up={n.up} />

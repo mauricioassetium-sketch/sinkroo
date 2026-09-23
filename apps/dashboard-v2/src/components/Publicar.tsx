@@ -2,9 +2,9 @@ import { useMemo, useState } from 'react';
 import { Card, Badge, Button } from './ui';
 import {
   I_Megaphone, I_Upload, I_Image, I_Film, I_File, I_Link, I_Check, I_ArrowRight, I_Trash,
-  I_Robot, I_Vote, I_Rocket, I_Target, I_Search, I_Sparkle, I_ChevDn, I_ChevUp,
-  I_Users, I_Play, I_Eye, I_X, I_Chat,
+  I_ChevDn, I_ChevUp, I_Users, I_Chat,
 } from './icons';
+import { FlujoMiroFish } from './FlujoMiroFish';
 import { TIPOS_CAMPANA, type ObjetivoCampana } from '../data/campana';
 import { FORMATOS, MATERIAL, NO_SE_PUBLICA, type CampoPublicacion, type FormatoKey } from '../data/publicaciones';
 import type { Modo } from '../data/demo';
@@ -27,7 +27,6 @@ export function Publicar({ setToast, modo, irAConversaciones }: {
   const [valores, setValores] = useState<Record<string, Valor>>({});
   const [material, setMaterial] = useState<Record<string, Archivo[]>>({});
   const [avanzados, setAvanzados] = useState(false);
-  const [enviado, setEnviado] = useState(false);
 
   const formato = FORMATOS.find(f => f.key === formatoKey)!;
   const tipo = TIPOS_CAMPANA.find(t => t.key === objetivo)!;
@@ -71,12 +70,6 @@ export function Publicar({ setToast, modo, irAConversaciones }: {
       || (valores['que_le_pedis'] as string) || '';
     return a.trim().slice(0, 70) || formato.nombre;
   };
-
-  const accionDice = modo === 'auto'
-    ? 'Se publica solo y te queda en la bitácora'
-    : modo === 'shared'
-      ? 'Kai te pide el OK antes de publicar'
-      : 'Queda lista para que la publiques vos';
 
   const camposFormato = (campos: CampoPublicacion[]) => campos.map(campo => {
     const v = valores[campo.id];
@@ -122,7 +115,7 @@ export function Publicar({ setToast, modo, irAConversaciones }: {
             {FORMATOS.map(f => (
               <button key={f.key} type="button" className={`fmt-card ${formatoKey === f.key ? 'sel' : ''}`}
                 style={formatoKey === f.key ? { borderColor: f.color + '99' } : undefined}
-                onClick={() => { setFormatoKey(f.key); setEnviado(false); }}>
+                onClick={() => setFormatoKey(f.key)}>
                 <span className="fmt-ico" style={{ color: f.color }}>{f.icono}</span>
                 <span className="fmt-nm">{f.nombre}</span>
                 <span className="fmt-rs">{f.resumen}</span>
@@ -139,7 +132,7 @@ export function Publicar({ setToast, modo, irAConversaciones }: {
                 {TIPOS_CAMPANA.map(t => (
                   <button key={t.key} type="button" title={`Se mide por ${t.kpi}`}
                     className={`tipo-chip ${objetivo === t.key ? 'sel' : ''}`}
-                    onClick={() => { setObjetivo(t.key); setEnviado(false); }}>
+                    onClick={() => setObjetivo(t.key)}>
                     <span>{t.icono}</span>{t.nombre.replace('Campaña de ', '').replace(' / ', '/')}
                   </button>
                 ))}
@@ -186,6 +179,7 @@ export function Publicar({ setToast, modo, irAConversaciones }: {
             Esto es lo que hace la diferencia: el motor <b>usa tus fotos, tus videos y tus precios de verdad</b>,
             no inventa. Podés subir lo que tengas y después sumar más.
           </div>
+          <div className="grow-list">
           {MATERIAL.map(campo => {
             const archivos = material[campo.id] || [];
             return (
@@ -218,6 +212,7 @@ export function Publicar({ setToast, modo, irAConversaciones }: {
               </div>
             );
           })}
+          </div>
           <div>
             <div className="bs" style={{ marginBottom: 9 }}>Lo que el motor ya tiene de tu negocio:</div>
             <div className="guards">
@@ -233,156 +228,8 @@ export function Publicar({ setToast, modo, irAConversaciones }: {
         </Card>
       </div>
 
-      {/* ==================== FILA 2: EL MOTOR Y LA VOTACIÓN ==================== */}
-      <div className="duo" style={{ marginTop: 16 }}>
-        <Card
-          title={<span className="row" style={{ gap: 8 }}><I_Robot size={14} style={{ color: 'var(--purple3)' }} /> 3 · Lo que hace el motor</span>}
-          action={<Badge tone="purple">4 pasos</Badge>}
-        >
-          <div className="guards">
-            <div className="guard">
-              <span style={{ color: 'var(--purple3)', flexShrink: 0 }}><I_Search size={14} /></span>
-              <span className="guard-lb">Revisa el mercado y tu negocio
-                <small>Lee los anuncios activos de tus competidores y cruza lo que ya sabe de tu tienda desde el onboarding.</small>
-              </span>
-              <span className="guard-val">47 ads</span>
-            </div>
-            <div className="guard">
-              <span style={{ color: 'var(--purple3)', flexShrink: 0 }}><I_Sparkle size={14} /></span>
-              <span className="guard-lb">Crea las piezas
-                <small>Escribe los textos, arma las imágenes con tus fotos y produce los videos verticales con los prompts de cada escena.</small>
-              </span>
-              <span className="guard-val">6 piezas</span>
-            </div>
-            <div className="guard">
-              <span style={{ color: 'var(--purple3)', flexShrink: 0 }}><I_File size={14} /></span>
-              <span className="guard-lb">Te muestra todo antes de publicar
-                <small>Cada pieza con su texto, su público y —si es anuncio— su presupuesto.</small>
-              </span>
-              <span className="guard-val">revisable</span>
-            </div>
-            <div className="guard">
-              <span style={{ color: 'var(--green)', flexShrink: 0 }}><I_Rocket size={14} /></span>
-              <span className="guard-lb">{formato.key === 'anuncio' ? 'Las mejores salen a producción' : 'Las mejores se publican'}
-                <small>Solo pasa lo que el panel aprueba. Lo que no pasa queda guardado con el motivo.</small>
-              </span>
-              <span className="guard-val">top 3</span>
-            </div>
-          </div>
-          <div className="bs">
-            {formato.key === 'anuncio'
-              ? <>Mientras crea, el motor <b>no gasta nada</b>: el dinero se mueve recién cuando una pieza pasa el panel.</>
-              : <>Acá <b>no se gasta nada</b>: {formato.nombre.toLowerCase()} es contenido propio. El motor solo pone el trabajo.</>}
-          </div>
-          <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-            <Button className="btn-sm" title={`Arranca: revisa el mercado y crea las piezas de «${nombreDe()}»`}
-              onClick={() => setToast(`El motor está creando «${nombreDe()}» (demo)`)}>
-              <I_Play size={13} /> Empezar a crear
-            </Button>
-            <Button variant="ghost" className="btn-sm" title="Guarda lo cargado como borrador, sin crear nada todavía"
-              onClick={() => setToast('Guardado como borrador (demo)')}>Guardar borrador</Button>
-          </div>
-        </Card>
-
-        <Card
-          title={<span className="row" style={{ gap: 8 }}><I_Vote size={14} style={{ color: 'var(--amber)' }} /> 4 · El panel vota</span>}
-          action={enviado ? <Badge tone="green">aprobada</Badge> : <Badge tone="muted">sin enviar</Badge>}
-        >
-          {!enviado ? (
-            <>
-              <div className="bs">
-                Antes de publicar o gastar, tu propuesta pasa por <b>el panel de expertos de MiroFish</b>:
-                cinco perfiles distintos votan si convence. <b>Solo las mejores votadas salen a producción.</b>
-              </div>
-              <div className="dec">
-                <div className="dec-head">
-                  <span className="dec-av" style={{ background: 'var(--purple2)' }}>M</span>
-                  <span className="dec-agent" style={{ color: 'var(--purple3)' }}>Así vota el panel</span>
-                  <Badge tone="purple">5 perfiles</Badge>
-                </div>
-                <div className="dec-det">
-                  Comprador impulsivo, comprador que compara, cliente desconfiado, experto del rubro y
-                  alguien que nunca te vio. Cada uno con su objeción.
-                </div>
-                <div className="dec-panel">
-                  <div className="dec-panel-top">
-                    <I_Target size={14} style={{ color: 'var(--purple3)' }} />
-                    <b>Votación sobre mercado simulado</b>
-                  </div>
-                  <div className="dec-obj">
-                    Es un filtro: si no convence a nadie, no se publica y no te cuesta nada.
-                  </div>
-                </div>
-              </div>
-              <div className="row" style={{ gap: 9, flexWrap: 'wrap' }}>
-                <Button title={`Manda «${nombreDe()}» al panel de agentes para que la voten`}
-                  onClick={() => { setEnviado(true); setToast('Tu propuesta entró al panel: 4 de 5 a favor (demo)'); }}>
-                  <I_Vote size={13} /> Pasarla por los agentes
-                </Button>
-                <Button variant="ghost" className="btn-sm" title="Abre el motor andando, con las etapas de la votación en vivo"
-                  onClick={() => setToast('Ver el motor andando (demo)')}>
-                  <I_Eye size={13} /> Ver el motor andando
-                </Button>
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="row spread" style={{ alignItems: 'flex-start' }}>
-                <span className="row" style={{ gap: 10 }}>
-                  <I_Check size={18} style={{ color: 'var(--green)' }} />
-                  <span>
-                    <b style={{ fontSize: 13.5 }}>«{nombreDe()}» pasó el panel</b>
-                    <span className="tiny muted" style={{ display: 'block' }}>4 de 5 a favor · 1 con reserva</span>
-                  </span>
-                </span>
-                <span className="row" style={{ gap: 8 }}>
-                  <span style={{ fontSize: 26, fontWeight: 900, color: 'var(--green)' }}>84</span>
-                  <span className="tiny muted">/100</span>
-                </span>
-              </div>
-              <div className="bs">
-                <b style={{ color: 'var(--amber)' }}>Lo que objetaron:</b> «le falta prueba social: ningún
-                testimonio con nombre». Se arregla sumando una reseña real.
-              </div>
-              <div className="guards">
-                <div className="guard"><span style={{ color: 'var(--green)', flexShrink: 0 }}><I_Check size={14} /></span>
-                  <span className="guard-lb">«Antes y Después — el pack»
-                    <small>Video vertical 15 s · 88 puntos</small></span>
-                  <Badge tone="green">sale</Badge></div>
-                <div className="guard"><span style={{ color: 'var(--green)', flexShrink: 0 }}><I_Check size={14} /></span>
-                  <span className="guard-lb">«La rutina de 3 pasos»
-                    <small>Carrusel de 5 placas · 85 puntos</small></span>
-                  <Badge tone="green">sale</Badge></div>
-                <div className="guard"><span style={{ color: 'var(--green)', flexShrink: 0 }}><I_Check size={14} /></span>
-                  <span className="guard-lb">«Testimonio de Valeria»
-                    <small>Imagen + texto · 81 puntos</small></span>
-                  <Badge tone="green">sale</Badge></div>
-                <div className="guard"><span style={{ color: 'var(--muted)', flexShrink: 0 }}><I_X size={14} /></span>
-                  <span className="guard-lb">«Oferta 2x1 sin contexto»
-                    <small>64 puntos · no llegó al mínimo de 80</small></span>
-                  <Badge tone="muted">guardada</Badge></div>
-              </div>
-              <div className="row" style={{ gap: 9, flexWrap: 'wrap' }}>
-                <Button className="btn-sm" title={accionDice}
-                  onClick={() => setToast(`${accionDice} (demo)`)}>
-                  <I_Rocket size={13} /> {formato.key === 'anuncio' ? 'Publicar las 3 mejores' : 'Programar las 3 mejores'}
-                </Button>
-                <Button variant="ghost" className="btn-sm" title="Suma una reseña real y vuelve a puntuar la que no pasó"
-                  onClick={() => setToast('Suma la prueba social y la vuelve a puntuar (demo)')}>Arreglar la que no pasó</Button>
-                <Button variant="ghost" className="btn-sm" title="Vuelve al borrador: no se publica nada"
-                  onClick={() => { setEnviado(false); setToast('Vuelve al borrador: no se publica nada'); }}>Volver al borrador</Button>
-              </div>
-              <div className="acc-why">
-                {modo === 'manual'
-                  ? <><b>Estás en Manual:</b> el motor te las deja listas y las publicás vos.</>
-                  : modo === 'auto'
-                    ? <><b>Estás en Automático:</b> salen solas y quedan en la bitácora, reversibles 24 h.</>
-                    : <><b>Estás en Compartido:</b> el motor prepara todo y te pide el OK acá mismo.</>}
-              </div>
-            </>
-          )}
-        </Card>
-      </div>
+      {/* ==================== FILA 2: EL FLUJO DE MIROFISH ==================== */}
+      <FlujoMiroFish modo={modo} setToast={setToast} nombre={nombreDe()} esAnuncio={formato.key === 'anuncio'} />
 
       {/* ==================== LO QUE NO SE PUBLICA ==================== */}
       <div className="duo" style={{ marginTop: 16 }}>
