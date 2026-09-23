@@ -87,23 +87,35 @@ en realidad son dos habitaciones.
 del dashboard (pasos con delay, condiciones, pausar). Es su lugar natural y refuerza una vista
 que hoy está subutilizada.
 
-### 1.3 Los 6 agentes con nombre y toda su parafernalia
+### 1.3 Los 6 agentes con nombre: ~~salen~~ → **REVISADO, SE QUEDAN VISIBLES** ⚠️
 
-Sale del producto: los nombres (Lux, Rex, Nia, Kai, Sol, Rumi), el "mapa de agentes" con % de
-carga, el "historial de 5 tareas por agente", la "tormenta colectiva", los "votos emitidos hoy",
-las "12 inteligencias", los "500 observadores", la "votación del momento".
+> **Corrección posterior (ver `03-motor-a-la-vista.md`).** En la versión original de este
+> documento recomendé sacar a los 6 agentes de la interfaz. **Esa recomendación está mal** y acá
+> queda registrado el porqué.
+>
+> Confundí dos cosas distintas:
+> - **Exponer el mecanismo** (el ciclo de combustión) → eso sí sale
+> - **Mostrar evidencia de trabajo** (los pistones moviéndose) → eso **se queda y se refuerza**
+>
+> *El ser humano cree lo que ve.* Ver el trabajo aplicándose al propio proyecto es un mecanismo de
+> confianza, no un adorno. Lo que se saca no son los agentes: es la **telemetría vacía** que hay
+> alrededor de ellos.
 
-**Por qué está bien sacarlo:** al usuario no le importa *cómo* trabaja el sistema. Le importa
-**su resultado**. Un panel que muestra 6 personas ficticias trabajando con 82% de carga es
-infraestructura de la IA expuesta como producto: le pide al usuario entender el mecanismo para
-confiar en el resultado.
+**Qué sale definitivamente:** `carga: 82%`, `fase: 1`, el `technical` (`market-analyst`),
+`estado: 'En cola'`, `duracion: '2h 15m'`, `48 votos emitidos hoy`, `500 observadores`,
+`votación del momento`, `12 inteligencias del sistema`, y todo número no trazable a un evento real.
 
-**Qué se queda:** el resultado, en lenguaje humano. *"Analicé 50 anuncios de tu nicho. Tu
-audiencia responde mejor al ángulo de resultado, no al de precio. Estas 3 piezas lo usan."*
+**Qué se queda y se refuerza:** los 6 nombres (Lux, Rex, Nia, Kai, Sol, Rumi), su rol, la tarea en
+curso, y el historial — pero reescritos con las **tres anclas** (algo tuyo + un resultado + un
+tiempo) y con el resultado **clickeable a su artefacto**.
 
-> **Nota:** los nombres son un activo de marca ("tu equipo de marketing autónomo"). Se pueden
-> conservar en el marketing y en la landing, y sacarlos de la interfaz operativa. Es una decisión
-> de identidad, no de UX — ver §5.
+Y el cambio de fondo: **`En cola` deja de ser un estado pasivo y pasa a ser una decisión pendiente
+del usuario.** El motor en reposo le pide algo. Eso convierte el mirar en actuar.
+
+**El caso más claro — el enjambre no era arquitectura, era un focus group.** `48 votos emitidos
+hoy` es telemetría; *"tu anuncio pasó por 11 expertos y así votó cada uno"* es un servicio que el
+usuario ya entiende y ya paga. El `rationale` de cada votante ya existe en el código
+(`AgentVote.rationale`) y es el contenido más valioso del sistema — hoy no se muestra.
 
 ### 1.4 "Inteligencia Predictiva" como vista propia — **12 bloques → 0**
 
@@ -317,16 +329,21 @@ la predicción, la calibración, los 6 agentes — todo eso puede quedarse enter
 es de **exposición**, no de capacidad.
 
 La regla: **complejidad hacia adentro, simplicidad hacia afuera.** El usuario ve una respuesta de
-una línea; detrás hay 6 agentes y 11 dimensiones. Eso es bueno. Lo que está mal hoy es que el
-usuario *ve* los 6 agentes y los 11 votos.
+una línea; detrás hay 6 agentes y 11 dimensiones. Eso es bueno.
+
+> **Corrección:** la versión original de este documento decía que estaba mal que el usuario viera
+> a los 6 agentes y los votos. **Eso está revisado** — ver §1.3 y `03-motor-a-la-vista.md`. Ver a
+> los agentes trabajando es el mecanismo de confianza del producto. Lo que está mal es mostrar
+> **telemetría vacía**: `carga: 82%`, `votos emitidos: 48`, `500 observadores`. Un número sin
+> artefacto detrás no prueba trabajo; un artefacto sí.
 
 ---
 
 ## 5. Decisiones que necesito
 
-1. **Los nombres de los agentes** (Lux, Rex, Nia, Kai, Sol, Rumi): ¿salen de la interfaz y se
-   quedan solo en el marketing, o los querés visibles como identidad del producto?
-   *Mi recomendación: fuera de la interfaz operativa, dentro de la marca.*
+1. **~~Los nombres de los agentes~~** ✅ **RESUELTO:** se quedan visibles en la interfaz. Ver
+   `03-motor-a-la-vista.md` — ver el motor trabajando es el mecanismo de confianza del producto.
+   Lo que sale es la telemetría vacía, no los agentes.
 2. **Los 4 paquetes de crédito sueltos**: ¿salen de v1? *Recomiendo sí.*
 3. **Google Maps**: ¿confirmás sacarlo de v1 y usar Meta Ad Library para competencia?
    *Recomiendo sí — elimina la dependencia más caras y el mapa no cambia ninguna decisión.*
