@@ -314,13 +314,19 @@ export const PANEL_PIEZAS: { titulo: string; tipo: string; score: number; veredi
 // NÚMEROS — las cinco áreas del modelo
 // ---------------------------------------------------------------------------------------------
 
-export const NUMEROS: { area: string; label: string; valor: string; delta: string; up: boolean; color: string }[] = [
-  { area: 'Dinero', label: 'Ventas del mes', valor: '$4.280', delta: '+18%', up: true, color: '#22c55e' },
-  { area: 'Dinero', label: 'ROAS', valor: '3,8x', delta: '+0,4', up: true, color: '#22c55e' },
-  { area: 'Alcance', label: 'Personas alcanzadas', valor: '48,5K', delta: '+22%', up: true, color: '#a855f7' },
-  { area: 'Calidad', label: 'Score de tus piezas', valor: '84', delta: '+6', up: true, color: '#a855f7' },
-  { area: 'Conversaciones', label: 'Mensajes hoy', valor: '128', delta: '94% por IA', up: true, color: '#25d366' },
-  { area: 'Recursos', label: 'Días de autonomía', valor: '12', delta: '1.760 cr', up: false, color: '#f59e0b' },
+export const NUMEROS: { area: string; label: string; valor: string; delta: string; up: boolean; color: string; serie: number[] }[] = [
+  { area: 'Dinero', label: 'Ventas del mes', valor: '$4.280', delta: '+18%', up: true, color: '#22c55e',
+    serie: [2980, 3060, 3120, 3050, 3280, 3400, 3350, 3620, 3780, 3900, 4080, 4280] },
+  { area: 'Dinero', label: 'ROAS', valor: '3,8x', delta: '+0,4', up: true, color: '#22c55e',
+    serie: [3.1, 3.2, 3.0, 3.3, 3.4, 3.3, 3.5, 3.6, 3.5, 3.7, 3.7, 3.8] },
+  { area: 'Alcance', label: 'Personas alcanzadas', valor: '48,5K', delta: '+22%', up: true, color: '#a855f7',
+    serie: [31, 33, 35, 34, 37, 39, 41, 40, 43, 45, 47, 48.5] },
+  { area: 'Calidad', label: 'Score de tus piezas', valor: '84', delta: '+6', up: true, color: '#a855f7',
+    serie: [70, 72, 74, 73, 76, 78, 79, 81, 80, 82, 83, 84] },
+  { area: 'Conversaciones', label: 'Mensajes hoy', valor: '128', delta: '94% por IA', up: true, color: '#25d366',
+    serie: [80, 88, 95, 92, 101, 110, 108, 115, 120, 124, 126, 128] },
+  { area: 'Recursos', label: 'Días de autonomía', valor: '12', delta: '1.760 cr', up: false, color: '#f59e0b',
+    serie: [30, 27, 25, 22, 20, 18, 17, 16, 15, 14, 13, 12] },
 ];
 
 // ---------------------------------------------------------------------------------------------

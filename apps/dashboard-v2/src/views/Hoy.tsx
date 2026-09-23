@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Card, Badge, Button } from '../components/ui';
 import { MotorEnVivo } from '../components/MotorEnVivo';
+import { LineChart, Spark } from '../components/charts';
 import { SinkrooMark, I_Check, I_ArrowRight, I_Wallet, I_Eye, I_Vote, I_Chat, I_Megaphone, I_Question, I_Credit, I_Users, I_Star, I_Sun, I_Zap, I_Trend, I_Clock } from '../components/icons';
 import type { Vista } from '../components/Layout';
 import {
@@ -169,6 +170,19 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
           title={<span className="row" style={{ gap: 8 }}><I_Trend size={14} style={{ color: 'var(--green)' }} /> El modelo en números</span>}
           action={<Badge tone="purple">este mes</Badge>}
         >
+          {/* La curva del mes */}
+          <div style={{ background: 'radial-gradient(120% 90% at 50% 40%, #2a1245 0%, rgba(24,12,40,.6) 45%, transparent 78%)', borderRadius: 12, padding: '14px 10px 2px', marginBottom: 16 }}>
+            <div className="row spread" style={{ marginBottom: 4, padding: '0 6px' }}>
+              <span className="tiny muted">Ventas, últimos 12 meses</span>
+              <span className="tiny" style={{ fontWeight: 800 }}>$40.280 acumulado</span>
+            </div>
+            <LineChart
+              data={[2980, 3060, 3120, 3050, 3280, 3400, 3350, 3620, 3780, 3900, 4080, 4280]}
+              height={150}
+              labels={['Sep', 'Oct', 'Nov', 'Dic', 'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago']}
+            />
+          </div>
+
           <div>
             {NUMEROS.map((n, i) => (
               <div key={i} className="nrow">
@@ -177,6 +191,7 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
                   {n.label}
                   <span className="tiny muted" style={{ display: 'block' }}>{n.area}</span>
                 </span>
+                <span className="nrow-spark"><Spark data={n.serie} width={74} height={28} color={n.color} /></span>
                 <span className="nrow-v">{n.valor}</span>
                 <span className={`nrow-d ${n.up ? 'up' : 'down'}`}>{n.delta}</span>
               </div>
