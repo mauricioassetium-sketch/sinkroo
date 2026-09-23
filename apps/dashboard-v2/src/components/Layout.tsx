@@ -6,6 +6,16 @@ import { PerfilModal } from './PerfilModal';
 
 export type Vista = 'hoy' | 'campanas' | 'conversaciones' | 'mercado' | 'cuenta' | 'creditos' | 'referidos' | 'kyc';
 
+
+/** Lleva al motor andando: si no estás en Hoy, cambia de vista y después baja hasta el bloque. */
+export function bajarAlMotor(setVista: (v: Vista) => void) {
+  setVista('hoy');
+  window.setTimeout(() => {
+    const m = document.getElementById('motor');
+    if (m) m.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 160);
+}
+
 const NAV: { key: Vista; nombre: string; Icon: any }[] = [
   { key: 'hoy', nombre: 'Hoy', Icon: I_Home },
   { key: 'campanas', nombre: 'Campañas', Icon: I_Megaphone },
@@ -168,7 +178,7 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
               <span className="badge badge-purple" style={{ fontSize: 10 }}>
                 Modo {nombreModo}
               </span>
-              <button className="btn btn-ghost btn-sm" onClick={() => setVista('hoy')}>Ver el motor</button>
+              <button className="btn btn-ghost btn-sm" onClick={() => { setNotif(false); bajarAlMotor(setVista); }}>Ver el motor</button>
             </span>
           </div>
         </header>

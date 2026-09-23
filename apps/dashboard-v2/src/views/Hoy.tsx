@@ -69,7 +69,7 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
       </div>
 
       {/* ====================== EL MOTOR ANDANDO ====================== */}
-      <MotorEnVivo setToast={setToast} />
+      <div id="motor"><MotorEnVivo setToast={setToast} /></div>
 
       {/* ====================== FILA 1: ACCIÓN ====================== */}
       <div className="csec">
