@@ -117,7 +117,7 @@ export function FlujoMiroFish({ modo, setToast, esAnuncio }: {
       {/* ==================== FILA 1: INVESTIGACIÓN Y CREACIÓN ==================== */}
       <div className="duo" style={{ marginTop: 16 }}>
         <Card
-          title={<span className="row" style={{ gap: 8 }}><I_Search size={14} style={{ color: 'var(--purple3)' }} /> 1 · Lo que investigó Sinkroo</span>}
+          title={<span className="row" style={{ gap: 8 }}><I_Search size={14} style={{ color: 'var(--purple3)' }} /> 1 · Lo que investigaron los 6 agentes</span>}
           action={nivel >= 1 ? <Badge tone="purple">{INVESTIGACION.colores.length} colores detectados</Badge> : <Badge tone="muted">sin empezar</Badge>}
         >
           {nivel < 1
@@ -160,7 +160,7 @@ export function FlujoMiroFish({ modo, setToast, esAnuncio }: {
         </Card>
 
         <Card
-          title={<span className="row" style={{ gap: 8 }}><I_Sparkle size={14} style={{ color: 'var(--purple3)' }} /> 2 · Lo que creó con eso</span>}
+          title={<span className="row" style={{ gap: 8 }}><I_Sparkle size={14} style={{ color: 'var(--purple3)' }} /> 2 · Lo que crearon los 6 agentes</span>}
           action={nivel >= 2 ? <Badge tone="purple">{OPCIONES.length} opciones</Badge> : <Badge tone="muted">sin crear</Badge>}
         >
           {nivel < 2
@@ -215,14 +215,14 @@ export function FlujoMiroFish({ modo, setToast, esAnuncio }: {
       {/* ==================== FILA 2: VOTACIÓN Y PRODUCCIÓN ==================== */}
       <div className="duo" style={{ marginTop: 16 }}>
         <Card
-          title={<span className="row" style={{ gap: 8 }}><I_Vote size={14} style={{ color: 'var(--amber)' }} /> 3 · MiroFish las vota y las ordena</span>}
+          title={<span className="row" style={{ gap: 8 }}><I_Vote size={14} style={{ color: 'var(--amber)' }} /> 3 · Los 5 jueces las votan y las ordenan</span>}
           action={nivel >= 4 ? <Badge tone="green">ordenadas 1 a 5</Badge> : <Badge tone="muted">sin votar</Badge>}
         >
           {nivel < 3
-            ? espera(3, <I_Vote size={22} />, 'Acá votan los agentes', 'Cinco perfiles distintos puntúan cada opción. El promedio define el puesto, del 1 al 5.')
+            ? espera(3, <I_Vote size={22} />, 'Acá votan los 5 jueces', 'Cinco perfiles distintos puntúan cada opción. El promedio define el puesto, del 1 al 5.')
             : (
               <>
-                {trabajando(3, 'Los 5 perfiles están votando cada opción')}
+                {trabajando(3, 'Los 5 jueces están votando cada opción')}
                 <div className="bs">
                   Cada perfil mira algo distinto. El <b>promedio de los 5 votos</b> es el puntaje final y define
                   el puesto: la de arriba es la que más convence.
@@ -310,7 +310,7 @@ export function FlujoMiroFish({ modo, setToast, esAnuncio }: {
                     : modo === 'auto'
                       ? <><b>Estás en Automático:</b> las 3 salen solas y quedan en la bitácora, reversibles 24 h.</>
                       : <><b>Estás en Compartido:</b> el motor prepara todo y te pide el OK antes de publicarlas.</>}
-                  {' '}Nada de esto gastó un peso todavía.
+                  {' '}Crear las 5 opciones costó 120 créditos y evaluarlas 40. Publicar es lo único que gasta dinero.
                 </div>
               </>
             )}

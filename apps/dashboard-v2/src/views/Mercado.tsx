@@ -9,7 +9,7 @@ const OFERTA = [
   { k: 'Garantía', vos: '30 días', ellos: 'ninguno la ofrece', gana: true, nota: 'No te cuesta nada y ninguno de los 5 la tiene.' },
   { k: 'Atención por WhatsApp', vos: 'responde en 4 s', ellos: 'entre 6 y 24 h', gana: true, nota: 'La mitad de las consultas se cierran el mismo día.' },
   { k: 'Recompra automática', vos: 'a los 30 días', ellos: 'ninguno la tiene', gana: true, nota: 'Un cliente que vuelve cuesta $0 de publicidad.' },
-  { k: 'Reseñas', vos: '128', ellos: '940 el líder', gana: false, nota: 'Tu punto débil: es la objeción que marcó el panel.' },
+  { k: 'Reseñas', vos: '128', ellos: '940 el líder', gana: false, nota: 'Tu punto débil: es la objeción que marcó el juez más duro.' },
   { k: 'Retiro en el día', vos: 'no ofrecés', ellos: 'sí, 2 de 5', gana: false, nota: 'Cuesta casi nada si despachás desde tu local.' },
 ];
 
@@ -199,7 +199,7 @@ export function ViewMercado({ setToast }: { setToast: (t: string) => void }) {
             <div className="guard">
               <I_Check size={15} style={{ color: 'var(--green)', flexShrink: 0 }} />
               <span className="guard-lb">Sumar prueba social
-                <small>Es la única objeción del panel sobre tu pieza aprobada. Un testimonio con nombre la lleva de 84 a ~90.</small>
+                <small>Es la única objeción de los jueces sobre tu pieza aprobada. Un testimonio con nombre la lleva de 84 a ~90.</small>
               </span>
             </div>
             <div className="guard">

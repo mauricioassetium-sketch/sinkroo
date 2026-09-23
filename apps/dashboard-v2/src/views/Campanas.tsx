@@ -78,7 +78,7 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
           <div className="csec" style={{ marginTop: 16 }}>
             <span className="csec-n">2</span>
             <span className="csec-t">MiroFish</span>
-            <span className="csec-c purple">{'5 perfiles'}</span>
+            <span className="csec-c purple">{'5 jueces · 500 del público'}</span>
             <span className="csec-s">Todo lo que subiste cae acá: el mercado lo mira, vota y lo ordena del 1 al 5</span>
           </div>
           <MotorEnVivo setToast={setToast} />
@@ -100,9 +100,9 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
       {/* ============ EL PANEL Y LAS PIEZAS ============ */}
       <div className="csec" style={{ marginTop: 26 }}>
         <span className="csec-n">1</span>
-        <span className="csec-t">El panel de expertos</span>
-        <span className="csec-c purple">5 perfiles</span>
-        <span className="csec-s">Cada pieza pasa por MiroFish antes de gastar un peso</span>
+        <span className="csec-t">Los 5 jueces de MiroFish</span>
+        <span className="csec-c purple">5 jueces</span>
+        <span className="csec-s">Los 5 jueces dan el veredicto; 500 agentes del público marcan el porcentaje</span>
       </div>
       <div className="duo">
         <Card
@@ -113,9 +113,9 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
             <Ring valor={p.score} label="SCORE" color="var(--green)" sub="mínimo 80 para publicar" />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div className="bt">{p.pieza}</div>
-              <div className="bs" style={{ marginTop: 5 }}>{p.criterio} · revisada por 5 perfiles en 8 segundos.</div>
+              <div className="bs" style={{ marginTop: 5 }}>{p.criterio} · revisada por los 5 jueces en 8 segundos.</div>
               <div className="row" style={{ gap: 7, marginTop: 11, flexWrap: 'wrap' }}>
-                <Badge tone="purple">5 perfiles</Badge>
+                <Badge tone="purple">5 jueces</Badge>
                 <Badge tone="amber">1 objeción</Badge>
               </div>
             </div>
@@ -175,7 +175,7 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
             <div className="dato"><span className="dato-l">Frenadas a tiempo</span><span className="dato-v" style={{ color: 'var(--amber)' }}>13</span></div>
           </div>
           <div className="acc-why">
-            <b>Una pieza que no pasa el panel nunca se publica.</b> El orden importa: primero convence al mercado simulado, después gasta tu dinero.
+            <b>Una pieza que no pasa a los jueces nunca se publica.</b> El orden importa: primero convencen a los 5 jueces y reacciona el público, después gasta tu dinero.
           </div>
         </Card>
       </div>

@@ -109,8 +109,8 @@ export function IngestaManual({ setToast, ir }: { setToast: (t: string) => void;
         </Card>
 
         <Card
-          title={<span className="row" style={{ gap: 8 }}><I_Eye size={14} style={{ color: 'var(--green)' }} /> Qué mira el panel en tus piezas</span>}
-          action={<Badge tone="purple">5 perfiles</Badge>}
+          title={<span className="row" style={{ gap: 8 }}><I_Eye size={14} style={{ color: 'var(--green)' }} /> Qué miran los 5 jueces en tus piezas</span>}
+          action={<Badge tone="purple">5 jueces</Badge>}
         >
           <div className="guards">
             <div className="guard"><span style={{ color: 'var(--purple3)', flexShrink: 0 }}><I_Target size={14} /></span>
@@ -123,7 +123,7 @@ export function IngestaManual({ setToast, ir }: { setToast: (t: string) => void;
               <span className="guard-lb">Si parece real o parece armado<small>El desconfiado castiga las fotos de banco de imágenes</small></span></div>
           </div>
           <div className="acc-why">
-            Los mismos 5 perfiles de MiroFish miran <b>cualquier pieza, la hayas creado vos o el motor</b>.
+            Los mismos 5 jueces de MiroFish miran <b>cualquier pieza, la hayas creado vos o el motor</b>.
             No se publica nada que no pase el mínimo.
           </div>
         </Card>
@@ -155,7 +155,7 @@ export function Galeria({ modo, setToast, ir }: { modo: Modo; setToast: (t: stri
             <span style={{ color: 'var(--green)', flexShrink: 0 }}><I_Sparkle size={20} /></span>
             <div style={{ minWidth: 0 }}>
               <div className="bt">Las {OPCIONES.length} piezas ya están creadas</div>
-              <div className="bs">Mirá cada una y elegí. <b>Las 3 primeras vienen marcadas</b> porque son las que mejor votó el panel, pero la decisión es tuya.</div>
+              <div className="bs">Mirá cada una y elegí. <b>Las 3 primeras vienen marcadas</b> porque son las que mejor votaron los 5 jueces, pero la decisión es tuya.</div>
             </div>
           </div>
           <div className="row" style={{ gap: 9, flexWrap: 'wrap' }}>
@@ -187,7 +187,7 @@ export function Galeria({ modo, setToast, ir }: { modo: Modo; setToast: (t: stri
                   <span className="pz-avg">{puntaje(o)}</span>
                 </div>
                 <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
-                  {salen.includes(o.id) && i < 3 && <span className="badge badge-green" style={{ fontSize: 9 }}>la eligió el panel</span>}
+                  {salen.includes(o.id) && i < 3 && <span className="badge badge-green" style={{ fontSize: 9 }}>la eligieron los jueces</span>}
                 </div>
                 <div className="row" style={{ gap: 7, flexWrap: 'wrap', marginTop: 'auto' }}>
                   <Button className="btn-sm" variant={seleccionada ? 'primary' : 'outline'}
@@ -221,10 +221,10 @@ export function Galeria({ modo, setToast, ir }: { modo: Modo; setToast: (t: stri
 
       <div className="duo" style={{ marginTop: 16 }}>
         <Card
-          title={<span className="row" style={{ gap: 8 }}><I_Vote size={14} style={{ color: 'var(--amber)' }} /> El voto de MiroFish, pieza por pieza</span>}
+          title={<span className="row" style={{ gap: 8 }}><I_Vote size={14} style={{ color: 'var(--amber)' }} /> El veredicto de los 5 jueces, pieza por pieza</span>}
           action={<Badge tone="muted">1 a {OPCIONES.length}</Badge>}
         >
-          <div className="bs">Así votó cada perfil. El promedio es el puesto, y el puesto es el orden de la galería.</div>
+          <div className="bs">Así votó cada juez. El promedio es el puesto, y el puesto es el orden de la galería.</div>
           <div className="rank">
             {orden.map((o, i) => (
               <div key={o.id} className={`rank-row ${i < CUANTAS_PASAN ? 'pasa' : ''}`}>

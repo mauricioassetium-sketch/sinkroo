@@ -252,7 +252,7 @@ export const DECISIONES: Decision[] = [
     titulo: 'Subir el presupuesto de "Lanzamiento D2C" un 35%',
     detalle: '$40/día → $54/día durante 7 días. Rex detectó que el conjunto ganador no se satura todavía.',
     impacto: 'Gasto extra $98 esta semana. Proyección: +$310 de ventas si el ROAS se mantiene en 3,8x.',
-    panel: { aprobaron: 5, dudaron: 0, total: 5, objeccion: 'Ninguna. El panel aprobó por unanimidad.' },
+    panel: { aprobaron: 5, dudaron: 0, total: 5, objeccion: 'Ninguna. Los 5 jueces aprobaron por unanimidad.' },
     acciones: ['Aprobar', 'Ajustar a 20%', 'Descartar'],
   },
   {
@@ -565,7 +565,7 @@ export const CREDITOS_MOV = [
 export const ETAPAS_MOTOR = [
   { t: 'Ingesta', d: 'La propuesta entra al mercado para ser probada.' },
   { t: 'Reacción', d: 'El mercado reacciona como lo haría tu audiencia real.' },
-  { t: 'Debate', d: 'Los bots discuten pros y contras en el chat lateral.' },
+  { t: 'Debate', d: 'El público discute pros y contras en el feed de comentarios.' },
   { t: 'Votación', d: 'Cada bot vota positivo o negativo y suma su score.' },
   { t: 'Ranking', d: 'La propuesta se ordena contra las demás del lote.' },
   { t: 'Veredicto', d: 'Se decide publicar o descartar antes de salir live.' },
@@ -591,7 +591,7 @@ export const CHAT_MOTOR = [
   { t: 'analisis', m: 'Comparando esta contra 3 propuestas previas del lote' },
   { t: 'positivo', m: 'Contraste y legibilidad sólidos en escritorio y móvil' },
   { t: 'negativo', m: 'La paleta no resuena con la audiencia objetivo. Rechazo' },
-  { t: 'analisis', m: 'Simulando reacción esperada de 500 observadores' },
+  { t: 'analisis', m: 'Simulando la reacción de 500 agentes del público' },
   { t: 'positivo', m: 'CPA proyectado cae bajo el umbral. Vale publicar' },
   { t: 'positivo', m: 'Señal de compra real detectada en los comentarios simulados' },
 ];

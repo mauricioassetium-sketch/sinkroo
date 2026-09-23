@@ -47,7 +47,7 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
                 Te estoy vigilando la tienda <b>24/7</b>. Mirá lo que hice hoy.
               </div>
               <div className="hero-chips">
-                <span className="hero-chip hot">● {AGENTES.filter(a => a.estado === 'trabajando').length} agentes trabajando ahora</span>
+                <span className="hero-chip hot">● {AGENTES.filter(a => a.estado === 'trabajando').length} de los 6 agentes trabajando ahora</span>
                 <span className="hero-chip">14 revisiones hoy</span>
                 {pendientes.length > 0 && <span className="hero-chip amber">{pendientes.length} decisiones esperan tu OK</span>}
                 {criticas > 0 && <span className="hero-chip red">{criticas} alarmas críticas</span>}
@@ -230,7 +230,7 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
             <div className="dato" style={{ flex: 1 }}>
               <span className="dato-l">Qué significa</span>
               <span className="bs">
-                Es el promedio del panel de 5 expertos. Arriba de <b style={{ color: 'var(--green)' }}>80</b> se publica,
+                Es el promedio de los 5 jueces de MiroFish. Arriba de <b style={{ color: 'var(--green)' }}>80</b> se publica,
                 entre 60 y 80 se revisa, abajo de 60 se descarta.
               </span>
             </div>
@@ -248,7 +248,7 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
             );
           })}
           <div className="acc-why">
-            <b>Una pieza que no pasa el panel nunca se publica.</b> Ahí está el ahorro: el dinero se gasta después de que el mercado la aprobó, no antes.
+            <b>Una pieza que no pasa a los jueces nunca se publica.</b> Ahí está el ahorro: el dinero se gasta después de que el mercado la aprobó, no antes.
           </div>
         </Card>
       </div>
@@ -373,9 +373,9 @@ function Decision({ d, onResolver }: { d: typeof DECISIONES[number]; onResolver:
       <div className="dec-head">
         <span className="dec-av" style={{ background: d.agenteColor }}>{d.agente[0]}</span>
         <span className="dec-agent" style={{ color: d.agenteColor }}>{d.agente}</span>
-        <Button variant="ghost" className="btn-sm" title="Muestra cómo votó el panel de expertos sobre esta acción"
+        <Button variant="ghost" className="btn-sm" title="Muestra cómo votaron los 5 jueces sobre esta acción"
           onClick={() => setAbierto(!abierto)}>
-          <I_Eye size={13} /> {abierto ? 'Ocultar el panel' : 'Ver el panel'}
+          <I_Eye size={13} /> {abierto ? 'Ocultar el veredicto' : 'Ver el veredicto'}
         </Button>
       </div>
       <div className="dec-title">{d.titulo}</div>
@@ -385,7 +385,7 @@ function Decision({ d, onResolver }: { d: typeof DECISIONES[number]; onResolver:
         <div className="dec-panel">
           <div className="dec-panel-top">
             <I_Vote size={14} style={{ color: 'var(--purple3)' }} />
-            <b>El panel revisó esta acción antes de proponértela</b>
+            <b>Los 5 jueces revisaron esta acción antes de proponértela</b>
             <Badge tone={d.panel.dudaron === 0 ? 'green' : 'amber'}>{d.panel.aprobaron} de {d.panel.total} a favor</Badge>
           </div>
           <div className="dec-obj">

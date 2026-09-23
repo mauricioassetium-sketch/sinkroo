@@ -162,7 +162,7 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
             <span className="ebar-sep" />
             <span className="ebar-seg">
               <I_Vote size={13} />
-              <b>5</b> perfiles votan cada pieza
+              <b>5 jueces</b> + <b>500 del público</b> por pieza
             </span>
             <span className="ebar-cta">
               <span className="badge badge-purple" style={{ fontSize: 10 }}>
@@ -210,7 +210,7 @@ function tituloVista(v: Vista) {
 function subtituloVista(v: Vista) {
   return ({
     hoy: 'Lo que el motor hizo, lo que espera de vos y lo que necesita tu atención',
-    campanas: 'Cada campaña con su panel de expertos y sus artefactos',
+    campanas: 'Cada campaña con el veredicto de los 5 jueces y sus artefactos',
     conversaciones: 'Todo lo que tus agentes contestan, con el contexto de cada cliente',
     mercado: 'Qué está haciendo tu competencia y por dónde conviene ir',
     cuenta: 'Cuánto decide la IA y cuánto decidís vos',

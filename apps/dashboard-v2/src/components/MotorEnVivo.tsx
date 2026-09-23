@@ -190,8 +190,8 @@ export function MotorEnVivo({ setToast }: { setToast: (t: string) => void }) {
         <div style={{ border: '1px solid var(--border2)', borderRadius: 12, background: 'var(--bg2)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', padding: '10px 12px', borderBottom: '1px solid var(--border2)', background: 'var(--bg3)' }}>
             <span style={{ width: 8, height: 8, borderRadius: 999, background: '#ef4444', boxShadow: '0 0 0 3px rgba(239,68,68,.25)', animation: 'livepulse 1.5s infinite' }} />
-            <span className="small" style={{ fontWeight: 700 }}>Mercado, reacción en vivo</span>
-            <span className="tiny muted" style={{ marginLeft: 'auto' }}>500 observadores</span>
+            <span className="small" style={{ fontWeight: 700 }}>El público, reacción en vivo</span>
+            <span className="tiny muted" style={{ marginLeft: 'auto' }}>500 agentes del público</span>
           </div>
           <div style={{ flex: 1, maxHeight: 380, overflowY: 'auto', padding: '10px 8px', display: 'flex', flexDirection: 'column', gap: 7 }}>
             {chat.map((m, i) => (
@@ -202,7 +202,7 @@ export function MotorEnVivo({ setToast }: { setToast: (t: string) => void }) {
             ))}
           </div>
           <div style={{ borderTop: '1px solid var(--border2)', padding: '8px 10px', background: 'var(--bg3)' }}>
-            <div className="tiny" style={{ fontWeight: 700, marginBottom: 4 }}>Votación del momento</div>
+            <div className="tiny" style={{ fontWeight: 700, marginBottom: 4 }}>Lo que está reaccionando ahora</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
               {votos.map((v, i) => (
                 <span key={i} className="tiny" style={{
