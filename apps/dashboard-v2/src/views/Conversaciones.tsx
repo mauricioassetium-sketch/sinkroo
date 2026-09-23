@@ -1,59 +1,34 @@
 import { useState } from 'react';
 import { Card, Badge, Button, Avatar } from '../components/ui';
-import { I_Chat, I_Send, I_Zap, I_Clock, I_Check, I_Plus, I_Users } from '../components/icons';
+import { ViewHead, BarRow } from '../components/viz';
+import { I_Whatsapp, I_Chat, I_Send, I_Zap, I_Check, I_Plus, I_Users } from '../components/icons';
 import { CONVERSACIONES, FLUJOS, type Modo } from '../data/demo';
 
 export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) => void; modo: Modo }) {
   const [sel, setSel] = useState(CONVERSACIONES[0].id);
   const conv = CONVERSACIONES.find(c => c.id === sel) ?? CONVERSACIONES[0];
-  const respondidas = Math.round(128 * 0.94);
+  const pendientesHumanas = CONVERSACIONES.filter(c => c.cola === 'humano');
 
   return (
-    <>
-      {/* ============ CABECERA ============ */}
-      <div className="card" style={{ display: 'flex', gap: 18, alignItems: 'center', flexWrap: 'wrap' }}>
-        <div style={{ flex: 1, minWidth: 260 }}>
-          <div className="ttl" style={{ fontSize: 20 }}>Todo tu WhatsApp y Messenger en un solo lugar</div>
-          <div className="sub" style={{ marginTop: 4, lineHeight: 1.5 }}>
-            Los 6 agentes atienden, venden y hacen seguimiento. Vos intervenís sólo cuando hace falta:
-            <b style={{ color: 'var(--green)' }}> {respondidas} de 128 mensajes</b> los contestó la IA hoy.
-          </div>
-        </div>
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          <Badge tone="green">94% resuelto por IA</Badge>
-          <Badge tone="amber">2 esperan a un humano</Badge>
-          <Badge tone="purple">Tu propio número</Badge>
-        </div>
-      </div>
+    <div className="dash">
+      <ViewHead
+        icon={<I_Whatsapp size={19} />}
+        titulo="Conversaciones"
+        sub="Todo tu WhatsApp y Messenger en un solo lugar. Vos intervenís sólo cuando hace falta."
+        nums={[
+          { v: '128', l: 'mensajes hoy' },
+          { v: '94%', l: 'resueltos por la IA', c: 'var(--green)' },
+          { v: String(pendientesHumanas.length), l: 'esperan a un humano', c: 'var(--red)' },
+          { v: String(FLUJOS.length), l: 'automatizaciones activas', c: 'var(--purple3)' },
+        ]}
+      />
 
-      {/* ============ ALERTA DE ESCALADO ============ */}
-      <div className="alarm critico" style={{ marginTop: 14 }}>
-        <div className="alarm-head">
-          <span className="alarm-sev critico">ESCALÓ SOLO</span>
-          <span className="alarm-title">Martín R. quiere cancelar y Rumi no pudo resolverlo</span>
-          <span className="alarm-when">espera hace 11 h</span>
-        </div>
-        <div className="alarm-money">
-          <span className="ico" style={{ color: 'var(--amber)' }}><I_Zap size={14} /></span>
-          <span><b style={{ color: 'var(--amber)' }}>Por qué importa: </b>es un cliente activo con un problema de facturación.
-            Rumi escaló sólo cuando detectó intención de cancelar — no intentó retenerlo sin tu permiso.</span>
-        </div>
-        <div className="alarm-sug"><b>Qué hace el motor: </b>dejó la conversación marcada, resumió el motivo y no volvió a escribir. Te espera.</div>
-        <div className="alarm-acts">
-          <Button className="btn-sm" onClick={() => setSel('v4')}><I_Chat size={13} /> Abrir la conversación</Button>
-          <Button variant="ghost" className="btn-sm" onClick={() => setToast('Rumi retoma el caso (demo)')}>Dejar que Rumi retome</Button>
-        </div>
-      </div>
-
-      {/* ============ BANDEJA ============ */}
-      <div className="csec">
-        <span className="csec-n">1</span>
-        <span className="csec-t">La bandeja</span>
-        <span className="csec-s">Con el contexto de cada cliente, no un chat suelto</span>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(280px, 340px) 1fr', gap: 14, alignItems: 'start' }}>
-        <Card title="Conversaciones">
+      {/* ============ LA BANDEJA Y EL CHAT ============ */}
+      <div className="duo">
+        <Card
+          title={<span className="row" style={{ gap: 8 }}><I_Chat size={14} style={{ color: 'var(--purple3)' }} /> La bandeja</span>}
+          action={<Badge tone="red">{pendientesHumanas.length} esperan</Badge>}
+        >
           {CONVERSACIONES.map(c => (
             <div key={c.id} className="notif" onClick={() => setSel(c.id)}
               style={{ cursor: 'pointer', background: c.id === sel ? 'var(--bg3)' : 'transparent', borderRadius: 10 }}>
@@ -80,37 +55,44 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
               </div>
             </div>
           ))}
+          <div style={{ marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--border)' }}>
+            <div className="tiny muted" style={{ marginBottom: 7 }}>De dónde vinieron los 128 mensajes de hoy</div>
+            <BarRow label="WhatsApp" valor={78} max={128} color="var(--green)" />
+            <BarRow label="Messenger" valor={34} max={128} color="var(--purple2)" />
+            <BarRow label="Instagram" valor={16} max={128} color="#e11d48" />
+          </div>
+          <div className="acc-why">
+            El motor no escribe de <b>22:00 a 08:00</b>: es un freno duro que no se puede desactivar.
+          </div>
         </Card>
 
         <Card
           title={
             <span className="row" style={{ gap: 10 }}>
-              <Avatar name={conv.nombre} size={30} />
-              {conv.nombre}
-              <Badge tone={conv.cola === 'ia' ? 'green' : 'red'}>{conv.cola === 'ia' ? 'atendido por IA' : 'necesita un humano'}</Badge>
+              <Avatar name={conv.nombre} size={30} />{conv.nombre}
             </span>
           }
-          action={<span className="tiny muted">{conv.canal === 'wa' ? 'WhatsApp' : 'Messenger'} · tu número</span>}
+          action={<Badge tone={conv.cola === 'ia' ? 'green' : 'red'}>{conv.cola === 'ia' ? 'atendido por IA' : 'necesita un humano'}</Badge>}
         >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 11, minHeight: 240 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {conv.msgs.map((m, i) => (
               <div key={i} style={{
-                alignSelf: m.de === 'ellos' ? 'flex-start' : 'flex-end',
-                maxWidth: '78%', background: m.de === 'ellos' ? 'var(--bg3)' : 'rgba(168,85,247,.16)',
+                alignSelf: m.de === 'ellos' ? 'flex-start' : 'flex-end', maxWidth: '86%',
+                background: m.de === 'ellos' ? 'var(--bg3)' : 'rgba(168,85,247,.16)',
                 border: `1px solid ${m.de === 'ellos' ? 'var(--border)' : 'rgba(168,85,247,.35)'}`,
                 borderRadius: 13, padding: '10px 13px',
               }}>
                 <div style={{ fontSize: 13, lineHeight: 1.45 }}>{m.txt}</div>
-                <div className="tiny muted" style={{ marginTop: 5, textAlign: 'right' }}>
-                  {m.de === 'ia' ? 'Rumi · IA · ' : m.de === 'yo' ? 'Vos · ' : ''}{m.hora}
+                <div className="tiny muted" style={{ marginTop: 4, textAlign: 'right' }}>
+                  {m.de === 'ia' ? 'Rumi · IA · ' : ''}{m.hora}
                 </div>
               </div>
             ))}
           </div>
 
-          <div className="alarm" style={{ marginTop: 15, background: 'var(--bg2)' }}>
+          <div className="alarm" style={{ marginTop: 14, borderLeft: '3px solid var(--purple2)', background: 'rgba(168,85,247,.05)' }}>
             <div className="alarm-head">
-              <span className="alarm-sev atencion">LO QUE EL AGENTE PROPONE</span>
+              <span className="alarm-sev oportunidad">LO QUE PROPONE EL AGENTE</span>
               <span className="alarm-when">generado hace instantes</span>
             </div>
             <div className="alarm-sug" style={{ color: 'var(--txt)' }}>
@@ -121,26 +103,76 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
                   : '«¡Gracias por escribir! ¿Te ayudo con algo más?»'}
             </div>
             <div className="alarm-acts">
-              <Button className="btn-sm" onClick={() => setToast('Respuesta enviada por WhatsApp (demo)')}>
-                <I_Send size={13} /> Enviar tal cual
-              </Button>
-              <Button variant="outline" className="btn-sm" onClick={() => setToast('Editando la respuesta (demo)')}>Editar antes</Button>
-              <Button variant="ghost" className="btn-sm" onClick={() => setToast('Escalado a tu equipo (demo)')}>Lo atiendo yo</Button>
+              <Button className="btn-sm" title="Manda esta respuesta por tu WhatsApp real"
+                onClick={() => setToast('Respuesta enviada por WhatsApp (demo)')}><I_Send size={13} /> Enviar tal cual</Button>
+              <Button variant="outline" className="btn-sm" title="Abre la respuesta para que la edites antes de mandarla"
+                onClick={() => setToast('Editando la respuesta (demo)')}>Editar antes</Button>
+              <Button variant="ghost" className="btn-sm" title="Saca la conversación de la IA y la deja para tu equipo"
+                onClick={() => setToast('Escalado a tu equipo (demo)')}>Lo atiendo yo</Button>
             </div>
             <div className="tiny muted" style={{ marginTop: 9 }}>
-              {modo === 'auto'
-                ? 'Estás en Automático: Rumi responde sola y te avisa en la bitácora.'
-                : modo === 'shared'
-                  ? 'Estás en Compartido: Rumi prepara la respuesta y espera tu OK.'
-                  : 'Estás en Manual: Rumi sólo sugiere, vos escribís.'}
+              {modo === 'auto' ? 'Estás en Automático: Rumi responde sola y te avisa en la bitácora.'
+                : modo === 'shared' ? 'Estás en Compartido: Rumi prepara la respuesta y espera tu OK.'
+                : 'Estás en Manual: Rumi sólo sugiere, vos escribís.'}
             </div>
           </div>
         </Card>
       </div>
 
-      {/* ============ FLUJOS ============ */}
+      {/* ============ ESCALADOS Y CANAL ============ */}
+      <div className="duo" style={{ marginTop: 16 }}>
+        <Card
+          title={<span className="row" style={{ gap: 8 }}><I_Zap size={14} style={{ color: 'var(--red)' }} /> Lo que escaló solo</span>}
+          action={<Badge tone="red">{pendientesHumanas.length}</Badge>}
+        >
+          {pendientesHumanas.map(c => (
+            <div key={c.id} className="alarm critico" style={{ marginBottom: 10, borderLeft: '3px solid var(--red)' }}>
+              <div className="alarm-head">
+                <span className="alarm-sev critico">ESCALÓ SOLO</span>
+                <span className="alarm-when">espera {c.esperando}</span>
+              </div>
+              <div className="alarm-title" style={{ minWidth: 0 }}>{c.nombre}: {c.tag}</div>
+              <div className="alarm-sug">{c.msgs[c.msgs.length - 1].txt.slice(0, 110)}</div>
+              <div className="alarm-acts">
+                <Button className="btn-sm" title="Abre la conversación en el panel de al lado"
+                  onClick={() => setSel(c.id)}><I_Chat size={13} /> Abrir</Button>
+              </div>
+            </div>
+          ))}
+          <div className="acc-why">
+            El agente <b>no intenta retener a un cliente enojado</b>: cuando detecta intención de cancelar,
+            frena y te lo pasa. Escalar solo también es una decisión, y es la correcta.
+          </div>
+        </Card>
+
+        <Card
+          title={<span className="row" style={{ gap: 8 }}><I_Users size={14} style={{ color: 'var(--green)' }} /> Tu propia API de WhatsApp</span>}
+          action={<Badge tone="green">conectada</Badge>}
+        >
+          <div className="bs">
+            Sinkroo no te da un número: conecta el tuyo. Pegás tu token de WhatsApp Business y el motor trabaja
+            sobre tu línea real, con tus plantillas y tu historial.
+          </div>
+          <div className="datos-row" style={{ marginTop: 15 }}>
+            <div className="dato"><span className="dato-l">Número</span><span className="dato-v">+54 9 11 5555-2341</span></div>
+            <div className="dato"><span className="dato-l">Mensajes hoy</span><span className="dato-v">128</span></div>
+            <div className="dato"><span className="dato-l">Tiempo de respuesta</span><span className="dato-v" style={{ color: 'var(--green)' }}>4 s</span></div>
+          </div>
+          <div className="row" style={{ gap: 9, marginTop: 15, flexWrap: 'wrap' }}>
+            <Button variant="outline" className="btn-sm" title="Prueba que el token siga vivo sin guardarlo de nuevo"
+              onClick={() => setToast('Token probado ahora: sigue funcionando (demo)')}><I_Check size={13} /> Probar conexión</Button>
+            <Button variant="ghost" className="btn-sm" title="Reemplaza el token por uno nuevo"
+              onClick={() => setToast('Reemplazar token (demo)')}><I_Plus size={13} /> Reemplazar token</Button>
+          </div>
+          <div className="acc-why">
+            Tu token se guarda cifrado y <b>se prueba antes de guardarse</b>. Ninguna pantalla de Sinkroo lo vuelve a mostrar.
+          </div>
+        </Card>
+      </div>
+
+      {/* ============ AUTOMATIZACIONES ============ */}
       <div className="csec">
-        <span className="csec-n">2</span>
+        <span className="csec-n">1</span>
         <span className="csec-t">Automatizaciones</span>
         <span className="csec-s">Lo que antes era un "tipo de campaña" y no debía serlo: esto trabaja solo</span>
       </div>
@@ -149,7 +181,6 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
           <Card key={f.id}
             title={<span className="row" style={{ gap: 8 }}><I_Zap size={14} style={{ color: 'var(--purple3)' }} />{f.nombre}</span>}
             action={<Badge tone={f.estado === 'Activo' ? 'green' : 'muted'}>{f.estado}</Badge>}>
-            <div className="tiny muted" style={{ marginBottom: 10 }}>Grupo: {f.grupo}</div>
             <div className="tl">
               {f.pasos.map((p, i) => (
                 <div key={i} className="tl-item">
@@ -157,39 +188,19 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
                   <span className="tl-time" style={{ color: p.condicion ? 'var(--amber)' : undefined }}>
                     {p.condicion ? 'SI' : ''} {p.delay.replace(' después', '')}
                   </span>
-                  <div className="tl-body">
-                    <div className="tl-text" style={{ fontSize: 12.5 }}>{p.txt}</div>
-                  </div>
+                  <div className="tl-body"><div className="tl-text" style={{ fontSize: 12.5 }}>{p.txt}</div></div>
                 </div>
               ))}
             </div>
-            <div className="row" style={{ gap: 8, marginTop: 11 }}>
-              <Button variant="ghost" className="btn-sm" onClick={() => setToast(`Editando "${f.nombre}" (demo)`)}>Editar</Button>
-              <Button variant="ghost" className="btn-sm" onClick={() => setToast('Pausar flujo (demo)')}>
-                {f.estado === 'Activo' ? 'Pausar' : 'Activar'}
-              </Button>
+            <div className="row" style={{ gap: 8, marginTop: 11, flexWrap: 'wrap' }}>
+              <Button variant="ghost" className="btn-sm" title="Abre el editor de pasos de este flujo"
+                onClick={() => setToast(`Editando "${f.nombre}" (demo)`)}>Editar</Button>
+              <Button variant="ghost" className="btn-sm" title={f.estado === 'Activo' ? 'Lo apaga: deja de enviar mensajes' : 'Lo enciende'}
+                onClick={() => setToast('Pausar flujo (demo)')}>{f.estado === 'Activo' ? 'Pausar' : 'Activar'}</Button>
             </div>
           </Card>
         ))}
       </div>
-
-      <div className="card" style={{ marginTop: 14, display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
-        <I_Users size={18} style={{ color: 'var(--purple3)' }} />
-        <div style={{ flex: 1, minWidth: 240 }}>
-          <div style={{ fontWeight: 800, fontSize: 13.5 }}>Tu propia API de WhatsApp</div>
-          <div className="tiny muted" style={{ marginTop: 3, lineHeight: 1.5 }}>
-            Sinkroo no te da un número: conecta el tuyo. Pegás tu token de WhatsApp Business y el motor trabaja sobre tu línea real.
-          </div>
-        </div>
-        <Button variant="outline" className="btn-sm" onClick={() => setToast('Ir a Cuenta → Conexiones (demo)')}>
-          <I_Plus size={13} /> Conectar mi API
-        </Button>
-      </div>
-
-      <div className="tiny muted" style={{ marginTop: 14, display: 'flex', gap: 7, alignItems: 'center' }}>
-        <I_Clock size={13} /> El motor no escribe de 22:00 a 08:00: es un freno duro que no se puede desactivar.
-        <I_Check size={13} style={{ marginLeft: 6 }} /> Nunca se guarda una credencial sin probar que funciona.
-      </div>
-    </>
+    </div>
   );
 }

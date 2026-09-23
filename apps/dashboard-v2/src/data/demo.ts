@@ -612,6 +612,13 @@ export const CONSECUENCIA: Record<string, string> = {
   d3: 'Enviar link manda el cobro de $59 por WhatsApp. Descartar lo deja sin enviar y avisa a Rumi.',
 };
 
+export const MES = {
+  ventas: [3350, 3620, 3780, 3900, 4080, 4280],
+  labels: ['Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago'],
+  acumulado: '$40.280',
+  promedio: '$6.713',
+};
+
 export const TAREAS_EXCLUIDAS = [
   'No pedimos margen de ganancia ni frecuencia de compra: los inferimos de tus ventas y conversaciones.',
   'No te pedimos que subas documentos para que "la IA los lea".',

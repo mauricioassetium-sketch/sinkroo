@@ -1,33 +1,31 @@
 import { useState } from 'react';
 import { Card, Badge, Button } from '../components/ui';
 import { MotorEnVivo } from '../components/MotorEnVivo';
-import { LineChart, Spark } from '../components/charts';
+import { Bars, Ring, BarRow, Metrica } from '../components/viz';
 import { SinkrooMark, I_Check, I_ArrowRight, I_Wallet, I_Eye, I_Vote, I_Chat, I_Megaphone, I_Question, I_Credit, I_Users, I_Star, I_Sun, I_Zap, I_Trend, I_Clock } from '../components/icons';
 import type { Vista } from '../components/Layout';
 import {
   TENANT, ALARMAS, DECISIONES, AGENTES, NUMEROS, MIENTRAS_NO_ESTABAS, BITACORA, MODOS, TAREAS_EXCLUIDAS, CONSECUENCIA,
+  MES, PANEL_PIEZAS,
   type Modo, type Severidad,
 } from '../data/demo';
 
 const SEV_LB: Record<Severidad, string> = { critico: 'CRÍTICO', atencion: 'ATENCIÓN', oportunidad: 'OPORTUNIDAD', info: 'RESUELTO SOLO' };
 
 export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) => void; setVista: (v: Vista) => void; modo: Modo }) {
-  const [alarmasExtra, setAlarmasExtra] = useState(false);
   const [hechas, setHechas] = useState<string[]>([]);
+  const [alarmasExtra, setAlarmasExtra] = useState(false);
   const [bitacoraCompleta, setBitacoraCompleta] = useState(false);
 
   const alarmas = alarmasExtra ? ALARMAS : ALARMAS.slice(0, 3);
   const pendientes = DECISIONES.filter(d => !hechas.includes(d.id));
   const modoNombre = MODOS.find(m => m.key === modo)?.nombre ?? '';
   const criticas = ALARMAS.filter(a => a.severidad === 'critico').length;
-
   const resolver = (id: string, txt: string) => { setHechas([...hechas, id]); setToast(txt); };
 
   return (
     <div className="dash">
-      {/* ============================================================================ */}
-      {/* HERO — logo, bienvenida y los números del día (fiel al original)              */}
-      {/* ============================================================================ */}
+      {/* ============================== HERO ============================== */}
       <div className="hero card">
         <div className="hero-side">
           <div className="hero-greet">
@@ -45,25 +43,11 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
             </div>
           </div>
         </div>
-
         <div className="hero-metrics">
-          <div className="hero-metric">
-            <div className="metric">47</div>
-            <div className="m-label">Ventas</div>
-            <div className="m-desc">concretadas hoy</div>
-          </div>
-          <div className="hero-metric">
-            <div className="metric">3.8x</div>
-            <div className="m-label">ROAS</div>
-            <div className="m-desc">retorno por cada $1 invertido</div>
-          </div>
-          <div className="hero-metric">
-            <div className="metric">84</div>
-            <div className="m-label">Score</div>
-            <div className="m-desc">calidad del creativo aprobado</div>
-          </div>
+          <div className="hero-metric"><div className="metric">47</div><div className="m-label">Ventas</div><div className="m-desc">concretadas hoy</div></div>
+          <div className="hero-metric"><div className="metric">3.8x</div><div className="m-label">ROAS</div><div className="m-desc">retorno por cada $1 invertido</div></div>
+          <div className="hero-metric"><div className="metric">84</div><div className="m-label">Score</div><div className="m-desc">calidad del creativo aprobado</div></div>
         </div>
-
         <div className="hero-ad">
           <div className="hero-ad-tag">PUBLICIDAD</div>
           <div className="hero-ad-title">Más marcas, una cuenta</div>
@@ -72,29 +56,17 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
         </div>
       </div>
 
-      {/* ============================================================================ */}
-      {/* EL MOTOR ANDANDO — el vidrio del motor                                        */}
-      {/* ============================================================================ */}
-      <div className="csec" style={{ marginTop: 6 }}>
-        <span className="csec-n">▶</span>
-        <span className="csec-t">El motor andando</span>
-        <span className="csec-c purple">en vivo</span>
-        <span className="csec-s">Tu propuesta se prueba en un mercado simulado antes de gastar un peso</span>
-      </div>
+      {/* ====================== EL MOTOR ANDANDO ====================== */}
       <MotorEnVivo setToast={setToast} />
 
-      {/* ============================================================================ */}
-      {/* MÓDULOS — máximo 2 por fila                                                   */}
-      {/* ============================================================================ */}
-
+      {/* ====================== FILA 1: ACCIÓN ====================== */}
       <div className="csec">
         <span className="csec-n">1</span>
         <span className="csec-t">Lo que necesita tu atención</span>
         <span className="csec-c">{criticas}</span>
         <span className="csec-s">Cada botón dice qué hace antes de que lo toques</span>
       </div>
-      <div className="grid-2">
-        {/* ---- ALARMAS ---- */}
+      <div className="duo">
         <Card
           title={<span className="row" style={{ gap: 8 }}><I_Zap size={14} style={{ color: 'var(--red)' }} /> Alarmas</span>}
           action={<Badge tone="red">{criticas} críticas</Badge>}
@@ -121,21 +93,17 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
                     </Button>
                   ))}
                 </div>
-                <div className="alarm-src" style={{ marginLeft: 0 }}>{a.origen}</div>
               </div>
             ))}
-          </div>
-          {!alarmasExtra && (
-            <div style={{ marginTop: 12 }}>
+            {!alarmasExtra && (
               <Button variant="ghost" className="btn-sm" title="Muestra las 3 alarmas restantes, incluidas las oportunidades"
                 onClick={() => setAlarmasExtra(true)}>
                 Ver {ALARMAS.length - 3} alarmas más <I_ArrowRight size={13} />
               </Button>
-            </div>
-          )}
+            )}
+          </div>
         </Card>
 
-        {/* ---- TU DECISIÓN ---- */}
         <Card
           title={<span className="row" style={{ gap: 8 }}><I_Vote size={14} style={{ color: 'var(--amber)' }} /> Tu decisión</span>}
           action={pendientes.length > 0 ? <Badge tone="amber">{pendientes.length} esperan</Badge> : <Badge tone="green">al día</Badge>}
@@ -150,8 +118,13 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
         </Card>
       </div>
 
-      <div className="grid-2" style={{ marginTop: 16 }}>
-        {/* ---- LOS 6 AGENTES ---- */}
+      {/* ====================== FILA 2: EL MOTOR Y LOS NÚMEROS ====================== */}
+      <div className="csec">
+        <span className="csec-n">2</span>
+        <span className="csec-t">El motor y los números</span>
+        <span className="csec-s">Quién está trabajando y cómo van las métricas del modelo</span>
+      </div>
+      <div className="duo">
         <Card
           title={<span className="row" style={{ gap: 8 }}><I_Users size={14} style={{ color: 'var(--purple3)' }} /> El motor, agente por agente</span>}
           action={<Badge tone="green">3 trabajando</Badge>}
@@ -160,41 +133,19 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
             {AGENTES.map(a => <AgenteRow key={a.id} a={a} setToast={setToast} />)}
           </div>
           <div className="acc-why">
-            Cada botón abre <b>el artefacto</b> que produjo ese agente: el informe, las variantes o el porqué de la decisión.
+            Cada botón abre <b>el artefacto</b> que produjo ese agente: el informe, las variantes o el porqué.
             Nada de acá es un estado — es trabajo terminado y revisable.
           </div>
         </Card>
 
-        {/* ---- EL MODELO EN NÚMEROS ---- */}
         <Card
           title={<span className="row" style={{ gap: 8 }}><I_Trend size={14} style={{ color: 'var(--green)' }} /> El modelo en números</span>}
           action={<Badge tone="purple">este mes</Badge>}
         >
-          {/* La curva del mes */}
-          <div style={{ background: 'radial-gradient(120% 90% at 50% 40%, #2a1245 0%, rgba(24,12,40,.6) 45%, transparent 78%)', borderRadius: 12, padding: '14px 10px 2px', marginBottom: 16 }}>
-            <div className="row spread" style={{ marginBottom: 4, padding: '0 6px' }}>
-              <span className="tiny muted">Ventas, últimos 12 meses</span>
-              <span className="tiny" style={{ fontWeight: 800 }}>$40.280 acumulado</span>
-            </div>
-            <LineChart
-              data={[2980, 3060, 3120, 3050, 3280, 3400, 3350, 3620, 3780, 3900, 4080, 4280]}
-              height={150}
-              labels={['Sep', 'Oct', 'Nov', 'Dic', 'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago']}
-            />
-          </div>
-
-          <div>
+          <div className="duo">
             {NUMEROS.map((n, i) => (
-              <div key={i} className="nrow">
-                <span style={{ color: n.color, display: 'flex', flexShrink: 0 }}>{ICONO_AREA[n.area] ?? <I_Star size={15} />}</span>
-                <span className="nrow-lb">
-                  {n.label}
-                  <span className="tiny muted" style={{ display: 'block' }}>{n.area}</span>
-                </span>
-                <span className="nrow-spark"><Spark data={n.serie} width={74} height={28} color={n.color} /></span>
-                <span className="nrow-v">{n.valor}</span>
-                <span className={`nrow-d ${n.up ? 'up' : 'down'}`}>{n.delta}</span>
-              </div>
+              <Metrica key={i} label={n.label} sub={n.area} valor={n.valor} delta={n.delta}
+                serie={n.serie} color={n.color} up={n.up} />
             ))}
           </div>
           <div className="acc-why">
@@ -204,8 +155,65 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
         </Card>
       </div>
 
-      <div className="grid-2" style={{ marginTop: 16 }}>
-        {/* ---- MIENTRAS NO ESTABAS ---- */}
+      {/* ====================== FILA 3: EVOLUCIÓN Y CALIDAD ====================== */}
+      <div className="csec">
+        <span className="csec-n">3</span>
+        <span className="csec-t">Cómo viene el mes y tu calidad</span>
+        <span className="csec-s">Lo que creció y qué tan buenas son tus piezas</span>
+      </div>
+      <div className="duo">
+        <Card
+          title={<span className="row" style={{ gap: 8 }}><I_Trend size={14} style={{ color: 'var(--green)' }} /> Ventas por mes</span>}
+          action={<Badge tone="green">{MES.acumulado} acumulado</Badge>}
+        >
+          <Bars data={MES.ventas} labels={MES.labels} color="#22c55e" fmt={v => `${(v / 1000).toFixed(1)}K`} />
+          <div className="datos-row" style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
+            <div className="dato"><span className="dato-l">Promedio por mes</span><span className="dato-v">{MES.promedio}</span></div>
+            <div className="dato"><span className="dato-l">Último mes</span><span className="dato-v" style={{ color: 'var(--green)' }}>$4.280</span></div>
+            <div className="dato"><span className="dato-l">Crecimiento</span><span className="dato-v" style={{ color: 'var(--green)' }}>+28%</span></div>
+          </div>
+          <div className="acc-why">Cada barra es un mes cerrado. <b>El crecimiento es real</b>: sale de las ventas que entraron por tus conexiones.</div>
+        </Card>
+
+        <Card
+          title={<span className="row" style={{ gap: 8 }}><I_Star size={14} style={{ color: 'var(--purple3)' }} /> La calidad de tus piezas</span>}
+          action={<Badge tone="green">sobre 100</Badge>}
+        >
+          <div className="row" style={{ gap: 20, marginBottom: 16 }}>
+            <Ring valor={84} label="SCORE" color="var(--green)" sub="la pieza aprobada" />
+            <div className="dato" style={{ flex: 1 }}>
+              <span className="dato-l">Qué significa</span>
+              <span className="bs">
+                Es el promedio del panel de 5 expertos. Arriba de <b style={{ color: 'var(--green)' }}>80</b> se publica,
+                entre 60 y 80 se revisa, abajo de 60 se descarta.
+              </span>
+            </div>
+          </div>
+          {PANEL_PIEZAS.map(p => {
+            const c = p.score >= 80 ? 'var(--green)' : p.score >= 60 ? 'var(--amber)' : 'var(--red)';
+            return (
+              <div key={p.titulo} style={{ padding: '9px 0', borderBottom: '1px solid var(--border)' }}>
+                <div className="row spread" style={{ marginBottom: 6 }}>
+                  <span className="bt" style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.titulo}</span>
+                  <span style={{ fontWeight: 900, fontSize: 14, color: c, flexShrink: 0 }}>{p.score}</span>
+                </div>
+                <BarRow valor={p.score} max={100} color={c} />
+              </div>
+            );
+          })}
+          <div className="acc-why">
+            <b>Una pieza que no pasa el panel nunca se publica.</b> Ahí está el ahorro: el dinero se gasta después de que el mercado la aprobó, no antes.
+          </div>
+        </Card>
+      </div>
+
+      {/* ====================== FILA 4: AUTONOMÍA Y MEMORIA ====================== */}
+      <div className="csec">
+        <span className="csec-n">4</span>
+        <span className="csec-t">Autonomía y memoria</span>
+        <span className="csec-s">Qué hizo solo y todo lo que podés revisar</span>
+      </div>
+      <div className="duo">
         <Card
           title={<span className="row" style={{ gap: 8 }}><I_Sun size={14} style={{ color: 'var(--green)' }} /> Mientras no estabas</span>}
           action={<Badge tone="green">modo {modoNombre}</Badge>}
@@ -213,7 +221,6 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
           <MientrasNoEstabas modo={modo} />
         </Card>
 
-        {/* ---- LA BITÁCORA ---- */}
         <Card
           title={<span className="row" style={{ gap: 8 }}><I_Clock size={14} style={{ color: 'var(--purple3)' }} /> La bitácora</span>}
           action={
@@ -234,7 +241,6 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
                     <span>📎 {b.ancla}</span>
                     {b.artefacto && <span className="tl-undo" onClick={() => setToast(`${b.artefacto} (demo)`)}>{b.artefacto}</span>}
                     {b.autonomia === 'auto' && <span className="tiny muted">decidido solo</span>}
-                    {b.autonomia === 'shared' && <span className="tiny muted">con tu OK</span>}
                   </div>
                 </div>
               </div>
@@ -247,8 +253,8 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
         </Card>
       </div>
 
-      <div className="grid-2" style={{ marginTop: 16 }}>
-        {/* ---- LO QUE YA NO TE PIDE ---- */}
+      {/* ====================== FILA 5: CIERRE ====================== */}
+      <div className="duo" style={{ marginTop: 16 }}>
         <Card
           title={<span className="row" style={{ gap: 8 }}><I_Check size={14} style={{ color: 'var(--green)' }} /> Lo que este modelo ya no te pide</span>}
           action={<Badge tone="muted">vs. el dashboard anterior</Badge>}
@@ -260,26 +266,25 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
           </div>
         </Card>
 
-        {/* ---- POR DÓNDE SEGUIR ---- */}
         <Card
           title={<span className="row" style={{ gap: 8 }}><I_Question size={14} style={{ color: 'var(--purple3)' }} /> Por dónde seguir</span>}
         >
-          <div className="col-stack">
+          <div className="duo">
             <Button onClick={() => setVista('campanas')} title="Ver tus campañas y el panel de expertos de cada pieza">
-              <I_Megaphone size={14} /> Ver campañas y el panel de expertos
+              <I_Megaphone size={14} /> Campañas
             </Button>
             <Button variant="outline" onClick={() => setVista('conversaciones')} title="Ver los chats que atienden tus agentes">
-              <I_Chat size={14} /> Ver conversaciones
+              <I_Chat size={14} /> Conversaciones
             </Button>
             <Button variant="ghost" onClick={() => setVista('mercado')} title="Qué está haciendo tu competencia ahora">
-              <I_Trend size={14} /> Ver mercado
+              <I_Trend size={14} /> Mercado
             </Button>
             <Button variant="ghost" onClick={() => setVista('cuenta')} title="Elegir cuánto decide la IA y cuánto decidís vos">
-              <I_Credit size={14} /> Ajustar cuánto decide la IA <I_ArrowRight size={13} />
+              <I_Credit size={14} /> Autonomía
             </Button>
           </div>
           <div className="acc-why">
-            Cada botón te lleva a la sección donde se resuelve ese tema. <b>Cuenta y autonomía</b> es donde elegís
+            Cada botón te lleva a la sección donde se resuelve ese tema. <b>Autonomía</b> es donde elegís
             si la IA decide sola o te pide permiso antes de gastar.
           </div>
         </Card>
@@ -288,8 +293,6 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
   );
 }
 
-// =============================================================================================
-// DECISIÓN — se resuelve en el lugar, sin navegar
 // =============================================================================================
 function Decision({ d, onResolver }: { d: typeof DECISIONES[number]; onResolver: (id: string, t: string) => void }) {
   const [abierto, setAbierto] = useState(false);
@@ -306,7 +309,6 @@ function Decision({ d, onResolver }: { d: typeof DECISIONES[number]; onResolver:
       <div className="dec-title">{d.titulo}</div>
       <div className="dec-det">{d.detalle}</div>
       <div className="dec-impact"><b style={{ color: 'var(--green)' }}>Si lo aprobás: </b>{d.impacto}</div>
-
       {abierto && (
         <div className="dec-panel">
           <div className="dec-panel-top">
@@ -319,12 +321,10 @@ function Decision({ d, onResolver }: { d: typeof DECISIONES[number]; onResolver:
           </div>
         </div>
       )}
-
       <div className="dec-acts">
         {d.acciones.map((ac, i) => (
           <Button key={i} variant={i === 0 ? 'primary' : 'ghost'} className="btn-sm"
-            title={CONSECUENCIA[d.id] ?? `Ejecuta: ${ac}`}
-            onClick={() => onResolver(d.id, `${ac}: ${d.titulo} (demo)`)}>
+            title={CONSECUENCIA[d.id] ?? `Ejecuta: ${ac}`} onClick={() => onResolver(d.id, `${ac}: ${d.titulo} (demo)`)}>
             {i === 0 ? <I_Check size={13} /> : null} {ac}
           </Button>
         ))}
@@ -334,8 +334,6 @@ function Decision({ d, onResolver }: { d: typeof DECISIONES[number]; onResolver:
   );
 }
 
-// =============================================================================================
-// AGENTE — las tres anclas: algo tuyo + resultado + tiempo
 // =============================================================================================
 function AgenteRow({ a, setToast }: { a: typeof AGENTES[number]; setToast: (t: string) => void }) {
   const clase = a.estado === 'trabajando' ? 'working' : a.estado === 'esperando_ok' ? 'waiting' : 'idle';
@@ -354,8 +352,7 @@ function AgenteRow({ a, setToast }: { a: typeof AGENTES[number]; setToast: (t: s
         <div className="work-what">{a.accion}</div>
         <div className="work-res"><b>→ </b>{a.resultado}</div>
         <div className="work-foot">
-          <Button variant="ghost" className="btn-sm" title={`Abre: ${a.artefacto}`}
-            onClick={() => setToast(`${a.artefacto} (demo)`)}>
+          <Button variant="ghost" className="btn-sm" title={`Abre: ${a.artefacto}`} onClick={() => setToast(`${a.artefacto} (demo)`)}>
             <I_ArrowRight size={12} /> {a.artefacto}
           </Button>
           <span className="work-when">{a.cuando}</span>
@@ -366,56 +363,35 @@ function AgenteRow({ a, setToast }: { a: typeof AGENTES[number]; setToast: (t: s
 }
 
 // =============================================================================================
-// MIENTRAS NO ESTABAS — la contracara del modo Automático
-// =============================================================================================
 function MientrasNoEstabas({ modo }: { modo: Modo }) {
   const m = MIENTRAS_NO_ESTABAS;
   return (
     <>
-      <div className="mwb" style={{ border: 'none', background: 'transparent', padding: 0 }}>
-        <div className="mwb-top">
-          {modo === 'auto'
-            ? <><I_Check size={15} style={{ color: 'var(--green)' }} /><b style={{ fontSize: 13.5 }}>Trabajó solo y te lo cuenta</b></>
-            : <><I_Zap size={15} style={{ color: 'var(--amber)' }} /><b style={{ fontSize: 13.5 }}>Esto hizo solo desde {m.desde}</b></>}
-        </div>
-        <div className="mwb-grid">
-          <div className="mwb-k">
-            <div className="mwb-k-lb">Gasto que evitó</div>
-            <div className="mwb-k-v" style={{ color: 'var(--green)' }}>$180</div>
+      <div className="mwb-top">
+        {modo === 'auto'
+          ? <><I_Check size={15} style={{ color: 'var(--green)' }} /><b style={{ fontSize: 13.5 }}>Trabajó solo y te lo cuenta</b></>
+          : <><I_Zap size={15} style={{ color: 'var(--amber)' }} /><b style={{ fontSize: 13.5 }}>Esto hizo solo desde {m.desde}</b></>}
+      </div>
+      <div className="mwb-grid">
+        <div className="mwb-k"><div className="mwb-k-lb">Gasto que evitó</div><div className="mwb-k-v" style={{ color: 'var(--green)' }}>$180</div></div>
+        <div className="mwb-k"><div className="mwb-k-lb">Gasto que hizo</div><div className="mwb-k-v">{m.gasto}</div></div>
+        <div className="mwb-k"><div className="mwb-k-lb">Ventas</div><div className="mwb-k-v" style={{ color: 'var(--green)' }}>{m.ventas}</div></div>
+      </div>
+      <div className="mwb-list">
+        {m.acciones.map((ac, i) => (
+          <div key={i} className="mwb-item">
+            <span style={{ color: 'var(--green)', flexShrink: 0 }}><I_Check size={14} /></span>
+            <span className="tx">{ac.txt}<small>{ac.detalle}</small></span>
+            <span className="hr">{ac.cuando}</span>
+            {ac.undo && <span className="tl-undo">deshacer</span>}
           </div>
-          <div className="mwb-k">
-            <div className="mwb-k-lb">Gasto que hizo</div>
-            <div className="mwb-k-v">{m.gasto}</div>
-          </div>
-          <div className="mwb-k">
-            <div className="mwb-k-lb">Ventas</div>
-            <div className="mwb-k-v" style={{ color: 'var(--green)' }}>{m.ventas}</div>
-          </div>
-        </div>
-        <div className="mwb-list">
-          {m.acciones.map((ac, i) => (
-            <div key={i} className="mwb-item">
-              <span style={{ color: 'var(--green)', flexShrink: 0 }}><I_Check size={14} /></span>
-              <span className="tx">{ac.txt}<small>{ac.detalle}</small></span>
-              <span className="hr">{ac.cuando}</span>
-              {ac.undo && <span className="tl-undo">deshacer</span>}
-            </div>
-          ))}
-        </div>
+        ))}
       </div>
       <div className="acc-why">
         {modo === 'auto'
           ? <>Estás en <b>Automático</b>: el motor decide y ejecuta sin preguntarte. Todas las acciones de acá son reversibles 24 h.</>
-          : <>Estás en <b>{MODOS.find(x => x.key === modo)?.nombre}</b>: el motor decide, pero <b>te pide OK</b> antes de publicar o gastar. Por eso tenés {DECISIONES.length} decisiones esperando en la columna de al lado.</>}
+          : <>Estás en <b>{MODOS.find(x => x.key === modo)?.nombre}</b>: el motor decide, pero <b>te pide OK</b> antes de publicar o gastar.</>}
       </div>
     </>
   );
 }
-
-const ICONO_AREA: Record<string, any> = {
-  Dinero: <I_Wallet size={15} />,
-  Alcance: <I_Users size={15} />,
-  Calidad: <I_Star size={15} />,
-  Conversaciones: <I_Chat size={15} />,
-  Recursos: <I_Credit size={15} />,
-};
