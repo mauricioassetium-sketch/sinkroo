@@ -83,9 +83,7 @@ export function ViewCreditos({ setToast }: { setToast: (t: string) => void }) {
               <small>Cuando bajás de 500 créditos, se cargan 1.760 solos</small>
             </span>
             <button className={`toggle ${autoRecarga ? 'on' : ''}`} title={autoRecarga ? 'Desactivar la carga automática' : 'Activar la carga automática'}
-              onClick={() => { setAutoRecarga(!autoRecarga); setToast(autoRecarga ? 'Auto-recarga desactivada' : 'Auto-recarga activada'); }}>
-              <span className="toggle-knob" />
-            </button>
+              onClick={() => { setAutoRecarga(!autoRecarga); setToast(autoRecarga ? 'Auto-recarga desactivada' : 'Auto-recarga activada'); }} />
           </div>
 
           <div className="guard">

@@ -29,30 +29,46 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
       <div className="hero card">
         <div className="hero-side">
           <div className="hero-greet">
-            <SinkrooMark size={104} radius={52} />
-            <div>
+            <span className="hero-logo">
+              <SinkrooMark size={136} />
+            </span>
+            <div className="hero-txt">
               <div className="hero-live" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <span className="dot-live" /> TU AGENTE ESTÁ ACTIVO
                 <button className="tour-start-btn" title="Recorré el panel con Sinkroo"
                   onClick={() => setToast('Tour guiado del panel (demo)')}>▶ Iniciar tour</button>
               </div>
-              <div className="hdr-t" style={{ fontSize: 24, lineHeight: 1.2 }}>
-                Hola {TENANT.usuario.split(' ')[0]}, soy <span className="grad-text" style={{ fontWeight: 900 }}>Sinkroo</span> 👋
+              <div className="hdr-t hero-title">
+                Hola {TENANT.usuario.split(' ')[0]}, soy <span className="grad-text">Sinkroo</span> 👋
               </div>
-              <div className="hdr-s">Te estoy vigilando la tienda 24/7. Mirá lo que hice hoy.</div>
+              <div className="hdr-s hero-sub">
+                Te estoy vigilando la tienda <b>24/7</b>. Mirá lo que hice hoy.
+              </div>
+              <div className="hero-chips">
+                <span className="hero-chip hot">● {AGENTES.filter(a => a.estado === 'trabajando').length} agentes trabajando ahora</span>
+                <span className="hero-chip">14 revisiones hoy</span>
+                {pendientes.length > 0 && <span className="hero-chip amber">{pendientes.length} decisiones esperan tu OK</span>}
+                {criticas > 0 && <span className="hero-chip red">{criticas} alarmas críticas</span>}
+              </div>
             </div>
           </div>
         </div>
         <div className="hero-metrics">
-          <div className="hero-metric"><div className="metric">47</div><div className="m-label">Ventas</div><div className="m-desc">concretadas hoy</div></div>
-          <div className="hero-metric"><div className="metric">3.8x</div><div className="m-label">ROAS</div><div className="m-desc">retorno por cada $1 invertido</div></div>
-          <div className="hero-metric"><div className="metric">84</div><div className="m-label">Score</div><div className="m-desc">calidad del creativo aprobado</div></div>
+          <div className="hero-metric"><div className="metric" style={{ color: 'var(--green)' }}>47</div><div className="m-label">Ventas</div><div className="m-desc">concretadas hoy</div></div>
+          <div className="hero-metric"><div className="metric" style={{ color: 'var(--green)' }}>3.8x</div><div className="m-label">ROAS</div><div className="m-desc">retorno por cada $1 invertido</div></div>
+          <div className="hero-metric"><div className="metric grad-text">84</div><div className="m-label">Score</div><div className="m-desc">calidad del creativo aprobado</div></div>
         </div>
-        <div className="hero-ad">
-          <div className="hero-ad-tag">PUBLICIDAD</div>
-          <div className="hero-ad-title">Más marcas, una cuenta</div>
-          <div className="hero-ad-sub">Con Sinkroo Agency, operás hasta 8 marcas desde una sola cuenta, white label incluido.</div>
-          <button className="hero-ad-btn" title="Ver los planes de agencia" onClick={() => setVista('cuenta')}>Ver planes →</button>
+        <div className="hero-start">
+          <div className="hero-ad-tag">EMPEZÁ ACÁ</div>
+          <div className="hero-ad-title">Tu primera campaña</div>
+          <div className="hero-ad-sub">
+            Decís qué querés publicar y subís tu material: el motor la crea, el panel la aprueba
+            y recién ahí sale a tus redes. <b>No gasta un peso antes.</b>
+          </div>
+          <button className="hero-ad-btn" title="Te lleva a «Qué querés publicar», el primer paso: ahí arranca el modelo"
+            onClick={() => { setVista('campanas'); setToast('Arrancá por acá: decí qué querés publicar'); }}>
+            Crear la primera →
+          </button>
         </div>
       </div>
 

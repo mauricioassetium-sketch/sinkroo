@@ -62,13 +62,22 @@ export const I_Zap = ({ size, ...p }: P) => (<svg {...base(size)} {...p}><path d
 export const I_Refresh = ({ size, ...p }: P) => (<svg {...base(size)} {...p}><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v5h-5"/></svg>);
 export const I_Qr = ({ size, ...p }: P) => (<svg {...base(size)} {...p}><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14h1M14 20h1M18 18h3v3h-3z"/></svg>);
 
-export const SinkrooMark = ({ size = 34, radius = 10 }: { size?: number; radius?: number }) => (
+export const SinkrooMark = ({ size = 34, radius }: { size?: number; radius?: number }) => (
   <img
     src="67.png"
     alt="Sinkroo"
     width={size}
     height={size}
-    style={{ width: size, height: size, borderRadius: radius, objectFit: 'cover', display: 'block' }}
+    style={{
+      width: size,
+      height: size,
+      // El logo original es 405x333 (más ancho que alto). Con objectFit 'cover' en una caja
+      // cuadrada se le recortaban las orejas al búho, y con radio = size/2 la máscara circular
+      // las cortaba otra vez. Con 'contain' y un radio suave entra entero.
+      objectFit: 'contain',
+      borderRadius: radius ?? Math.round(size * 0.2),
+      display: 'block',
+    }}
   />
 );
 
