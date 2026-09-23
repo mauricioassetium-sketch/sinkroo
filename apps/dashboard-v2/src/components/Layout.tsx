@@ -162,7 +162,7 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
             <span className="ebar-sep" />
             <span className="ebar-seg">
               <I_Vote size={13} />
-              <b>11</b> expertos por pieza
+              <b>5</b> perfiles votan cada pieza
             </span>
             <span className="ebar-cta">
               <span className="badge badge-purple" style={{ fontSize: 10 }}>

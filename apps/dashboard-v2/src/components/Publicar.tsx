@@ -64,13 +64,6 @@ export function Publicar({ setToast, modo, irAConversaciones, soloIngesta }: {
   const quitar = (id: string, i: number) =>
     setMaterial(m => ({ ...m, [id]: (m[id] || []).filter((_, ix) => ix !== i) }));
 
-  const nombreDe = () => {
-    const a = (valores['productos_foco'] as string) || (valores['idea'] as string) || (valores['idea_hist'] as string)
-      || (valores['que_decir'] as string) || (valores['que_lanzas'] as string) || (valores['premio'] as string)
-      || (valores['que_le_pedis'] as string) || '';
-    return a.trim().slice(0, 70) || formato.nombre;
-  };
-
   const camposFormato = (campos: CampoPublicacion[]) => campos.map(campo => {
     const v = valores[campo.id];
     return (
@@ -229,7 +222,11 @@ export function Publicar({ setToast, modo, irAConversaciones, soloIngesta }: {
       </div>
 
       {/* ==================== FILA 2: EL FLUJO DE MIROFISH ==================== */}
-      <FlujoMiroFish modo={modo} setToast={setToast} nombre={nombreDe()} esAnuncio={formato.key === 'anuncio'} />
+      {/* El flujo (investigar/crear/votar) NO va acá: vive en el paso de MiroFish.
+          Si esto se renderiza en la pantalla de ingesta, el usuario ve el proceso dos veces. */}
+      {!soloIngesta && (
+        <FlujoMiroFish modo={modo} setToast={setToast} esAnuncio={formato.key === 'anuncio'} />
+      )}
 
       {/* ==================== LO QUE NO SE PUBLICA ==================== */}
       {!soloIngesta && (

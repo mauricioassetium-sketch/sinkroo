@@ -31,8 +31,8 @@ function IconoFormato({ f }: { f: Opcion['formato'] }) {
   return <I_Image size={15} />;
 }
 
-export function FlujoMiroFish({ modo, setToast, nombre, esAnuncio }: {
-  modo: Modo; setToast: (t: string) => void; nombre: string; esAnuncio: boolean;
+export function FlujoMiroFish({ modo, setToast, esAnuncio }: {
+  modo: Modo; setToast: (t: string) => void; esAnuncio: boolean;
 }) {
   const [etapa, setEtapa] = useState<Etapa>('inicio');
   const [abierta, setAbierta] = useState<string | null>('op1');
@@ -84,11 +84,11 @@ export function FlujoMiroFish({ modo, setToast, nombre, esAnuncio }: {
           <div className="row" style={{ gap: 11, flex: 1, minWidth: 240 }}>
             <span style={{ color: 'var(--purple3)', flexShrink: 0, marginTop: 2 }}><I_Robot size={20} /></span>
             <div style={{ minWidth: 0 }}>
-              <div className="bt">Ya está en marcha «{nombre}»: acá es donde pasa todo</div>
+              <div className="bt">Un solo gatillo: <b>Iniciar</b>, en el paso 1</div>
               <div className="bs">
-                Subiste la info en el paso 1 y apretaste <b>Iniciar</b>. Ahora no hay nada que tocar:
-                Sinkroo investiga quién trae más leads y <b>con qué colores</b>, escribe los prompts de cada
-                imagen y video, arma <b>5 opciones</b> y MiroFish las vota y las ordena <b>del 1 al 5</b>.
+                Subís la info y apretás <b>Iniciar</b>. Ahí no hay nada que tocar: Sinkroo investiga
+                quién trae más leads y <b>con qué colores</b>, escribe los prompts de cada imagen y video,
+                arma <b>5 opciones</b> y MiroFish las vota y las ordena <b>del 1 al 5</b>.
                 Vos decidís después, en la galería.
               </div>
             </div>

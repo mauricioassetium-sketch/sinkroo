@@ -80,7 +80,7 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
             <span className="csec-s">Todo lo que subiste cae acá: el mercado lo mira, vota y lo ordena del 1 al 5</span>
           </div>
           <MotorEnVivo setToast={setToast} />
-          <FlujoMiroFish modo={modo} setToast={setToast} nombre="tu campaña" esAnuncio />
+          <FlujoMiroFish modo={modo} setToast={setToast} esAnuncio />
         </>
       )}
 
@@ -99,8 +99,8 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
       <div className="csec" style={{ marginTop: 26 }}>
         <span className="csec-n">1</span>
         <span className="csec-t">El panel de expertos</span>
-        <span className="csec-c purple">11 expertos</span>
-        <span className="csec-s">Cada pieza pasa por el panel antes de gastar un peso</span>
+        <span className="csec-c purple">5 perfiles</span>
+        <span className="csec-s">Cada pieza pasa por MiroFish antes de gastar un peso</span>
       </div>
       <div className="duo">
         <Card
