@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Card, Badge, Button } from './ui';
-import { I_Check, I_Upload, I_Image, I_Film, I_Robot, I_Vote, I_Rocket, I_Play, I_Refresh, I_Sparkle, I_ChevDn, I_ChevUp, I_Plus, I_Eye, I_X, I_Target } from './icons';
+import { I_Check, I_Upload, I_Image, I_Film, I_Vote, I_Rocket, I_Play, I_Refresh, I_Sparkle, I_ChevDn, I_ChevUp, I_Plus, I_Eye, I_X, I_Target } from './icons';
 import { OPCIONES, ranking, puntaje, CUANTAS_PASAN, type Opcion } from '../data/mirofish';
 import type { Modo } from '../data/demo';
 
@@ -59,22 +59,7 @@ export function IngestaManual({ setToast, ir }: { setToast: (t: string) => void;
 
   return (
     <>
-      {/* El atajo: si no tenés nada, Sinkroo lo hace */}
-      <Card className="atajo">
-        <div className="row spread" style={{ gap: 14, flexWrap: 'wrap', alignItems: 'center' }}>
-          <div className="row" style={{ gap: 11, flex: 1, minWidth: 240 }}>
-            <span style={{ color: 'var(--purple3)', flexShrink: 0 }}><I_Sparkle size={20} /></span>
-            <div style={{ minWidth: 0 }}>
-              <div className="bt">¿No tenés las piezas todavía?</div>
-              <div className="bs">Decí qué querés vender y <b>Sinkroo elige el tipo de campaña, el ángulo y el público</b>, y crea todo. Vos solo decidís cuáles salen.</div>
-            </div>
-          </div>
-          <Button title="Sinkroo decide todo y crea las piezas: es el camino más rápido"
-            onClick={() => ir(2)}><I_Robot size={14} /> Que lo haga Sinkroo</Button>
-        </div>
-      </Card>
-
-      <div className="duo" style={{ marginTop: 16 }}>
+      <div className="duo">
         <Card
           title={<span className="row" style={{ gap: 8 }}><I_Upload size={14} style={{ color: 'var(--purple3)' }} /> Paso 1 · Subí lo que ya tenés</span>}
           action={<Badge tone={piezas.length ? 'green' : 'amber'}>{piezas.length} {piezas.length === 1 ? 'pieza' : 'piezas'}</Badge>}
@@ -112,9 +97,9 @@ export function IngestaManual({ setToast, ir }: { setToast: (t: string) => void;
           )}
           <div className="row" style={{ gap: 9, flexWrap: 'wrap' }}>
             <Button className="btn-sm" disabled={!piezas.length}
-              title={piezas.length ? 'Manda tus piezas al panel: las vota y quedan ordenadas del 1 al 5' : 'Primero subí al menos una pieza'}
-              onClick={() => { setToast(`${piezas.length} piezas entraron al panel`); ir(3); }}>
-              <I_Vote size={13} /> Que el panel las puntúe
+              title={piezas.length ? 'Manda tus piezas a MiroFish: las votan y quedan ordenadas del 1 al 5' : 'Primero subí al menos una pieza'}
+              onClick={() => { setToast(`${piezas.length} piezas entraron a MiroFish`); ir(2); }}>
+              <I_Vote size={13} /> Mandarlas a MiroFish
             </Button>
           </div>
           <div className="acc-why">

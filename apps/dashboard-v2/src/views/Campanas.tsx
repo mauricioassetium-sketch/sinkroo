@@ -53,11 +53,13 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
                 </div>
               </div>
               <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-                <Button title="Arranca: Sinkroo investiga, crea las 5 opciones y las manda a MiroFish"
-                  onClick={() => { setToast('Sinkroo arrancó: ahora lo ves en MiroFish'); setPaso(2); }}>
-                  <I_Play size={14} /> Iniciar
-                </Button>
-                <Button variant="outline" className="btn-sm" title={manual ? 'Volver al camino con Sinkroo' : 'Si ya tenés las imágenes o los videos hechos, subilos y el panel los puntúa'}
+                {!manual && (
+                  <Button title="Arranca con el camino automático: Sinkroo elige el tipo de campaña, el ángulo y el público, crea las 5 opciones y las manda a MiroFish"
+                    onClick={() => { setToast('Sinkroo arrancó: mirá el paso 2'); setPaso(2); }}>
+                    <I_Play size={14} /> Iniciar
+                  </Button>
+                )}
+                <Button variant="outline" className="btn-sm" title={manual ? 'Volver al camino con Sinkroo' : 'Si ya tenés las imágenes o los videos hechos, subilos y MiroFish los puntúa'}
                   onClick={() => setManual(!manual)}>
                   {manual ? <><I_Robot size={13} /> Mejor que lo haga Sinkroo</> : <><I_Upload size={13} /> Ya tengo todo listo</>}
                 </Button>
