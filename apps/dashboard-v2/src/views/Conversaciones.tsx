@@ -196,7 +196,7 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
       <div className="csec">
         <span className="csec-n">1</span>
         <span className="csec-t">Automatizaciones</span>
-        <span className="csec-s">Lo que antes era un "tipo de campaña" y no debía serlo: esto trabaja solo</span>
+        <span className="csec-s">Mensajes que salen solos en el momento justo, sin que los dispares vos</span>
       </div>
       <div className="duo">
         {FLUJOS.map(f => (

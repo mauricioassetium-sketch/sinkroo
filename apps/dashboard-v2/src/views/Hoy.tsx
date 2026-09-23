@@ -2,10 +2,10 @@ import { useState } from 'react';
 import { Card, Badge, Button } from '../components/ui';
 import { MotorEnVivo } from '../components/MotorEnVivo';
 import { Bars, Ring, BarRow, Metrica } from '../components/viz';
-import { SinkrooMark, I_Check, I_ArrowRight, I_Wallet, I_Eye, I_Vote, I_Chat, I_Megaphone, I_Question, I_Credit, I_Users, I_Star, I_Sun, I_Zap, I_Trend, I_Clock } from '../components/icons';
+import { SinkrooMark, I_Check, I_ArrowRight, I_Wallet, I_Eye, I_Vote, I_Users, I_Star, I_Sun, I_Zap, I_Trend, I_Clock } from '../components/icons';
 import type { Vista } from '../components/Layout';
 import {
-  TENANT, ALARMAS, DECISIONES, AGENTES, NUMEROS, MIENTRAS_NO_ESTABAS, BITACORA, MODOS, TAREAS_EXCLUIDAS, CONSECUENCIA,
+  TENANT, ALARMAS, DECISIONES, AGENTES, NUMEROS, MIENTRAS_NO_ESTABAS, BITACORA, MODOS, CONSECUENCIA,
   MES, PANEL_PIEZAS,
   type Modo, type Severidad,
 } from '../data/demo';
@@ -268,7 +268,7 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
       <div className="csec">
         <span className="csec-n">5</span>
         <span className="csec-t">Memoria y cierre</span>
-        <span className="csec-s">Todo lo que podés revisar y lo que este modelo ya no te pide</span>
+        <span className="csec-s">Todo lo que hizo el motor y cómo vas contra tus metas</span>
       </div>
       <div className="duo">
         <Card
@@ -303,37 +303,44 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
         </Card>
 
         <Card
-          title={<span className="row" style={{ gap: 8 }}><I_Check size={14} style={{ color: 'var(--green)' }} /> Lo que este modelo ya no te pide</span>}
-          action={<Badge tone="muted">vs. el dashboard anterior</Badge>}
+          title={<span className="row" style={{ gap: 8 }}><I_Star size={14} style={{ color: 'var(--green)' }} /> Tus metas del mes</span>}
+          action={<Badge tone="green">2 de 3 en camino</Badge>}
         >
-          <div className="strike-list">
-            {TAREAS_EXCLUIDAS.map((t, i) => (
-              <div key={i} className="strike-item"><I_Check size={14} /><span>{t}</span></div>
-            ))}
+          <div>
+            <div className="row spread" style={{ marginBottom: 6 }}>
+              <span className="bt">Ventas</span>
+              <span className="bs">$4.280 de $6.000 · faltan $1.720</span>
+            </div>
+            <BarRow valor={71} max={100} formato="71%" color="var(--green)" />
           </div>
           <div>
-            <div className="row" style={{ gap: 8, marginBottom: 10 }}>
-              <I_Question size={14} style={{ color: 'var(--purple3)' }} />
-              <b className="bt">Por dónde seguir</b>
+            <div className="row spread" style={{ marginBottom: 6 }}>
+              <span className="bt">ROAS</span>
+              <span className="bs">3,8x sobre una meta de 3,5x</span>
             </div>
-            <div className="duo">
-              <Button onClick={() => setVista('campanas')} title="Ver tus campañas y el panel de expertos de cada pieza">
-                <I_Megaphone size={14} /> Campañas
-              </Button>
-              <Button variant="outline" onClick={() => setVista('conversaciones')} title="Ver los chats que atienden tus agentes">
-                <I_Chat size={14} /> Conversaciones
-              </Button>
-              <Button variant="ghost" onClick={() => setVista('mercado')} title="Qué está haciendo tu competencia ahora">
-                <I_Trend size={14} /> Mercado
-              </Button>
-              <Button variant="ghost" onClick={() => setVista('cuenta')} title="Elegir cuánto decide la IA y cuánto decidís vos">
-                <I_Credit size={14} /> Autonomía
-              </Button>
+            <BarRow valor={100} max={100} formato="108%" color="var(--green)" />
+          </div>
+          <div>
+            <div className="row spread" style={{ marginBottom: 6 }}>
+              <span className="bt">Responder en menos de 5 min</span>
+              <span className="bs">92% sobre una meta de 90%</span>
             </div>
+            <BarRow valor={92} max={100} formato="92%" color="var(--amber)" />
+          </div>
+          <div className="datos-row" style={{ marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--border)' }}>
+            <div className="dato"><span className="dato-l">Cierre proyectado</span><span className="dato-v" style={{ color: 'var(--green)' }}>$5.650</span></div>
+            <div className="dato"><span className="dato-l">Días que quedan</span><span className="dato-v">8</span></div>
+            <div className="dato"><span className="dato-l">Para llegar faltan</span><span className="dato-v" style={{ color: 'var(--amber)' }}>$215/día</span></div>
+          </div>
+          <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+            <Button className="btn-sm" title="Kai reasigna el presupuesto entre tus campañas para llegar con el mismo gasto total"
+              onClick={() => setToast('Plan para llegar a la meta del mes (demo)')}><I_ArrowRight size={13} /> Pedir un plan para llegar</Button>
+            <Button variant="ghost" className="btn-sm" title="Cambiás el objetivo del mes. No cambia el presupuesto ni lo que ya se gastó."
+              onClick={() => setToast('Editar las metas del mes (demo)')}>Ajustar la meta</Button>
           </div>
           <div className="acc-why">
-            Cada botón te lleva a la sección donde se resuelve ese tema. <b>Autonomía</b> es donde elegís
-            si la IA decide sola o te pide permiso antes de gastar.
+            La meta la ponés vos. <b>El motor no gasta más para llegar</b>: reasigna lo que ya tenés
+            y te avisa cuando el objetivo deja de ser alcanzable con el presupuesto actual.
           </div>
         </Card>
       </div>

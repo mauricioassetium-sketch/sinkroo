@@ -22,7 +22,7 @@ export default function App() {
   return (
     <Layout vista={vista} setVista={setVista} theme={theme} cicloTema={cycle} toast={toast} modo={modo}>
       {vista === 'hoy' && <ViewHoy setToast={avisar} setVista={setVista} modo={modo} />}
-      {vista === 'campanas' && <ViewCampanas setToast={avisar} modo={modo} />}
+      {vista === 'campanas' && <ViewCampanas setToast={avisar} modo={modo} setVista={setVista} />}
       {vista === 'conversaciones' && <ViewConversaciones setToast={avisar} modo={modo} />}
       {vista === 'mercado' && <ViewMercado setToast={avisar} />}
       {vista === 'cuenta' && <ViewCuenta setToast={avisar} modo={modo} setModo={setModo} />}

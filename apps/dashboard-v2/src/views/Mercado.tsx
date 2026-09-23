@@ -3,6 +3,16 @@ import { ViewHead, BarRow } from '../components/viz';
 import { I_Globe, I_Trend, I_Star, I_Eye, I_Zap, I_Check, I_ArrowRight, I_Plus, I_Users } from '../components/icons';
 import { COMPETIDORES, ANGULOS, TENDENCIAS } from '../data/demo';
 
+const OFERTA = [
+  { k: 'Precio', vos: '$34', ellos: '$29 el más bajo', gana: false, nota: 'Vas 17% arriba. Se compensa con envío y garantía.' },
+  { k: 'Envío gratis', vos: 'desde $15.000', ellos: 'desde $20.000', gana: true, nota: 'Llegás al envío gratis con menos compra que ellos.' },
+  { k: 'Garantía', vos: '30 días', ellos: 'ninguno la ofrece', gana: true, nota: 'No te cuesta nada y ninguno de los 5 la tiene.' },
+  { k: 'Atención por WhatsApp', vos: 'responde en 4 s', ellos: 'entre 6 y 24 h', gana: true, nota: 'La mitad de las consultas se cierran el mismo día.' },
+  { k: 'Recompra automática', vos: 'a los 30 días', ellos: 'ninguno la tiene', gana: true, nota: 'Un cliente que vuelve cuesta $0 de publicidad.' },
+  { k: 'Reseñas', vos: '128', ellos: '940 el líder', gana: false, nota: 'Tu punto débil: es la objeción que marcó el panel.' },
+  { k: 'Retiro en el día', vos: 'no ofrecés', ellos: 'sí, 2 de 5', gana: false, nota: 'Cuesta casi nada si despachás desde tu local.' },
+];
+
 export function ViewMercado({ setToast }: { setToast: (t: string) => void }) {
   const maxAnuncios = Math.max(...COMPETIDORES.map(c => c.anuncios));
   const maxLeads = Math.max(...COMPETIDORES.map(c => c.leads));
@@ -148,28 +158,30 @@ export function ViewMercado({ setToast }: { setToast: (t: string) => void }) {
       {/* ============ LA DECISIÓN DEL MAPA Y PRÓXIMOS PASOS ============ */}
       <div className="duo" style={{ marginTop: 16 }}>
         <Card
-          title={<span className="row" style={{ gap: 8 }}><I_Eye size={14} style={{ color: 'var(--muted)' }} /> ¿Y el mapa?</span>}
-          action={<Badge tone="muted">decisión de producto</Badge>}
+          title={<span className="row" style={{ gap: 8 }}><I_Users size={14} style={{ color: 'var(--purple3)' }} /> Tu oferta contra la de ellos</span>}
+          action={<Badge tone="green">{OFERTA.filter(x => x.gana).length} de {OFERTA.length} a favor</Badge>}
         >
-          <div className="strike-list">
-            <div className="strike-item"><I_Eye size={14} /><span><b style={{ color: 'var(--txt)' }}>Era lo más vistoso y lo menos accionable.</b> Saber dónde están las tiendas de tu competencia no cambia ninguna decisión de campaña. Saber que bajaron 15% y se fueron a video, sí.</span></div>
-            <div className="strike-item"><I_Zap size={14} /><span><b style={{ color: 'var(--txt)' }}>Costo cero contra costo mensual.</b> Google Maps exige cuenta de GCP con facturación activa; la biblioteca de anuncios de Meta es pública y gratis.</span></div>
-            <div className="strike-item"><I_Star size={14} /><span><b style={{ color: 'var(--txt)' }}>Si algún día lo querés, entra como integración BYO.</b> No se descarta para siempre: se saca del camino crítico.</span></div>
-          </div>
-          <div className="datos-row" style={{ marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--border)' }}>
-            <div className="dato"><span className="dato-l">Costo de tenerlo</span><span className="dato-v">$0 hoy</span></div>
-            <div className="dato"><span className="dato-l">Decisión que cambia</span><span className="dato-v" style={{ color: 'var(--muted)' }}>ninguna</span></div>
-            <div className="dato"><span className="dato-l">Se puede recuperar</span><span className="dato-v" style={{ color: 'var(--green)' }}>sí, cuando quieras</span></div>
-          </div>
-          <div className="bs" style={{ marginTop: 12 }}>
-            Si lo querés, se conecta <b>con tu propia cuenta de Google</b>: nos das la clave, no la compartimos
-            con nadie y podés revocarla desde tu panel de Google cuando quieras.
-          </div>
+          {OFERTA.map(x => (
+            <div key={x.k} style={{ padding: '9px 0', borderBottom: '1px solid var(--border)' }}>
+              <div className="row" style={{ gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
+                <span className="bt">{x.k}</span>
+                <span className="badge" style={{ fontSize: 9.5, background: x.gana ? 'rgba(34,197,94,.14)' : 'rgba(245,158,11,.14)', color: x.gana ? 'var(--green)' : 'var(--amber)' }}>
+                  {x.gana ? 'ganás' : 'perdés'}
+                </span>
+                <span className="tiny muted">vos {x.vos} · ellos {x.ellos}</span>
+              </div>
+              <div className="bs">{x.nota}</div>
+            </div>
+          ))}
           <div className="row" style={{ marginTop: 14, gap: 9, flexWrap: 'wrap' }}>
-            <Button variant="outline" className="btn-sm" title="Conectás tu propia API de Google y el mapa vuelve"
-              onClick={() => setToast('Conectar Google Maps como integración BYO (demo)')}><I_Globe size={13} /> Conectar el mío</Button>
-            <Button variant="ghost" className="btn-sm" title="Muestra la tendencia de 90 días en vez de 30"
-              onClick={() => setToast('Tendencia de 90 días (demo)')}>Ver 90 días <I_ArrowRight size={13} /></Button>
+            <Button className="btn-sm" title="Nia escribe 3 anuncios apoyados en garantía y envío, que es donde ganás"
+              onClick={() => setToast('Nia prepara 3 anuncios con tu ventaja (demo)')}><I_Plus size={13} /> Anunciar donde ganás</Button>
+            <Button variant="ghost" className="btn-sm" title="Te muestra cómo los 5 competidores están consiguiendo reseñas"
+              onClick={() => setToast('Cómo consiguen reseñas ellos (demo)')}>Ver cómo lo hacen ellos <I_ArrowRight size={13} /></Button>
+          </div>
+          <div className="acc-why">
+            Es la comparación que hace un cliente cuando duda, no un informe de mercado.
+            <b> Donde ganás se dice en el anuncio</b>; donde perdés, se compensa con lo que ya tenés.
           </div>
         </Card>
 
@@ -196,6 +208,17 @@ export function ViewMercado({ setToast }: { setToast: (t: string) => void }) {
                 <small>Bajar $5 te cuesta margen y Tienda Norte puede bajar otra vez. La diferenciación aguanta, la guerra de precio no.</small>
               </span>
             </div>
+            <div className="guard">
+              <I_Eye size={15} style={{ color: 'var(--purple3)', flexShrink: 0 }} />
+              <span className="guard-lb">Vigilar a Tienda Norte cada semana
+                <small>Ya bajó precios una vez. Si lo vuelve a hacer, conviene que lo sepas antes que tus clientes.</small>
+              </span>
+            </div>
+          </div>
+          <div className="datos-row" style={{ marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--border)' }}>
+            <div className="dato"><span className="dato-l">Si hacés las 4</span><span className="dato-v" style={{ color: 'var(--green)' }}>+$520/sem</span></div>
+            <div className="dato"><span className="dato-l">Costo</span><span className="dato-v">$0</span></div>
+            <div className="dato"><span className="dato-l">Se nota en</span><span className="dato-v">7 días</span></div>
           </div>
           <div className="row" style={{ gap: 9, marginTop: 14, flexWrap: 'wrap' }}>
             <Button className="btn-sm" title="Crea el borrador de la campaña con el ángulo ganador"
