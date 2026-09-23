@@ -1,8 +1,21 @@
 # Sinkroo — Plan Maestro: Back-end dirigido por el Dashboard
 
-**Versión:** 1.0 · **Fecha:** 2026-09-23
+**Versión:** 1.1 · **Fecha:** 2026-09-23
 **Método:** inversión (reverse-spec). El dashboard define el contrato; el back se construye para cumplirlo.
-**Documento hermano:** `01-inventario-dashboard-spec.md` (inventario vista por vista).
+
+**Documentos de este plan (leer en orden):**
+
+| # | Documento | Qué resuelve |
+|---|---|---|
+| 00 | **este** — Plan Maestro | Arquitectura, capa BYO, dominio, API, agentes, fases |
+| 01 | Inventario del dashboard como spec | Las 12 vistas elemento por elemento |
+| 02 | Simplificación | Qué se queda y qué sale (con números medidos) |
+| 03 | El Motor a la Vista | Mostrar el trabajo al usuario (glass engine) |
+| 04 | Autonomía y Centro de Mando | Cuánto decide la IA + el dashboard como cabina |
+
+> **Revisiones de esta v1.1:** el §7 incorpora la **Fase 0.5 (columna del motor)** y adelanta la
+> autonomía, según los documentos 03 y 04. La recomendación de la v1.0 de ocultar los agentes
+> **está revocada**: ver `03-motor-a-la-vista.md`.
 
 ---
 
@@ -371,6 +384,20 @@ listo".
 Tenants + RLS · auth real (email + OAuth Google/Facebook) · membresías y roles · auditoría ·
 contrato de API (`data`/`meta`/`error`) · migraciones versionadas · seed de demo por tenant.
 **Entregable:** login real, y el dashboard entra con un usuario de verdad.
+
+### Fase 0.5 — La columna del motor ⭐ *(nueva, ver doc 03)*
+`agent_runs` · `artifacts` · `work_events` (chequeos deterministas, sin LLM) · scheduler ·
+SSE `/api/stream` · seed de 30 días de bitácora demo.
+**Va antes que las integraciones porque todo esto se construye y se valida sin depender de
+ninguna credencial externa**, en paralelo al App Review de Meta que tiene cola.
+No se puede mostrar el motor si no hay motor.
+**Entregable:** el dashboard muestra trabajo real ocurriendo (vigilancia) sin una sola credencial.
+
+### Fase 0.6 — Autonomía y Centro de Mando ⭐ *(nueva, ver doc 04)*
+`autonomy_settings` · `action_catalog` · `guardrails` (frenos duros) · `decisions` ·
+`actions_log` con undo · `alarms` con taxonomía e impacto en $ · el punto único `actions.execute()`.
+**Entregable:** el dial funciona, el usuario elige cómo trabaja la IA, y el dashboard resuelve
+pendientes inline.
 
 ### Fase 1 — La capa BYO + Herramientas ⭐
 `providers` · `connections` · `credentials` (cifrado envelope) · los flujos OAuth y de credencial
