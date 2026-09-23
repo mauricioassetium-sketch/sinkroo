@@ -1,15 +1,26 @@
 import { useState, type ReactNode } from 'react';
-import { SinkrooMark, I_Home, I_Megaphone, I_Whatsapp, I_Globe, I_Settings, I_Bell, I_Sun, I_Moon, I_Zap, I_Clock, I_Vote, I_Robot } from './icons';
+import { SinkrooMark, I_Home, I_Megaphone, I_Whatsapp, I_Globe, I_Settings, I_Bell, I_Sun, I_Moon, I_Zap, I_Clock, I_Vote, I_Robot, I_Credit, I_Gift, I_Shield } from './icons';
 import { TENANT, AGENTES, ALARMAS, DECISIONES, MODOS, type Modo } from '../data/demo';
 
-export type Vista = 'hoy' | 'campanas' | 'conversaciones' | 'mercado' | 'cuenta';
+export type Vista = 'hoy' | 'campanas' | 'conversaciones' | 'mercado' | 'cuenta' | 'creditos' | 'referidos' | 'kyc';
 
 const NAV: { key: Vista; nombre: string; Icon: any }[] = [
   { key: 'hoy', nombre: 'Hoy', Icon: I_Home },
   { key: 'campanas', nombre: 'Campañas', Icon: I_Megaphone },
   { key: 'conversaciones', nombre: 'Conversaciones', Icon: I_Whatsapp },
   { key: 'mercado', nombre: 'Mercado', Icon: I_Globe },
+];
+
+// Para crecer: cargar el motor y traer gente
+const NAV_CRECER: { key: Vista; nombre: string; Icon: any }[] = [
+  { key: 'creditos', nombre: 'Créditos', Icon: I_Credit },
+  { key: 'referidos', nombre: 'Referidos', Icon: I_Gift },
+];
+
+// Para habilitar cosas dentro del sistema
+const NAV_CONF: { key: Vista; nombre: string; Icon: any }[] = [
   { key: 'cuenta', nombre: 'Cuenta y autonomía', Icon: I_Settings },
+  { key: 'kyc', nombre: 'Verificación', Icon: I_Shield },
 ];
 
 export function Layout({ vista, setVista, children, theme, cicloTema, toast, modo }: {
@@ -56,11 +67,27 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
           </div>
         ))}
 
+        <div className="sb-section-label" style={{ marginTop: 10 }}>CRECER</div>
+        {NAV_CRECER.map(n => (
+          <div key={n.key} className={`nav-item ${vista === n.key ? 'active' : ''}`} onClick={() => setVista(n.key)}>
+            <n.Icon size={17} />
+            <span className="nav-label">{n.nombre}</span>
+            {n.key === 'creditos' && (
+              <span className="badge badge-amber" style={{ marginLeft: 'auto', fontSize: 9 }}>12 días</span>
+            )}
+          </div>
+        ))}
+
         <div className="sb-section-label" style={{ marginTop: 10 }}>CONFIGURACIÓN</div>
-        <div className={`nav-item ${vista === 'cuenta' ? 'active' : ''}`} onClick={() => setVista('cuenta')}>
-          <I_Settings size={17} />
-          <span className="nav-label">Cuenta y autonomía</span>
-        </div>
+        {NAV_CONF.map(n => (
+          <div key={n.key} className={`nav-item ${vista === n.key ? 'active' : ''}`} onClick={() => setVista(n.key)}>
+            <n.Icon size={17} />
+            <span className="nav-label">{n.nombre}</span>
+            {n.key === 'kyc' && (
+              <span className="badge badge-amber" style={{ marginLeft: 'auto', fontSize: 9 }}>falta</span>
+            )}
+          </div>
+        ))}
 
         <div className="sb-user" style={{ marginTop: 'auto' }}>
           <div className="av" style={{ width: 32, height: 32, fontSize: 12 }}>MP</div>
@@ -160,7 +187,7 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
 }
 
 function tituloVista(v: Vista) {
-  return ({ hoy: 'Tu día', campanas: 'Campañas', conversaciones: 'Conversaciones', mercado: 'Mercado', cuenta: 'Cuenta y autonomía' } as const)[v];
+  return ({ hoy: 'Tu día', campanas: 'Campañas', conversaciones: 'Conversaciones', mercado: 'Mercado', cuenta: 'Cuenta y autonomía', creditos: 'Créditos', referidos: 'Referidos', kyc: 'Verificación de identidad' } as const)[v];
 }
 function subtituloVista(v: Vista) {
   return ({
@@ -169,6 +196,9 @@ function subtituloVista(v: Vista) {
     conversaciones: 'Todo lo que tus agentes contestan, con el contexto de cada cliente',
     mercado: 'Qué está haciendo tu competencia y por dónde conviene ir',
     cuenta: 'Cuánto decide la IA y cuánto decidís vos',
+    creditos: 'Con qué se carga el motor y en qué se va cada crédito',
+    referidos: 'Traé gente y el motor te devuelve créditos',
+    kyc: 'Sin esto el motor no puede publicar ni mover dinero por vos',
   } as const)[v];
 }
 

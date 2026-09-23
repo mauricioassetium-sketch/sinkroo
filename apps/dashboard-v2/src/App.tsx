@@ -6,6 +6,9 @@ import { ViewCampanas } from './views/Campanas';
 import { ViewConversaciones } from './views/Conversaciones';
 import { ViewMercado } from './views/Mercado';
 import { ViewCuenta } from './views/Cuenta';
+import { ViewCreditos } from './views/Creditos';
+import { ViewReferidos } from './views/Referidos';
+import { ViewKyc } from './views/Kyc';
 import { TENANT, type Modo } from './data/demo';
 
 export default function App() {
@@ -26,6 +29,9 @@ export default function App() {
       {vista === 'conversaciones' && <ViewConversaciones setToast={avisar} modo={modo} />}
       {vista === 'mercado' && <ViewMercado setToast={avisar} />}
       {vista === 'cuenta' && <ViewCuenta setToast={avisar} modo={modo} setModo={setModo} />}
+      {vista === 'creditos' && <ViewCreditos setToast={avisar} />}
+      {vista === 'referidos' && <ViewReferidos setToast={avisar} />}
+      {vista === 'kyc' && <ViewKyc setToast={avisar} />}
     </Layout>
   );
 }
