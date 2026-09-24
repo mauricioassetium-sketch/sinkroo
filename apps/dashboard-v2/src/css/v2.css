@@ -1677,3 +1677,64 @@ html.marca-cliente .pers-flotante { color: var(--sobre-grad); }
 .tipo-chip { color: var(--txt); opacity: .74; }
 .tipo-chip:hover { opacity: .95; }
 .tipo-chip.sel { opacity: 1; }
+
+/* =============================================================================================
+   TARJETA DE PLAN DEL MENÚ LATERAL
+   ---------------------------------------------------------------------------------------------
+   Reemplaza la versión de cuatro líneas de texto sueltas (marca, "Plan Pro", una fila de
+   créditos y otra de autonomía, todas con el mismo peso) por una jerarquía leíble de un
+   vistazo: marca + badge del plan arriba, los créditos con su número, su barra del plan del
+   mes y los días de autonomía, y el modo en una píldora con punto de color.
+   Los dos bloques de datos llevan a donde se cambia cada cosa (Créditos / Cuenta y autonomía).
+   Todo entra en los 248px del menú: nada se corta ni deja hueco en blanco.
+   ============================================================================================= */
+
+/* Fila de arriba: la marca (peso alto, es lo que identifica la cuenta) y el plan como badge. */
+.sb-plan-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
+.sb-plan-name { font-size: 14px; font-weight: 800; letter-spacing: -.2px; color: var(--txt); min-width: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sb-plan-badge { flex-shrink: 0; font-size: 9.5px; padding: 2px 9px; }
+
+/* Bloque de dato tocable: el hover y el foco avisan que se puede tocar ANTES de tocarlo. */
+.sb-plan-block { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; padding: 7px 8px;
+  border-radius: 9px; cursor: pointer; transition: background .15s, box-shadow .15s; }
+.sb-plan-block:hover { background: rgba(168,85,247,.09); box-shadow: inset 0 0 0 1px rgba(168,85,247,.24); }
+.sb-plan-block:focus-visible { outline: 2px solid var(--purple2); outline-offset: 1px; }
+
+/* Créditos: número grande, la unidad chica al lado y los días de autonomía al final de la fila. */
+.sb-plan-cred { display: flex; align-items: baseline; gap: 5px; min-width: 0; }
+.sb-plan-num { font-size: 18px; font-weight: 900; letter-spacing: -.5px; color: var(--txt);
+  font-variant-numeric: tabular-nums; line-height: 1.15; }
+.sb-plan-unit { font-size: 10px; color: var(--muted); }
+.sb-plan-dias { margin-left: auto; flex-shrink: 0; font-size: 10px; font-weight: 700; color: var(--amber);
+  white-space: nowrap; }
+
+/* La barra del plan del mes, más fina que la de las tarjetas de contenido: acá es un indicador,
+   no el protagonista. Usa la clase `Progress` que ya existe en el panel. */
+.sb-plan-bar .progress-bar { height: 5px; }
+
+/* Autonomía: etiqueta a la izquierda y la píldora del modo a la derecha, en una sola fila. */
+.sb-plan-block.sb-plan-modo { flex-direction: row; align-items: center; justify-content: space-between; gap: 8px; }
+.sb-plan-lb { font-size: 10px; color: var(--muted); }
+
+/* Píldora del modo: el punto y el color cambian con el modo y significan algo.
+   Verde = Automático (decide y ejecuta), violeta = Compartido (decide y te pide OK),
+   ámbar = Manual (te sugiere y decidís vos). */
+.sb-modo { display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0; padding: 3px 9px;
+  border-radius: 99px; border: 1px solid transparent; font-size: 10.5px; font-weight: 700;
+  white-space: nowrap; }
+.sb-modo-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+.sb-modo-auto { color: var(--green); background: rgba(34,197,94,.14); border-color: rgba(34,197,94,.34); }
+.sb-modo-shared { color: var(--purple3); background: rgba(168,85,247,.14); border-color: rgba(168,85,247,.34); }
+.sb-modo-manual { color: var(--amber); background: rgba(245,158,11,.14); border-color: rgba(245,158,11,.34); }
+
+/* =============================================================================================
+   MODAL A PANTALLA COMPLETA: cuando hay un modal abierto, NO se ve nada mas.
+   El fondo del modal era rgba(0,0,0,.7) + blur(4px): el dashboard de atras quedaba visible
+   (atenuado) y el dueno lo reporto dos veces ("el resto no debe verse"). Ahora es OPACO.
+   ============================================================================================= */
+.ob-modal-back { background: var(--bg); backdrop-filter: none; padding: 24px; }
+/* Un halo suave para que el modal no flote sobre un plano pelado, pero sin dejar ver nada. */
+.ob-modal-back::before { content: ''; position: fixed; inset: 0; pointer-events: none;
+  background: radial-gradient(circle at 50% 0%, rgba(168,85,247,.10), transparent 62%); }
+.ob-modal-back > .card { position: relative; }

@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { SinkrooMark, I_Home, I_Megaphone, I_Whatsapp, I_Globe, I_Settings, I_Bell, I_Sun, I_Moon, I_Zap, I_Clock, I_Vote, I_Robot, I_Credit, I_Gift, I_Shield, I_User, I_Palette, I_Menu, I_X } from './icons';
 import { TENANT, AGENTES, ALARMAS, DECISIONES, MODOS, type Modo } from '../data/demo';
+import { Progress } from './ui';
 import { usePerfil, inicialesDe } from '../lib/perfil';
 import { PerfilModal } from './PerfilModal';
 import { PersonalizarPanel } from './PersonalizarPanel';
@@ -56,6 +57,17 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
   const esperando = DECISIONES.length;
   const criticas = ALARMAS.filter(a => a.severidad === 'critico').length;
   const nombreModo = MODOS.find(m => m.key === modo)?.nombre ?? '';
+  const descModo = MODOS.find(m => m.key === modo)?.desc ?? '';
+  // Los días de autonomía NO se escriben a mano: salen de los créditos que hay hoy, con el mismo
+  // consumo del plan que usa la vista de Créditos (150 créditos por día, `Math.round(saldo / 150)`).
+  // Si el saldo cambia, el menú y la vista dicen lo mismo; si el número estuviera fijo, se
+  // desincronizaría en la primera recarga.
+  const dias = Math.max(0, Math.round(TENANT.creditos / 150));
+  const todosLosDias = Math.round(TENANT.creditosMes / 150);
+  const pctCreditos = Math.min(100, Math.round((TENANT.creditos / TENANT.creditosMes) * 100));
+  // Ir a una vista del menú y cerrar la bandeja en celular: el mismo gesto para la tarjeta de
+  // plan y para los ítems de navegación.
+  const irA = (v: Vista) => { setVista(v); setMenuAbierto(false); };
 
   return (
     <div className="app">
@@ -68,16 +80,49 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
           <span className="badge badge-purple sb-v2" style={{ marginLeft: 'auto', fontSize: 9 }}>v2</span>
         </div>
 
+        {/* ---------- TARJETA DE PLAN ----------
+            Antes eran cuatro líneas de texto sueltas: no se leía nada de un vistazo. Ahora la
+            jerarquía es la del resto del panel, de lo que identifica la cuenta a lo que se mira
+            todos los días:
+              1) la MARCA arriba y con peso, con el PLAN como badge (era texto gris al lado);
+              2) los CRÉDITOS con su número grande, su barra del plan del mes y los días de
+                 autonomía que quedan al lado;
+              3) la AUTONOMÍA como píldora con punto de color según el modo (verde Automático,
+                 violeta Compartido, ámbar Manual): el color dice algo, no está siempre en violeta.
+            Los dos bloques de datos son tocables y llevan a donde se cambia cada cosa: es un menú,
+            si muestra un dato tiene que poder ir a dónde se toca ese dato. */}
         <div className="sb-plan">
-          <div className="sb-plan-name">{perfil.marca}</div>
-          <div className="tiny muted">Plan {TENANT.plan}</div>
-          <div className="row spread" style={{ marginTop: 10 }}>
-            <span className="tiny muted">Créditos</span>
-            <span className="tiny" style={{ fontWeight: 800 }}>{TENANT.creditos.toLocaleString('es-AR')}</span>
+          <div className="sb-plan-top">
+            <div className="sb-plan-name" title={`${perfil.marca}: este panel es de tu negocio`}>{perfil.marca}</div>
+            <span className="badge badge-purple sb-plan-badge"
+              title={`Plan ${TENANT.plan}: ${TENANT.creditosMes.toLocaleString('es-AR')} créditos por mes, unos ${todosLosDias} días de motor`}>
+              Plan {TENANT.plan}
+            </span>
           </div>
-          <div className="row spread" style={{ marginTop: 4 }}>
-            <span className="tiny muted">Autonomía</span>
-            <span className="tiny" style={{ fontWeight: 800, color: 'var(--purple3)' }}>{nombreModo}</span>
+
+          <div className="sb-plan-block" role="button" tabIndex={0}
+            onClick={() => irA('creditos')}
+            onKeyDown={e => { if (e.key === 'Enter') irA('creditos'); }}
+            title={`Créditos: te quedan ${TENANT.creditos.toLocaleString('es-AR')} de ${TENANT.creditosMes.toLocaleString('es-AR')} del plan del mes. Tocalo para ver en qué se va cada crédito`}>
+            <div className="sb-plan-cred">
+              <span className="sb-plan-num">{TENANT.creditos.toLocaleString('es-AR')}</span>
+              <span className="sb-plan-unit">créditos</span>
+              <span className="sb-plan-dias"
+                title={`Autonomía: al consumo actual (150 créditos por día) al motor le quedan ${dias} días sin que recargues`}>
+                {dias} días
+              </span>
+            </div>
+            <div className="sb-plan-bar">
+              <Progress pct={pctCreditos} color={pctCreditos <= 25 ? 'amber' : 'purple'} />
+            </div>
+          </div>
+
+          <div className="sb-plan-block sb-plan-modo" role="button" tabIndex={0}
+            onClick={() => irA('cuenta')}
+            onKeyDown={e => { if (e.key === 'Enter') irA('cuenta'); }}
+            title={`Autonomía en modo ${nombreModo}: ${descModo} Tocalo para cambiarlo en Cuenta y autonomía`}>
+            <span className="sb-plan-lb">Autonomía</span>
+            <span className={`sb-modo sb-modo-${modo}`}><i className="sb-modo-dot" />{nombreModo}</span>
           </div>
         </div>
 
@@ -98,7 +143,7 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
             <n.Icon size={17} />
             <span className="nav-label">{n.nombre}</span>
             {n.key === 'creditos' && (
-              <span className="badge badge-amber" style={{ marginLeft: 'auto', fontSize: 9 }}>12 días</span>
+              <span className="badge badge-amber" style={{ marginLeft: 'auto', fontSize: 9 }} title={`Autonomía: ${dias} días al consumo de hoy`}>{dias} días</span>
             )}
           </div>
         ))}
