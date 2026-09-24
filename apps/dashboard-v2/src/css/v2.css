@@ -1738,3 +1738,88 @@ html.marca-cliente .pers-flotante { color: var(--sobre-grad); }
 .ob-modal-back::before { content: ''; position: fixed; inset: 0; pointer-events: none;
   background: radial-gradient(circle at 50% 0%, rgba(168,85,247,.10), transparent 62%); }
 .ob-modal-back > .card { position: relative; }
+
+/* =============================================================================================
+   TU PERFIL · EL VELO SEMI-TRANSPARENTE, EL BUSCADOR DE UBICACIÓN Y LA CONVERSIÓN DEL DÍA
+   ---------------------------------------------------------------------------------------------
+   EL VELO: el fondo del modal vuelve a ser semi-transparente (habia quedado OPACO porque el
+   dashboard de atras se leia entero). El punto medio es este: oscuro CON ALFA y desenfoque, asi el
+   dashboard se INTUYE detras —se ve que hay algo, se pierde el texto— pero no se lee nada.
+   El z-index y el montaje NO se tocan: el modal sigue colgado de la raiz, arriba de la barra de
+   arriba (ese bug ya esta resuelto y no se deshace).
+   ============================================================================================= */
+.ob-modal-back { background: rgba(8, 6, 14, .78); backdrop-filter: blur(6px); }
+
+/* ---------- RESUMEN: la zona y la moneda que el motor va a usar, siempre a la vista ---------- */
+.perf-resumen { display: flex; flex-wrap: wrap; align-items: center; gap: 5px 12px; margin-top: 14px;
+  padding: 9px 11px; border-radius: 10px; background: var(--bg3); border: 1px solid var(--border); }
+.perf-resumen-lb { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; font-size: 10px;
+  font-weight: 800; letter-spacing: .4px; text-transform: uppercase; color: var(--purple3); white-space: nowrap; }
+.perf-resumen-txt { font-size: 12px; min-width: 0; color: var(--txt); opacity: .72; }
+.perf-resumen-txt b { color: var(--txt); opacity: 1; font-weight: 800; }
+
+/* ---------- BUSCADOR DE UBICACIÓN ---------- */
+.ubic-buscador { display: flex; align-items: center; gap: 8px; margin-top: 9px; min-width: 0; }
+.ubic-lupa { display: grid; place-items: center; flex-shrink: 0; width: 30px; height: 30px; border-radius: 8px;
+  background: var(--bg3); border: 1px solid var(--border); color: var(--purple3); }
+.ubic-input { flex: 1; min-width: 0; }
+.ubic-btn { flex-shrink: 0; }
+
+/* ---------- RESULTADOS: una fila por lugar, con su bandera, su zona y su moneda ---------- */
+.ubic-res { display: flex; flex-direction: column; gap: 5px; margin-top: 10px; padding: 8px;
+  border-radius: 11px; background: rgba(168,85,247,.07); border: 1px solid var(--border); }
+.ubic-res-lb { font-size: 9.5px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase;
+  color: var(--purple3); padding: 0 2px 2px; }
+.ubic-res-item { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; width: 100%; text-align: left;
+  padding: 7px 9px; border-radius: 9px; background: var(--bg3); border: 1px solid var(--border);
+  color: var(--txt); cursor: pointer; transition: all .15s; }
+.ubic-res-item:hover { border-color: var(--purple2); background: rgba(168,85,247,.14); }
+.ubic-res-item.sel { border-color: rgba(168,85,247,.5); background: rgba(168,85,247,.16); }
+.ubic-bandera { font-size: 15px; line-height: 1; flex-shrink: 0; }
+.ubic-ciudad { font-size: 12px; font-weight: 800; }
+.ubic-pais { font-size: 10.5px; color: var(--txt); opacity: .6; }
+.ubic-meta { margin-left: auto; font-size: 10.5px; font-weight: 700; color: var(--purple3);
+  font-variant-numeric: tabular-nums; }
+
+/* Sin resultados y ubicación aplicada: los dos avisos, con color propio para que se distingan. */
+.ubic-vacio { margin-top: 10px; padding: 9px 11px; border-radius: 10px; background: rgba(245,158,11,.10);
+  border: 1px solid rgba(245,158,11,.34); font-size: 11.5px; line-height: 1.5; color: var(--txt); }
+.ubic-aviso { display: flex; align-items: flex-start; gap: 8px; margin-top: 10px; padding: 9px 11px;
+  border-radius: 10px; background: rgba(34,197,94,.10); border: 1px solid rgba(34,197,94,.34);
+  font-size: 11.5px; line-height: 1.5; color: var(--txt); }
+.ubic-mano-lb { margin-top: 12px; font-size: 9.5px; font-weight: 800; letter-spacing: .5px;
+  text-transform: uppercase; color: var(--txt); opacity: .55; }
+
+/* ---------- MONEDA: el nombre y, al lado, el codigo de tres letras ---------- */
+.mon-chip { gap: 6px; }
+.mon-code { font-size: 9.5px; font-weight: 800; letter-spacing: .3px; padding: 1px 5px; border-radius: 5px;
+  background: rgba(168,85,247,.18); color: var(--purple3); font-variant-numeric: tabular-nums; }
+.tipo-chip.sel .mon-code { background: rgba(168,85,247,.32); }
+.mon-base { font-size: 8.5px; font-weight: 900; letter-spacing: .5px; text-transform: uppercase; color: var(--green); }
+
+/* ---------- LA CONVERSIÓN DEL DÍA: el numero grande, la fecha y el disclaimer ---------- */
+.conv-dia { margin-top: 14px; padding: 12px; border-radius: 12px; border: 1px solid var(--border2);
+  background: linear-gradient(135deg, rgba(168,85,247,.12), rgba(168,85,247,.04)); }
+.conv-base { border-color: rgba(34,197,94,.34);
+  background: linear-gradient(135deg, rgba(34,197,94,.12), rgba(34,197,94,.04)); }
+.conv-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 10px; }
+.conv-lb { display: inline-flex; align-items: center; gap: 6px; font-size: 10px; font-weight: 800;
+  letter-spacing: .4px; text-transform: uppercase; color: var(--purple3); }
+.conv-base .conv-lb { color: var(--green); }
+.conv-fecha { font-size: 10.5px; color: var(--txt); opacity: .65; font-variant-numeric: tabular-nums; }
+.conv-titulo { margin-top: 8px; font-size: 21px; font-weight: 900; letter-spacing: -.4px; line-height: 1.2;
+  color: var(--txt); font-variant-numeric: tabular-nums; }
+.conv-det { margin-top: 5px; font-size: 11.5px; line-height: 1.5; color: var(--txt); opacity: .78; }
+.conv-banco { font-weight: 700; color: var(--purple3); }
+.conv-disc { margin-top: 9px; padding-top: 8px; border-top: 1px dashed var(--border2);
+  font-size: 10.5px; line-height: 1.5; color: var(--txt); opacity: .6; }
+
+/* En pantalla chica el buscador se apila: una sola columna, con minmax(0,1fr) (nunca 1fr a secas,
+   que deja que el contenido estire la columna y desborde). */
+@media (max-width: 560px) {
+  .ubic-buscador { display: grid; grid-template-columns: minmax(0, 1fr); gap: 7px; }
+  .ubic-lupa { display: none; }
+  .ubic-btn { width: 100%; justify-content: center; }
+  .ubic-meta { margin-left: 0; flex: 1 1 100%; }
+  .conv-titulo { font-size: 18px; }
+}

@@ -46,8 +46,149 @@ export const PERFIL_INICIAL: Perfil = {
   col2: '',
 };
 
-export const ZONAS = ['Buenos Aires · GMT-3', 'Santiago · GMT-3', 'Bogotá · GMT-5', 'Ciudad de México · GMT-6', 'Madrid · GMT+2'];
-export const MONEDAS = ['Peso argentino', 'Peso chileno', 'Peso colombiano', 'Peso mexicano', 'Dólar', 'Euro'];
+// =============================================================================================
+// ZONA HORARIA Y MONEDA — los lugares donde puede estar el negocio del cliente.
+//
+// EL BUSCADOR DE UBICACIÓN: el cliente escribe su ciudad (o su país) y el panel le propone los
+// lugares que conoce. Elegir uno aplica DOS cosas de una sola vez —la zona horaria con la que el
+// motor publica y la moneda con la que se muestran los presupuestos y las ventas—, porque las dos
+// salen del mismo dato: dónde está el negocio.
+//
+// Cada lugar lleva su bandera (para reconocerlo de un vistazo) y su zona escrita igual que en los
+// chips (`Ciudad · GMT±n`), que es el texto que el cliente ve y elige.
+// =============================================================================================
+
+export interface Lugar {
+  /** La ciudad, como la escribe la gente. */
+  nombre: string;
+  pais: string;
+  /** La zona horaria, con el mismo texto que usan los chips (`Ciudad · GMT±n`). */
+  zona: string;
+  /** El nombre de la moneda del país. Tiene que existir en `MONEDAS`. */
+  moneda: string;
+  /** El emoji de la bandera del país. */
+  bandera: string;
+}
+
+/** Los lugares que el buscador conoce. La lista vive acá: esta maqueta no tiene backend. */
+export const LUGARES: Lugar[] = [
+  { nombre: 'Buenos Aires', pais: 'Argentina', zona: 'Buenos Aires · GMT-3', moneda: 'Peso argentino', bandera: '🇦🇷' },
+  { nombre: 'Córdoba', pais: 'Argentina', zona: 'Buenos Aires · GMT-3', moneda: 'Peso argentino', bandera: '🇦🇷' },
+  { nombre: 'Santiago', pais: 'Chile', zona: 'Santiago · GMT-3', moneda: 'Peso chileno', bandera: '🇨🇱' },
+  { nombre: 'São Paulo', pais: 'Brasil', zona: 'São Paulo · GMT-3', moneda: 'Real brasileño', bandera: '🇧🇷' },
+  { nombre: 'Bogotá', pais: 'Colombia', zona: 'Bogotá · GMT-5', moneda: 'Peso colombiano', bandera: '🇨🇴' },
+  { nombre: 'Ciudad de México', pais: 'México', zona: 'Ciudad de México · GMT-6', moneda: 'Peso mexicano', bandera: '🇲🇽' },
+  { nombre: 'Miami', pais: 'EE. UU.', zona: 'Miami · GMT-4', moneda: 'Dólar', bandera: '🇺🇸' },
+  { nombre: 'Madrid', pais: 'España', zona: 'Madrid · GMT+2', moneda: 'Euro', bandera: '🇪🇸' },
+];
+
+/**
+ * Las zonas horarias para elegir a mano. Salen de los lugares: una sola lista, sin datos repetidos
+ * que se puedan desincronizar (si mañana se agrega un lugar, su zona aparece sola en los chips).
+ */
+export const ZONAS = Array.from(new Set(LUGARES.map(l => l.zona)));
+
+export interface Moneda {
+  nombre: string;
+  /** El código de tres letras: es lo que se ve al lado del nombre. */
+  codigo: string;
+  /** El símbolo que va delante del número en la conversión del día. */
+  simbolo: string;
+}
+
+/**
+ * Las monedas con las que se muestran los presupuestos y las ventas. El DÓLAR ESTÁ SIEMPRE: es la
+ * base contra la que se compara todo, así que nunca puede faltar de la lista.
+ */
+export const MONEDAS: Moneda[] = [
+  { nombre: 'Peso argentino', codigo: 'ARS', simbolo: '$' },
+  { nombre: 'Peso chileno', codigo: 'CLP', simbolo: '$' },
+  { nombre: 'Peso colombiano', codigo: 'COP', simbolo: '$' },
+  { nombre: 'Peso mexicano', codigo: 'MXN', simbolo: '$' },
+  { nombre: 'Real brasileño', codigo: 'BRL', simbolo: 'R$' },
+  { nombre: 'Euro', codigo: 'EUR', simbolo: '€' },
+  { nombre: 'Dólar', codigo: 'USD', simbolo: 'US$' },
+];
+
+/** La moneda por su nombre. Si el nombre guardado ya no existe, cae en la primera (nunca queda vacío). */
+export const monedaDe = (nombre: string): Moneda => MONEDAS.find(m => m.nombre === nombre) ?? MONEDAS[0];
+
+/** Saca las tildes y las mayúsculas: para buscar «cordoba» y encontrar «Córdoba». */
+const sinTildes = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+
+/** Los lugares que coinciden con lo que el cliente escribió (por ciudad, país o moneda). */
+export function buscarLugares(consulta: string): Lugar[] {
+  const q = sinTildes(consulta);
+  if (q.length < 2) return [];
+  return LUGARES.filter(l => sinTildes(`${l.nombre} ${l.pais} ${l.moneda}`).includes(q));
+}
+
+// =============================================================================================
+// LA CONVERSIÓN DEL DÍA — ATENCIÓN: SON VALORES DE MUESTRA, NO SON UN DATO EN VIVO.
+//
+// Esta maqueta no tiene backend ni internet: los números de abajo están escritos a mano para que la
+// pantalla se vea como se va a ver. En producción NO se escriben en el código: se piden todos los
+// días a la API del banco central del país —BCRA (Argentina), Banco Central de Chile, Banco de la
+// República (Colombia), Banxico (México), Banco Central do Brasil, Banco Central Europeo— y se
+// guardan con la fecha del día. El dólar es la BASE: todo se muestra contra 1 USD.
+// =============================================================================================
+
+export interface Cambio {
+  /** Cuántas unidades de la moneda local equivalen a 1 dólar estadounidense. */
+  porUsd: number;
+  /** El banco central que publica ese número. */
+  banco: string;
+}
+
+export const CAMBIOS: Record<string, Cambio> = {
+  ARS: { porUsd: 1487, banco: 'Banco Central de la República Argentina' },
+  CLP: { porUsd: 946, banco: 'Banco Central de Chile' },
+  COP: { porUsd: 3982, banco: 'Banco de la República (Colombia)' },
+  MXN: { porUsd: 18.42, banco: 'Banco de México' },
+  BRL: { porUsd: 5.42, banco: 'Banco Central do Brasil' },
+  EUR: { porUsd: 0.92, banco: 'Banco Central Europeo' },
+  USD: { porUsd: 1, banco: 'Reserva Federal (EE. UU.)' },
+};
+
+/** El tipo de cambio de la moneda elegida (siempre contra el dólar). */
+export const cambioDe = (nombreMoneda: string): Cambio => CAMBIOS[monedaDe(nombreMoneda).codigo] ?? CAMBIOS.USD;
+
+/** La fecha del tipo de cambio mostrado, en dd/mm/aaaa. En producción la manda el banco central. */
+export function fechaDeCambio(d: Date = new Date()): string {
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  return `${dd}/${mm}/${d.getFullYear()}`;
+}
+
+/** Un número a la argentina: separador de miles con punto y sin decimales de más. */
+export function numeroConMiles(n: number): string {
+  return n.toLocaleString('es-AR', { maximumFractionDigits: n >= 100 ? 0 : 2 });
+}
+
+/**
+ * Lo que se muestra en el bloque de la conversión del día, ya armado: el título con el número
+ * (`1 USD = $1.487 ARS`), la fecha y el banco que lo publica. Con el dólar elegido no hay
+ * conversión: es la base.
+ */
+export function conversionDelDia(nombreMoneda: string): { titulo: string; detalle: string; fecha: string; banco: string; esBase: boolean } {
+  const mon = monedaDe(nombreMoneda);
+  const cambio = cambioDe(nombreMoneda);
+  const fecha = fechaDeCambio();
+  if (mon.codigo === 'USD') {
+    return {
+      titulo: '1 USD = 1 USD',
+      detalle: 'El dólar es la base: las demás monedas se muestran contra él.',
+      fecha, banco: cambio.banco, esBase: true,
+    };
+  }
+  const cien = `${mon.simbolo}${numeroConMiles(cambio.porUsd * 100)} ${mon.codigo}`;
+  return {
+    titulo: `1 USD = ${mon.simbolo}${numeroConMiles(cambio.porUsd)} ${mon.codigo}`,
+    detalle: `Con este tipo de cambio, US$ 100 son ${cien}.`,
+    fecha, banco: cambio.banco, esBase: false,
+  };
+}
+
 export const COLORES_AVATAR = ['#a855f7', '#6366f1', '#22c55e', '#f59e0b', '#ec4899', '#06b6d4'];
 
 /** Los colores de la casa: es lo que se ve mientras el cliente no cargue su paleta. */
