@@ -1550,17 +1550,13 @@ html.marca-cliente .bars-val { color: var(--acento-txt) !important; }
   .tb-logo.propio img { width: 19px; height: 19px; } }
 
 /* =============================================================================================
-   EL MODAL DEL PERFIL — cargar el logo, elegir los 2 colores y ver la vista previa
+   LAS PIEZAS DE LA MARCA — las usan el pop-up de personalización (PersonalizarPanel)
+   Se mantienen los nombres `.marca-*` porque son la marca del cliente en todos lados.
    ============================================================================================= */
 .marca-sep { border-top: 1px solid var(--border); margin: 16px 0 14px; }
 .marca-h { display: flex; align-items: center; gap: 8px; font-size: 13.5px; margin-bottom: 6px; }
 .marca-h svg { color: var(--purple2); flex-shrink: 0; }
 
-/* El logo: vista previa cuadrada + los botones de subir y quitar */
-.marca-logo-row { display: flex; align-items: center; gap: 14px; }
-.marca-logo-prev { width: 64px; height: 64px; flex-shrink: 0; border-radius: 12px; border: 1px solid var(--border2);
-  background: var(--bg3); display: grid; place-items: center; overflow: hidden; }
-.marca-logo-prev img { max-width: 100%; max-height: 100%; object-fit: contain; display: block; }
 .marca-subir { cursor: pointer; margin: 0; }
 
 /* Los 2 colores, uno al lado del otro (miden lo mismo) y en una sola columna en celular */
@@ -1586,23 +1582,80 @@ html.marca-cliente .bars-val { color: var(--acento-txt) !important; }
 .marca-paleta-pt { width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
 .marca-paleta-tx small { display: block; font-size: 9.5px; font-weight: 600; color: var(--muted); }
 
-/* La vista previa: el menú, el saludo con el logo, el botón principal y el gráfico */
-.marca-prev { margin-top: 14px; border: 1px solid var(--border2); border-radius: 12px; padding: 12px;
-  background: var(--bg2); display: flex; flex-direction: column; gap: 10px; }
-.marca-prev-lb { font-size: 10px; font-weight: 800; letter-spacing: 1.1px; text-transform: uppercase; color: var(--muted); }
-.marca-prev-nav { display: flex; align-items: center; gap: 9px; padding: 8px 11px; border-radius: 10px;
-  background: rgba(var(--prev-acento-rgb), .16); box-shadow: inset 0 0 0 1px rgba(var(--prev-acento-rgb), .30);
-  font-size: 12.5px; font-weight: 700; }
-.marca-prev-nav .mp-lb { color: var(--prev-acento); }
-.marca-prev-nav .mp-pt { margin-left: auto; width: 3px; height: 18px; border-radius: 2px; background: var(--prev-grad); }
-.marca-prev-hero { display: flex; align-items: center; gap: 10px; font-size: 13px; min-width: 0; }
-.marca-prev-hero .mp-logo { width: 40px; height: 40px; flex-shrink: 0; border-radius: 10px; background: var(--bg3);
-  display: grid; place-items: center; overflow: hidden; }
-.marca-prev-hero .mp-logo img { max-width: 34px; max-height: 34px; object-fit: contain; display: block; }
-.marca-prev-hero .mp-hero-tx { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.marca-prev-hero .mp-hero-tx b { color: var(--prev-acento); }
-.marca-prev-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.marca-prev-btn { padding: 8px 14px; border-radius: 9px; font-size: 12.5px; font-weight: 700; border: none;
-  background: var(--prev-grad); color: var(--prev-sobre); }
-.marca-prev-bars { display: flex; align-items: flex-end; gap: 6px; height: 52px; }
-.marca-prev-bars .mp-bar { flex: 1; min-width: 0; border-radius: 5px 5px 3px 3px; background: var(--prev-acento); }
+/* =============================================================================================
+   EL POP-UP DE PERSONALIZACIÓN — «Hacé tuyo este panel» (logo + colores)
+   ---------------------------------------------------------------------------------------------
+   Es un panel lateral, NO una pantalla que tapa todo: el dashboard queda a la vista al costado y
+   por eso se puede JUGAR — cada color que se toca se ve aplicado ya mismo en el panel de verdad.
+   Se abre desde el botón de la paleta de la barra de arriba (.pers-tgl) y desde el bloque de
+   usuario del menú (.sb-user). En celular pasa a ser una bandeja de abajo, también sin tapar todo.
+   ============================================================================================= */
+.pers-tgl.on { border-color: var(--purple2); color: var(--purple3); background: rgba(168,85,247,.14); }
+html.marca-cliente .pers-tgl.on { border-color: var(--acento-txt); color: var(--acento-txt); }
+
+.pers-panel { position: fixed; top: 0; right: 0; bottom: 0; z-index: 130;
+  width: 402px; max-width: 100vw; display: flex; flex-direction: column;
+  padding: 15px 16px 0; background: var(--bg2); border-left: 1px solid var(--border2);
+  box-shadow: -22px 0 60px rgba(0,0,0,.55); }
+
+.pers-head { display: flex; align-items: flex-start; gap: 12px; padding-bottom: 12px; flex-shrink: 0;
+  border-bottom: 1px solid var(--border); }
+.pers-ttl { display: flex; align-items: center; gap: 8px; font-size: 16.5px; font-weight: 800; letter-spacing: -.2px; }
+.pers-ttl svg { color: var(--purple2); flex-shrink: 0; }
+html.marca-cliente .pers-ttl svg { color: var(--acento-txt); }
+
+/* El cuerpo scrollea solo: la cabecera y los botones de abajo quedan siempre a la vista. */
+.pers-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 14px 2px 16px; }
+.pers-foot { flex-shrink: 0; padding: 12px 2px 14px; border-top: 1px solid var(--border); }
+
+/* ---------- El cargador del logo: se arrastra o se hace clic, con la vista previa grande ---------- */
+.pers-drop { display: flex; align-items: center; gap: 14px; min-width: 0; padding: 14px;
+  border: 1.5px dashed var(--border2); border-radius: 14px; background: var(--bg3);
+  cursor: pointer; transition: border-color .15s, background .15s; }
+.pers-drop:hover, .pers-drop.drag { border-color: var(--purple2); background: rgba(168,85,247,.09); }
+.pers-drop:focus-visible { outline: 2px solid var(--purple2); outline-offset: 2px; }
+.pers-drop-prev { width: 86px; height: 86px; flex-shrink: 0; border-radius: 14px;
+  border: 1px solid var(--border2); background: var(--bg2); display: grid; place-items: center; overflow: hidden; }
+.pers-drop-prev img { max-width: 100%; max-height: 100%; object-fit: contain; display: block; }
+.pers-drop-tx { min-width: 0; font-size: 12.5px; font-weight: 700; overflow-wrap: anywhere; }
+.pers-drop-tx small { display: block; margin-top: 3px; font-size: 10.5px; font-weight: 600; color: var(--muted); }
+.pers-file { display: none; }
+
+/* ---------- La muestra del degradado elegido (el mismo que usa el botón principal del panel) ---------- */
+.pers-grad { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+  margin-top: 12px; padding: 11px 14px; border-radius: 11px; font-size: 12.5px; font-weight: 800;
+  background: var(--grad); box-shadow: 0 6px 20px rgba(0,0,0,.28); }
+.pers-grad-hex { font-size: 10.5px; font-weight: 700; opacity: .85; }
+
+/* ---------- «Jugá con el panel»: la explicación de que todo pasa en el dashboard de verdad ---------- */
+.pers-jugar { margin-top: 14px; padding: 12px; border: 1px solid var(--border);
+  border-radius: 12px; background: var(--bg3); }
+.pers-jugar .marca-h svg { color: var(--purple2); }
+html.marca-cliente .pers-jugar .marca-h svg { color: var(--acento-txt); }
+
+/* ---------- «Ver el panel completo»: el botón que queda cuando el panel se corre ---------- */
+.pers-flotante { position: fixed; right: 18px; bottom: 18px; z-index: 130; display: inline-flex;
+  align-items: center; gap: 8px; padding: 11px 17px; border-radius: 99px; font-family: inherit;
+  font-size: 12.5px; font-weight: 800; background: var(--grad); color: #fff;
+  box-shadow: 0 12px 34px rgba(0,0,0,.5); }
+.pers-flotante:hover { filter: brightness(1.12); }
+html.marca-cliente .pers-flotante { color: var(--sobre-grad); }
+
+/* ---------- El botoncito de los datos de cuenta, al lado del bloque de usuario ---------- */
+.sb-datos { display: grid; place-items: center; width: 24px; height: 24px; flex-shrink: 0;
+  border-radius: 7px; color: var(--muted); background: var(--bg3); border: 1px solid var(--border);
+  opacity: .55; transition: all .15s; }
+.sb-datos:hover { opacity: 1; color: var(--purple3); border-color: var(--purple2); }
+.sb-user:hover .sb-datos { opacity: 1; }
+
+/* En pantalla chica el panel se vuelve una bandeja de abajo: se sigue viendo el panel de atrás
+   arriba, y nada se sale de ancho. */
+@media (max-width: 620px) {
+  .pers-panel { top: auto; left: 0; right: 0; width: 100%; max-width: 100%; max-height: 86vh;
+    padding: 14px 13px 0; border-left: none; border-top: 1px solid var(--border2);
+    border-radius: 18px 18px 0 0; box-shadow: 0 -18px 50px rgba(0,0,0,.55); }
+  .pers-ttl { font-size: 15px; }
+  .pers-drop { gap: 11px; padding: 12px; }
+  .pers-drop-prev { width: 68px; height: 68px; border-radius: 12px; }
+  .pers-flotante { right: 12px; bottom: 12px; padding: 10px 14px; }
+}

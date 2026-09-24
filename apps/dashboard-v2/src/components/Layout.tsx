@@ -1,8 +1,9 @@
 import { useState, type ReactNode } from 'react';
-import { SinkrooMark, I_Home, I_Megaphone, I_Whatsapp, I_Globe, I_Settings, I_Bell, I_Sun, I_Moon, I_Zap, I_Clock, I_Vote, I_Robot, I_Credit, I_Gift, I_Shield, I_Edit, I_Menu, I_X } from './icons';
+import { SinkrooMark, I_Home, I_Megaphone, I_Whatsapp, I_Globe, I_Settings, I_Bell, I_Sun, I_Moon, I_Zap, I_Clock, I_Vote, I_Robot, I_Credit, I_Gift, I_Shield, I_User, I_Palette, I_Menu, I_X } from './icons';
 import { TENANT, AGENTES, ALARMAS, DECISIONES, MODOS, type Modo } from '../data/demo';
 import { usePerfil, inicialesDe } from '../lib/perfil';
 import { PerfilModal } from './PerfilModal';
+import { PersonalizarPanel } from './PersonalizarPanel';
 
 export type Vista = 'hoy' | 'campanas' | 'conversaciones' | 'mercado' | 'cuenta' | 'creditos' | 'referidos' | 'kyc';
 
@@ -40,9 +41,15 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
   theme: string; cicloTema: () => void; toast: string; modo: Modo; avisar?: (t: string) => void;
 }) {
   // `perfilVisible` es el perfil guardado MÁS la edición en curso: así el logo y los colores que
-  // el cliente está eligiendo en el modal se ven ya en el sidebar, la barra de arriba y el hero.
+  // el cliente está eligiendo en el pop-up de personalización se ven ya en el sidebar, la barra de
+  // arriba y el hero, sin esperar a que guarde.
   const { perfilVisible: perfil } = usePerfil();
   const [perfilAbierto, setPerfilAbierto] = useState(false);
+  const [persAbierto, setPersAbierto] = useState(false);
+  // Cada toque en una de las dos puertas de la personalización suma uno: es lo que hace que el
+  // panel vuelva a aparecer aunque lo hayas corrido con «Ver el panel completo».
+  const [persSenal, setPersSenal] = useState(0);
+  const abrirPersonalizacion = () => { setPersAbierto(true); setPersSenal(s => s + 1); };
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [notif, setNotif] = useState(false);
   const trabajando = AGENTES.filter(a => a.estado === 'trabajando').length;
@@ -107,9 +114,12 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
           </div>
         ))}
 
-        <div className="sb-user" onClick={() => setPerfilAbierto(true)} role="button" tabIndex={0}
-          title="Tu perfil: nombre, marca, logo y colores de tu negocio, email, zona horaria y moneda. Se puede editar."
-          onKeyDown={e => { if (e.key === 'Enter') setPerfilAbierto(true); }}>
+        {/* El bloque de usuario abre LA PERSONALIZACIÓN (logo y colores). Los datos de la cuenta
+            (nombre, email, WhatsApp…) tienen su propio botoncito al lado, para no mezclar las dos
+            cosas: acá se juega con la marca, ahí se editan los datos. */}
+        <div className="sb-user" onClick={abrirPersonalizacion} role="button" tabIndex={0}
+          title="Personalizá tu panel: subí tu logo y elegí los colores de tu marca"
+          onKeyDown={e => { if (e.key === 'Enter') abrirPersonalizacion(); }}>
           <div className="av" style={{ width: 34, height: 34, fontSize: 12, background: `linear-gradient(135deg, ${perfil.color}, ${perfil.color}bb)` }}>
             {inicialesDe(perfil.nombre)}
           </div>
@@ -117,7 +127,9 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
             <div className="tiny" style={{ fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{perfil.nombre}</div>
             <div className="tiny muted" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{perfil.marca}</div>
           </div>
-          <span className="sb-edit" title="Editar mi perfil"><I_Edit size={14} /></span>
+          <span className="sb-edit" title="Tu logo y tus colores: se ven en todo el panel"><I_Palette size={14} /></span>
+          <button className="sb-datos" title="Tus datos de cuenta: nombre, marca, email, WhatsApp, zona horaria y moneda"
+            onClick={e => { e.stopPropagation(); setPerfilAbierto(true); }}><I_User size={14} /></button>
         </div>
         <PerfilModal abierto={perfilAbierto} cerrar={() => setPerfilAbierto(false)} avisar={avisar} />
       </aside>
@@ -137,7 +149,7 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
             <span className={`tb-logo ${perfil.logo ? 'propio' : ''}`}
               title={perfil.logo
                 ? `El logo de ${perfil.marca}, tu negocio`
-                : 'Sinkroo. Si querés tu logo acá, cargalo en tu perfil (bloque de abajo del menú)'}>
+                : 'Sinkroo. Si querés tu logo acá, abrí «Hacé tuyo este panel»: el botón de la paleta, arriba a la derecha'}>
               {perfil.logo
                 ? <img src={perfil.logo} alt={`Logo de ${perfil.marca}`} />
                 : <SinkrooMark size={26} />}
@@ -155,6 +167,14 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
             </div>
 
             <div className="topbar-right">
+              {/* El botón de la personalización: subir el logo y elegir los colores. Es la puerta
+                  más visible al pop-up «Hacé tuyo este panel». */}
+              <div className={`theme-tgl pers-tgl ${persAbierto ? 'on' : ''}`} onClick={abrirPersonalizacion}
+                role="button" tabIndex={0}
+                title="Personalizá tu panel: subí tu logo y elegí los colores de tu marca"
+                onKeyDown={e => { if (e.key === 'Enter') abrirPersonalizacion(); }}>
+                <I_Palette size={16} />
+              </div>
               <div className="theme-tgl" onClick={cicloTema} title="Cambiar tema">
                 {theme === 'dark' ? <I_Sun size={16} /> : <I_Moon size={16} />}
               </div>
@@ -222,6 +242,11 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
       </div>
 
       <div className={`toast ${toast ? 'show' : ''}`}>{toast}</div>
+
+      {/* La personalización va colgada de la raíz, NO adentro del sidebar: en celular el sidebar
+          tiene `transform` (es la bandeja que entra y sale) y eso convertiría al pop-up en su
+          rehén, con lo que quedaría fuera de la pantalla. Acá ocupa la pantalla entera. */}
+      <PersonalizarPanel abierto={persAbierto} senal={persSenal} cerrar={() => setPersAbierto(false)} avisar={avisar} />
     </div>
   );
 }

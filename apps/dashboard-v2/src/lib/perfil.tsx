@@ -187,8 +187,19 @@ export const VARS_MARCA = [
 
 const ESTILO_TEMA = 'sinkroo-marca-tema';
 
-/** ¿El cliente cargó su propia paleta? */
-export const tieneMarca = (p: Perfil) => !!(p.col1 && p.col2);
+/** ¿El cliente cargó su propia paleta? Alcanza con UN color: el otro se completa solo. */
+export const tieneMarca = (p: Perfil) => !!(p.col1 || p.col2);
+
+/**
+ * La paleta que se pinta de verdad. Si el cliente eligió un solo color, el otro se saca de ese
+ * mismo: así el panel cambia con el PRIMER clic (que es lo que hace que se pueda jugar) y nunca
+ * queda a mitad de camino. Con los dos colores vacíos no hay marca y manda Sinkroo.
+ */
+export function paletaEfectiva(p: Perfil): { col1: string; col2: string } {
+  if (p.col1 && p.col2) return { col1: p.col1, col2: p.col2 };
+  if (p.col1) return { col1: p.col1, col2: mezclar(p.col1, '#ffffff', 0.34) };
+  return { col1: p.col2, col2: p.col2 };
+}
 
 /**
  * Pinta el panel con la marca del cliente. Si no hay paleta, borra todo y el panel vuelve a verse
@@ -201,7 +212,7 @@ export function aplicarMarca(p: Perfil) {
   document.getElementById(ESTILO_TEMA)?.remove();
   if (!tieneMarca(p)) return;
 
-  const { col1, col2 } = p;
+  const { col1, col2 } = paletaEfectiva(p);
   raiz.style.setProperty('--acento', col1);
   raiz.style.setProperty('--acento-2', col2);
   raiz.style.setProperty('--acento-rgb', rgbTexto(col1));
@@ -292,7 +303,7 @@ type ContextoPerfil = {
   perfilVisible: Perfil;
   /** Guarda y devuelve false si el navegador no dejó guardar (modo privado, o el logo es muy grande). */
   guardar: (p: Perfil) => boolean;
-  /** Muestra un perfil sin guardarlo: es la vista previa en vivo del modal (logo y colores). */
+  /** Muestra un perfil sin guardarlo: es la vista previa en vivo de «Hacé tuyo este panel» (logo y colores). */
   previsualizar: (p: Perfil) => void;
   /** Corta la vista previa y vuelve a lo guardado. */
   terminarPrevia: () => void;
@@ -318,8 +329,8 @@ function leerGuardado(): Perfil {
 export function PerfilProvider({ children }: { children: ReactNode }) {
   // Se guarda en el navegador: lo que editás sobrevive a recargar la página.
   const [perfil, setPerfil] = useState<Perfil>(leerGuardado);
-  // Mientras el modal está abierto, acá vive el borrador: así el logo y el nombre se ven en su
-  // lugar (el hero y la barra de arriba) antes de guardar.
+  // Mientras el pop-up de personalización está abierto, acá vive el borrador: así el logo y los
+  // colores se ven en su lugar (el hero, la barra de arriba y el menú) antes de guardar.
   const [previa, setPrevia] = useState<Perfil | null>(null);
 
   // La marca del cliente vive en las variables CSS de la raíz. Cuando cambia (o cuando se
