@@ -1,5 +1,48 @@
 import type { ReactNode } from 'react';
 import { I_X } from './icons';
+import { usePerfil } from '../lib/perfil';
+import { importe, notaMoneda, ayudaMoneda } from '../lib/moneda';
+
+// =============================================================================================
+// EL DINERO — SIEMPRE EN DÓLARES (la regla de formato vive en lib/moneda.ts, no acá).
+//
+// `<Dinero monto={4280} />` pinta los dos textos del importe: el principal en dólares y, al lado
+// y más chico, el equivalente en la moneda del país elegido en el perfil. Con el dólar elegido el
+// equivalente no aparece: no se repite «= USD».
+//
+// El monto puede venir como número (4280) o como el texto que ya estaba escrito en la pantalla
+// ('$4.280', 'de $6.000', '+$340/sem'): en los dos casos el número es el mismo, lo único que
+// cambia es que ahora se ve claramente que es dólar. `equivalente={false}` es para los lugares
+// donde el par completo no entra (metas al pie, etiquetas de un gráfico, globos chicos): ahí queda
+// el importe en dólares solo.
+//
+// `<NotaMoneda />` es la línea al pie que explica en qué moneda está todo y de dónde sale el
+// equivalente. Va en las tarjetas donde hay dinero, al lado de la nota que ya explica los botones.
+//
+// OJO CON DE DÓNDE SALE LA MONEDA: las dos leen el perfil GUARDADO (`perfil`), no `perfilVisible`.
+// La vista previa de «Hacé tuyo este panel» sólo edita el logo y los colores, así que si alguien
+// cambia la moneda en «Tus datos de cuenta» con ese pop-up abierto, el cambio tiene que verse igual:
+// guardar es guardar. Leyendo `perfilVisible`, la foto vieja de la vista previa tapaba el cambio
+// (se veía en pesos hasta cerrar el pop-up).
+// =============================================================================================
+
+export function Dinero({ monto, equivalente = true, className = '' }: {
+  monto: number | string; equivalente?: boolean; className?: string;
+}) {
+  const { perfil } = usePerfil();
+  const t = importe(monto, perfil.moneda);
+  return (
+    <span className={`usd ${className}`} title={ayudaMoneda(perfil.moneda)}>
+      {t.principal}
+      {equivalente && t.equivalente ? <span className="usd-eq">{t.equivalente}</span> : null}
+    </span>
+  );
+}
+
+export function NotaMoneda() {
+  const { perfil } = usePerfil();
+  return <div className="nota-moneda">{notaMoneda(perfil.moneda)}</div>;
+}
 
 export function Badge({ children, tone = 'purple' }: { children: ReactNode; tone?: 'purple'|'green'|'amber'|'red'|'muted' }) {
   return <span className={`badge badge-${tone}`}>{children}</span>;

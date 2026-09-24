@@ -1,4 +1,4 @@
-import { Badge, Button, Progress } from './ui';
+import { Badge, Button, Progress, Dinero } from './ui';
 import { I_Film, I_Image, I_Pause, I_File, I_Users, I_Cal, I_Target } from './icons';
 import type { Campana } from '../data/demo';
 
@@ -63,7 +63,7 @@ export function CampanaViva({ c, setToast }: { c: Campana; setToast: (t: string)
           </div>
           <div className="dato" title="Lo que lleva gastado la campaña desde que arrancó">
             <span className="dato-l">Gastado</span>
-            <span className="dato-v">{c.gastado}</span>
+            <span className="dato-v"><Dinero monto={c.gastado} /></span>
           </div>
         </div>
 
@@ -77,11 +77,11 @@ export function CampanaViva({ c, setToast }: { c: Campana; setToast: (t: string)
         <div className="datos-row">
           <div className="dato" title="Lo que le pagás a Meta por día para que la campaña corra">
             <span className="dato-l">Presupuesto</span>
-            <span className="dato-v">{c.presupuesto}</span>
+            <span className="dato-v"><Dinero monto={c.presupuesto} /></span>
           </div>
           <div className="dato" title="Cuánto te cuesta cada venta que trae esta campaña">
             <span className="dato-l">Costo por venta</span>
-            <span className="dato-v" style={{ color: c.costo === '—' ? 'var(--muted)' : 'var(--txt)' }}>{c.costo}</span>
+            <span className="dato-v" style={{ color: c.costo === '—' ? 'var(--muted)' : 'var(--txt)' }}><Dinero monto={c.costo} /></span>
           </div>
           <div className="dato" title="El puntaje que le dieron los 5 jueces de MiroFish antes de publicarse (mínimo 80)">
             <span className="dato-l">Score</span>

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Card, Badge, Button } from '../components/ui';
+import { Card, Badge, Button, Dinero, NotaMoneda } from '../components/ui';
 import { ViewHead, Gauge } from '../components/viz';
 import { I_Credit, I_Wallet, I_Zap, I_Download, I_Shield, I_Plus, I_ArrowRight } from '../components/icons';
 import { TENANT, CREDITOS_MOV } from '../data/demo';
@@ -72,7 +72,7 @@ export function ViewCreditos({ setToast }: { setToast: (t: string) => void }) {
           { v: saldo.toLocaleString('es-AR'), l: 'créditos disponibles' },
           { v: `Plan ${TENANT.plan}`, l: `${TENANT.creditosMes.toLocaleString('es-AR')} por mes`, c: 'var(--purple3)' },
           { v: `${dias} días`, l: 'de autonomía al ritmo de hoy', c: dias < 10 ? 'var(--amber)' : 'var(--green)' },
-          { v: `$${(usados * 0.022).toFixed(0)}`, l: 'consumido este mes' },
+          { v: <Dinero monto={Number((usados * 0.022).toFixed(0))} />, l: 'consumido este mes' },
         ]}
       />
 
@@ -146,9 +146,9 @@ export function ViewCreditos({ setToast }: { setToast: (t: string) => void }) {
                 {p.creditos.toLocaleString('es-AR')}
               </span>
               <span className="guard-lb">{p.nombre}{p.popular && <span className="badge badge-purple" style={{ fontSize: 8.5, marginLeft: 6 }}>el más elegido</span>}
-                <small>${p.unidad} por crédito · rinde ~{Math.round(p.creditos / 150)} días</small>
+                <small><Dinero monto={`$${p.unidad}`} equivalente={false} /> por crédito · rinde ~{Math.round(p.creditos / 150)} días</small>
               </span>
-              <span className="guard-val" style={{ flexShrink: 0 }}>${p.precio}</span>
+              <span className="guard-val" style={{ flexShrink: 0 }}><Dinero monto={p.precio} /></span>
               <Button className="btn-sm" title={`Carga ${p.creditos.toLocaleString('es-AR')} créditos por $${p.precio} con ${metodo}`}
                 onClick={() => recargar(p)}>Recargar</Button>
             </div>
@@ -161,6 +161,7 @@ export function ViewCreditos({ setToast }: { setToast: (t: string) => void }) {
             Lo que se cobra es <b>trabajo hecho, no tiempo de uso</b>: si un mes no publicás nada,
             casi no consumís. Las conversaciones con tus clientes están incluidas y nunca gastan créditos.
           </div>
+          <NotaMoneda />
         </Card>
       </div>
 
@@ -192,7 +193,7 @@ export function ViewCreditos({ setToast }: { setToast: (t: string) => void }) {
                   <span className="reparto-dot" style={{ background: c.c }} />
                   <span className="reparto-lb">
                     {c.l}<span className="reparto-pct">{Math.round((c.v / CONSUMO_TOTAL) * 100)}%</span>
-                    <small><b>{c.costo}</b> {c.detalle}</small>
+                    <small><b><Dinero monto={c.costo} equivalente={false} /></b> {c.detalle}</small>
                   </span>
                   <span className="reparto-num" style={{ color: c.c }}>{c.v.toLocaleString('es-AR')}</span>
                 </div>
@@ -231,7 +232,7 @@ export function ViewCreditos({ setToast }: { setToast: (t: string) => void }) {
                   <span style={{ color: 'var(--muted)', flexShrink: 0 }}><I_Shield size={14} /></span>
                   <span className="guard-lb">{f.concepto}<small>{f.fecha} · {f.id}</small></span>
                   <Badge tone={f.estado === 'Pagada' ? 'green' : 'amber'}>{f.estado}</Badge>
-                  <span className="guard-val">${f.monto}</span>
+                  <span className="guard-val"><Dinero monto={f.monto} /></span>
                 </div>
               ))}
             </div>

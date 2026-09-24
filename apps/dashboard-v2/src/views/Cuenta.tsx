@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Card, Badge, Button } from '../components/ui';
+import { Card, Badge, Button, Dinero, NotaMoneda } from '../components/ui';
 import { ViewHead, Gauge, BarRow } from '../components/viz';
 import { I_Settings, I_Check, I_Shield, I_Lock, I_Plus, I_Zap, I_Credit, I_Link, I_Clock, I_Sun } from '../components/icons';
 import { MODOS, EXCEPCIONES, FRENOS, CONEXIONES, CREDITOS_MOV, TENANT, type Modo } from '../data/demo';
@@ -123,13 +123,13 @@ export function ViewCuenta({ setToast, modo, setModo }: { setToast: (t: string) 
               <div key={f.key} className="guard">
                 <I_Lock size={14} style={{ color: 'var(--purple3)', flexShrink: 0 }} />
                 <span className="guard-lb">{f.etiqueta}<small>{f.porQue}</small></span>
-                <span className="guard-val">{f.valor}</span>
+                <span className="guard-val"><Dinero monto={f.valor} /></span>
               </div>
             ))}
           </div>
           <div className="datos-row" style={{ marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--border)' }}>
             <div className="dato"><span className="dato-l">Cortes por freno este mes</span><span className="dato-v">7</span></div>
-            <div className="dato"><span className="dato-l">Plata que evitaron</span><span className="dato-v" style={{ color: 'var(--green)' }}>$180</span></div>
+            <div className="dato"><span className="dato-l">Plata que evitaron</span><span className="dato-v" style={{ color: 'var(--green)' }}><Dinero monto={180} /></span></div>
             <div className="dato"><span className="dato-l">Te pidió permiso</span><span className="dato-v" style={{ color: 'var(--amber)' }}>2 veces</span></div>
           </div>
           <div className="bs" style={{ marginTop: 11 }}>
@@ -140,6 +140,7 @@ export function ViewCuenta({ setToast, modo, setModo }: { setToast: (t: string) 
             Aplican <b>incluso en Automático</b>. Si esto se pudiera desactivar, el modo Automático no debería existir:
             un bug que toca presupuestos sin techo cuesta plata real.
           </div>
+          <NotaMoneda />
           <div className="row" style={{ gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
             <Badge tone="green">La autonomía es un techo, no un piso</Badge>
             <Badge tone="purple">La IA puede pedir más control, nunca tomarlo</Badge>

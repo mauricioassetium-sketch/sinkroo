@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Card, Badge, Button } from '../components/ui';
+import { Card, Badge, Button, Dinero, NotaMoneda } from '../components/ui';
 import { EquipoInvestigando } from '../components/EquipoInvestigando';
 import { Bars, Ring, BarRow, MetricaAnillo } from '../components/viz';
 import { usePerfil, nombreDePila } from '../lib/perfil';
@@ -131,7 +131,7 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
             )}
             <div className="datos-row" style={{ marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--border)' }}>
               <div className="dato"><span className="dato-l">Revisiones de hoy</span><span className="dato-v">14</span></div>
-              <div className="dato"><span className="dato-l">En riesgo si no actuás</span><span className="dato-v" style={{ color: 'var(--amber)' }}>$180</span></div>
+              <div className="dato"><span className="dato-l">En riesgo si no actuás</span><span className="dato-v" style={{ color: 'var(--amber)' }}><Dinero monto={180} /></span></div>
               <div className="dato"><span className="dato-l">Resueltas solas</span><span className="dato-v" style={{ color: 'var(--green)' }}>6</span></div>
             </div>
             <div className="acc-why">
@@ -168,11 +168,12 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
         >
           <div className="met-grid">
             {NUMEROS.map((n, i) => (
-              <MetricaAnillo key={i} label={n.label} valor={n.valor} delta={n.delta} pct={n.pct} meta={n.meta} color={n.color} up={n.up} />
+              <MetricaAnillo key={i} label={n.label} valor={<Dinero monto={n.valor} />} delta={n.delta} pct={n.pct}
+                meta={<Dinero monto={n.meta} equivalente={false} />} color={n.color} up={n.up} />
             ))}
           </div>
           <div className="datos-row" style={{ marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--border)' }}>
-            <div className="dato"><span className="dato-l">Acumulado del mes</span><span className="dato-v" style={{ color: 'var(--green)' }}>{MES.acumulado}</span></div>
+            <div className="dato"><span className="dato-l">Acumulado del mes</span><span className="dato-v" style={{ color: 'var(--green)' }}><Dinero monto={MES.acumulado} /></span></div>
             <div className="dato"><span className="dato-l">Crecimiento mensual</span><span className="dato-v" style={{ color: 'var(--green)' }}>+28%</span></div>
             <div className="dato"><span className="dato-l">Dato más viejo</span><span className="dato-v">hace 12 meses</span></div>
           </div>
@@ -187,6 +188,7 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
             Todos salen de tus conexiones reales: Meta Ads, tu WhatsApp y tu tienda.{' '}
             <b>Días de autonomía</b> es cuánto puede seguir trabajando el motor con los créditos que tenés.
           </div>
+          <NotaMoneda />
         </Card>
 
         <Card
@@ -230,12 +232,12 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
       <div className="duo">
         <Card
           title={<span className="row" style={{ gap: 8 }}><I_Trend size={14} style={{ color: 'var(--green)' }} /> Ventas por mes</span>}
-          action={<Badge tone="green">{MES.acumulado} acumulado</Badge>}
+          action={<Badge tone="green"><Dinero monto={MES.acumulado} equivalente={false} /> acumulado</Badge>}
         >
           <Bars data={MES.ventas} labels={MES.labels} color="#22c55e" fmt={v => `${(v / 1000).toFixed(1)}K`} />
           <div className="datos-row" style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
-            <div className="dato"><span className="dato-l">Promedio por mes</span><span className="dato-v">{MES.promedio}</span></div>
-            <div className="dato"><span className="dato-l">Último mes</span><span className="dato-v" style={{ color: 'var(--green)' }}>$4.280</span></div>
+            <div className="dato"><span className="dato-l">Promedio por mes</span><span className="dato-v"><Dinero monto={MES.promedio} /></span></div>
+            <div className="dato"><span className="dato-l">Último mes</span><span className="dato-v" style={{ color: 'var(--green)' }}><Dinero monto={4280} /></span></div>
             <div className="dato"><span className="dato-l">Crecimiento</span><span className="dato-v" style={{ color: 'var(--green)' }}>+28%</span></div>
           </div>
           <div className="acc-why">Cada barra es un mes cerrado. <b>El crecimiento es real</b>: sale de las ventas que entraron por tus conexiones.</div>
@@ -294,7 +296,7 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
           <div>
             <div className="row spread" style={{ marginBottom: 6 }}>
               <span className="bt">Ventas</span>
-              <span className="bs">$4.280 de $6.000 · faltan $1.720</span>
+              <span className="bs"><Dinero monto={4280} /> de <Dinero monto={6000} equivalente={false} /> · faltan <Dinero monto={1720} equivalente={false} /></span>
             </div>
             <BarRow valor={71} max={100} formato="71%" color="var(--green)" />
           </div>
@@ -313,9 +315,9 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
             <BarRow valor={92} max={100} formato="92%" color="var(--amber)" />
           </div>
           <div className="datos-row" style={{ marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--border)' }}>
-            <div className="dato"><span className="dato-l">Cierre proyectado</span><span className="dato-v" style={{ color: 'var(--green)' }}>$5.650</span></div>
+            <div className="dato"><span className="dato-l">Cierre proyectado</span><span className="dato-v" style={{ color: 'var(--green)' }}><Dinero monto={5650} /></span></div>
             <div className="dato"><span className="dato-l">Días que quedan</span><span className="dato-v">8</span></div>
-            <div className="dato"><span className="dato-l">Para llegar faltan</span><span className="dato-v" style={{ color: 'var(--amber)' }}>$215/día</span></div>
+            <div className="dato"><span className="dato-l">Para llegar faltan</span><span className="dato-v" style={{ color: 'var(--amber)' }}><Dinero monto="$215/día" /></span></div>
           </div>
           <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
             <Button className="btn-sm" title="Kai reasigna el presupuesto entre tus campañas para llegar con el mismo gasto total"
@@ -385,9 +387,9 @@ function MientrasNoEstabas({ modo }: { modo: Modo }) {
           : <><I_Zap size={15} style={{ color: 'var(--amber)' }} /><b style={{ fontSize: 13.5 }}>Esto hizo solo desde {m.desde}</b></>}
       </div>
       <div className="mwb-grid">
-        <div className="mwb-k"><div className="mwb-k-lb">Gasto que evitó</div><div className="mwb-k-v" style={{ color: 'var(--green)' }}>$180</div></div>
-        <div className="mwb-k"><div className="mwb-k-lb">Gasto que hizo</div><div className="mwb-k-v">{m.gasto}</div></div>
-        <div className="mwb-k"><div className="mwb-k-lb">Ventas</div><div className="mwb-k-v" style={{ color: 'var(--green)' }}>{m.ventas}</div></div>
+        <div className="mwb-k"><div className="mwb-k-lb">Gasto que evitó</div><div className="mwb-k-v" style={{ color: 'var(--green)' }}><Dinero monto={180} /></div></div>
+        <div className="mwb-k"><div className="mwb-k-lb">Gasto que hizo</div><div className="mwb-k-v"><Dinero monto={m.gasto} /></div></div>
+        <div className="mwb-k"><div className="mwb-k-lb">Ventas</div><div className="mwb-k-v" style={{ color: 'var(--green)' }}><Dinero monto={m.ventas} /></div></div>
       </div>
       <div className="mwb-list">
         {m.acciones.map((ac, i) => (

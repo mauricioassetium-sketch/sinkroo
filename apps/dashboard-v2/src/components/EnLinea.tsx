@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Card, Badge, Button } from './ui';
+import { Card, Badge, Button, Dinero, NotaMoneda } from './ui';
 import { BarRow } from './viz';
 import { I_Play, I_Eye, I_Zap, I_Trend, I_Check, I_Refresh, I_Credit, I_Pause, I_Film, I_Image, I_File } from './icons';
 
@@ -135,13 +135,14 @@ export function EnLinea({ setToast, ir }: { setToast: (t: string) => void; ir?: 
               <span className="guard-lb">«Antes y después» bajó un poco<small>Pasó de 4,0x a 3,6x: la frecuencia subió. Si sigue, el motor va a pedirte refrescar el creativo</small></span>
               <span className="guard-val" style={{ color: 'var(--amber)' }}>vigilando</span></div>
             <div className="guard"><span style={{ color: 'var(--green)', flexShrink: 0 }}><I_Zap size={14} /></span>
-              <span className="guard-lb">Presupuesto repartido solo<small>Le sacó $4/día a la que más rinde y ya tiene techo de gasto</small></span>
+              <span className="guard-lb">Presupuesto repartido solo<small>Le sacó <Dinero monto="$4/día" equivalente={false} /> a la que más rinde y ya tiene techo de gasto</small></span>
               <span className="guard-val">hace 20 min</span></div>
           </div>
           <div className="acc-why">
             Esto es lo que el motor hace <b>mientras no mirás</b>. Vos ves el resultado acá y te enterás
             de cada movimiento en la bitácora.
           </div>
+          <NotaMoneda />
         </Card>
 
         <Card

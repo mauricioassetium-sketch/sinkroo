@@ -1,4 +1,4 @@
-import { Card, Badge, Button } from '../components/ui';
+import { Card, Badge, Button, Dinero, NotaMoneda } from '../components/ui';
 import { ViewHead, BarRow, Ring } from '../components/viz';
 import { I_Globe, I_Trend, I_Star, I_Eye, I_Zap, I_Check, I_ArrowRight, I_Plus, I_Users } from '../components/icons';
 import { COMPETIDORES, ANGULOS, TENDENCIAS } from '../data/demo';
@@ -69,8 +69,8 @@ export function ViewMercado({ setToast }: { setToast: (t: string) => void }) {
             </div>
           </div>
           <div className="datos-row" style={{ marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--border)' }}>
-            <div className="dato"><span className="dato-l">Costo del clic hoy</span><span className="dato-v">$2,10</span></div>
-            <div className="dato"><span className="dato-l">Si te siguen en precio</span><span className="dato-v" style={{ color: 'var(--amber)' }}>+$340/sem</span></div>
+            <div className="dato"><span className="dato-l">Costo del clic hoy</span><span className="dato-v"><Dinero monto="$2,10" /></span></div>
+            <div className="dato"><span className="dato-l">Si te siguen en precio</span><span className="dato-v" style={{ color: 'var(--amber)' }}><Dinero monto="+$340/sem" /></span></div>
           </div>
           <div className="acc-why">
             Lux lee la biblioteca pública de anuncios de tus competidores <b>todos los días</b>.
@@ -91,7 +91,7 @@ export function ViewMercado({ setToast }: { setToast: (t: string) => void }) {
                 </span>
                 <span className="row" style={{ gap: 8 }}>
                   <Badge tone={c.gasto === 'alto' ? 'red' : c.gasto === 'medio' ? 'amber' : 'muted'}>gasto {c.gasto}</Badge>
-                  <span className="tiny" style={{ fontWeight: 800 }}>${c.precio}</span>
+                  <span className="tiny" style={{ fontWeight: 800 }}><Dinero monto={c.precio} /></span>
                 </span>
               </div>
               <BarRow valor={c.anuncios} max={maxAnuncios} formato={String(c.anuncios)}
@@ -178,7 +178,7 @@ export function ViewMercado({ setToast }: { setToast: (t: string) => void }) {
                 <span className="badge" style={{ fontSize: 9.5, background: x.gana ? 'rgba(34,197,94,.14)' : 'rgba(245,158,11,.14)', color: x.gana ? 'var(--green)' : 'var(--amber)' }}>
                   {x.gana ? 'ganás' : 'perdés'}
                 </span>
-                <span className="tiny muted">vos {x.vos} · ellos {x.ellos}</span>
+                <span className="tiny muted">vos <Dinero monto={x.vos} /> · ellos <Dinero monto={x.ellos} equivalente={false} /></span>
               </div>
               <div className="bs">{x.nota}</div>
             </div>
@@ -193,6 +193,7 @@ export function ViewMercado({ setToast }: { setToast: (t: string) => void }) {
             Es la comparación que hace un cliente cuando duda, no un informe de mercado.
             <b> Donde ganás se dice en el anuncio</b>; donde perdés, se compensa con lo que ya tenés.
           </div>
+          <NotaMoneda />
         </Card>
 
         <Card
@@ -226,8 +227,8 @@ export function ViewMercado({ setToast }: { setToast: (t: string) => void }) {
             </div>
           </div>
           <div className="datos-row" style={{ marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--border)' }}>
-            <div className="dato"><span className="dato-l">Si hacés las 4</span><span className="dato-v" style={{ color: 'var(--green)' }}>+$520/sem</span></div>
-            <div className="dato"><span className="dato-l">Costo</span><span className="dato-v">$0</span></div>
+            <div className="dato"><span className="dato-l">Si hacés las 4</span><span className="dato-v" style={{ color: 'var(--green)' }}><Dinero monto="+$520/sem" /></span></div>
+            <div className="dato"><span className="dato-l">Costo</span><span className="dato-v"><Dinero monto={0} equivalente={false} /></span></div>
             <div className="dato"><span className="dato-l">Se nota en</span><span className="dato-v">7 días</span></div>
           </div>
           <div className="row" style={{ gap: 9, marginTop: 14, flexWrap: 'wrap' }}>

@@ -10,7 +10,7 @@ import { Spark } from './charts';
 
 /** Barras verticales con su valor arriba y su etiqueta abajo. */
 export function Bars({ data, labels, color = '#a855f7', track = 92, fmt }: {
-  data: number[]; labels?: string[]; color?: string; track?: number; fmt?: (v: number) => string;
+  data: number[]; labels?: string[]; color?: string; track?: number; fmt?: (v: number) => ReactNode;
 }) {
   const max = Math.max(...data, 1);
   return (
@@ -63,7 +63,7 @@ export function BarRow({ label, valor, max, color = 'var(--purple2)', sufijo, fo
 }
 
 /** Medidor lineal: para recursos que se consumen (créditos, días de autonomía). */
-export function Gauge({ pct, label, detalle, color }: { pct: number; label: string; detalle?: string; color?: string }) {
+export function Gauge({ pct, label, detalle, color }: { pct: number; label: string; detalle?: ReactNode; color?: string }) {
   return (
     <div className="gauge">
       <div className="row spread" style={{ marginBottom: 7 }}>
@@ -78,7 +78,7 @@ export function Gauge({ pct, label, detalle, color }: { pct: number; label: stri
 /** Métrica con su sparkline: el patrón base de todo el dashboard. */
 /** Métrica con diagrama circular: el anillo muestra qué tan cerca está de su meta. */
 export function MetricaAnillo({ label, valor, delta, pct, meta, color = '#a855f7', up = true }: {
-  label: string; valor: string; delta?: string; pct: number; meta?: string; color?: string; up?: boolean;
+  label: string; valor: ReactNode; delta?: string; pct: number; meta?: ReactNode; color?: string; up?: boolean;
 }) {
   const p = Math.max(0, Math.min(100, pct));
   const c = p >= 80 ? 'var(--green)' : p >= 60 ? 'var(--amber)' : 'var(--red)';
@@ -100,7 +100,7 @@ export function MetricaAnillo({ label, valor, delta, pct, meta, color = '#a855f7
 }
 
 export function Metrica({ label, valor, delta, serie, color = '#a855f7', sub, up = true }: {
-  label: string; valor: string; delta?: string; serie?: number[]; color?: string; sub?: string; up?: boolean;
+  label: string; valor: ReactNode; delta?: string; serie?: number[]; color?: string; sub?: string; up?: boolean;
 }) {
   return (
     <div className="metrica">
@@ -115,7 +115,7 @@ export function Metrica({ label, valor, delta, serie, color = '#a855f7', sub, up
 export { Spark };
 
 /** Fila de cifras compacta: se usa como encabezado en todas las vistas. */
-export function Cifras({ nums }: { nums: { v: string; l: string; c?: string }[] }) {
+export function Cifras({ nums }: { nums: { v: ReactNode; l: string; c?: string }[] }) {
   return (
     <div className="cifras">
       {nums.map((n, i) => (
@@ -130,7 +130,7 @@ export function Cifras({ nums }: { nums: { v: string; l: string; c?: string }[] 
 
 /** Encabezado de vista: coherente en las 5 pantallas. */
 export function ViewHead({ icon, titulo, sub, nums, accion }: {
-  icon: ReactNode; titulo: string; sub: string; nums: { v: string; l: string; c?: string }[]; accion?: ReactNode;
+  icon: ReactNode; titulo: string; sub: string; nums: { v: ReactNode; l: string; c?: string }[]; accion?: ReactNode;
 }) {
   return (
     <div className="vhead card">

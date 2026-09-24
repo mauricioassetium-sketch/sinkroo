@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Card, Badge, Button, Avatar } from '../components/ui';
+import { Card, Badge, Button, Avatar, Dinero } from '../components/ui';
 import { ViewHead, BarRow } from '../components/viz';
 import { AutomatizacionCard, clonarFlujo, flujoNuevo, nombreOFrase, type FlujoEditable } from '../components/AutomatizacionCard';
 import {
@@ -465,7 +465,7 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
               <div className="datos-row" style={{ marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--border)' }}>
                 <div className="dato"><span className="dato-l">Cliente hace</span><span className="dato-v">4 meses</span></div>
                 <div className="dato"><span className="dato-l">Compras</span><span className="dato-v" style={{ color: 'var(--green)' }}>3</span></div>
-                <div className="dato"><span className="dato-l">Ticket promedio</span><span className="dato-v">$8.400</span></div>
+                <div className="dato"><span className="dato-l">Ticket promedio</span><span className="dato-v"><Dinero monto={8400} /></span></div>
               </div>
               <div className="bs">
                 El agente ya sabe esto antes de contestar: cada conversación lleva el historial del cliente pegado.

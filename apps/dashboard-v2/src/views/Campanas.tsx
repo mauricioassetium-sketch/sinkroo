@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Card, Badge, Button } from '../components/ui';
+import { Card, Badge, Button, Dinero, NotaMoneda } from '../components/ui';
 import { ViewHead, Bars, Ring, Gauge } from '../components/viz';
 import { Publicar } from '../components/Publicar';
 import { FlujoMiroFish } from '../components/FlujoMiroFish';
@@ -59,7 +59,7 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
         sub="Es un flujo por etapas: subís lo que tenés, Sinkroo crea, MiroFish vota y vos decidís mirando las piezas."
         nums={[
           { v: String(CAMPANAS.length), l: 'campañas' },
-          { v: `$${diario}`, l: 'invertido por día', c: 'var(--green)' },
+          { v: <Dinero monto={diario} />, l: 'invertido por día', c: 'var(--green)' },
           { v: '3,8x', l: 'ROAS del mes' },
           { v: String(artefactos), l: 'artefactos producidos', c: 'var(--purple3)' },
         ]}
@@ -161,7 +161,7 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
               </span>
               <span className="dato" title="Lo que le pagás a Meta por día cuando la campaña corre">
                 <span className="dato-l">Presupuesto</span>
-                <span className="dato-v">{c.presupuesto}</span>
+                <span className="dato-v"><Dinero monto={c.presupuesto} /></span>
               </span>
               <span className="dato" title="Piezas que el motor ya creó para esta campaña">
                 <span className="dato-l">Piezas</span>
@@ -191,15 +191,16 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
           title={<span className="row" style={{ gap: 8 }}><I_Zap size={14} style={{ color: 'var(--amber)' }} /> Tu presupuesto del mes</span>}
           action={<Badge tone="amber">queda 24%</Badge>}
         >
-          <Gauge pct={76} label="Invertido del techo del mes" detalle="$1.240 de $1.640" color="var(--grad)" />
+          <Gauge pct={76} label="Invertido del techo del mes"
+            detalle={<><Dinero monto={1240} equivalente={false} /> de <Dinero monto={1640} equivalente={false} /></>} color="var(--grad)" />
           <div className="datos-row" style={{ marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--border)' }}>
-            <div className="dato"><span className="dato-l">Cierre proyectado</span><span className="dato-v">$1.580</span></div>
+            <div className="dato"><span className="dato-l">Cierre proyectado</span><span className="dato-v"><Dinero monto={1580} /></span></div>
             <div className="dato"><span className="dato-l">Días que quedan</span><span className="dato-v">8</span></div>
-            <div className="dato"><span className="dato-l">Techo por día</span><span className="dato-v" style={{ color: 'var(--green)' }}>$109</span></div>
+            <div className="dato"><span className="dato-l">Techo por día</span><span className="dato-v" style={{ color: 'var(--green)' }}><Dinero monto={109} /></span></div>
           </div>
           <div>
             <div className="bs" style={{ marginBottom: 8 }}>Invertido por semana:</div>
-            <Bars data={[280, 300, 320, 340]} labels={['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4']} color="#a855f7" fmt={v => `$${v}`} />
+            <Bars data={[280, 300, 320, 340]} labels={['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4']} color="#a855f7" fmt={v => <Dinero monto={v} equivalente={false} />} />
           </div>
           <div className="row" style={{ gap: 9, flexWrap: 'wrap' }}>
             <Button variant="outline" className="btn-sm" title="Cambiás el techo mensual. El motor nunca lo pasa sin tu permiso."
@@ -211,6 +212,7 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
             Este es el <b>freno de gasto</b>: el motor mueve plata solo, pero nunca más allá del techo que pusiste.
             Si no cambiás nada, esta campaña se frena sola el día 30.
           </div>
+          <NotaMoneda />
         </Card>
 
         <Card
@@ -224,7 +226,7 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
                 <small>Rinde 7,3x contra 3,8x de promedio: está limitada por presupuesto, no por demanda.</small>
               </span>
               <Button className="btn-sm" title="Sube el presupuesto de $18 a $23 por día. Reversible: podés volver al valor anterior cuando quieras."
-                onClick={() => setToast('Retargeting carrito: $18 → $23 por día (demo)')}>+$5/día</Button>
+                onClick={() => setToast('Retargeting carrito: $18 → $23 por día (demo)')}>+<Dinero monto={5} equivalente={false} />/día</Button>
             </div>
             <div className="guard">
               <span style={{ color: 'var(--red)', flexShrink: 0 }}><I_Zap size={14} /></span>
@@ -244,7 +246,7 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
             </div>
           </div>
           <div className="datos-row" style={{ marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--border)' }}>
-            <div className="dato"><span className="dato-l">Si aplicás las 3</span><span className="dato-v" style={{ color: 'var(--green)' }}>+$36/día</span></div>
+            <div className="dato"><span className="dato-l">Si aplicás las 3</span><span className="dato-v" style={{ color: 'var(--green)' }}>+<Dinero monto={36} />/día</span></div>
             <div className="dato"><span className="dato-l">Riesgo</span><span className="dato-v">ninguno</span></div>
             <div className="dato"><span className="dato-l">Se deshace en</span><span className="dato-v" style={{ color: 'var(--purple3)' }}>24 h</span></div>
           </div>
@@ -258,14 +260,14 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
       {/* El gráfico de gasto cierra la sección: qué campaña se lleva cada peso del techo diario */}
       <Card
         title={<span className="row" style={{ gap: 8 }}><I_Zap size={14} style={{ color: 'var(--green)' }} /> Dónde va tu presupuesto</span>}
-        action={<Badge tone="green">${diario}/día</Badge>}
+        action={<Badge tone="green"><Dinero monto={diario} equivalente={false} />/día</Badge>}
       >
         <div className="graf-ancho">
-          <Bars data={GASTO} labels={GASTO_LB} color="#a855f7" fmt={v => `$${v}`} />
+          <Bars data={GASTO} labels={GASTO_LB} color="#a855f7" fmt={v => <Dinero monto={v} equivalente={false} />} />
           <div className="col-stack">
             <div className="datos-row">
-              <div className="dato"><span className="dato-l">Por semana</span><span className="dato-v">${diario * 7}</span></div>
-              <div className="dato"><span className="dato-l">Por mes</span><span className="dato-v">${diario * 30}</span></div>
+              <div className="dato"><span className="dato-l">Por semana</span><span className="dato-v"><Dinero monto={diario * 7} /></span></div>
+              <div className="dato"><span className="dato-l">Por mes</span><span className="dato-v"><Dinero monto={diario * 30} /></span></div>
               <div className="dato"><span className="dato-l">La que más rinde</span><span className="dato-v" style={{ color: 'var(--green)' }}>Pack completo · 7,3x</span></div>
             </div>
             <div className="acc-why">

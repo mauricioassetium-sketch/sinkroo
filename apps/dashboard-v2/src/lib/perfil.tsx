@@ -474,9 +474,12 @@ export function PerfilProvider({ children }: { children: ReactNode }) {
   // colores se ven en su lugar (el hero, la barra de arriba y el menú) antes de guardar.
   const [previa, setPrevia] = useState<Perfil | null>(null);
 
-  // La marca del cliente vive en las variables CSS de la raíz. Cuando cambia (o cuando se
-  // canceló una edición), el panel entero se repinta solo.
-  useEffect(() => { aplicarMarca(perfil); }, [perfil]);
+  // La marca del cliente vive en las variables CSS de la raíz. Se repinta con lo que se está
+  // VIENDO: si hay una vista previa abierta manda la vista previa, si no el perfil guardado.
+  // (Antes miraba sólo el guardado: al guardar los datos de cuenta con el pop-up abierto, los
+  // colores que estabas eligiendo volvían atrás en la pantalla aunque el pop-up siguiera
+  // mostrándolos elegidos.)
+  useEffect(() => { aplicarMarca(previa ?? perfil); }, [perfil, previa]);
 
   const guardar = (p: Perfil) => {
     setPerfil(p);

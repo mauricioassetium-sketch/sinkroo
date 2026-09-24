@@ -157,8 +157,10 @@
 .mwb { border: 1px solid var(--border2); border-radius: 13px; padding: 15px;
   background: linear-gradient(140deg, rgba(34,197,94,.09), transparent 65%); }
 .mwb-top { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
-.mwb-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 11px; margin-top: 14px; }
-@media (max-width: 660px) { .mwb-grid { grid-template-columns: minmax(0, 1fr); } }
+.mwb-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 11px; margin-top: 14px; }
+/* Con los importes en dólares y su equivalente al lado, las tres columnas dejan de entrar mucho
+   antes: a 1024 el dato se corta, así que pasa a una sola columna bastante antes de los 660 px. */
+@media (max-width: 1150px) { .mwb-grid { grid-template-columns: minmax(0, 1fr); } }
 .mwb-k { background: var(--bg3); border: 1px solid var(--border); border-radius: 10px; padding: 11px; }
 .mwb-k-lb { font-size: 11px; color: var(--muted); }
 .mwb-k-v { font-size: 19px; font-weight: 900; margin-top: 4px; }
@@ -1823,3 +1825,26 @@ html.marca-cliente .pers-flotante { color: var(--sobre-grad); }
   .ubic-meta { margin-left: 0; flex: 1 1 100%; }
   .conv-titulo { font-size: 18px; }
 }
+
+/* =============================================================================================
+   EL DINERO EN DÓLARES — la regla de formato vive en src/lib/moneda.ts y se pinta con <Dinero>
+   (components/ui.tsx). Acá sólo se le da forma: primero el importe en dólares y, al lado y más
+   chico, el equivalente en la moneda del país que el cliente eligió en el perfil. Con el dólar
+   elegido no hay equivalente: queda sólo el importe, sin repetir el «= USD».
+   Ninguna clase de acá toca un número: sólo cómo se ve el que ya estaba.
+   ============================================================================================= */
+.usd { font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+/* El importe en pesos puede envolverse solo (nunca `nowrap`: con el equivalente al lado, el texto
+   más largo no tiene que poder estirar la columna ni desbordar la tarjeta). */
+.usd-eq { margin-left: 5px; font-size: .8em; font-weight: 600; color: var(--muted); }
+/* En pantalla chica el equivalente va DEBAJO del monto, no al lado: así el importe no empuja la
+   tarjeta ni deja un dato cortado. `minmax(0, 1fr)` es de las grillas, acá no hace falta. */
+@media (max-width: 560px) {
+  .dato-v .usd, .metrica-v .usd, .mwb-k-v .usd, .cifra-v .usd, .guard-val .usd, .live-v .usd { display: inline-block; }
+  .dato-v .usd-eq, .metrica-v .usd-eq, .mwb-k-v .usd-eq, .cifra-v .usd-eq, .guard-val .usd-eq, .live-v .usd-eq {
+    display: block; margin-left: 0; }
+}
+/* La aclaración al pie: la misma caja que la nota de los botones, con el borde punteado para que
+   no se confunda con una acción. Nunca queda vacía: dice en qué moneda está lo que se ve. */
+.nota-moneda { margin-top: 10px; padding: 9px 11px; border-radius: 9px; border: 1px dashed var(--border2);
+  background: var(--bg2); font-size: 11px; line-height: 1.5; color: var(--muted2); }
