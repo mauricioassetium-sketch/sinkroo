@@ -45,7 +45,7 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
               </div>
               <div className="hdr-s hero-sub">
                 <b>Tu marketing, en automático.</b><br />
-                Pruebo cada publicación con <b>500 personas que reaccionan como tu audiencia</b>, antes de que gastes.
+                Pruebo cada publicación con <b>500 personas como tu audiencia</b>. Antes de que gastes.
               </div>
             </div>
           </div>
