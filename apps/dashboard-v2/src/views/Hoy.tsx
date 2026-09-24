@@ -37,7 +37,7 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
             <span className={`hero-logo ${perfil.logo ? 'propio' : ''}`}
               title={perfil.logo
                 ? `El logo de ${perfil.marca}: así se ve tu marca en tu panel`
-                : 'Sinkroo. Cargá el logo de tu marca en tu perfil y aparece acá'}>
+                : 'Sinkroo. Cargá el logo de tu marca en «Hacé tuyo este panel» y aparece acá'}>
               {perfil.logo
                 ? <img className="marca-logo" src={perfil.logo} alt={`Logo de ${perfil.marca}`} />
                 : <SinkrooMark size={136} />}
