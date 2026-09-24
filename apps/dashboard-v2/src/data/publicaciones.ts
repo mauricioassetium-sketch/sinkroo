@@ -16,7 +16,7 @@ import { OFERTAS_ANTERIORES } from './demo';
 // porque no se "publica": trabaja sola.
 // =============================================================================================
 
-export type TipoCampo = 'texto' | 'link' | 'imagenes' | 'videos' | 'archivos' | 'opciones' | 'numero';
+export type TipoCampo = 'texto' | 'link' | 'imagenes' | 'videos' | 'media' | 'archivos' | 'opciones' | 'numero';
 
 export interface CampoPublicacion {
   id: string;
@@ -122,6 +122,22 @@ const DETALLE_TONOS: Record<string, string> = {
   'Profesional y formal': 'Trato de usted y sin chistes: servicios, salud y clientes corporativos.',
   'Experto y educativo': 'Explica el por qué: ingredientes, modo de uso, comparaciones.',
   'Premium y sobrio': 'Pocas palabras y tono alto. Para tickets altos y productos exclusivos.',
+};
+
+// ---------------------------------------------------------------------------------------------
+// QUÉ ENTREGA UN COLABORADOR — lo que puede traer una pieza ajena. Se elige de la lista; el
+// archivo se sube en el mismo bloque, así que no hay dos vocabularios para lo mismo.
+// ---------------------------------------------------------------------------------------------
+const CONTENIDO_COLAB = [
+  'Video', 'Carrusel', 'Imagen', 'Historia', 'Audio o voz en off', 'Guion o texto',
+];
+const DETALLE_CONTENIDO_COLAB: Record<string, string> = {
+  'Video': 'Un video vertical: reel, TikTok o el crudo sin editar.',
+  'Carrusel': 'Varias fotos que se pasan una tras otra en la misma publicación.',
+  'Imagen': 'Una sola foto, para el feed o para una historia.',
+  'Historia': 'La pieza vertical de 24 horas, con su sticker y su link.',
+  'Audio o voz en off': 'El audio suelto, para que el motor lo monte sobre las imágenes.',
+  'Guion o texto': 'Lo que dijo por escrito, para que el motor lo use de base.',
 };
 
 // ---------------------------------------------------------------------------------------------
@@ -255,10 +271,13 @@ export const FORMATOS: Formato[] = [
     color: '#8b5cf6',
     conObjetivo: true,
     resumen: 'La pieza que ya grabó alguien con quien arreglaste por fuera.',
-    paraQue: 'Sinkroo no busca colaboradores: el acuerdo lo cerrás vos por fuera y acá subís el link y el video. El motor monta esa pieza con lo suyo y todo va a la misma evaluación.',
+    paraQue: 'Sinkroo no busca colaboradores: el acuerdo lo cerrás vos por fuera y acá subís el link y lo que te entregó. El motor monta esa pieza con lo suyo y todo va a la misma evaluación.',
     campos: [
       { id: 'link_colab', etiqueta: 'El link del colaborador', tipo: 'link', ayuda: 'Su perfil o la publicación donde se ve. El motor entra, ve quién es y con quién habla.' },
-      { id: 'video_colab', etiqueta: 'El video del colaborador', tipo: 'videos', ayuda: 'El archivo tal como te lo entregó. Podés subir varios: se suman a los que produce el motor para esta campaña.' },
+      { id: 'tipo_contenido_colab', etiqueta: 'Qué te entregó', tipo: 'opciones', multi: true, detalleVisible: true,
+        ayuda: 'Elegí todo lo que te haya dado: puede ser más de una cosa.',
+        opciones: CONTENIDO_COLAB, detalle: DETALLE_CONTENIDO_COLAB },
+      { id: 'contenido_colab', etiqueta: 'El contenido del colaborador', tipo: 'media', ayuda: 'El archivo tal como te lo entregó: el video, las fotos o el carrusel completo. Podés subir varios y se suman a los que produce el motor para esta campaña.' },
       { id: 'cuando_colab', etiqueta: 'Cuándo sale', tipo: 'opciones', diaHora: true, opcionDiaHora: 'Elegí el día y la hora', opciones: ['Que lo recomiende el motor'], ayuda: 'Dos caminos: elegís el día y la hora, o el motor recomienda la mejor franja.' },
       { id: 'filtro_colab', etiqueta: 'Su contenido y el filtro de MiroFish', tipo: 'opciones',
         ayuda: 'El contenido de un colaborador no pasa por el filtro de MiroFish, porque no lo produjo el motor. Si no elegís nada, se publica sin pasar.',
@@ -268,7 +287,7 @@ export const FORMATOS: Formato[] = [
           'Probarlo también en MiroFish': 'Lo miran los 5 jueces y los 500 del público. El resultado no cambia qué se publica: es para ver cómo reacciona.',
         } },
     ],
-    nota: 'La pieza que se publica es su video más lo que agrega el motor: guion, subtítulos, música, marca y copy. Se suma a los videos que produce el motor para esta campaña y todo junto pasa por la misma evaluación del público.',
+    nota: 'La pieza que se publica es lo que te entregó más lo que agrega el motor: guion, subtítulos, música, marca y copy. Se suma a los videos que produce el motor para esta campaña y todo junto pasa por la misma evaluación del público.',
     avanzados: [
       { id: 'brief', etiqueta: 'Qué no puede decir', tipo: 'texto', ayuda: 'Promesas de resultado, precios que no son, cosas que la marca no dice.' },
     ],

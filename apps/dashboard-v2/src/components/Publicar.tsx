@@ -57,6 +57,7 @@ const momentoPorDefecto = () => {
 function IconoCampo({ tipo }: { tipo: CampoPublicacion['tipo'] }) {
   if (tipo === 'imagenes') return <I_Image size={17} />;
   if (tipo === 'videos') return <I_Film size={17} />;
+  if (tipo === 'media') return <I_Upload size={17} />;
   if (tipo === 'link') return <I_Link size={17} />;
   return <I_File size={17} />;
 }
@@ -109,18 +110,20 @@ export function Publicar({ setToast, modo, irAConversaciones, soloIngesta }: {
 
   /** El cargador de archivos de un campo. Vive acá porque se usa en dos lados: en «Tu material real»
       y adentro de los campos que, además de texto, aceptan pantallazos (las reseñas de clientes). */
-  const cargador = (campo: CampoPublicacion, tipo: 'imagenes' | 'videos' | 'archivos', ayuda: string) => {
+  const cargador = (campo: CampoPublicacion, tipo: 'imagenes' | 'videos' | 'media' | 'archivos', ayuda: string) => {
     const archivos = material[campo.id] || [];
     return (
       <>
         <label className="dropzone">
           <span style={{ color: 'var(--purple3)' }}><IconoCampo tipo={tipo} /></span>
           <span className="small" style={{ fontWeight: 700 }}>
-            {tipo === 'imagenes' ? 'Subir imágenes' : tipo === 'videos' ? 'Subir videos' : 'Subir archivos'}
+            {tipo === 'imagenes' ? 'Subir imágenes'
+              : tipo === 'videos' ? 'Subir videos'
+              : tipo === 'media' ? 'Subir el contenido' : 'Subir archivos'}
           </span>
           <span className="tiny muted">{ayuda}</span>
           <input type="file" multiple
-            accept={tipo === 'imagenes' ? 'image/*' : tipo === 'videos' ? 'video/*' : '*/*'}
+            accept={tipo === 'imagenes' ? 'image/*' : tipo === 'videos' ? 'video/*' : tipo === 'media' ? 'video/*,image/*' : '*/*'}
             style={{ display: 'none' }} onChange={e => subir(campo, e.target.files)} />
         </label>
         {archivos.length > 0 && (
@@ -176,8 +179,8 @@ export function Publicar({ setToast, modo, irAConversaciones, soloIngesta }: {
           <input className="input" placeholder={campo.ayuda} value={(v as string) || ''} onChange={e => set(campo.id, e.target.value)} />
         ) : campo.tipo === 'numero' ? (
           <input className="input" style={{ maxWidth: 140 }} placeholder="0" value={(v as string) || ''} onChange={e => set(campo.id, e.target.value)} />
-        ) : campo.tipo === 'videos' || campo.tipo === 'imagenes' || campo.tipo === 'archivos' ? (
-          // Un campo de material dentro de la lista de campos: el video del colaborador es del
+        ) : campo.tipo === 'videos' || campo.tipo === 'imagenes' || campo.tipo === 'media' || campo.tipo === 'archivos' ? (
+          // Un campo de material dentro de la lista de campos: el contenido del colaborador es del
           // negocio, no del motor, así que se sube acá como cualquier otro material.
           cargador(campo, campo.tipo, campo.ayuda)
         ) : (
