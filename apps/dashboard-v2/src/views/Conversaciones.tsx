@@ -93,6 +93,11 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
   // Automatizaciones que sacaste de la lista y todavía no se guardó el borrado. Guardan su
   // posición para que Deshacer las devuelva al mismo lugar del que salieron.
   const [borrados, setBorrados] = useState<{ f: FlujoEditable; i: number }[]>([]);
+  // La conexión de WhatsApp: probarla deja el resultado a la vista, y reemplazar el token se hace acá.
+  const [prueba, setPrueba] = useState<'probando' | 'ok' | null>(null);
+  const [reemplazando, setReemplazando] = useState(false);
+  const [tokenNuevo, setTokenNuevo] = useState('');
+  const [tokenCambiado, setTokenCambiado] = useState(false);
   const compositor = useRef<HTMLInputElement>(null);
 
   const cambiarFlujo = (f: FlujoEditable) =>
@@ -110,7 +115,7 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
     const cuantos = `${f.pasos.length} paso${f.pasos.length === 1 ? '' : 's'}`;
     setToast(`Guardaste "${nombreOFrase(f)}": ${f.estado === 'Activo'
       ? `queda encendida con ${cuantos}`
-      : `queda en pausa, con ${cuantos} listo${f.pasos.length === 1 ? '' : 's'} para cuando la enciendas`} (demo)`);
+      : `queda en pausa, con ${cuantos} listo${f.pasos.length === 1 ? '' : 's'} para cuando la enciendas`}`);
   };
 
   const descartarFlujo = (f: FlujoEditable) => {
@@ -118,11 +123,11 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
     // Nunca se guardó: descartar es sacarla de la lista, no queda nada pendiente.
     if (!original) {
       setFlujos(fs => fs.filter(x => x.id !== f.id));
-      setToast(`Descartaste "${nombreOFrase(f)}": como no la habías guardado, sale de la lista y no queda nada (demo)`);
+      setToast(`Descartaste "${nombreOFrase(f)}": como no la habías guardado, sale de la lista y no queda nada`);
       return;
     }
     setFlujos(fs => fs.map(x => (x.id === f.id ? clonarFlujo(original) : x)));
-    setToast(`Descartaste los cambios de "${nombreOFrase(f)}": volvió a como estaba (demo)`);
+    setToast(`Descartaste los cambios de "${nombreOFrase(f)}": volvió a como estaba`);
   };
 
   /** Crea una automatización vacía al final de la grilla, lista para editar. */
@@ -143,9 +148,9 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
     setFlujos(fs => fs.filter(x => x.id !== f.id));
     if (base.some(x => x.id === f.id)) {
       setBorrados(bs => [...bs, { f: clonarFlujo(f), i }]);
-      setToast(`Sacaste "${nombreOFrase(f)}" de la lista. No se guardó todavía: Deshacer la devuelve como estaba. Si querías sólo frenarla, la pausa la deja guardada (demo)`);
+      setToast(`Sacaste "${nombreOFrase(f)}" de la lista. No se guardó todavía: Deshacer la devuelve como estaba. Si querías sólo frenarla, la pausa la deja guardada`);
     } else {
-      setToast(`Sacaste "${nombreOFrase(f)}" de la lista. Como no la habías guardado, no queda nada pendiente (demo)`);
+      setToast(`Sacaste "${nombreOFrase(f)}" de la lista. Como no la habías guardado, no queda nada pendiente`);
     }
   };
 
@@ -156,7 +161,7 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
       [...borrados].sort((a, b) => a.i - b.i).forEach(({ f, i }) => out.splice(Math.min(i, out.length), 0, clonarFlujo(f)));
       return out;
     });
-    setToast(`Volvieron ${borrados.length === 1 ? 'la automatización que habías sacado' : `las ${borrados.length} automatizaciones que habías sacado`}: quedan como estaban (demo)`);
+    setToast(`Volvieron ${borrados.length === 1 ? 'la automatización que habías sacado' : `las ${borrados.length} automatizaciones que habías sacado`}: quedan como estaban`);
     setBorrados([]);
   };
 
@@ -201,20 +206,20 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
     setEtapas(p => ({ ...p, [id]: siguiente }));
     const nombre = (CONVERSACIONES.find(c => c.id === id)?.nombre ?? 'el creador').split(' ')[0];
     setToast(paso === 1
-      ? `La colaboración con ${nombre} quedó en «${textoEtapa(siguiente)}». No le salió ningún mensaje: el acuerdo se cuenta desde el compositor (demo)`
-      : `Volviste la colaboración con ${nombre} a «${textoEtapa(siguiente)}»: no cambia nada de lo ya hablado (demo)`);
+      ? `La colaboración con ${nombre} quedó en «${textoEtapa(siguiente)}». No le salió ningún mensaje: el acuerdo se cuenta desde el compositor`
+      : `Volviste la colaboración con ${nombre} a «${textoEtapa(siguiente)}»: no cambia nada de lo ya hablado`);
   };
 
   const tomarControl = (id: string) => {
     setControl(p => ({ ...p, [id]: 'humano' }));
-    setToast('Tomás vos esa conversación: Rumi deja de contestar hasta que se la devuelvas (demo)');
+    setToast('Tomás vos esa conversación: Rumi deja de contestar hasta que se la devuelvas');
   };
 
   const devolverARumi = (id: string) => {
     setControl(p => ({ ...p, [id]: 'ia' }));
     setEspera(p => ({ ...p, [id]: null }));
     setBorrador(p => ({ ...p, [id]: '' }));
-    setToast('Se la devolviste a Rumi: vuelve a contestar sola (demo)');
+    setToast('Se la devolviste a Rumi: vuelve a contestar sola');
   };
 
   /** La propuesta de la IA no se manda sola: baja al compositor y la mandás vos. */
@@ -231,7 +236,7 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
     // Escribir es tomar el control: Rumi no puede contestar arriba de tu respuesta.
     if ((control[id] ?? 'ia') === 'ia' && v.trim() !== '') {
       setControl(p => ({ ...p, [id]: 'humano' }));
-      setToast('Tomás vos esa conversación: Rumi deja de contestar hasta que se la devuelvas (demo)');
+      setToast('Tomás vos esa conversación: Rumi deja de contestar hasta que se la devuelvas');
     }
   };
 
@@ -247,7 +252,7 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
     setBorrador(p => ({ ...p, [id]: '' }));
     setControl(p => ({ ...p, [id]: 'humano' }));
     setEspera(p => ({ ...p, [id]: null }));
-    setToast(`Mensaje enviado a ${quien} por tu WhatsApp real (demo)`);
+    setToast(`Mensaje enviado a ${quien} por tu WhatsApp real`);
   };
 
   return (
@@ -495,7 +500,7 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
                 <Button className="btn-sm" title="No manda nada al cliente: baja este texto al compositor de abajo para que lo edites y lo mandes vos."
                   onClick={() => bajarAlBorrador(conv.id)}><I_Edit size={13} /> Bajar al borrador</Button>
                 <Button variant="ghost" className="btn-sm" title="Saca el borrador de la pantalla. No le contesta al cliente y no se pierde: podés volver a verlo cuando quieras."
-                  onClick={() => { setIgnoradas(p => [...p, conv.id]); setToast('Descartaste el borrador de Rumi: el cliente sigue esperando (demo)'); }}>Ignorar</Button>
+                  onClick={() => { setIgnoradas(p => [...p, conv.id]); setToast('Descartaste el borrador de Rumi: el cliente sigue esperando'); }}>Ignorar</Button>
               </div>
               <div className="tiny muted" style={{ marginTop: 9 }}>
                 Rumi no manda nada sola acá: el borrador baja al compositor y sale recién cuando lo mandás vos.
@@ -589,7 +594,7 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
 
         <Card
           title={<span className="row" style={{ gap: 8 }}><I_Users size={14} style={{ color: 'var(--green)' }} /> Tu propia API de WhatsApp</span>}
-          action={<Badge tone="green">conectada</Badge>}
+          action={<Badge tone={tokenCambiado ? 'purple' : 'green'}>{tokenCambiado ? 'token nuevo' : 'conectada'}</Badge>}
         >
           <div className="bs">
             Sinkroo no te da un número: conecta el tuyo. Pegás tu token de WhatsApp Business y el motor trabaja
@@ -601,11 +606,37 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
             <div className="dato"><span className="dato-l">Tiempo de respuesta</span><span className="dato-v" style={{ color: 'var(--green)' }}>4 s</span></div>
           </div>
           <div className="row" style={{ gap: 9, marginTop: 15, flexWrap: 'wrap' }}>
-            <Button variant="outline" className="btn-sm" title="Prueba que el token siga vivo sin guardarlo de nuevo"
-              onClick={() => setToast('Token probado ahora: sigue funcionando (demo)')}><I_Check size={13} /> Probar conexión</Button>
-            <Button variant="ghost" className="btn-sm" title="Reemplaza el token por uno nuevo"
-              onClick={() => setToast('Reemplazar token (demo)')}><I_Plus size={13} /> Reemplazar token</Button>
+            <Button variant="outline" className="btn-sm"
+              title="Prueba que el token siga vivo sin volver a pegarlo. No cambia nada si falla: te dice qué hacer."
+              onClick={() => { setPrueba('probando'); setTimeout(() => setPrueba('ok'), 900); }}>
+              <I_Check size={13} /> {prueba === 'probando' ? 'Probando…' : 'Probar conexión'}
+            </Button>
+            <Button variant="ghost" className="btn-sm" title="Reemplaza el token por uno nuevo. Se pega acá y el motor sigue con la misma línea, sin perder el historial."
+              onClick={() => setReemplazando(true)}><I_Plus size={13} /> Reemplazar token</Button>
           </div>
+          {prueba === 'ok' && (
+            <div className="tiny" style={{ marginTop: 10, color: 'var(--green)', fontWeight: 700 }}>
+              Última prueba: recién. El token responde en 0,4 s y siguen activos los 5 permisos de abajo.
+            </div>
+          )}
+          {reemplazando && (
+            <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <input className="input" style={{ flex: '1 1 240px', minWidth: 0 }} placeholder="EAA… tu token nuevo"
+                value={tokenNuevo} onChange={e => setTokenNuevo(e.target.value)} />
+              <Button className="btn-sm" disabled={!tokenNuevo.trim()}
+                title="Guarda el token nuevo. Reversible: si algo falla, podés volver a pegar el anterior y nada se pierde."
+                onClick={() => { setTokenCambiado(true); setReemplazando(false); setTokenNuevo(''); setToast('Token reemplazado: el motor sigue trabajando con tu misma línea'); }}>
+                Guardar token
+              </Button>
+              <Button variant="ghost" className="btn-sm" title="Cierra sin cambiar nada: el token que estaba sigue funcionando"
+                onClick={() => { setReemplazando(false); setTokenNuevo(''); }}>Cancelar</Button>
+            </div>
+          )}
+          {tokenCambiado && (
+            <div className="tiny" style={{ marginTop: 10, color: 'var(--green)', fontWeight: 700 }}>
+              Token reemplazado hace un momento: no se perdieron ni el historial ni las plantillas. El anterior quedó invalidado.
+            </div>
+          )}
           <div>
             <div className="bs" style={{ marginBottom: 9 }}>Qué habilita esta conexión en el motor:</div>
             <div className="row" style={{ gap: 7, flexWrap: 'wrap' }}>

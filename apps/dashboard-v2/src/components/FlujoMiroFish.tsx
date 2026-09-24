@@ -53,6 +53,8 @@ export function FlujoMiroFish({ modo, setToast, esAnuncio }: {
   const [etapa, setEtapa] = useState<Etapa>('inicio');
   const [abierta, setAbierta] = useState<string | null>('op1');
   const [publicado, setPublicado] = useState(false);
+  // Rehacer lo que no pasó: el motor reescribe esas piezas y quedan a la vista mientras trabaja.
+  const [rehaciendo, setRehaciendo] = useState(false);
 
   // ---- La ronda y su costo: es lo que hay que poder ver antes de gastar ----
   const [lote, setLote] = useState<Opcion[]>(OPCIONES);
@@ -472,7 +474,7 @@ export function FlujoMiroFish({ modo, setToast, esAnuncio }: {
             : <Badge tone="muted">sin votar</Badge>}
         >
           {nivel < 3
-            ? espera(3, <I_Vote size={22} />, 'Acá votan los 5 jueces', `Cinco perfiles distintos puntúan cada opción. El promedio define el puesto, del 1 al ${lote.length}.`)
+            ? espera(3, <I_Vote size={22} />, 'Acá votan los 5 jueces', `Los 5 jueces puntúan cada opción y cada uno mira algo distinto. El promedio define el puesto, del 1 al ${lote.length}.`)
             : (
               <>
                 {trabajando(3, 'Los 5 jueces están votando cada opción')}
@@ -554,13 +556,21 @@ export function FlujoMiroFish({ modo, setToast, esAnuncio }: {
                     </Badge>
                   ) : (
                     <Button className="btn-sm" title={accionDice}
-                      onClick={() => { setPublicado(true); setToast(`${accionDice} (demo)`); }}>
+                      onClick={() => { setPublicado(true); setToast(accionDice); }}>
                       <I_Rocket size={13} /> {esAnuncio ? 'Publicar las 3' : 'Programar las 3'}
                     </Button>
                   )}
                   {quedan.length > 0 && (
-                    <Button variant="ghost" className="btn-sm" title="Le pide al motor que rehaga solo la opción 4 y 5 con lo que objetaron los perfiles"
-                      onClick={() => setToast('El motor rehace las 2 que no pasaron (demo)')}>Rehacer las 2 que no pasaron</Button>
+                    rehaciendo ? (
+                      <div className="tiny" style={{ display: 'flex', alignItems: 'center', gap: 7, color: 'var(--purple3)', fontWeight: 700 }}>
+                        <I_Refresh size={13} /> El motor está rehaciendo las {quedan.length} que no pasaron, con lo que objetó cada juez: vuelven a votarse en la ronda 2.
+                      </div>
+                    ) : (
+                      <Button variant="ghost" className="btn-sm" title="Le pide al motor que rehaga solo las que no pasaron, con lo que objetaron los 5 jueces. Cuesta una ronda más."
+                        onClick={() => { setRehaciendo(true); setToast(`El motor rehace las ${quedan.length} que no pasaron con lo que objetaron los 5 jueces`); }}>
+                        <I_Refresh size={13} /> Rehacer las {quedan.length} que no pasaron
+                      </Button>
+                    )
                   )}
                 </div>
 

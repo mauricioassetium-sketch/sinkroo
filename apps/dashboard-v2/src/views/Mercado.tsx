@@ -1,7 +1,14 @@
+import { useState } from 'react';
 import { Card, Badge, Button, Dinero, NotaMoneda } from '../components/ui';
 import { ViewHead, BarRow, Ring } from '../components/viz';
 import { I_Globe, I_Trend, I_Star, I_Eye, I_Zap, I_Check, I_ArrowRight, I_Plus, I_Users } from '../components/icons';
 import { COMPETIDORES, ANGULOS, TENDENCIAS } from '../data/demo';
+import { useDetalle } from '../components/Detalle';
+import type { Vista } from '../components/Layout';
+
+/** El día en que vuelve un hallazgo silenciado 7 días: se calcula, no se escribe a mano. */
+const enUnaSemana = () =>
+  new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('es-AR', { day: 'numeric', month: 'long' });
 
 const OFERTA = [
   { k: 'Precio', vos: '$34', ellos: '$29 el más bajo', gana: false, nota: 'Vas 17% arriba. Se compensa con envío y garantía.' },
@@ -13,9 +20,17 @@ const OFERTA = [
   { k: 'Retiro en el día', vos: 'no ofrecés', ellos: 'sí, 2 de 5', gana: false, nota: 'Cuesta casi nada si despachás desde tu local.' },
 ];
 
-export function ViewMercado({ setToast }: { setToast: (t: string) => void }) {
+export function ViewMercado({ setToast, setVista }: { setToast: (t: string) => void; setVista?: (v: Vista) => void }) {
+  const detalle = useDetalle();
   const maxAnuncios = Math.max(...COMPETIDORES.map(c => c.anuncios));
   const maxLeads = Math.max(...COMPETIDORES.map(c => c.leads));
+  // Lo que el motor quedó haciendo: se ve en la pantalla, no en un aviso que se va solo.
+  const [escribiendo, setEscribiendo] = useState<{ n: number; de: string } | null>(null);
+  // El borrador de campaña creado desde acá: queda a la vista y se puede abrir en Campañas.
+  const [borradorCreado, setBorradorCreado] = useState(false);
+  // Silenciar el hallazgo es reversible: vuelve a los 7 días o cuando lo destildes.
+  const [silenciado, setSilenciado] = useState(false);
+  const oro = ANGULOS[0];
 
   return (
     <div className="dash">
@@ -52,12 +67,56 @@ export function ViewMercado({ setToast }: { setToast: (t: string) => void }) {
               que es donde el panel dice que estás débil.
             </div>
             <div className="alarm-acts">
-              <Button className="btn-sm" title="Nia escribe 6 variantes con el ángulo que gana, sin tocar tu precio"
-                onClick={() => setToast('Nia prepara 6 variantes del ángulo limpio (demo)')}>
-                <I_Plus size={13} /> Que Nia ataque por ahí
-              </Button>
-              <Button variant="ghost" className="btn-sm" title="Abre el informe completo con los 47 anuncios leídos"
-                onClick={() => setToast('Informe completo (demo)')}>Ver el informe</Button>
+              {escribiendo
+                ? <div className="tiny" style={{ display: 'flex', alignItems: 'center', gap: 7, color: 'var(--purple3)', fontWeight: 700 }}>
+                    <I_Zap size={13} /> Nia está escribiendo {escribiendo.n} variantes del ángulo «{escribiendo.de}»: aparecen en la galería de Campañas.
+                  </div>
+                : <Button className="btn-sm" title="Te muestra las 6 variantes que va a escribir, con el ángulo y lo que cuestan. Reversible: no se escribe nada hasta que lo confirmes."
+                    onClick={() => detalle({
+                      titulo: 'Nia escribe 6 variantes del ángulo «ingredientes limpios»',
+                      sub: 'Es el ángulo que gana en tu rubro y el que te diferencia sin bajar el precio. Nada se escribe hasta que lo confirmes.',
+                      bloques: [
+                        { tipo: 'datos', filas: [
+                          { k: 'Variantes que escribe', v: '6', s: 'el mismo mensaje, seis maneras distintas de arrancar' },
+                          { k: 'Ángulo que gana en tu rubro', v: `${oro.nombre} · ${oro.pct}%`, s: `${oro.lectura.split('.')[0]}.` },
+                          { k: 'Contra qué compite', v: 'Tienda Norte', s: 'pasó de 6 a 14 anuncios y bajó de $34 a $29' },
+                          { k: 'Dónde se prueban', v: '5 jueces + 500 del público', s: 'en MiroFish, antes de que gastes un peso' },
+                          { k: 'Lo que cuesta', v: '96 créditos', s: '6 variantes × 16 créditos' },
+                          { k: 'Dónde las ves', v: 'Campañas → La galería', s: 'con el puntaje de cada una' },
+                        ] },
+                        { tipo: 'aviso', tono: 'amber', texto: 'Tu precio no se toca: si Tienda Norte vuelve a bajar, bajar también te deja sin margen. La diferencia se juega en el ángulo.' },
+                        { tipo: 'texto', texto: `Ejemplo de cómo arranca una de las 6: ${oro.ej}` },
+                      ],
+                      fuente: 'Sale del movimiento detectado hoy: 47 anuncios leídos, 3 cambios de precio y 2 ángulos nuevos.',
+                      acciones: [
+                        { label: 'Que escriba las 6', variante: 'primary', onClick: () => { setEscribiendo({ n: 6, de: 'ingredientes limpios' }); setToast('Nia está escribiendo 6 variantes del ángulo «ingredientes limpios»'); } },
+                        { label: 'Dejarlo para después', onClick: () => setToast('Nada escrito: el hallazgo queda en Mercado') },
+                      ],
+                    })}>
+                    <I_Plus size={13} /> Que Nia ataque por ahí
+                  </Button>}
+              <Button variant="ghost" className="btn-sm" title="Abre el informe de los 47 anuncios que leyó Lux, con el cambio de cada competidor"
+                onClick={() => detalle({
+                  titulo: 'Lo que leyó Lux hoy',
+                  sub: 'Un anuncio público de tu competencia dice más que cualquier estudio: esto está corriendo ahora y se puede copiar o evitar.',
+                  bloques: [
+                    { tipo: 'datos', filas: [
+                      { k: 'Anuncios activos leídos', v: '47', s: 'biblioteca pública de anuncios de Meta · hoy 06:00' },
+                      { k: 'Competidores vigilados', v: String(COMPETIDORES.length), s: 'los 5 de tu zona' },
+                      { k: 'Cambios de precio esta semana', v: '3', tono: 'amber', s: 'contra el precio de la semana pasada' },
+                      { k: 'Ángulos nuevos', v: '2', s: 'no estaban hace 30 días' },
+                      { k: 'Tu costo del clic hoy', v: '$2,10', s: 'si te siguen bajando el precio: +$340 por semana' },
+                    ] },
+                    { tipo: 'filas', items: COMPETIDORES.map(c => ({
+                      t: c.nombre + (c.propio ? ' (vos)' : ''),
+                      s: `${c.anuncios} anuncios activos · ${c.leads} leads por mes estimados · precio ${c.precio}`,
+                      etiqueta: c.gasto === 'alto' ? 'gasto alto' : c.gasto === 'medio' ? 'gasto medio' : 'gasto bajo',
+                      tono: c.gasto === 'alto' ? 'red' : c.gasto === 'medio' ? 'amber' : 'muted',
+                    })) },
+                    { tipo: 'texto', texto: `El ángulo que más se usa en tu rubro es «${oro.nombre}» (${oro.pct}% de los anuncios). ${oro.lectura}` },
+                  ],
+                  fuente: 'Biblioteca pública de anuncios de Meta, leída todos los días a las 06:00. No hay estimaciones: son anuncios reales que están corriendo.',
+                })}>Ver el informe</Button>
             </div>
           </div>
           <div>
@@ -184,10 +243,54 @@ export function ViewMercado({ setToast }: { setToast: (t: string) => void }) {
             </div>
           ))}
           <div className="row" style={{ marginTop: 14, gap: 9, flexWrap: 'wrap' }}>
-            <Button className="btn-sm" title="Nia escribe 3 anuncios apoyados en garantía y envío, que es donde ganás"
-              onClick={() => setToast('Nia prepara 3 anuncios con tu ventaja (demo)')}><I_Plus size={13} /> Anunciar donde ganás</Button>
-            <Button variant="ghost" className="btn-sm" title="Te muestra cómo los 5 competidores están consiguiendo reseñas"
-              onClick={() => setToast('Cómo consiguen reseñas ellos (demo)')}>Ver cómo lo hacen ellos <I_ArrowRight size={13} /></Button>
+            <Button className="btn-sm" title="Te muestra los 3 anuncios que va a escribir con tu ventaja (garantía, envío y respuesta rápida). Reversible: nada se escribe hasta que lo confirmes."
+              onClick={() => detalle({
+                titulo: 'Nia escribe 3 anuncios donde ganás',
+                sub: 'No se pelea el precio: se dice lo que ellos no tienen. Estos son los tres que salen de tu oferta.',
+                bloques: [
+                  { tipo: 'filas', items: [
+                    { t: 'Garantía de 30 días', s: 'ninguno de los 5 la ofrece. Es la ventaja más grande y no cuesta nada.', etiqueta: '1º', tono: 'purple' },
+                    { t: 'Envío gratis desde $15.000', s: 'ellos lo dan desde $20.000: llegás con menos compra.', etiqueta: '2º', tono: 'purple' },
+                    { t: 'Respuesta en WhatsApp en 4 segundos', s: 'ellos tardan entre 6 y 24 horas. La mitad de las consultas se cierran el mismo día.', etiqueta: '3º', tono: 'purple' },
+                  ] },
+                  { tipo: 'datos', filas: [
+                    { k: 'Contra quién juega', v: 'Precio', s: 'es donde perdés: tu diferencia se dice, el precio no se toca' },
+                    { k: 'Dónde se prueban', v: 'MiroFish', s: '5 jueces + 500 del público antes de gastar' },
+                    { k: 'Lo que cuesta', v: '48 créditos', s: '3 variantes × 16 créditos' },
+                  ] },
+                  { tipo: 'aviso', texto: 'La reseña es tu punto débil (128 contra 940 del líder): ninguno de estos tres anuncios la promete, para no exponerte a la objeción del juez más duro.' },
+                ],
+                fuente: 'Saldría de la comparación de oferta de arriba: 4 de 7 puntos a favor, 3 en contra.',
+                acciones: [
+                  { label: 'Que escriba los 3', variante: 'primary', onClick: () => { setEscribiendo({ n: 3, de: 'tu ventaja' }); setToast('Nia está escribiendo 3 anuncios donde ganás'); } },
+                  { label: 'Dejarlo para después', onClick: () => setToast('Nada escrito: la comparación queda en Mercado') },
+                ],
+              })}><I_Plus size={13} /> Anunciar donde ganás</Button>
+            <Button variant="ghost" className="btn-sm" title="Te muestra cómo consigue reseñas cada competidor: es el único punto donde vas atrás"
+              onClick={() => detalle({
+                titulo: 'Cómo consiguen reseñas ellos',
+                sub: 'La reseña es el punto donde vas atrás (128 contra 940 del líder) y lo que más sube la confianza del que nunca te compró.',
+                bloques: [
+                  { tipo: 'filas', items: [
+                    { t: 'Tienda Norte', s: 'Pide la reseña por WhatsApp 3 días después del envío, con el pedido ya entregado y el producto en uso.', etiqueta: '940 reseñas', tono: 'red' },
+                    { t: 'DermaMarket', s: 'Manda un cupón del 10% a cambio de la reseña, en el mismo mail de la entrega.', etiqueta: '620 reseñas', tono: 'amber' },
+                    { t: 'Belleza & Co', s: 'Suma la foto del antes y después al pedir la reseña: consigue texto largo, que pesa más.', etiqueta: '410 reseñas', tono: 'amber' },
+                    { t: 'Green Beauty', s: 'Casi no pide: tiene pocas piezas y poca prueba social.', etiqueta: '150 reseñas', tono: 'muted' },
+                    { t: 'Tu marca', s: 'No la pide automáticamente: las 128 llegaron solas.', etiqueta: '128 reseñas', tono: 'red' },
+                  ] },
+                  { tipo: 'pasos', items: [
+                    'Pedirla 3 días después de la entrega, por WhatsApp, con el mensaje ya escrito.',
+                    'Ofrecer algo a cambio: un cupón para la próxima compra alcanza.',
+                    'Pedir foto o video: una reseña con imagen pesa más en la decisión.',
+                  ] },
+                  { tipo: 'aviso', tono: 'amber', texto: 'Se activa desde Conversaciones, donde vive todo lo que trabaja solo. Pedirla una vez ya la deja andando para siempre.' },
+                ],
+                fuente: 'Conteo de reseñas públicas de los 5 competidores, revisado esta semana.',
+                acciones: [
+                  { label: 'Configurar el pedido automático', variante: 'primary', onClick: () => setToast('Se configura en Conversaciones: pedirla después de cada entrega') },
+                  { label: 'Cerrar', onClick: () => {} },
+                ],
+              })}>Ver cómo lo hacen ellos <I_ArrowRight size={13} /></Button>
           </div>
           <div className="acc-why">
             Es la comparación que hace un cliente cuando duda, no un informe de mercado.
@@ -232,13 +335,60 @@ export function ViewMercado({ setToast }: { setToast: (t: string) => void }) {
             <div className="dato"><span className="dato-l">Se nota en</span><span className="dato-v">7 días</span></div>
           </div>
           <div className="row" style={{ gap: 9, marginTop: 14, flexWrap: 'wrap' }}>
-            <Button className="btn-sm" title="Crea el borrador de la campaña con el ángulo ganador"
-              onClick={() => setToast('Creando campaña con el ángulo "ingredientes limpios" (demo)')}>
-              <I_Plus size={13} /> Atacar con esto
-            </Button>
-            <Button variant="ghost" className="btn-sm" title="Silencia este hallazgo por 7 días"
-              onClick={() => setToast('Silenciado 7 días (demo)')}>Silenciar</Button>
+            {borradorCreado ? (
+              <>
+                <div className="tiny" style={{ display: 'flex', alignItems: 'center', gap: 7, color: 'var(--green)', fontWeight: 700 }}>
+                  <I_Check size={13} /> Borrador creado con el ángulo «ingredientes limpios»: está en Campañas, paso 1.
+                </div>
+                <Button variant="outline" className="btn-sm" title="Abre Campañas, donde quedó el borrador para revisarlo y mandarlo a MiroFish"
+                  onClick={() => setVista && setVista('campanas')}><I_ArrowRight size={13} /> Verlo en Campañas</Button>
+              </>
+            ) : (
+              <Button className="btn-sm" title="Te muestra el borrador que se va a crear antes de crearlo. Reversible: podés borrarlo desde Campañas."
+                onClick={() => detalle({
+                  titulo: 'El borrador que se crea con esto',
+                  sub: 'Las 4 acciones juntas, en una campaña que el motor arma y el panel puntúa antes de que gastes.',
+                  bloques: [
+                    { tipo: 'datos', filas: [
+                      { k: 'Objetivo', v: 'Ventas', s: 'se mide por costo por venta, no por clics' },
+                      { k: 'Ángulo', v: 'Ingredientes limpios', s: 'el que gana en tu rubro hoy' },
+                      { k: 'Público', v: 'Los que te miraron y no compraron', s: 'más los que compraron una vez' },
+                      { k: 'Dónde se publica', v: 'Instagram y Facebook', s: 'las dos cuentas ya conectadas' },
+                      { k: 'Presupuesto sugerido', v: '$23 por día', s: 'lo que hoy rinde más en tu cuenta' },
+                      { k: 'Lo que se espera', v: '+$520 por semana', s: 'si se cumplen las 4 acciones' },
+                    ] },
+                    { tipo: 'pasos', items: [
+                      'Nia escribe las piezas con el ángulo que gana.',
+                      'Los 5 jueces y los 500 del público las puntúan.',
+                      'Las 3 mejores salen a tus cuentas.',
+                      'Se mide el costo por venta y se frena lo que no rinde.',
+                    ] },
+                    { tipo: 'aviso', texto: 'No gasta nada hasta que las piezas pasan el panel: si ninguna convence, no sale ninguna.' },
+                  ],
+                  fuente: 'Se arma con el hallazgo de hoy y con tus números de las últimas campañas.',
+                  acciones: [
+                    { label: 'Crear el borrador', variante: 'primary', onClick: () => { setBorradorCreado(true); setToast('Borrador creado: está en Campañas, paso 1'); } },
+                    { label: 'Todavía no', onClick: () => setToast('Sin cambios') },
+                  ],
+                })}>
+                <I_Plus size={13} /> Atacar con esto
+              </Button>
+            )}
+            {silenciado ? (
+              <Button variant="outline" className="btn-sm" title="Vuelve a mostrar el hallazgo ahora, sin esperar los 7 días"
+                onClick={() => { setSilenciado(false); setToast('El hallazgo vuelve a estar a la vista'); }}>
+                <I_Eye size={13} /> Volver a mostrarlo
+              </Button>
+            ) : (
+              <Button variant="ghost" className="btn-sm" title="Deja de mostrar este hallazgo por 7 días. Reversible: lo podés volver a mostrar cuando quieras."
+                onClick={() => { setSilenciado(true); setToast(`Hallazgo silenciado hasta el ${enUnaSemana()}`); }}>Silenciar</Button>
+            )}
           </div>
+          {silenciado && (
+            <div className="tiny" style={{ marginTop: 9, color: 'var(--amber)', fontWeight: 700 }}>
+              Silenciado 7 días: vuelve el {enUnaSemana()}. Mientras tanto no cuenta como pendiente.
+            </div>
+          )}
           <div className="acc-why">
             Cada recomendación sale de un dato de arriba. <b>Nada de esta pantalla es opinión</b>: o es un anuncio real de tu competencia, o es una métrica tuya.
           </div>

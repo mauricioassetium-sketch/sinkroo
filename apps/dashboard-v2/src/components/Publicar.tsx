@@ -10,6 +10,7 @@ import { TIPOS_CAMPANA, type ObjetivoCampana } from '../data/campana';
 import { FORMATOS, MATERIAL, NO_SE_PUBLICA, type CampoPublicacion, type FormatoKey } from '../data/publicaciones';
 import type { Modo } from '../data/demo';
 import { CARPETA } from '../data/demo';
+import { useDetalle } from './Detalle';
 
 type Archivo = { nombre: string; peso: string; url: string | null; esImagen: boolean; deCarpeta?: boolean };
 type Valor = string | string[];
@@ -77,6 +78,9 @@ export function Publicar({ setToast, modo, irAConversaciones, soloIngesta }: {
   const [valores, setValores] = useState<Record<string, Valor>>({});
   const [material, setMaterial] = useState<Record<string, Archivo[]>>({});
   const [avanzados, setAvanzados] = useState(false);
+  const detalle = useDetalle();
+  // Conectar una red se ve en la lista de abajo y se puede deshacer: es tu cuenta, no la nuestra.
+  const [tiktokConectado, setTiktokConectado] = useState(false);
 
   const formato = FORMATOS.find(f => f.key === formatoKey)!;
   const tipo = TIPOS_CAMPANA.find(t => t.key === objetivo)!;
@@ -341,6 +345,7 @@ export function Publicar({ setToast, modo, irAConversaciones, soloIngesta }: {
           <div className="fmt-grid">
             {FORMATOS.map(f => (
               <button key={f.key} type="button" className={`fmt-card ${formatoKey === f.key ? 'sel' : ''}`}
+                title={`Publicar como «${f.nombre}»: ${f.resumen}`}
                 style={formatoKey === f.key ? { borderColor: f.color + '99' } : undefined}
                 onClick={() => setFormatoKey(f.key)}>
                 <span className="fmt-ico" style={{ color: f.color }}>{f.icono}</span>
@@ -474,7 +479,7 @@ export function Publicar({ setToast, modo, irAConversaciones, soloIngesta }: {
 
         <Card
           title={<span className="row" style={{ gap: 8 }}><I_Users size={14} style={{ color: 'var(--purple3)' }} /> Con qué cuenta lo publicás</span>}
-          action={<Badge tone="green">3 conectadas</Badge>}
+          action={<Badge tone="green">{tiktokConectado ? 4 : 3} conectadas</Badge>}
         >
           <div className="bs">
             El motor publica <b>en tus cuentas, no en las nuestras</b>. Cada conexión es tuya y la podés revocar
@@ -484,7 +489,7 @@ export function Publicar({ setToast, modo, irAConversaciones, soloIngesta }: {
             { n: 'Instagram', c: '@skincare.natural', e: '📸', ok: true },
             { n: 'Facebook', c: 'Skincare Natural', e: '👍', ok: true },
             { n: 'WhatsApp', c: '+54 9 11 5555-2341', e: '💬', ok: true },
-            { n: 'TikTok', c: 'sin conectar', e: '🎵', ok: false },
+            { n: 'TikTok', c: tiktokConectado ? '@skincare.natural' : 'sin conectar', e: '🎵', ok: tiktokConectado },
           ].map(x => (
             <div key={x.n} className="guard">
               <span style={{ fontSize: 16, flexShrink: 0 }}>{x.e}</span>
@@ -493,10 +498,33 @@ export function Publicar({ setToast, modo, irAConversaciones, soloIngesta }: {
             </div>
           ))}
           <div className="row" style={{ gap: 9, marginTop: 4, flexWrap: 'wrap' }}>
-            <Button variant="ghost" className="btn-sm" title="Conectás una red más para que el motor pueda publicar ahí"
-              onClick={() => setToast('Conectar TikTok (demo)')}>Conectar otra red</Button>
-            <Button variant="ghost" className="btn-sm" title="Te muestra el horario y los límites con los que el motor puede publicar"
-              onClick={() => setToast('Frenos de publicación (demo)')}>Ver los límites</Button>
+            {tiktokConectado ? (
+              <Button variant="outline" className="btn-sm" title="Desconecta TikTok de este panel. Reversible: la podés volver a conectar cuando quieras, y el motor deja de publicar ahí al instante."
+                onClick={() => { setTiktokConectado(false); setToast('TikTok desconectado: el motor ya no publica ahí'); }}>
+                Desconectar TikTok
+              </Button>
+            ) : (
+              <Button variant="ghost" className="btn-sm" title="Conecta TikTok con tu cuenta: el motor va a poder publicar ahí. Reversible desde acá mismo o desde Cuenta y autonomía."
+                onClick={() => { setTiktokConectado(true); setToast('TikTok conectado: ahora el motor publica en 4 redes'); }}>
+                Conectar otra red
+              </Button>
+            )}
+            <Button variant="ghost" className="btn-sm" title="Te muestra los frenos con los que publica el motor, uno por uno"
+              onClick={() => detalle({
+                titulo: 'Los límites con los que publica el motor',
+                sub: 'Son frenos que el motor respeta siempre, aunque su recomendación sea otra. No se desactivan desde acá: se cambian en Cuenta y autonomía.',
+                bloques: [
+                  { tipo: 'filas', items: [
+                    { t: 'No publica de noche', s: 'Escribe entre las 8:00 y las 22:00. Si vos elegís una hora de madrugada, sale igual: tu hora manda.', etiqueta: 'activo', tono: 'green' },
+                    { t: 'Un mensaje por persona por día', s: 'Nadie recibe dos mensajes el mismo día, aunque se crucen dos automatizaciones.', etiqueta: 'activo', tono: 'green' },
+                    { t: 'No toca tu presupuesto sin permiso', s: 'Puede sugerir subirlo o bajarlo, pero no lo mueve solo.', etiqueta: 'activo', tono: 'green' },
+                    { t: 'No publica sin las cuentas conectadas', s: `Hoy hay ${tiktokConectado ? 4 : 3} redes conectadas: en las que faltan, no publica.`, etiqueta: 'activo', tono: 'green' },
+                    { t: 'No gasta sin pasar el panel', s: 'Cada pieza pasa por los 5 jueces y los 500 del público antes de salir.', etiqueta: 'activo', tono: 'green' },
+                  ] },
+                  { tipo: 'aviso', texto: 'Estos frenos son lo que hace que puedas dejarlo trabajando sin mirarlo. Si uno se puede desactivar, la pantalla te lo dice antes de que lo hagas.' },
+                ],
+                fuente: 'Cuenta y autonomía → Frenos de publicación. Se aplican a todas las campañas, no a una sola.',
+              })}>Ver los límites</Button>
           </div>
           <div className="acc-why">
             El motor respeta tus frenos: <b>no publica de noche</b>, no manda más de un mensaje por persona por día

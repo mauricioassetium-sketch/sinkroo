@@ -106,7 +106,7 @@ export function Modal({ open, onClose, children, title }: { open: boolean; onClo
       <div className="card" style={{ maxWidth: 560, width: '100%', maxHeight: '90vh', overflow: 'auto' }} onClick={e => e.stopPropagation()}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
           <div className="card-title" style={{ fontSize: 16 }}>{title}</div>
-          <button className="icon-btn" onClick={onClose}><I_X size={16} /></button>
+          <button className="icon-btn" title="Cerrar esta ventana sin cambiar nada" onClick={onClose}><I_X size={16} /></button>
         </div>
         {children}
       </div>

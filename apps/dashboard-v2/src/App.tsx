@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Layout, type Vista } from './components/Layout';
+import { DetalleProvider } from './components/Detalle';
 import { useTheme } from './lib/theme';
 import { PerfilProvider } from './lib/perfil';
 import { ViewHoy } from './views/Hoy';
@@ -25,16 +26,18 @@ export default function App() {
 
   return (
     <PerfilProvider>
+    <DetalleProvider>
     <Layout vista={vista} setVista={setVista} theme={theme} cicloTema={cycle} toast={toast} modo={modo} avisar={avisar}>
       {vista === 'hoy' && <ViewHoy setToast={avisar} setVista={setVista} modo={modo} />}
       {vista === 'campanas' && <ViewCampanas setToast={avisar} modo={modo} setVista={setVista} />}
       {vista === 'conversaciones' && <ViewConversaciones setToast={avisar} modo={modo} />}
-      {vista === 'mercado' && <ViewMercado setToast={avisar} />}
+      {vista === 'mercado' && <ViewMercado setToast={avisar} setVista={setVista} />}
       {vista === 'cuenta' && <ViewCuenta setToast={avisar} modo={modo} setModo={setModo} />}
       {vista === 'creditos' && <ViewCreditos setToast={avisar} />}
       {vista === 'referidos' && <ViewReferidos setToast={avisar} />}
       {vista === 'kyc' && <ViewKyc setToast={avisar} />}
     </Layout>
+    </DetalleProvider>
     </PerfilProvider>
   );
 }

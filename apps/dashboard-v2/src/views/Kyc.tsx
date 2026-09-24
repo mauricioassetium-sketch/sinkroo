@@ -3,6 +3,8 @@ import { Card, Badge, Button } from '../components/ui';
 import { ViewHead } from '../components/viz';
 import { I_Shield, I_Check, I_ArrowRight, I_Camera, I_Lock, I_Zap, I_Credit, I_Globe, I_Eye, I_Qr, I_Refresh, I_Sun, I_User } from '../components/icons';
 import { usePerfil } from '../lib/perfil';
+import { useDetalle } from '../components/Detalle';
+import { FRENOS } from '../data/demo';
 
 // =============================================================================================
 // MODELO DE KYC — todo se captura con la cámara, en el momento.
@@ -36,6 +38,12 @@ const PASOS: { id: number; nombre: string; desc: string; pide: string; capturas:
     desbloquea: 'Mover presupuesto y publicar sin límites',
   },
 ];
+
+/**
+ * El freno del plan que hace obligatoria la verificación. Es el dato que explica POR QUÉ se pide
+ * y qué queda apagado mientras no esté aprobada (vive en `src/data/demo.ts`, key `kyc`).
+ */
+const FRENO_KYC = FRENOS.find(f => f.key === 'kyc');
 
 // ---------------------------------------------------------------------------------------------
 // Una captura: abre la cámara de verdad, muestra el video en vivo y guarda el cuadro.
@@ -171,6 +179,97 @@ export function ViewKyc({ setToast }: { setToast: (t: string) => void }) {
     if (paso < 3) { setPaso(paso + 1); setToast(`Paso ${paso + 1}: ${PASOS[paso].nombre}`); }
     else { setEnviada(true); setToast('Verificación enviada: la revisamos en menos de 24 h'); }
   };
+
+  // =============================================================================================
+  // LOS DOS BOTONES DE AYUDA — «No entiendo qué me piden» y «Hablar con una persona».
+  //
+  // Ninguno avisa algo que se va solo: los dos abren el panel de detalle con el estado REAL de
+  // esta verificación. El primero dice qué foto falta —con el nombre que tiene en pantalla—, por
+  // qué te la pedimos y qué queda apagado hasta que esté aprobada. El segundo dice por dónde y en
+  // qué horario te contesta una persona del equipo, y qué conviene tener a mano antes de escribir.
+  // =============================================================================================
+  const detalle = useDetalle();
+
+  /** El paso que falta completar: es lo primero que hay que decir cuando alguien no entiende. */
+  const pendiente = PASOS.find(p => !pasoHecho(p));
+  const totalFotos = PASOS.reduce((n, p) => n + p.capturas.length, 0);
+  const capturadas = Object.keys(fotos).length;
+  /** Qué falta para poder enviarla, con el nombre exacto que aparece en pantalla. */
+  const loQueFalta = pendiente
+    ? `Paso ${pendiente.id} · ${pendiente.nombre} — te falta sacar ${pendiente.capturas.filter(c => !fotos[c.k]).map(c => `«${c.lb}»`).join(' y ')}.`
+    : 'Nada: las 4 fotos están sacadas y podés enviarla a revisión.';
+
+  const explicarQuePiden = () => detalle({
+    titulo: pendiente ? `Qué te pide el paso ${pendiente.id}: ${pendiente.nombre}` : 'Qué te pide cada paso, con el detalle',
+    sub: 'No hay que entender de documentos ni subir ningún archivo: cada paso es una foto que sacás con la cámara, en el momento, y ves al instante si quedó bien.',
+    bloques: [
+      { tipo: 'texto', texto: 'Dicho simple: Identidad es tu documento, frente y dorso. Domicilio es un servicio o un resumen a tu nombre, de los últimos 3 meses. Selfie sos vos, en vivo. Son 3 pasos y 4 fotos, y se hacen una sola vez.' },
+      { tipo: 'filas', items: PASOS.map(p => {
+          const hecho = pasoHecho(p);
+          const esElQueFalta = pendiente?.id === p.id;
+          return {
+            t: `Paso ${p.id} · ${p.nombre} · ${p.desc}`,
+            s: `${p.pide} Con esto se desbloquea: ${p.desbloquea.toLowerCase()}.`,
+            etiqueta: hecho ? 'ya está' : esElQueFalta ? 'te falta este' : 'viene después',
+            tono: hecho ? 'green' as const : esElQueFalta ? 'amber' as const : 'muted' as const,
+          };
+        }) },
+      { tipo: 'datos', filas: [
+        { k: 'Lo que falta ahora', v: loQueFalta, tono: pendiente ? 'amber' as const : 'green' as const },
+        { k: 'Fotos capturadas', v: `${capturadas} de ${totalFotos}`, s: 'las que ya sacaste quedan guardadas, aunque cierres el panel' },
+        { k: 'Cuánto tarda', v: '2 min', s: 'con el documento a mano. Si no lo tenés cerca, dejalo para cuando lo tengas: nada se pierde' },
+        { k: 'Por qué te lo pedimos', v: FRENO_KYC?.valor ?? 'Obligatorio', s: FRENO_KYC?.porQue ?? 'Riesgo legal: no se publica a nombre de alguien sin verificar.' },
+        { k: 'Qué sigue andando mientras tanto', v: 'Todo menos la plata', s: 'el panel puntúa piezas, el motor vigila el mercado y Rumi contesta tus chats: eso no depende de la verificación' },
+      ] },
+      { tipo: 'aviso', tono: 'amber', texto: 'Si no la subís: publicar y mover presupuesto quedan apagados, porque no se publica a nombre de alguien sin verificar. El motor no se detiene por eso y no hay plazo que te corra: lo único que espera sos vos.' },
+      { tipo: 'pasos', items: [
+        pendiente
+          ? `Andá al paso ${pendiente.id} y sacá lo que falta: ${pendiente.capturas.filter(c => !fotos[c.k]).map(c => c.lb).join(' y ')}.`
+          : 'Ya están las 4 fotos: mandala a revisión y se resuelve en menos de 24 h.',
+        'Si la cámara no abre, escaneá el código y hacelo desde el celular: se abre esta misma pantalla.',
+        'Si el nombre no coincide, te decimos qué no coincidió, con el detalle exacto, y volvés a sacar solo esa foto.',
+        'Podés cerrar y volver después: las fotos hechas quedan guardadas.',
+      ] },
+    ],
+    fuente: `Sale del estado de tu verificación (${capturadas} de ${totalFotos} fotos) y de los frenos de tu plan: para publicar, la verificación es obligatoria.`,
+    acciones: pendiente
+      ? [
+          { label: `Ir al paso ${pendiente.id}`, variante: 'primary' as const, onClick: () => { if (!pendiente) return; setPaso(pendiente.id); setToast(`Paso ${pendiente.id}: ${pendiente.nombre}`); } },
+          { label: 'Cerrar', onClick: () => {} },
+        ]
+      : [
+          { label: 'Enviar a revisión', variante: 'primary' as const, onClick: () => { setEnviada(true); setToast('Verificación enviada: la revisamos en menos de 24 h'); } },
+          { label: 'Cerrar', onClick: () => {} },
+        ],
+  });
+
+  const hablarConPersona = () => detalle({
+    titulo: 'Hablar con una persona del equipo',
+    sub: 'No hay un robot dando vueltas: escribís y te contesta alguien del equipo, con tu verificación abierta en la pantalla mientras te responde.',
+    bloques: [
+      { tipo: 'datos', filas: [
+        { k: 'Por dónde', v: 'WhatsApp', s: 'El mismo WhatsApp Business que ya tenés conectado: no hay un número nuevo que aprender ni un formulario que llenar.' },
+        { k: 'Horario de atención', v: '8:00 a 22:00', s: `En tu zona: ${perfil.zona}. Es la misma franja en la que el motor escribe solo.` },
+        { k: 'Fuera de ese horario', v: 'el motor sigue', s: 'De 22:00 a 08:00 no hay gente del equipo, pero el motor no se detiene: sigue produciendo piezas y vigilando el mercado.' },
+        { k: 'Quién te contesta', v: 'Una persona', s: 'La misma que mira las verificaciones cuando la revisión automática no cierra.' },
+        { k: 'Cuándo te contesta', v: 'el mismo día', s: 'Y si te falta algo, te lo pedimos ese mismo día, con el detalle.' },
+      ] },
+      { tipo: 'texto', texto: 'Antes de escribir, tené esto a mano: se resuelve en un solo mensaje.' },
+      { tipo: 'pasos', items: [
+        `El paso en el que estás: ${paso} de 3 · ${actual.nombre}.`,
+        loQueFalta,
+        `El nombre completo, como figura en el documento${nombre ? ` (ya lo escribiste: ${nombre})` : ': todavía no lo escribiste, y hace falta en el paso 1'}.`,
+        'Si algo se rechazó: el detalle exacto que te dimos, así no empezamos el diagnóstico de cero.',
+        'Las fotos ya sacadas: quedan guardadas, no hay que volver a hacerlas mientras hablamos.',
+      ] },
+      { tipo: 'aviso', tono: 'green', texto: 'La persona ve tu verificación mientras te responde: no le tenés que explicar de nuevo qué es cada documento ni mandar nada por otro lado.' },
+    ],
+    fuente: 'Sale de tu verificación y de la conexión de WhatsApp Business que ya tenés activa.',
+    acciones: [
+      { label: 'Ver qué me falta exactamente', variante: 'primary' as const, onClick: explicarQuePiden },
+      { label: 'Cerrar', onClick: () => {} },
+    ],
+  });
 
   return (
     <div className="dash">
@@ -358,10 +457,12 @@ export function ViewKyc({ setToast }: { setToast: (t: string) => void }) {
               <span className="guard-lb">Volvés a sacar solo esa foto<small>No hay que rehacer los 3 pasos. Las correcciones pasan adelante.</small></span></div>
           </div>
           <div className="row" style={{ gap: 9, flexWrap: 'wrap' }}>
-            <Button variant="ghost" className="btn-sm" title="Te explica con tus palabras qué pide cada paso y por qué"
-              onClick={() => setToast('Ayuda con la verificación (demo)')}>No entiendo qué me piden</Button>
-            <Button variant="ghost" className="btn-sm" title="Hablás con una persona del equipo"
-              onClick={() => setToast('Abriendo el chat con soporte (demo)')}>Hablar con una persona</Button>
+            <Button variant="ghost" className="btn-sm"
+              title="Te muestra, paso por paso, qué foto te falta ahora, por qué te la pedimos y qué queda apagado hasta que la verificación esté aprobada"
+              onClick={explicarQuePiden}>No entiendo qué me piden</Button>
+            <Button variant="ghost" className="btn-sm"
+              title="Te muestra por dónde y en qué horario te contesta una persona del equipo, y qué conviene tener a mano antes de escribir"
+              onClick={hablarConPersona}>Hablar con una persona</Button>
           </div>
           <div className="acc-why">
             Mientras la verificación está pendiente <b>el motor no se detiene</b>: sigue produciendo piezas

@@ -139,6 +139,8 @@ export function Galeria({ modo, setToast, ir }: { modo: Modo; setToast: (t: stri
   const orden = ranking();
   const [salen, setSalen] = useState<string[]>(orden.slice(0, CUANTAS_PASAN).map(o => o.id));
   const [abierta, setAbierta] = useState<Opcion | null>(null);
+  // Pedir que rehaga una pieza: queda a la vista mientras el motor la reescribe.
+  const [rehaciendo, setRehaciendo] = useState<string[]>([]);
 
   const toggle = (id: string) => setSalen(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id]);
   const esVideo = (o: Opcion) => o.formato === 'Video vertical' || o.formato === 'Reel';
@@ -162,7 +164,7 @@ export function Galeria({ modo, setToast, ir }: { modo: Modo; setToast: (t: stri
             <Badge tone="purple">{salen.length} seleccionadas</Badge>
             <Button className="btn-sm" disabled={!salen.length}
               title={salen.length ? accionDice : 'Elegí al menos una pieza'}
-              onClick={() => { setToast(`${salen.length} piezas: ${accionDice} (demo)`); ir(4); }}>
+              onClick={() => { setToast(`${salen.length} ${salen.length === 1 ? 'pieza' : 'piezas'}: ${accionDice}`); ir(4); }}>
               <I_Rocket size={13} /> {salen.length === 1 ? 'Publicar la elegida' : `Publicar las ${salen.length}`}
             </Button>
           </div>
@@ -206,11 +208,17 @@ export function Galeria({ modo, setToast, ir }: { modo: Modo; setToast: (t: stri
                     <div className="op-prompt">{o.prompt}</div>
                     <div className="op-row"><span className="op-k">Texto</span><span className="bs">{o.copy}</span></div>
                     <div className="op-row"><span className="op-k">Botón</span><span className="bs">{o.cta}</span></div>
-                    <Button variant="ghost" className="btn-sm" style={{ marginTop: 10 }}
-                      title="Le pide al motor que rehaga esta pieza en particular"
-                      onClick={() => setToast(`El motor rehace «${o.titulo}» (demo)`)}>
-                      <I_Refresh size={12} /> Que la rehaga
-                    </Button>
+                    {rehaciendo.includes(o.id) ? (
+                      <div className="tiny" style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--purple3)', fontWeight: 700 }}>
+                        <I_Refresh size={12} /> Nia la está rehaciendo con lo que objetaron los 5 jueces.
+                      </div>
+                    ) : (
+                      <Button variant="ghost" className="btn-sm" style={{ marginTop: 10 }}
+                        title="Le pide al motor que rehaga esta pieza en particular, con lo que objetaron los 5 jueces. Reversible: la pieza que tenés no se pierde."
+                        onClick={() => { setRehaciendo(r => [...r, o.id]); setToast(`Nia rehace «${o.titulo}» con lo que objetaron los 5 jueces`); }}>
+                        <I_Refresh size={12} /> Que la rehaga
+                      </Button>
+                    )}
                   </div>
                 )}
               </div>
