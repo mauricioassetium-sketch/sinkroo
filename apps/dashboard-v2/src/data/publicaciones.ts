@@ -24,6 +24,8 @@ export interface CampoPublicacion {
   multi?: boolean;
   /** Deja elegir la HORA EXACTA (00:00 a 23:30, formato de 24 h) además de las opciones de la lista. */
   horaLibre?: boolean;
+  /** Qué hace cada opción, por opción: se muestra en el globito al pasar el mouse por la pastilla. */
+  detalle?: Record<string, string>;
 }
 
 export interface Formato {
@@ -54,6 +56,24 @@ export const MATERIAL: CampoPublicacion[] = [
 ];
 
 // ---------------------------------------------------------------------------------------------
+// A DÓNDE CAE LA PERSONA — lista predefinida, compartida por las formas de publicar que llevan a
+// algún lado (anuncio pago e historia). Cada destino explica qué hace: no son intercambiables, y
+// elegir mal el destino es lo que hace que una pieza rinda o no.
+// ---------------------------------------------------------------------------------------------
+const DESTINOS = [
+  'Tu tienda online', 'Un producto puntual', 'WhatsApp',
+  'Instagram', 'Formulario o landing', 'Tu local en el mapa',
+];
+const DETALLE_DESTINOS: Record<string, string> = {
+  'Tu tienda online': 'La página principal de tu tienda: sirve para vender cualquier cosa del catálogo.',
+  'Un producto puntual': 'La ficha del producto de esta campaña. Es lo que mejor convierte cuando hay una sola oferta.',
+  'WhatsApp': 'Abre el chat con vos. Es el que más vende, pero necesita que alguien conteste.',
+  'Instagram': 'Tu perfil o el mensaje directo: sirve para sumar seguidores y mostrar el catálogo del feed.',
+  'Formulario o landing': 'Una página donde la persona deja sus datos. Sirve para servicios y presupuestos.',
+  'Tu local en el mapa': 'Para que vayan en persona: muestra la dirección, el horario y cómo llegar.',
+};
+
+// ---------------------------------------------------------------------------------------------
 // LAS FORMAS DE PUBLICAR
 // ---------------------------------------------------------------------------------------------
 export const FORMATOS: Formato[] = [
@@ -71,7 +91,9 @@ export const FORMATOS: Formato[] = [
       { id: 'dias', etiqueta: 'Cuántos días', tipo: 'numero', ayuda: 'Duración de la campaña.' },
       { id: 'publico', etiqueta: 'A quién le hablás', tipo: 'texto', ayuda: 'Edad, zona, qué problema tiene. Ej. mujeres de 25 a 40 en CABA con piel sensible.' },
       { id: 'plataformas', etiqueta: 'Dónde se publica', tipo: 'opciones', ayuda: 'El motor adapta el tamaño y el texto a cada red.', opciones: ['Instagram', 'Facebook', 'WhatsApp', 'TikTok', 'Messenger'], multi: true },
-      { id: 'link', etiqueta: 'A dónde los mandás', tipo: 'link', ayuda: 'Tu tienda, el producto, el WhatsApp o una landing.' },
+      { id: 'destinos', etiqueta: 'A dónde los mandás', tipo: 'opciones', ayuda: 'Podés elegir más de uno. De acá sale el botón de la pieza y hacia dónde apunta el mensaje.', multi: true,
+        opciones: DESTINOS, detalle: DETALLE_DESTINOS },
+      { id: 'link', etiqueta: 'El link exacto (opcional)', tipo: 'link', ayuda: 'Pegá la dirección completa. Si elegiste WhatsApp o Instagram, el motor arma el link solo.' },
     ],
     avanzados: [
       { id: 'precios', etiqueta: 'Precios y formas de pago', tipo: 'texto', ayuda: 'Cuánto cuesta cada cosa, cuotas, medios de pago.' },
@@ -111,7 +133,9 @@ export const FORMATOS: Formato[] = [
       { id: 'idea_hist', etiqueta: 'Qué mostrás', tipo: 'texto', ayuda: 'Ej. llegó stock nuevo, o el envío gratis termina hoy.' },
       { id: 'interaccion', etiqueta: 'Qué querés que hagan', tipo: 'opciones', ayuda: 'La interacción sube el alcance de todas tus historias.' , opciones: ['Que respondan', 'Que voten en una encuesta', 'Que deslicen al link', 'Solo mirar'] },
       { id: 'cuando_hist', etiqueta: 'Cuándo sale', tipo: 'opciones', ayuda: 'Se puede programar, o elegir la hora exacta.', horaLibre: true, opciones: ['Ahora', 'En 2 horas', 'Mañana temprano', 'Que lo elija el motor'] },
-      { id: 'link_hist', etiqueta: 'A dónde lleva', tipo: 'link', ayuda: 'Producto, tienda o WhatsApp. Opcional pero suma mucho.' },
+      { id: 'destinos_hist', etiqueta: 'A dónde lleva', tipo: 'opciones', ayuda: 'Podés elegir más de uno. Sin esto la historia solo se mira, no lleva a ningún lado.', multi: true,
+        opciones: DESTINOS, detalle: DETALLE_DESTINOS },
+      { id: 'link_hist', etiqueta: 'El link exacto (opcional)', tipo: 'link', ayuda: 'Pegá la dirección completa. Si elegiste WhatsApp o Instagram, el motor arma el link solo.' },
     ],
   },
   {

@@ -49,10 +49,13 @@ export function Publicar({ setToast, modo, irAConversaciones, soloIngesta }: {
 
   const set = (id: string, v: Valor) => setValores(prev => ({ ...prev, [id]: v }));
 
-  const toggle = (id: string, op: string) => {
-    const actual = (valores[id] as string[]) || [];
-    set(id, actual.includes(op) ? actual.filter(x => x !== op) : [...actual, op]);
-  };
+  // La selección múltiple se calcula DENTRO del setter: con `valores[id]` leído del render, dos
+  // toques seguidos (o un doble toque) parten del mismo estado viejo y uno de los dos se pierde.
+  const toggle = (id: string, op: string) =>
+    setValores(prev => {
+      const actual = (prev[id] as string[]) || [];
+      return { ...prev, [id]: actual.includes(op) ? actual.filter(x => x !== op) : [...actual, op] };
+    });
 
   const totalCampos = formato.campos.length + MATERIAL.length;
   const cargados = useMemo(() => {
@@ -102,6 +105,7 @@ export function Publicar({ setToast, modo, irAConversaciones, soloIngesta }: {
                 const activo = campo.multi ? ((v as string[]) || []).includes(op) : v === op;
                 return (
                   <button key={op} type="button" className={`tipo-chip ${activo ? 'sel' : ''}`}
+                    title={campo.detalle?.[op]}
                     onClick={() => campo.multi ? toggle(campo.id, op) : set(campo.id, activo ? '' : op)}>
                     {activo ? '✓ ' : ''}{op}
                   </button>
