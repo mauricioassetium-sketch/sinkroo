@@ -28,6 +28,32 @@ const fueraDeVentana = (hhmm: string) => {
   return min < 8 * 60 || min > 22 * 60;
 };
 
+// EL DÍA Y LA HORA: los próximos 30 días con la etiqueta escrita entera («Hoy · miércoles 24»,
+// «Mañana · jueves 25», «Viernes 26 de septiembre») y la fecha en formato ISO como valor, para poder
+// volver a leer lo elegido sin adivinar. Debajo del selector se arma el resumen en palabras.
+const DIAS_SEMANA = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+const DIAS = Array.from({ length: 30 }, (_, i) => {
+  const d = new Date();
+  d.setHours(12, 0, 0, 0);
+  d.setDate(d.getDate() + i);
+  const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const dia = `${DIAS_SEMANA[d.getDay()][0].toUpperCase()}${DIAS_SEMANA[d.getDay()].slice(1)} ${d.getDate()}`;
+  return { iso, fecha: `${dia} de ${MESES[d.getMonth()]}`, etiqueta: i === 0 ? `Hoy · ${dia}` : i === 1 ? `Mañana · ${dia}` : `${dia} de ${MESES[d.getMonth()]}` };
+});
+/** '2026-09-26' → 'el sábado 26 de septiembre'. */
+const fechaLarga = (iso: string) => {
+  const [a, m, dd] = iso.split('-').map(Number);
+  const d = new Date(a, m - 1, dd);
+  return `el ${DIAS_SEMANA[d.getDay()]} ${dd} de ${MESES[m - 1]}`;
+};
+/** El momento con el que nace el selector: la próxima hora redonda, o mañana 9:00 si ya es tarde. */
+const momentoPorDefecto = () => {
+  const h = new Date().getHours();
+  if (h < 8 || h >= 21) return { diaIdx: 1, hora: '09:00' };
+  return { diaIdx: 0, hora: `${String(h + 1).padStart(2, '0')}:00` };
+};
+
 function IconoCampo({ tipo }: { tipo: CampoPublicacion['tipo'] }) {
   if (tipo === 'imagenes') return <I_Image size={17} />;
   if (tipo === 'videos') return <I_Film size={17} />;
@@ -85,7 +111,12 @@ export function Publicar({ setToast, modo, irAConversaciones, soloIngesta }: {
 
   const camposFormato = (campos: CampoPublicacion[]) => campos.map(campo => {
     const v = valores[campo.id];
-    // La hora exacta sólo cuenta si el campo la habilita y lo guardado es una hora elegida.
+    // El día y la hora elegidos por el usuario: un solo valor 'El 2026-09-26 a las 19:30'.
+    const elegido = campo.diaHora && typeof v === 'string'
+      ? /^El (\d{4}-\d{2}-\d{2}) a las (\d{2}:\d{2})$/.exec(v) : null;
+    const diaElegido = elegido ? elegido[1] : '';
+    const horaDiaElegida = elegido ? elegido[2] : '';
+    // La hora exacta suelta (sólo la hora, sin día): un solo valor 'A las 19:30'.
     const horaElegida = campo.horaLibre && typeof v === 'string' && v.startsWith(HORA_PREFIJO)
       ? v.slice(HORA_PREFIJO.length) : '';
     return (
@@ -101,6 +132,24 @@ export function Publicar({ setToast, modo, irAConversaciones, soloIngesta }: {
         ) : (
           <>
             <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+              {/* EL DÍA Y LA HORA, elegidos por el usuario: una sola pastilla que abre los dos
+                  selectores (30 días + 48 medias horas). El valor guardado es el mismo campo:
+                  'El 2026-09-26 a las 19:30'. */}
+              {campo.diaHora && (
+                <button type="button" className={`tipo-chip ${diaElegido ? 'sel' : ''}`}
+                  title={diaElegido
+                    ? `Sale ${fechaLarga(diaElegido)} a las ${horaDiaElegida}. Tocá para cambiarlo.`
+                    : 'Elegís vos el día y la hora a la que sale, en formato de 24 horas.'}
+                  onClick={() => {
+                    if (diaElegido) { set(campo.id, ''); return; }
+                    const d = momentoPorDefecto();
+                    set(campo.id, `El ${DIAS[d.diaIdx].iso} a las ${d.hora}`);
+                  }}>
+                  📅 {diaElegido
+                    ? `${diaElegido.slice(8, 10)}/${diaElegido.slice(5, 7)} · ${horaDiaElegida}`
+                    : (campo.opcionDiaHora || 'Elegí el día y la hora')}
+                </button>
+              )}
               {(campo.opciones || []).map(op => {
                 const activo = campo.multi ? ((v as string[]) || []).includes(op) : v === op;
                 return (
@@ -124,6 +173,31 @@ export function Publicar({ setToast, modo, irAConversaciones, soloIngesta }: {
                 </button>
               )}
             </div>
+            {campo.diaHora && diaElegido && (
+              <>
+                <div className="row" style={{ gap: 9, marginTop: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <select className="input" style={{ maxWidth: 200 }} value={diaElegido}
+                    title="Elegí el día en que sale."
+                    onChange={e => set(campo.id, `El ${e.target.value} a las ${horaDiaElegida || HORA_POR_DEFECTO}`)}>
+                    {DIAS.map(d => <option key={d.iso} value={d.iso}>{d.etiqueta}</option>)}
+                  </select>
+                  <select className="input" style={{ maxWidth: 122 }} value={horaDiaElegida}
+                    title="Elegí la hora exacta, en formato de 24 horas."
+                    onChange={e => set(campo.id, `El ${diaElegido} a las ${e.target.value}`)}>
+                    {HORAS_24.map(h => <option key={h} value={h}>{h}</option>)}
+                  </select>
+                </div>
+                <div className="tiny muted" style={{ marginTop: 6 }}>
+                  Sale {fechaLarga(diaElegido)} a las <b>{horaDiaElegida}</b>.
+                </div>
+              </>
+            )}
+            {campo.diaHora && !diaElegido && v === 'Que lo recomiende el motor' && (
+              <div className="tiny muted" style={{ marginTop: 8 }}>
+                El motor elige la franja con más gente de tu público conectada, y después te dice a qué
+                hora salió y por qué.
+              </div>
+            )}
             {campo.horaLibre && horaElegida && (
               <div className="row" style={{ gap: 9, marginTop: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                 <select className="input" style={{ maxWidth: 132 }} value={horaElegida}
@@ -134,12 +208,12 @@ export function Publicar({ setToast, modo, irAConversaciones, soloIngesta }: {
                 <span className="tiny muted">Hora exacta, en formato de 24 horas (00:00 a 23:30).</span>
               </div>
             )}
-            {campo.horaLibre && horaElegida && fueraDeVentana(horaElegida) && (
+            {(campo.ventanaEnvio && (horaElegida || horaDiaElegida) && fueraDeVentana(horaElegida || horaDiaElegida)) && (
               <div className="tiny row" style={{ gap: 7, marginTop: 8, alignItems: 'flex-start', color: 'var(--amber)' }}>
                 <I_Cal size={14} />
                 <span style={{ flex: 1, minWidth: 0 }}>
-                  Las <b>{horaElegida}</b> quedan fuera de la ventana de 8:00 a 22:00 que usa el motor
-                  cuando elige él. Como la elegiste vos, sale a esa hora.
+                  Las <b>{horaElegida || horaDiaElegida}</b> quedan fuera de la ventana de 8:00 a 22:00 que
+                  usa el motor cuando elige él. Como la elegiste vos, sale a esa hora.
                 </span>
               </div>
             )}

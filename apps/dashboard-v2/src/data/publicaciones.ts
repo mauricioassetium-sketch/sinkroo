@@ -24,6 +24,12 @@ export interface CampoPublicacion {
   multi?: boolean;
   /** Deja elegir la HORA EXACTA (00:00 a 23:30, formato de 24 h) además de las opciones de la lista. */
   horaLibre?: boolean;
+  /** Deja elegir EL DÍA Y LA HORA (los próximos 30 días + 24 h). La etiqueta de la pastilla sale de `opcionDiaHora`. */
+  diaHora?: boolean;
+  /** Texto de la pastilla que abre el selector de día y hora (sólo si `diaHora`). */
+  opcionDiaHora?: string;
+  /** Avisa cuando la hora elegida cae fuera de la ventana de envío de 8:00 a 22:00. */
+  ventanaEnvio?: boolean;
   /** Qué hace cada opción, por opción: se muestra en el globito al pasar el mouse por la pastilla. */
   detalle?: Record<string, string>;
 }
@@ -132,7 +138,7 @@ export const FORMATOS: Formato[] = [
     campos: [
       { id: 'idea_hist', etiqueta: 'Qué mostrás', tipo: 'texto', ayuda: 'Ej. llegó stock nuevo, o el envío gratis termina hoy.' },
       { id: 'interaccion', etiqueta: 'Qué querés que hagan', tipo: 'opciones', ayuda: 'La interacción sube el alcance de todas tus historias.' , opciones: ['Que respondan', 'Que voten en una encuesta', 'Que deslicen al link', 'Solo mirar'] },
-      { id: 'cuando_hist', etiqueta: 'Cuándo sale', tipo: 'opciones', ayuda: 'Se puede programar, o elegir la hora exacta.', horaLibre: true, opciones: ['Ahora', 'En 2 horas', 'Mañana temprano', 'Que lo elija el motor'] },
+      { id: 'cuando_hist', etiqueta: 'Cuándo sale', tipo: 'opciones', diaHora: true, opcionDiaHora: 'Elegí el día y la hora', opciones: ['Que lo recomiende el motor'], ayuda: 'Dos caminos: elegís el día y la hora, o el motor recomienda la mejor franja.' },
       { id: 'destinos_hist', etiqueta: 'A dónde lleva', tipo: 'opciones', ayuda: 'Podés elegir más de uno. Sin esto la historia solo se mira, no lleva a ningún lado.', multi: true,
         opciones: DESTINOS, detalle: DETALLE_DESTINOS },
       { id: 'link_hist', etiqueta: 'El link exacto (opcional)', tipo: 'link', ayuda: 'Pegá la dirección completa. Si elegiste WhatsApp o Instagram, el motor arma el link solo.' },
@@ -150,7 +156,7 @@ export const FORMATOS: Formato[] = [
       { id: 'que_decir', etiqueta: 'Qué les querés decir', tipo: 'texto', ayuda: 'La idea. Ej. volvió el serum que se había agotado.' },
       { id: 'incentivo_msg', etiqueta: 'Con qué incentivo', tipo: 'texto', ayuda: 'Cupón, envío gratis, regalo. Si no querés poner nada, dejalo vacío.' },
       { id: 'canal', etiqueta: 'Por dónde', tipo: 'opciones', ayuda: 'WhatsApp vende más; el email molesta menos.', opciones: ['WhatsApp', 'Email'], multi: true },
-      { id: 'cuando_msg', etiqueta: 'Cuándo', tipo: 'opciones', ayuda: 'Elegí la hora exacta, de 00:00 a 23:30. Si lo decide el motor, escribe dentro de su ventana de 8:00 a 22:00.', horaLibre: true, opciones: ['Hoy', 'Mañana 10:00', 'A la tarde', 'Que lo elija el motor'] },
+      { id: 'cuando_msg', etiqueta: 'Cuándo', tipo: 'opciones', ayuda: 'Elegí la hora exacta, de 00:00 a 23:30. Si lo decide el motor, escribe dentro de su ventana de 8:00 a 22:00.', horaLibre: true, ventanaEnvio: true, opciones: ['Hoy', 'Mañana 10:00', 'A la tarde', 'Que lo elija el motor'] },
     ],
     avanzados: [
       { id: 'faq', etiqueta: 'Preguntas que siempre te hacen', tipo: 'texto', ayuda: 'Precio, envío, garantía y tus respuestas. El agente las usa para contestar solo.' },
