@@ -210,12 +210,182 @@ export const PASOS_ONB: PasoOnb[] = [
     titular: 'Dónde publica y con qué',
     paraQue: 'El motor publica en tus cuentas, no en las nuestras. Cada conexión declara qué habilita: sin la cuenta, no publica ahí.',
     infiere: 'Si ya usás el mismo email en tu tienda y en Instagram, el motor reconoce la marca y avisa antes de conectar nada.',
-    minima: ['conectadas'],
+    // El resultado de este paso no es tener las cuentas conectadas (eso ya estaba): es que el motor
+    // arranque. Si no, el contador diría «2 de 5» antes de que el cliente toque nada.
+    minima: ['conectadas', 'arrancado'],
     campos: [],
     nota: 'La verificación de identidad es aparte y es obligatoria para pautar: hasta que esté, el motor prepara y no publica.',
   },
 ];
 
 /** El paso que el cliente tiene que terminar ahora: el primero sin completar. */
-export const siguientePaso = (hechos: number[]) =>
-  PASOS_ONB.find(p => !hechos.includes(p.n))?.n || 5;
+export const siguientePaso = (pasos: PasoOnb[], hechos: number[]) =>
+  pasos.find(p => !hechos.includes(p.n))?.n || 5;
+
+// =============================================================================================
+// LA BIENVENIDA Y EL TIPO DE CUENTA
+//
+// Lo primero que ve el cliente después de entrar no es un formulario: es qué va a hacer el motor
+// con su negocio y quién es él. El tipo de cuenta cambia las preguntas de verdad —una tienda vende
+// productos y un creador vende piezas— así que se elige antes de empezar, no en un perfil escondido.
+// =============================================================================================
+
+export const BIENVENIDA = {
+  titulo: 'Bienvenido a Sinkroo',
+  sub: 'Un equipo de marketing que trabaja solo, con un panel que le revisa todo antes de publicar.',
+  queHace: [
+    { t: 'Investiga tu mercado todos los días', s: '47 anuncios de tus competidores, los precios que cambiaron y el ángulo que hoy gana en tu rubro.' },
+    { t: 'Escribe y arma las piezas', s: 'Textos, imágenes y videos con tu material, tu tono y tus precios. No de plantilla.' },
+    { t: 'Las pasa por el panel antes de publicar', s: '5 jueces las puntúan y 500 personas del público reaccionan. Las 3 mejores salen; si ninguna convence, no sale ninguna.' },
+    { t: 'Publica, mide y frena lo que no rinde', s: 'Mide el costo por venta, mueve el presupuesto a donde rinde y te avisa por WhatsApp cuando hay algo que decidir.' },
+  ],
+  reglas: [
+    'Nada se publica sin pasar por el panel.',
+    'Nada se publica en tus cuentas sin tu permiso (según la autonomía que le des).',
+    'Publicar es lo único que gasta plata: investigar y el público no cuestan créditos.',
+  ],
+};
+
+export type TipoCuenta = 'empresa' | 'creador';
+
+export const TIPOS_CUENTA: {
+  key: TipoCuenta; nombre: string; quien: string; icono: string;
+  paraQue: string; cambia: string[];
+}[] = [
+  {
+    key: 'empresa', nombre: 'Negocio o empresa', icono: '🏪',
+    quien: 'Vendés productos o servicios y querés vender más.',
+    paraQue: 'Es el camino para vender: el motor investiga tu mercado, arma campañas, las pasa por el panel y las publica en tus cuentas.',
+    cambia: [
+      'Te pregunto qué vendés y a cuánto, y a quién le hablás.',
+      'El motor arma campañas para tus productos, con tus precios y tu material.',
+      'Termina con el plan de la primera semana de ventas.',
+    ],
+  },
+  {
+    key: 'creador', nombre: 'Creador de contenido', icono: '🎬',
+    quien: 'Grabás contenido y querés que las marcas te contraten.',
+    paraQue: 'Es el camino para ofrecerte: completás tu perfil de creador y las marcas que publican en Sinkroo te encuentran por lo que hacés, tu audiencia y tu precio.',
+    cambia: [
+      'Te pregunto qué contenido hacés, para qué rubros y en qué idiomas.',
+      'Te pregunto qué entregás, a cuánto y en cuántos días.',
+      'Termina con tu perfil publicado para que te encuentren, no con campañas.',
+    ],
+  },
+];
+
+// ---------------------------------------------------------------------------------------------
+// LOS CINCO PASOS DEL CREADOR — mismas cinco pantallas, otras preguntas.
+// Un creador no vende un producto: vende piezas. Preguntarle «qué vendés y a cuánto» sería el mismo
+// error que preguntarle a una tienda cuántos seguidores tiene.
+// ---------------------------------------------------------------------------------------------
+
+export const PASOS_CREADOR: PasoOnb[] = [
+  {
+    n: 1, t: 'Tu contenido', d: 'Qué hacés y para quién', icono: '🎬',
+    titular: 'Tu contenido, en cuatro datos',
+    paraQue: 'Con esto el motor le muestra tu perfil a las marcas que buscan justo lo que hacés: el rubro, el formato y el idioma cambian quién te encuentra.',
+    infiere: 'De tus últimas piezas saca tu estilo, cada cuánto publicás y qué porcentaje de tu audiencia reacciona.',
+    minima: ['cre_formato', 'cre_rubros', 'cre_idioma', 'cre_red'],
+    campos: [
+      { id: 'cre_red', etiqueta: 'Tu Instagram o TikTok', tipo: 'texto', ayuda: 'De acá el motor saca tu audiencia, tu estilo y cada cuánto publicás.' },
+      { id: 'cre_formato', etiqueta: 'Qué hacés', tipo: 'chips-multi', ayuda: 'Elegí todo lo que hacés: puede ser más de una cosa.',
+        opciones: ['UGC', 'Reseña', 'Video corto', 'Unboxing', 'Historia', 'Foto de producto'],
+        detalle: {
+          'UGC': 'Contenido con tu cara y tu voz, como si lo recomendara un cliente.',
+          'Reseña': 'Tu opinión con el producto usado: pesa más en la decisión.',
+          'Video corto': 'Reel o TikTok de 15 a 30 segundos, con gancho en el primer segundo.',
+          'Unboxing': 'La apertura del pedido: sirve para marcas nuevas que necesitan confianza.',
+          'Historia': 'Pieza vertical de 24 horas, con sticker y link.',
+          'Foto de producto': 'Fotos para el feed o para el carrusel de la marca.',
+        } },
+      { id: 'cre_rubros', etiqueta: 'Para qué rubros grabás', tipo: 'chips-multi', ayuda: 'Una marca de otro rubro no te va a encontrar si no lo decís.',
+        opciones: ['Belleza y skincare', 'Bienestar', 'Indumentaria', 'Hogar y deco', 'Tecnología', 'Gastronomía', 'Deportes'] },
+      { id: 'cre_idioma', etiqueta: 'En qué idiomas', tipo: 'chips', ayuda: 'Define a qué marcas les sirve tu contenido.',
+        opciones: ['Español', 'Español e inglés', 'Portugués'],
+        detalle: {
+          'Español': 'Marcas locales y de Latinoamérica.',
+          'Español e inglés': 'Abre marcas que venden a Estados Unidos: suelen pagar más por pieza.',
+          'Portugués': 'Marcas de Brasil: es el mercado que menos contenido en español tiene.',
+        } },
+    ],
+    nota: 'Sin el link, podés hacerlo igual: el perfil queda visible para las marcas y después se completa.',
+  },
+  {
+    n: 2, t: 'Qué entregás', d: 'Formatos y precio', icono: '💵',
+    titular: 'Qué entregás y a cuánto',
+    paraQue: 'El precio por pieza y los días de entrega son lo primero que mira una marca. Si no están, te preguntan antes de contratarte y se pierde el contacto.',
+    infiere: 'Con tu Instagram conectado, el motor estima tu alcance por pieza para las marcas que dudan.',
+    minima: ['cre_precio', 'cre_plazo', 'cre_acepta'],
+    campos: [
+      { id: 'cre_precio', etiqueta: 'Cuánto cobrás por pieza', tipo: 'numero', ayuda: 'En dólares, por pieza y por formato. Después se puede cambiar.', ancho: 180 },
+      { id: 'cre_plazo', etiqueta: 'En cuántos días entregás', tipo: 'chips', ayuda: 'Es lo que más se pregunta: una marca con lanzamiento necesita fechas.',
+        opciones: ['En 3 días', 'En una semana', 'En 15 días'],
+        detalle: {
+          'En 3 días': 'Cobrás más por la urgencia y las marcas te eligen para lanzamientos.',
+          'En una semana': 'Es el plazo normal del mercado: el más fácil de cumplir.',
+          'En 15 días': 'Sirve para piezas elaboradas, con más producción y edición.',
+        } },
+      { id: 'cre_acepta', etiqueta: 'Qué aceptás como parte del pago', tipo: 'chips-multi', ayuda: 'Decilo ahora: evita que te ofrezcan lo que no querés.',
+        opciones: ['Producto y dinero', 'Sólo dinero', 'Producto y comisión por venta'],
+        detalle: {
+          'Producto y dinero': 'Lo más común: el producto como parte del pago y el resto en dinero.',
+          'Sólo dinero': 'Más simple y más claro: la marca paga la pieza y compra el producto aparte.',
+          'Producto y comisión por venta': 'Conviene sólo si el código es tuyo y se puede medir.',
+        } },
+    ],
+    nota: 'El dinero se acuerda con cada marca. Sinkroo no intermedia el pago: te muestra la oportunidad y vos cerrás.',
+  },
+  {
+    n: 3, t: 'Tus muestras', d: 'Lo que ya grabaste', icono: '📷',
+    titular: 'Muestras de tu trabajo',
+    paraQue: 'Nada convence más a una marca que ver tres piezas tuyas. Con dos o tres muestras buenas ya se puede mandar tu perfil.',
+    infiere: 'Nada: lo que grabaste es tuyo. Por eso se sube a mano.',
+    minima: ['mat:fotos_producto'],
+    campos: [
+      { id: 'material', etiqueta: 'Tus piezas', tipo: 'material', ayuda: 'Elegí lo que ya está subido o sumá algo nuevo. Una marca mira primero lo que ya hiciste.' },
+    ],
+    nota: 'Con dos o tres alcanza para arrancar; la carpeta queda guardada para las próximas postulaciones.',
+  },
+  {
+    n: 4, t: 'Cómo trabajás', d: 'Ritmo, derechos y tono', icono: '🎚️',
+    titular: 'Cómo trabajás con una marca',
+    paraQue: 'Define cuántas piezas tomás por semana, de quién es la pieza cuando se publica y cómo hablás. Es lo que evita discusiones después de cerrar.',
+    infiere: 'El tono se ajusta solo con tus propias piezas: si hablás corto y directo, tus muestras se describen así.',
+    minima: ['cre_ritmo', 'cre_derechos', 'cre_tono'],
+    campos: [
+      { id: 'cre_ritmo', etiqueta: 'Cuántas piezas por semana', tipo: 'chips', ayuda: 'Es tu capacidad: si aceptás más de las que podés, incumplís.',
+        opciones: ['Hasta 3', 'Hasta 5', 'Hasta 10', 'Depende el trabajo'],
+        detalle: {
+          'Hasta 3': 'Podés mirar cada pieza con detalle: es lo que eligen las marcas que cuidan la marca.',
+          'Hasta 5': 'Un ritmo sostenido sin descuidar la calidad.',
+          'Hasta 10': 'Trabajo casi a tiempo completo: requiere producción propia.',
+          'Depende el trabajo': 'Se acuerda por proyecto: la marca pregunta y vos decidís.',
+        } },
+      { id: 'cre_derechos', etiqueta: 'De quién es la pieza cuando se publica', tipo: 'chips', ayuda: 'Es lo que más problemas trae si no está dicho antes.',
+        opciones: ['La marca la usa en sus redes', 'La marca puede pautar con ella', 'La uso yo también en mi perfil'],
+        detalle: {
+          'La marca la usa en sus redes': 'Uso orgánico en las cuentas de la marca, con tu nombre.',
+          'La marca puede pautar con ella': 'La marca paga para mostrarla a gente que no la conoce. Se cobra aparte del precio por pieza.',
+          'La uso yo también en mi perfil': 'Podés mostrarla en tus redes: te sirve de muestra y no le cuesta a la marca.',
+        } },
+      { id: 'cre_tono', etiqueta: 'Cuál es tu tono al grabar', tipo: 'chips-multi', ayuda: 'Lo que la marca va a leer en tu perfil: con dos alcanza.',
+        opciones: ['Cercano y cálido', 'Directo y sin vueltas', 'Divertido y descontracturado', 'Profesional y formal', 'Experto y educativo', 'Premium y sobrio'] },
+    ],
+    nota: 'Los frenos del panel no se tocan desde acá: tu perfil no publica nada por vos, sólo te muestra a las marcas.',
+  },
+  {
+    n: 5, t: 'Publicarte', d: 'Que te encuentren', icono: '🔌',
+    titular: 'Tu perfil, visible para las marcas',
+    paraQue: 'Con esto tu perfil queda publicado en el mercado de creadores: las marcas que están publicando en Sinkroo te ven por lo que hacés, tu audiencia y tu precio.',
+    infiere: 'Si ya subiste muestras, el motor arma el resumen de tu perfil y lo deja listo para revisar.',
+    // Se da por hecho cuando el perfil se publica (que es el resultado del paso), no antes.
+    minima: ['conectadas', 'publicado'],
+    campos: [],
+    nota: 'Ofrecerte no firmaste nada: las marcas te contactan, vos decidís cada trabajo y el pago lo acordás con ellas.',
+  },
+];
+
+/** Los pasos según el tipo de cuenta elegido en el asistente. */
+export const pasosDe = (tipo: TipoCuenta | null) => (tipo === 'creador' ? PASOS_CREADOR : PASOS_ONB);
+

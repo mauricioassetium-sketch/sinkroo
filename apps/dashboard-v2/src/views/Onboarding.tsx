@@ -1,150 +1,43 @@
 import { useState } from 'react';
 import { Card, Badge, Button } from '../components/ui';
 import { ViewHead } from '../components/viz';
-import {
-  I_Rocket, I_Check, I_ArrowLeft, I_ArrowRight, I_Upload, I_Image, I_Film, I_File, I_Zap,
-  I_Shield, I_Users, I_Credit, I_Clock, I_Checklist,
-} from '../components/icons';
-import { MATERIAL, type CampoPublicacion } from '../data/publicaciones';
-import { CARPETA, TENANT } from '../data/demo';
+import { I_Rocket, I_Check, I_ArrowLeft, I_ArrowRight, I_Zap, I_Users, I_Credit, I_Clock, I_Checklist } from '../components/icons';
 import { useDetalle } from '../components/Detalle';
 import type { Vista } from '../components/Layout';
-import { usePlan } from '../lib/plan';
 import { useOnboarding } from '../lib/onboarding';
-import {
-  PASOS_ONB, PRIMERA_SEMANA, COSTO_PRIMERA_SEMANA, CONEXIONES_ONB, type CampoOnb,
-} from '../data/onboarding';
+import { CamposPaso, BloqueConexiones, BloqueArranque, AvisoVerificacion } from '../components/PasoOnboarding';
+import { TIPOS_CUENTA, COSTO_PRIMERA_SEMANA } from '../data/onboarding';
 
 // =============================================================================================
-// PRIMEROS PASOS — el onboarding.
+// PRIMEROS PASOS — el mismo onboarding, dentro del panel.
 //
-// Cinco pantallas cortas, con el mismo stepper que Campañas. Cada una dice para qué es, qué deduce
-// el motor solo y ninguna es obligatoria. La última no termina en «listo»: arranca el motor y
-// muestra el plan de la primera semana, día por día y con lo que cuesta. Lo primero que el cliente
-// ve es trabajo del motor, no una pantalla de bienvenida.
+// Es el lugar donde se completa lo que se salteó en el asistente de entrada. Comparte los controles
+// con el asistente (components/PasoOnboarding): un paso se llena igual en los dos lados, así que no
+// hay dos versiones del mismo control que se puedan separar.
+//
+// El tipo de cuenta —negocio o creador— se elige y se cambia desde acá: cambia las preguntas de los
+// cinco pasos y lo que pasa al terminar.
 // =============================================================================================
-
-const IconoMaterial = ({ tipo }: { tipo: CampoPublicacion['tipo'] }) =>
-  tipo === 'videos' ? <I_Film size={16} /> : tipo === 'archivos' ? <I_File size={16} /> : <I_Image size={16} />;
 
 export function ViewOnboarding({ setToast, setVista }: { setToast: (t: string) => void; setVista: (v: Vista) => void }) {
   const onb = useOnboarding();
   const detalle = useDetalle();
-  const { plan } = usePlan();
-  const [pendiente, setPendiente] = useState(false); // «Seguir después»: se fue sin marcarlo
-  const paso = PASOS_ONB.find(p => p.n === onb.paso)!;
-  const ultimo = paso.n === PASOS_ONB.length;
+  const [pendiente, setPendiente] = useState(false);
+  const [cambiandoTipo, setCambiandoTipo] = useState(false);
+  const paso = onb.pasos.find(p => p.n === onb.paso)!;
+  const ultimo = paso.n === onb.pasos.length;
   const esteListo = onb.listos.includes(paso.n);
-
-  const elegir = (campo: CampoOnb, op: string) => {
-    const actual = onb.datos[campo.id];
-    if (campo.tipo === 'chips-multi') {
-      const lista = (actual as string[] | undefined) || [];
-      onb.escribir(campo.id, lista.includes(op) ? lista.filter(x => x !== op) : [...lista, op]);
-    } else {
-      onb.escribir(campo.id, actual === op ? '' : op);
-    }
+  const tipo = TIPOS_CUENTA.find(t => t.key === onb.tipo);
+  const puesto = (id: string) => {
+    const v = onb.datos[id];
+    return Array.isArray(v) ? v.length > 0 : !!String(v || '').trim();
   };
 
   const irAlSiguiente = (marcar: boolean) => {
     if (marcar) onb.marcar(paso.n);
     setPendiente(!marcar);
     if (!ultimo) onb.irA(paso.n + 1);
-    else setToast('Podés arrancar el motor cuando quieras: nada de lo que pusiste se pierde');
-  };
-
-  // ---------------------------------------------------------------------------------------------
-  // Los controles. Se dibujan desde la data: agregar un dato al onboarding es agregar una línea
-  // en PASOS_ONB, no escribir pantalla nueva.
-  // ---------------------------------------------------------------------------------------------
-  const control = (campo: CampoOnb) => {
-    const v = onb.datos[campo.id];
-
-    if (campo.tipo === 'texto' || campo.tipo === 'numero') {
-      return (
-        <input className="input" style={campo.ancho ? { maxWidth: campo.ancho } : undefined}
-          placeholder={campo.ayuda} value={(v as string) || ''}
-          onChange={e => onb.escribir(campo.id, e.target.value)} />
-      );
-    }
-
-    if (campo.tipo === 'chips' || campo.tipo === 'chips-multi') {
-      const lista = campo.tipo === 'chips-multi' ? ((v as string[]) || []) : [];
-      const activo = (op: string) => (campo.tipo === 'chips-multi' ? lista.includes(op) : v === op);
-      return (
-        <div className="onb-chips">
-          {(campo.opciones || []).map(op => (
-            <button key={op} type="button" className={`tipo-chip ${activo(op) ? 'sel' : ''}`}
-              title={campo.detalle?.[op] || `${op}: elegilo para que el motor trabaje con eso`}
-              onClick={() => elegir(campo, op)}>
-              {activo(op) ? '✓ ' : ''}{op}
-            </button>
-          ))}
-          {(campo.tipo === 'chips-multi' ? lista : (v ? [v as string] : [])).map(op => (
-            <div key={op} className="tiny onb-elegido">
-              <I_Check size={11} /> <b>{op}</b>{campo.detalle?.[op] ? ` — ${campo.detalle[op]}` : ''}
-            </div>
-          ))}
-        </div>
-      );
-    }
-
-    if (campo.tipo === 'material') {
-      return (
-        <div className="onb-mat">
-          {MATERIAL.map(m => {
-            const carpeta = CARPETA[m.id] || [];
-            const puestos = onb.material[m.id] || [];
-            const subidos = puestos.filter(p => !carpeta.some(c => c.nombre === p));
-            return (
-              <div key={m.id} className="onb-mat-fila">
-                <div className="onb-mat-lb">
-                  <span className="onb-mat-ic"><IconoMaterial tipo={m.tipo} /></span>
-                  <span style={{ minWidth: 0 }}>
-                    <b>{m.etiqueta.replace(/^\S+\s/, '')}</b>
-                    <small>{puestos.length ? `${puestos.length} elegido${puestos.length > 1 ? 's' : ''}` : m.ayuda}</small>
-                  </span>
-                  <label className="onb-mat-up" title={`Subir algo nuevo a «${m.etiqueta.replace(/^\S+\s/, '')}»: queda en tu carpeta`}>
-                    <I_Upload size={13} />
-                    <input type="file" multiple style={{ display: 'none' }}
-                      onChange={e => { Array.from(e.target.files || []).forEach(f => onb.alternarMaterial(m.id, f.name)); setToast(`${e.target.files?.length || 0} archivo a «${m.etiqueta.replace(/^\S+\s/, '')}»`); }} />
-                  </label>
-                </div>
-                <div className="onb-mat-chips">
-                  {carpeta.map(c => {
-                    const puesto = puestos.includes(c.nombre);
-                    return (
-                      <button key={c.nombre} type="button" className={`tipo-chip onb-chip-arch ${puesto ? 'sel' : ''}`}
-                        title={puesto ? `Ya está elegido (${c.peso}). Tocá para sacarlo de esta configuración.` : `Sumar «${c.nombre}» (${c.peso}) sin volver a subirlo.`}
-                        onClick={() => onb.alternarMaterial(m.id, c.nombre)}>
-                        {puesto ? '✓ ' : ''}{c.nombre}
-                      </button>
-                    );
-                  })}
-                  {subidos.map(nombre => (
-                    <button key={nombre} type="button" className="tipo-chip onb-chip-arch sel"
-                      title="Lo subiste recién: queda en tu carpeta para la próxima campaña."
-                      onClick={() => onb.alternarMaterial(m.id, nombre)}>✓ {nombre}</button>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      );
-    }
-    return null;
-  };
-
-  // ---------------------------------------------------------------------------------------------
-  // El paso 5: las conexiones y el arranque.
-  // ---------------------------------------------------------------------------------------------
-  const conectadas = (onb.datos['conectadas'] as string[] | undefined) || [];
-  const alternarConexion = (key: string) => {
-    const nuevas = conectadas.includes(key) ? conectadas.filter(k => k !== key) : [...conectadas, key];
-    onb.escribir('conectadas', nuevas);
-    const c = CONEXIONES_ONB.find(x => x.key === key)!;
-    setToast(nuevas.includes(key) ? `${c.nombre} conectada: ${c.detalle}` : `${c.nombre} desconectada: el motor ya no publica ahí`);
+    else setToast('Podés arrancar cuando quieras: nada de lo que pusiste se pierde');
   };
 
   return (
@@ -152,18 +45,50 @@ export function ViewOnboarding({ setToast, setVista }: { setToast: (t: string) =
       <ViewHead
         icon={<I_Rocket size={19} />}
         titulo="Primeros pasos"
-        sub="Cinco pantallas cortas y el motor queda trabajando. Nada es obligatorio: lo que no pongas, lo deduce solo."
+        sub="Lo que el motor no puede deducir solo. Nada es obligatorio: lo que no pongas, lo saca de tu cuenta y de tus conversaciones."
         nums={[
-          { v: `${onb.listos.length} de ${PASOS_ONB.length}`, l: 'pasos hechos', c: onb.listos.length === PASOS_ONB.length ? 'var(--green)' : 'var(--purple3)' },
+          { v: `${onb.listos.length} de ${onb.pasos.length}`, l: 'pasos hechos', c: onb.listos.length === onb.pasos.length ? 'var(--green)' : 'var(--purple3)' },
           { v: onb.arrancado ? 'En marcha' : 'Sin arrancar', l: 'el motor', c: onb.arrancado ? 'var(--green)' : 'var(--amber)' },
-          { v: `Plan ${plan.nombre}`, l: `${plan.creditosMes.toLocaleString('es-AR')} créditos por mes` },
+          { v: tipo ? tipo.nombre : 'Sin elegir', l: 'tipo de cuenta', c: tipo ? undefined : 'var(--amber)' },
           { v: String(COSTO_PRIMERA_SEMANA), l: 'créditos de la primera semana' },
         ]}
       />
 
+      {/* El tipo de cuenta: cambia las preguntas de todo el onboarding, así que se ve y se cambia acá. */}
+      <Card
+        title={<span className="row" style={{ gap: 8 }}><I_Users size={14} style={{ color: 'var(--purple3)' }} /> Cómo vas a usar Sinkroo</span>}
+        action={<Badge tone={tipo ? 'purple' : 'amber'}>{tipo ? tipo.nombre : 'falta elegir'}</Badge>}
+      >
+        {!tipo || cambiandoTipo ? (
+          <>
+            <div className="bs">Cambia las preguntas de los cinco pasos y lo que pasa al terminar. Se puede cambiar después y los pasos se rearman.</div>
+            <div className="asist-tipos">
+              {TIPOS_CUENTA.map(t => (
+                <button key={t.key} className={`asist-tipo ${onb.tipo === t.key ? 'sel' : ''}`}
+                  title={`${t.nombre}: ${t.paraQue}`}
+                  onClick={() => { onb.elegirTipo(t.key); setCambiandoTipo(false); setToast(`Listo: ${t.nombre}. Los pasos son los de ahora en más.`); }}>
+                  <span className="asist-tipo-ic">{t.icono}</span>
+                  <span className="asist-tipo-t">{t.nombre}{onb.tipo === t.key ? ' ✓' : ''}</span>
+                  <span className="asist-tipo-q">{t.quien}</span>
+                  <span className="asist-tipo-p">{t.paraQue}</span>
+                </button>
+              ))}
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="bs">{tipo.quien} {tipo.paraQue}</div>
+            <div className="row" style={{ gap: 9, marginTop: 12, flexWrap: 'wrap' }}>
+              <Button variant="ghost" className="btn-sm" title="Vuelve al selector: cambia las preguntas del onboarding y lo que pasa al terminar"
+                onClick={() => setCambiandoTipo(true)}>Cambiar el tipo de cuenta</Button>
+            </div>
+          </>
+        )}
+      </Card>
+
       {/* El stepper: el mismo de Campañas, para que las dos etapas del producto se lean igual. */}
       <div className="pasos">
-        {PASOS_ONB.map(p => (
+        {onb.pasos.map(p => (
           <button key={p.n} className={`paso ${onb.paso === p.n ? 'on' : ''} ${onb.listos.includes(p.n) ? 'done' : ''}`}
             title={`${p.t}: ${p.d}. ${onb.listos.includes(p.n) ? 'Ya está hecho: podés volver a cambiarlo.' : 'Falta.'}`}
             onClick={() => { onb.irA(p.n); setPendiente(false); }}>
@@ -191,92 +116,23 @@ export function ViewOnboarding({ setToast, setVista }: { setToast: (t: string) =
 
         {paso.n === 5 ? (
           <>
-            <div className="onb-conexiones">
-              {CONEXIONES_ONB.map(c => {
-                const activo = conectadas.includes(c.key);
-                return (
-                  <div key={c.key} className="guard">
-                    <span style={{ fontSize: 17, flexShrink: 0 }}>{c.icono}</span>
-                    <span className="guard-lb">{c.nombre}
-                      <small>{activo && c.habilitadoHoy ? `${c.detalle} Ya estaba conectada cuando entraste: si la dejás, el motor sigue publicando ahí.` : c.detalle}</small>
-                    </span>
-                    <Badge tone={activo ? 'green' : 'muted'}>{activo ? 'conectada' : 'sin conectar'}</Badge>
-                    <Button variant={activo ? 'outline' : 'ghost'} className="btn-sm"
-                      title={activo ? `Desconecta ${c.nombre}: el motor deja de publicar ahí al instante y sus automatizaciones se pausan. Reversible desde acá mismo.` : `Conecta ${c.nombre}: ${c.detalle}`}
-                      onClick={() => alternarConexion(c.key)}>
-                      {activo ? 'Desconectar' : 'Conectar'}
-                    </Button>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* La verificación: es legal y va aparte. El aviso apunta a dónde se hace, no la hace acá. */}
-            <div className="onb-infiere" style={{ borderColor: 'rgba(245,158,11,.32)' }}>
-              <span className="onb-infiere-ic" style={{ color: 'var(--amber)' }}><I_Shield size={13} /></span>
-              <span><b>Falta la verificación de identidad: </b>es obligatoria para pautar y se resuelve en
-                {' '}<button className="onb-link" title="Abre Verificación, donde se suben los documentos"
-                  onClick={() => setVista('kyc')}>Verificación</button>.
-                Hasta que esté, el motor prepara todo y no publica nada.</span>
-            </div>
-
-            {/* El arranque: lo que pasa cuando aprieta. */}
-            {onb.arrancado ? (
-              <>
-                <div className="onb-arrancado">
-                  <I_Rocket size={15} />
-                  <span><b>El motor está trabajando.</b> Arrancó por el mercado: en unas horas vas a ver el primer
-                    informe y las piezas de la semana en Campañas. Nada de esto gasta plata hasta que la pieza pasa el panel.</span>
-                </div>
-                <div className="onb-semana">
-                  {PRIMERA_SEMANA.map(d => (
-                    <div key={d.dia} className="onb-dia">
-                      <span className="onb-dia-n">{d.dia}</span>
-                      <span className="onb-dia-quien">{d.quien}</span>
-                      <span className="onb-dia-que">{d.que}</span>
-                      <span className="onb-dia-cr">{d.creditos}</span>
-                    </div>
-                  ))}
-                  <div className="onb-dia-total">
-                    <span>Total de la primera semana</span>
-                    <span><b>{COSTO_PRIMERA_SEMANA} créditos</b> de los {plan.creditosMes.toLocaleString('es-AR')} del plan {plan.nombre} · publicar es aparte</span>
-                  </div>
-                </div>
-                <div className="row" style={{ gap: 9, marginTop: 14, flexWrap: 'wrap' }}>
-                  <Button className="btn-sm" title="Va a tu panel: lo que el motor ya hizo te espera en Hoy"
-                    onClick={() => setVista('hoy')}><I_ArrowRight size={13} /> Ir a mi panel</Button>
-                  <Button variant="ghost" className="btn-sm" title="Abre Campañas, donde aparecen el informe del mercado y las piezas de la semana"
-                    onClick={() => setVista('campanas')}>Ver las campañas</Button>
-                  <Button variant="ghost" className="btn-sm" title="Muestra en qué se va cada crédito y cuántos te quedan"
-                    onClick={() => setVista('creditos')}>Mis créditos</Button>
-                </div>
-              </>
-            ) : (
-              <div className="row" style={{ gap: 9, marginTop: 14, flexWrap: 'wrap' }}>
-                <Button className="btn-sm" title={`Arranca el motor ahora: investiga tu mercado y prepara las piezas de la semana. Cuesta ${COSTO_PRIMERA_SEMANA} créditos y no gasta plata hasta que las piezas pasan el panel.`}
-                  onClick={() => {
-                    onb.arrancar();
-                    onb.marcar(5);
-                    setToast(`${onb.listos.length >= 4 ? 'Listo' : 'El motor arrancó'}: empieza por el mercado, no gasta nada hasta publicar`);
-                  }}><I_Rocket size={13} /> Arrancar el motor</Button>
-                <Button variant="ghost" className="btn-sm" title="Guarda lo que pusiste y te deja seguir después desde Hoy"
-                  onClick={() => { onb.desmarcar(5); setVista('hoy'); setToast('Guardado: seguís cuando quieras desde Hoy'); }}>
-                  Dejarlo para después
-                </Button>
+            <BloqueConexiones />
+            <AvisoVerificacion ir={() => setVista('kyc')} />
+            <BloqueArranque />
+            {onb.arrancado && (
+              <div className="row" style={{ gap: 9, marginTop: 12, flexWrap: 'wrap' }}>
+                <Button className="btn-sm" title="Va a tu panel: lo que el motor ya hizo te espera en Hoy"
+                  onClick={() => setVista('hoy')}><I_ArrowRight size={13} /> Ir a mi panel</Button>
+                <Button variant="ghost" className="btn-sm" title="Abre Campañas, donde aparecen el informe del mercado y las piezas de la semana"
+                  onClick={() => setVista('campanas')}>Ver las campañas</Button>
+                <Button variant="ghost" className="btn-sm" title="Muestra en qué se va cada crédito y cuántos te quedan"
+                  onClick={() => setVista('creditos')}><I_Credit size={13} /> Mis créditos</Button>
               </div>
             )}
           </>
         ) : (
           <>
-            <div className="onb-campos">
-              {paso.campos.map(c => (
-                <div key={c.id} className="onb-campo">
-                  <label className="label">{c.etiqueta}</label>
-                  {control(c)}
-                </div>
-              ))}
-            </div>
-
+            <CamposPaso paso={paso} />
             {paso.nota && <div className="acc-why">{paso.nota}</div>}
 
             <div className="row" style={{ gap: 9, marginTop: 16, flexWrap: 'wrap' }}>
@@ -284,7 +140,8 @@ export function ViewOnboarding({ setToast, setVista }: { setToast: (t: string) =
                 <Button variant="ghost" className="btn-sm" title="Volvé al paso anterior: nada de lo que pusiste se pierde"
                   onClick={() => onb.irA(paso.n - 1)}><I_ArrowLeft size={13} /> Atrás</Button>
               )}
-              <Button className="btn-sm" title={onb.completo(paso.n) ? 'Queda anotado y pasás al paso siguiente' : 'Pasás al paso siguiente; este queda pendiente y el motor usa lo que haya'}
+              <Button className="btn-sm"
+                title={onb.completo(paso.n) ? 'Queda anotado y pasás al paso siguiente' : 'Pasás al siguiente; este queda pendiente y el motor usa lo que haya'}
                 onClick={() => irAlSiguiente(true)}>
                 {onb.completo(paso.n) ? <>Continuar <I_ArrowRight size={13} /></> : <>Seguir después <I_ArrowRight size={13} /></>}
               </Button>
@@ -293,13 +150,13 @@ export function ViewOnboarding({ setToast, setVista }: { setToast: (t: string) =
                   titulo: `${paso.t}: qué hace el motor con esto`,
                   sub: paso.paraQue,
                   bloques: [
-                    { tipo: 'pasos', items: paso.minima.map(id => {
-                      const c = paso.campos.find(x => x.id === id);
-                      const puestoTxt = onb.completo(paso.n);
-                      return `${c ? c.etiqueta : id}: ${puestoTxt ? 'ya está puesto' : 'todavía falta'}`;
-                    }) },
+                    { tipo: 'filas', items: paso.campos.map(c => ({
+                      t: c.etiqueta, s: c.ayuda,
+                      etiqueta: puesto(c.id) ? 'puesto' : 'falta',
+                      tono: puesto(c.id) ? 'green' as const : 'muted' as const,
+                    })) },
                     ...(paso.infiere ? [{ tipo: 'texto' as const, texto: `Lo que el motor saca solo: ${paso.infiere}` }] : []),
-                    { tipo: 'aviso' as const, texto: 'Este paso no bloquea nada: el motor arranca igual y va corrigiendo con lo que aprenda de tus conversaciones y de tu cuenta.' },
+                    { tipo: 'aviso' as const, texto: 'Este paso no bloquea nada: el motor arranca igual y va corrigiendo con lo que aprende de tus conversaciones y de tu cuenta.' },
                   ],
                   fuente: 'Primeros pasos · el onboarding no frena el trabajo del motor, sólo le da el punto de partida.',
                   acciones: [
@@ -317,38 +174,72 @@ export function ViewOnboarding({ setToast, setVista }: { setToast: (t: string) =
       <div className="duo" style={{ marginTop: 16 }}>
         <Card
           title={<span className="row" style={{ gap: 8 }}><I_Users size={14} style={{ color: 'var(--purple3)' }} /> Quién va a trabajar con esto</span>}
-          action={<Badge tone="purple">6 agentes + el panel</Badge>}
+          action={<Badge tone="purple">{onb.tipo === 'creador' ? 'tu perfil y las marcas' : '6 agentes + el panel'}</Badge>}
         >
-          <div className="bs">
-            Los <b>6 agentes</b> investigan y producen (Lux el mercado, Rex el presupuesto, Nia las piezas,
-            Kai la pauta, Sol los números, Rumi las conversaciones). Lo que producen pasa por el <b>panel</b>:
-            los 5 jueces lo puntúan y 500 personas del público reaccionan. Las 3 mejores salen.
-          </div>
-          <div className="onb-datos">
-            <div className="dato"><span className="dato-l">Investigación del mercado</span><span className="dato-v" style={{ color: 'var(--green)' }}>no cuesta créditos</span></div>
-            <div className="dato"><span className="dato-l">Los 500 del público</span><span className="dato-v" style={{ color: 'var(--green)' }}>no cuesta créditos</span></div>
-            <div className="dato"><span className="dato-l">Publicar</span><span className="dato-v" style={{ color: 'var(--amber)' }}>es lo único que gasta plata</span></div>
-          </div>
+          {onb.tipo === 'creador' ? (
+            <>
+              <div className="bs">
+                Tu perfil queda publicado con lo que hacés, tus rubros, tu audiencia y tu precio. Las marcas que
+                publican en Sinkroo te ven ahí y te contactan: <b>el contenido lo producís vos y el pago lo acordás
+                con ellas</b>.
+              </div>
+              <div className="onb-datos">
+                <div className="dato"><span className="dato-l">Ofrecerte</span><span className="dato-v" style={{ color: 'var(--green)' }}>sin costo</span></div>
+                <div className="dato"><span className="dato-l">El pago por pieza</span><span className="dato-v">lo acuerdan ustedes</span></div>
+                <div className="dato"><span className="dato-l">Sinkroo</span><span className="dato-v">no cobra comisión por pieza</span></div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="bs">
+                Los <b>6 agentes</b> investigan y producen (Lux el mercado, Rex el presupuesto, Nia las piezas,
+                Kai la pauta, Sol los números, Rumi las conversaciones). Lo que producen pasa por el <b>panel</b>:
+                los 5 jueces lo puntúan y 500 personas del público reaccionan. Las 3 mejores salen.
+              </div>
+              <div className="onb-datos">
+                <div className="dato"><span className="dato-l">Investigación del mercado</span><span className="dato-v" style={{ color: 'var(--green)' }}>no cuesta créditos</span></div>
+                <div className="dato"><span className="dato-l">Los 500 del público</span><span className="dato-v" style={{ color: 'var(--green)' }}>no cuesta créditos</span></div>
+                <div className="dato"><span className="dato-l">Publicar</span><span className="dato-v" style={{ color: 'var(--amber)' }}>es lo único que gasta plata</span></div>
+              </div>
+            </>
+          )}
           <div className="acc-why">
-            Nada sale a tus cuentas sin pasar por el panel: si ninguna pieza convence, no se publica ninguna
-            y sólo se gastaron los créditos de escribirla.
+            {onb.tipo === 'creador'
+              ? <>Ofrecerte no te compromete a nada: <b>cada trabajo lo decidís vos</b> y podés pausar tu perfil cuando quieras.</>
+              : <>Nada sale a tus cuentas sin pasar por el panel: si ninguna pieza convence, no se publica ninguna y sólo se gastaron los créditos de escribirla.</>}
           </div>
         </Card>
 
         <Card
           title={<span className="row" style={{ gap: 8 }}><I_Clock size={14} style={{ color: 'var(--green)' }} /> Cuánto tarda</span>}
-          action={<Badge tone="green">{onb.arrancado ? 'ya está en marcha' : 'unas 3 horas'}</Badge>}
+          action={<Badge tone="green">{onb.arrancado ? 'ya está en marcha' : onb.tipo === 'creador' ? 'tu perfil, en minutos' : 'unas 3 horas'}</Badge>}
         >
-          <div className="bs">
-            Con las cuentas conectadas, el motor tarda <b>unas 3 horas</b> en tener el primer informe del mercado
-            y las primeras piezas listas. No hace falta que estés mirando: te avisa por WhatsApp cuando hay
-            algo para decidir.
-          </div>
-          <div className="onb-datos">
-            <div className="dato"><span className="dato-l">Primer informe del mercado</span><span className="dato-v">~2 h</span></div>
-            <div className="dato"><span className="dato-l">Primeras piezas</span><span className="dato-v">~3 h</span></div>
-            <div className="dato"><span className="dato-l">Veredicto del panel</span><span className="dato-v">al terminar las piezas</span></div>
-          </div>
+          {onb.tipo === 'creador' ? (
+            <>
+              <div className="bs">
+                Tu perfil queda armado en minutos: el motor escribe el resumen con tus muestras y tus datos, y lo
+                podés revisar antes de que quede visible para las marcas. No publica nada en tus redes.
+              </div>
+              <div className="onb-datos">
+                <div className="dato"><span className="dato-l">Resumen del perfil</span><span className="dato-v">minutos</span></div>
+                <div className="dato"><span className="dato-l">Visible para las marcas</span><span className="dato-v">cuando lo apruebes</span></div>
+                <div className="dato"><span className="dato-l">Primer contacto</span><span className="dato-v">lo decide la marca</span></div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="bs">
+                Con las cuentas conectadas, el motor tarda <b>unas 3 horas</b> en tener el primer informe del mercado
+                y las primeras piezas listas. No hace falta que estés mirando: te avisa por WhatsApp cuando hay
+                algo para decidir.
+              </div>
+              <div className="onb-datos">
+                <div className="dato"><span className="dato-l">Primer informe del mercado</span><span className="dato-v">~2 h</span></div>
+                <div className="dato"><span className="dato-l">Primeras piezas</span><span className="dato-v">~3 h</span></div>
+                <div className="dato"><span className="dato-l">Veredicto del panel</span><span className="dato-v">al terminar las piezas</span></div>
+              </div>
+            </>
+          )}
           <div className="row" style={{ gap: 9, marginTop: 4, flexWrap: 'wrap' }}>
             <Button variant="ghost" className="btn-sm" title="Muestra qué hace el motor mientras trabajás en esto"
               onClick={() => detalle({
@@ -360,7 +251,7 @@ export function ViewOnboarding({ setToast, setVista }: { setToast: (t: string) =
                     { t: 'Rex · el presupuesto', s: 'comparó dónde rinde más cada peso hoy', etiqueta: 'en curso', tono: 'purple' },
                     { t: 'Kai · la pauta', s: 'revisa cada 15 minutos las campañas que ya corren', etiqueta: 'en curso', tono: 'purple' },
                     { t: 'Rumi · las conversaciones', s: 'espera tu OK para el primer mensaje', etiqueta: 'espera tu OK', tono: 'amber' },
-                    { t: 'Nia · las piezas', s: 'todavía no escribió: arranca cuando le des el material o el ángulo', etiqueta: 'sin arrancar', tono: 'muted' },
+                    { t: 'Nia · las piezas', s: 'todavía no escribió: arranca cuando tenga el material o el ángulo', etiqueta: 'sin arrancar', tono: 'muted' },
                   ] },
                   { tipo: 'aviso', texto: 'Cuando pongas algo en un paso, el motor lo toma en la próxima vuelta: no hay que apretar ningún botón para que lo use.' },
                 ],
@@ -373,8 +264,9 @@ export function ViewOnboarding({ setToast, setVista }: { setToast: (t: string) =
       </div>
 
       <div className="acc-why" style={{ marginTop: 14 }}>
-        <b>Nada de esto es obligatorio.</b> {TENANT.cuenta} puede arrancar con dos datos y el motor trabaja igual:
-        lo que pongas ahora es para que la primera semana no se pierda adivinando.
+        <b>Nada de esto es obligatorio.</b> Podés dejarlo así: {onb.tipo === 'creador'
+          ? 'tu perfil se completa solo con lo que ya está subido y las marcas te contactan igual.'
+          : 'el motor trabaja con dos datos y completa el resto con lo que aprende de tus cuentas y tus conversaciones.'}
       </div>
     </div>
   );

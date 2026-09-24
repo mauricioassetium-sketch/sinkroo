@@ -6,6 +6,49 @@
 
 ---
 
+## 0 · El proceso de entrada, completo
+
+```
+  LOGIN  ─────────►  ASISTENTE (pop-up, saltable)  ─────────►  EL PANEL
+  (email, Google,    1 · Bienvenida                            (Hoy, con el cartel
+   crear cuenta)     2 · Tipo: negocio o creador                de lo que falta)
+                     3 · Los cinco pasos
+```
+
+**1 · La entrada** (`views/Login.tsx`) — la primera pantalla del producto: el panel no existe hasta
+que alguien entra. La cuenta de demostración viene cargada y lista (nombre, email y contraseña), así
+que se entra con un toque; al lado están el camino real (Google, crear cuenta, recuperar la
+contraseña), y cada opción deja ver qué hizo: «Entrando…», «Entrando con Google…», «Te mandamos el
+link a…».
+
+**2 · El asistente** (`components/Asistente.tsx`) — un pop-up que se abre solo la primera vez que hay
+sesión. Tres bloques y **siete pantallas contables**:
+
+| Pantalla | Qué hace |
+|---|---|
+| Bienvenida | Qué hace el motor con el negocio (4 puntos) y las 3 reglas que no se rompen |
+| Tipo de cuenta | Negocio o creador: explica para qué sirve cada uno y **cambia las preguntas** |
+| Pasos 1 a 5 | Los mismos cinco pasos, con sus datos y su cierre |
+
+**Se puede saltar en cualquier momento y de dos maneras**: «Saltar todo» (abajo a la derecha, siempre
+visible) y la X del encabezado. Las dos cierran el asistente, dejan el panel listo y avisan que lo
+que falta espera en **Primeros pasos**. Cada paso, además, tiene «Saltar este paso» para dejarlo
+pendiente sin salir.
+
+**3 · El tipo de cuenta cambia el onboarding de verdad** (`TIPOS_CUENTA` + `PASOS_CREADOR`): un
+negocio vende productos (los cinco pasos de siempre, y termina con el plan de la primera semana de
+ventas); un creador vende piezas y su asistente pregunta otra cosa —qué contenido hace, para qué
+rubros, en qué idiomas, cuánto cobra, en cuántos días entrega, de quién es la pieza— y termina
+**publicando su perfil para que las marcas lo encuentren**, sin campañas y sin que Sinkroo cobre
+comisión por pieza. Elegir mal se arregla: el tipo se cambia desde Primeros pasos y los pasos se
+rearman.
+
+**4 · El mismo onboarding, adentro** (`views/Onboarding.tsx`, en Configuración → Primeros pasos): es
+donde se completa lo que se salteó, con el mismo stepper de Campañas y **los mismos controles** que
+el asistente (viven en `components/PasoOnboarding.tsx`: un paso se llena igual en los dos lados).
+
+---
+
 ## 1 · Qué es y por qué está armado así
 
 El onboarding **no es un formulario de registro**: es la corrección de lo que el motor ya sabe. El
