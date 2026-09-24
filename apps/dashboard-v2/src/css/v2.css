@@ -1329,3 +1329,55 @@
   border: 1px dashed var(--border2); background: var(--bg2); font-size: 11px; color: var(--muted2); line-height: 1.5; }
 .cre-nota svg { flex-shrink: 0; margin-top: 2px; color: var(--muted); }
 .cre-nota span { flex: 1 1 260px; min-width: 0; }
+
+/* =============================================================================================
+   CONVERSACIONES · CLIENTES Y CREADORES — no mezclar al que te compra con el que te produce
+   ============================================================================================= */
+
+/* --- El badge de tipo: un cliente te compra (gris), un creador te produce una pieza (violeta), y
+       cada uno lleva su ícono. La diferencia tiene que verse en la fila, sin abrir la conversación. --- */
+.badge.tg-cliente { background: var(--bg3); color: var(--muted); border: 1px solid var(--border2); }
+.badge.tg-creador { background: rgba(168,85,247,.16); color: var(--purple3); border: 1px solid rgba(168,85,247,.42); }
+
+/* --- La fila de filtros de la bandeja: los dos filtros (quién te escribe y la cola) van juntos, en
+       una misma fila, y cuando no entran envuelven sin desbordar la tarjeta. --- */
+.ban-filtros { display: flex; align-items: center; gap: 8px 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.ban-filtros .seg-group { flex-wrap: wrap; min-width: 0; }
+
+/* --- La tarjeta «La colaboración»: reemplaza al contexto de cliente cuando el que escribe es un
+       creador. Cuatro datos en dos columnas —nunca queda una celda vacía— y el estado en la cabecera. --- */
+.colab { display: flex; flex-direction: column; gap: 10px; padding: 12px 13px; border-radius: 12px;
+  border: 1px solid rgba(168,85,247,.35); background: rgba(168,85,247,.07); min-width: 0; }
+.colab-head { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+.colab-t { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 800;
+  letter-spacing: -.1px; color: var(--purple3); }
+.colab-filas { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 16px; }
+.colab-f { min-width: 0; }
+.colab-l { display: block; font-size: 10.5px; color: var(--muted2); }
+.colab-v { display: block; margin-top: 2px; font-size: 12px; font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; }
+.colab-acc { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+.colab-acc .btn { flex: 0 0 auto; }
+@media (max-width: 560px) {
+  .colab-filas { grid-template-columns: minmax(0, 1fr); }
+  .colab-acc .btn { width: 100%; justify-content: center; }
+}
+
+/* --- La aclaración de las automatizaciones: son de clientes y con un creador no se disparan. --- */
+.aut-solo-cli { display: flex; align-items: flex-start; gap: 8px; margin: 0 0 14px; padding: 9px 12px;
+  border-radius: 11px; border: 1px dashed var(--border2); background: var(--bg2);
+  font-size: 11px; color: var(--muted2); line-height: 1.5; }
+.aut-solo-cli svg { flex-shrink: 0; margin-top: 2px; color: var(--muted); }
+.aut-solo-cli span { flex: 1 1 260px; min-width: 0; }
+.aut-solo-cli b { color: var(--txt); font-weight: 700; }
+
+/* --- Las cifras del encabezado cuando son CINCO (los datos de clientes + las colaboraciones con
+       creadores): en una sola fila en pantalla grande, y sin dejar ninguna celda vacía cuando la
+       grilla del encabezado baja a 2 columnas. Sólo afecta a las vistas que tienen cinco cifras. --- */
+@media (min-width: 1101px) {
+  /* Cinco datos en una fila es más ajustado que cuatro: las cifras se llevan un poco más de ancho
+     y el texto de la izquierda cede, así ninguna etiqueta se corta en el borde. */
+  .vhead .cifras:has(> .cifra:nth-child(5)) { flex: 1.25; grid-template-columns: repeat(5, minmax(0, 1fr)); }
+}
+@media (max-width: 1100px) {
+  .vhead .cifras:has(> .cifra:nth-child(5)) > .cifra:nth-child(5) { grid-column: 1 / -1; }
+}

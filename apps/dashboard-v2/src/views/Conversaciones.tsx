@@ -4,15 +4,38 @@ import { ViewHead, BarRow } from '../components/viz';
 import { AutomatizacionCard, clonarFlujo, flujoNuevo, nombreOFrase, type FlujoEditable } from '../components/AutomatizacionCard';
 import {
   I_Whatsapp, I_Chat, I_Send, I_Zap, I_Check, I_Plus, I_Users,
-  I_Clock, I_Edit, I_Robot, I_User,
+  I_Clock, I_Edit, I_Robot, I_User, I_Camera, I_ArrowLeft,
 } from '../components/icons';
-import { CONVERSACIONES, FLUJOS, type Modo, type Mensaje, type Conversacion } from '../data/demo';
+import {
+  CONVERSACIONES, FLUJOS,
+  type Modo, type Mensaje, type Conversacion,
+  type TipoConversacion, type EstadoColaboracion,
+} from '../data/demo';
 
 /**
  * Quién atiende la conversación: Rumi (la IA) o vos.
  * Es el único estado que decide si el motor puede contestar solo.
  */
 type Control = 'ia' | 'humano';
+
+// Las etapas del acuerdo con un creador, en orden. Se avanza de a una y se puede volver atrás.
+const ETAPAS: EstadoColaboracion[] = ['invitado', 'negociando', 'acordado'];
+
+/** El nombre de la etapa, como se lee en la pantalla. */
+const textoEtapa = (e: EstadoColaboracion) =>
+  e === 'invitado' ? 'Invitación enviada' : e === 'negociando' ? 'Negociando precio y plazo' : 'Acuerdo cerrado';
+
+/** Cómo se pinta cada etapa: no es lo mismo esperar respuesta que tener el acuerdo cerrado. */
+const TONO_ETAPA: Record<EstadoColaboracion, string> =
+  { invitado: 'badge-amber', negociando: 'badge-purple', acordado: 'badge-green' };
+
+/** Qué significa la etapa, para el title: es la etiqueta de la colaboración, no un mensaje. */
+const AYUDA_ETAPA: Record<EstadoColaboracion, string> = {
+  invitado: 'Le mandaste la propuesta al creador y todavía no contestó. Se avanza desde la tarjeta La colaboración, y siempre se puede volver atrás.',
+  negociando: 'Ya hubo ida y vuelta por el precio y el plazo: falta cerrar. Se avanza desde la tarjeta La colaboración, y siempre se puede volver atrás.',
+  acordado: 'Precio, plazo y entrega cerrados con el creador. Se puede volver atrás desde la tarjeta La colaboración.',
+};
+
 
 /** Arma un mapa id-de-conversación → valor, sin trucos de tipos. */
 function porConversacion<T>(f: (c: Conversacion) => T): Record<string, T> {
@@ -25,6 +48,9 @@ function porConversacion<T>(f: (c: Conversacion) => T): Record<string, T> {
 function propuestaDe(id: string): string {
   if (id === 'v1') return '«Sí, llegamos a CABA. Llega en 2 a 4 días hábiles y podés pagar en 3 cuotas sin interés. ¿Te reservo uno?»';
   if (id === 'v4') return '«Lamento el problema. Te paso con una persona del equipo para resolver la cancelación en el momento.»';
+  // Con un creador la propuesta no vende un producto: destraba la colaboración (precio, plazo, entrega).
+  if (id === 'v5') return '«¿Pudiste ver la propuesta? Si te sirve el $12.000, te mandamos el serum mañana así grabás cuando quieras, antes del 12 de octubre.»';
+  if (id === 'v6') return '«Perfecto Bruno: cerramos en $20.000 con la reseña, las dos historias y la foto, publicadas el 6 de octubre. Te mando el serum mañana.»';
   return '«¡Gracias por escribir! ¿Te ayudo con algo más?»';
 }
 
@@ -48,6 +74,16 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
   // Lo que hay escrito en el compositor de cada conversación (no se pierde al cambiar de chat).
   const [borrador, setBorrador] = useState<Record<string, string>>({});
   const [filtro, setFiltro] = useState<'todas' | 'esperan'>('todas');
+  // Quién te escribe: un cliente (te compra) o un creador (te produce una pieza). Son dos cosas
+  // distintas y la bandeja las separa. 'todas' es la bandeja completa, sin filtrar.
+  const [tipoFiltro, setTipoFiltro] = useState<'todas' | TipoConversacion>('todas');
+  // En qué etapa va cada colaboración. Arranca con el dato de la conversación y se mueve desde
+  // la tarjeta La colaboración del detalle.
+  const [etapas, setEtapas] = useState<Record<string, EstadoColaboracion>>(() => {
+    const out: Record<string, EstadoColaboracion> = {};
+    for (const c of CONVERSACIONES) if (c.colab) out[c.id] = c.colab.estado;
+    return out;
+  });
   const [ignoradas, setIgnoradas] = useState<string[]>([]);
   // AUTOMATIZACIONES EDITABLES. `base` es lo último guardado (la automatización que está
   // funcionando de verdad) y `flujos` es la copia que se toca en pantalla. Mientras no aprietes
@@ -125,14 +161,49 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
   };
 
   const conv = CONVERSACIONES.find(c => c.id === sel) ?? CONVERSACIONES[0];
-  /** La cola de trabajo: las conversaciones que esperan a un humano. */
+  /** La cola de trabajo: las conversaciones que esperan a un humano. Sólo un cliente espera:
+   *  con un creador no se contesta, se negocia. */
   const cola = CONVERSACIONES.filter(c => espera[c.id]);
   // Las que esperan van primero: la bandeja es una cola de trabajo, no un archivo.
   const orden = [...CONVERSACIONES].sort((a, b) => Number(!!espera[b.id]) - Number(!!espera[a.id]));
-  const visibles = filtro === 'esperan' ? orden.filter(c => espera[c.id]) : orden;
+  /** Los dos filtros de la bandeja juntos: quién te escribe y quién espera a una persona. */
+  const pasaFiltros = (c: Conversacion, t = tipoFiltro, f = filtro) =>
+    (t === 'todas' || c.tipo === t) && (f === 'todas' || !!espera[c.id]);
+  const visibles = orden.filter(c => pasaFiltros(c));
+  const nClientes = CONVERSACIONES.filter(c => c.tipo === 'cliente').length;
+  const nCreadores = CONVERSACIONES.filter(c => c.tipo === 'creador').length;
+  const enNegociacion = CONVERSACIONES.filter(c => etapas[c.id] === 'negociando').length;
+  const acordadas = CONVERSACIONES.filter(c => etapas[c.id] === 'acordado').length;
   const msgs = hilos[conv.id] ?? conv.msgs;
   const atiende = control[conv.id] ?? 'ia';
   const texto = borrador[conv.id] ?? '';
+  /** La etapa de la colaboración abierta: sólo tiene sentido si el que escribe es un creador. */
+  const etapa = etapas[conv.id] ?? 'invitado';
+
+  /**
+   * Cambia un filtro y, si la conversación abierta queda fuera de la lista, abre la primera que
+   * sí queda: la bandeja y el detalle nunca se contradicen.
+   */
+  const filtrar = (t: 'todas' | TipoConversacion, f: 'todas' | 'esperan') => {
+    setTipoFiltro(t);
+    setFiltro(f);
+    const lista = orden.filter(c => pasaFiltros(c, t, f));
+    if (lista.length > 0 && !lista.some(c => c.id === sel)) setSel(lista[0].id);
+  };
+
+  /**
+   * Mueve la colaboración una etapa adelante o atrás. No le manda nada al creador: es la etiqueta
+   * del acuerdo, y el mensaje sale sólo desde el compositor.
+   */
+  const moverEtapa = (id: string, paso: 1 | -1) => {
+    const i = ETAPAS.indexOf(etapas[id] ?? 'invitado');
+    const siguiente = ETAPAS[Math.min(ETAPAS.length - 1, Math.max(0, i + paso))];
+    setEtapas(p => ({ ...p, [id]: siguiente }));
+    const nombre = (CONVERSACIONES.find(c => c.id === id)?.nombre ?? 'el creador').split(' ')[0];
+    setToast(paso === 1
+      ? `La colaboración con ${nombre} quedó en «${textoEtapa(siguiente)}». No le salió ningún mensaje: el acuerdo se cuenta desde el compositor (demo)`
+      : `Volviste la colaboración con ${nombre} a «${textoEtapa(siguiente)}»: no cambia nada de lo ya hablado (demo)`);
+  };
 
   const tomarControl = (id: string) => {
     setControl(p => ({ ...p, [id]: 'humano' }));
@@ -184,12 +255,13 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
       <ViewHead
         icon={<I_Whatsapp size={19} />}
         titulo="Conversaciones"
-        sub="Todo tu WhatsApp y Messenger en un solo lugar. Rumi contesta sola y vos entrás sólo cuando hace falta: siempre desde el mismo lugar, el compositor."
+        sub="Todo tu WhatsApp y Messenger en un solo lugar. Acá caen dos cosas distintas y se ven distintas: los clientes que te quieren comprar y los creadores que te producen una pieza. Rumi contesta sola y vos entrás sólo cuando hace falta."
         nums={[
-          { v: '128', l: 'mensajes hoy' },
-          { v: '94%', l: 'resueltos por la IA', c: 'var(--green)' },
-          { v: String(cola.length), l: 'esperan a un humano', c: cola.length ? 'var(--red)' : 'var(--green)' },
-          { v: String(flujos.filter(f => f.estado === 'Activo').length), l: `de ${flujos.length} automatizaciones encendidas`, c: 'var(--purple3)' },
+          { v: '128', l: 'mensajes de clientes hoy' },
+          { v: '94%', l: 'de esos, los contestó la IA', c: 'var(--green)' },
+          { v: String(cola.length), l: 'clientes esperan a un humano', c: cola.length ? 'var(--red)' : 'var(--green)' },
+          { v: String(nCreadores), l: `colaboraciones con creadores${enNegociacion ? ` · ${enNegociacion} en negociación` : acordadas ? ` · ${acordadas} acordada${acordadas === 1 ? '' : 's'}` : ''}`, c: 'var(--purple4)' },
+          { v: String(flujos.filter(f => f.estado === 'Activo').length), l: `de ${flujos.length} automatizaciones de clientes`, c: 'var(--purple3)' },
         ]}
       />
 
@@ -197,25 +269,42 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
       <div className="duo">
         <Card
           title={<span className="row" style={{ gap: 8 }}><I_Chat size={14} style={{ color: 'var(--purple3)' }} /> La bandeja</span>}
-          action={<Badge tone={cola.length ? 'red' : 'green'}>{cola.length ? `${cola.length} esperan a un humano` : 'nadie espera'}</Badge>}
+          action={<Badge tone={cola.length ? 'red' : 'green'}>{cola.length ? `${cola.length} clientes esperan a un humano` : 'nadie espera a un humano'}</Badge>}
         >
-          {/* El filtro de la cola: primero lo que te está esperando a vos. */}
-          <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-            <span className="bt">Ver</span>
+          {/* Los dos filtros, en la misma fila: quién te escribe (cliente o creador) y la cola de
+              trabajo. Un creador NO es un cliente: mezclados, no se sabe si hay que contestarle
+              como comprador o negociar con él como proveedor. */}
+          <div className="ban-filtros">
+            <span className="bt">Quién te escribe</span>
+            <div className="seg-group">
+              <span className={`seg ${tipoFiltro === 'cliente' ? 'on' : ''}`} role="button"
+                title={`Muestra sólo las conversaciones de clientes (${nClientes}): gente que te compró o te quiere comprar. Es sólo la vista, y podés volver a Todas cuando quieras.`}
+                onClick={() => filtrar('cliente', filtro)}>Clientes ({nClientes})</span>
+              <span className={`seg ${tipoFiltro === 'creador' ? 'on' : ''}`} role="button"
+                title={`Muestra sólo las conversaciones de creadores (${nCreadores}): gente que te produce una pieza. No te compran nada: con ellos se negocia precio, plazo y entrega. Es sólo la vista.`}
+                onClick={() => filtrar('creador', filtro)}>Creadores ({nCreadores})</span>
+              <span className={`seg ${tipoFiltro === 'todas' ? 'on' : ''}`} role="button"
+                title={`Muestra las ${CONVERSACIONES.length} conversaciones de la bandeja: clientes y creadores juntos. Podés volver a este filtro cuando quieras.`}
+                onClick={() => filtrar('todas', filtro)}>Todas ({CONVERSACIONES.length})</span>
+            </div>
+            <span className="bt">Cola</span>
             <div className="seg-group">
               <span className={`seg ${filtro === 'todas' ? 'on' : ''}`} role="button"
-                title="Muestra todas las conversaciones, las que atiende Rumi y las que esperan a un humano. Podés volver a este filtro cuando quieras."
-                onClick={() => setFiltro('todas')}>Todas ({CONVERSACIONES.length})</span>
+                title="Muestra toda la bandeja, sin mirar quién espera a una persona. Es sólo la vista, y podés volver cuando quieras."
+                onClick={() => filtrar(tipoFiltro, 'todas')}>Sin filtrar</span>
               <span className={`seg ${filtro === 'esperan' ? 'on' : ''}`} role="button"
-                title="Muestra sólo las conversaciones que esperan a una persona. No cambia nada de las conversaciones: es sólo la vista, y podés volver a Todas cuando quieras."
-                onClick={() => setFiltro('esperan')}>Esperan a un humano ({cola.length})</span>
+                title={`Muestra sólo los ${cola.length} clientes que esperan a una persona. Un creador nunca espera a un humano: con él se negocia. No cambia nada de las conversaciones.`}
+                onClick={() => filtrar(tipoFiltro, 'esperan')}>Esperan a un humano ({cola.length})</span>
             </div>
           </div>
 
           {visibles.length === 0 ? (
             <div className="bs">
-              No hay ninguna conversación esperando a una persona ahora mismo: Rumi está contestando
-              todas. Cuando una se escale sola o se enfríe, aparece acá arriba.
+              {tipoFiltro === 'creador'
+                ? 'No hay ninguna colaboración con creadores a la vista con estos filtros. Las invitaciones que salen desde Publicar aparecen acá, en violeta, con Rumi negociando el precio y el plazo.'
+                : filtro === 'esperan'
+                  ? 'No hay ninguna conversación esperando a una persona ahora mismo: Rumi está contestando todas. Cuando una se escale sola o se enfríe, aparece acá arriba.'
+                  : 'No hay ninguna conversación en la bandeja con estos filtros: volvé a Todas para verlas todas.'}
             </div>
           ) : visibles.map(c => {
             const hilo = hilos[c.id] ?? c.msgs;
@@ -236,6 +325,13 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
                     {hilo[hilo.length - 1].txt}
                   </div>
                   <div className="row" style={{ gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
+                    <span className={`badge ${c.tipo === 'creador' ? 'tg-creador' : 'tg-cliente'}`} style={{ fontSize: 9 }}
+                      title={c.tipo === 'creador'
+                        ? 'Es un creador: te produce una pieza, no te compra. Rumi negocia con él el precio, el plazo y qué entrega.'
+                        : 'Es un cliente: te compró o te quiere comprar. Rumi le contesta con su historial de compras pegado.'}>
+                      {c.tipo === 'creador' ? <I_Camera size={9} /> : <I_User size={9} />}
+                      {' '}{c.tipo === 'creador' ? 'Creador' : 'Cliente'}
+                    </span>
                     <span className={`badge ${c.canal === 'wa' ? 'badge-green' : 'badge-purple'}`} style={{ fontSize: 9 }}>
                       {c.canal === 'wa' ? 'WhatsApp' : 'Messenger'}
                     </span>
@@ -249,6 +345,12 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
                         <I_Clock size={10} /> espera hace {espera[c.id]}
                       </span>
                     )}
+                    {c.tipo === 'creador' && etapas[c.id] && (
+                      <span className={`badge ${TONO_ETAPA[etapas[c.id]]}`} style={{ fontSize: 9 }}
+                        title={AYUDA_ETAPA[etapas[c.id]]}>
+                        {textoEtapa(etapas[c.id])}
+                      </span>
+                    )}
                     <span className="badge badge-muted" style={{ fontSize: 9 }}>{c.tag}</span>
                   </div>
                 </div>
@@ -257,7 +359,7 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
           })}
 
           <div style={{ marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--border)' }}>
-            <div className="tiny muted" style={{ marginBottom: 7 }}>De dónde vinieron los 128 mensajes de hoy</div>
+            <div className="tiny muted" style={{ marginBottom: 7 }}>De dónde vinieron los 128 mensajes de clientes de hoy</div>
             <BarRow label="WhatsApp" valor={78} max={128} color="var(--green)" />
             <BarRow label="Messenger" valor={34} max={128} color="var(--purple2)" />
             <BarRow label="Instagram" valor={16} max={128} color="#e11d48" />
@@ -275,6 +377,13 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
           }
           action={
             <span className="row" style={{ gap: 7, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+              <span className={`badge ${conv.tipo === 'creador' ? 'tg-creador' : 'tg-cliente'}`}
+                title={conv.tipo === 'creador'
+                  ? 'Esta conversación es de un creador: te produce una pieza. No hay compra ni historial de cliente: lo que importa es qué le pedís, a qué precio y para cuándo.'
+                  : 'Esta conversación es de un cliente: te compró o te quiere comprar. Rumi contesta con su historial pegado.'}>
+                {conv.tipo === 'creador' ? <I_Camera size={11} /> : <I_User size={11} />}
+                {' '}{conv.tipo === 'creador' ? 'Creador' : 'Cliente'}
+              </span>
               {espera[conv.id] && <Badge tone="red">espera hace {espera[conv.id]}</Badge>}
               <Badge tone={atiende === 'ia' ? 'green' : 'amber'}>
                 {atiende === 'ia' ? 'Atiende Rumi (IA)' : 'Atendés vos'}
@@ -302,18 +411,71 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
             })}
           </div>
 
-          <div className="datos-row" style={{ marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--border)' }}>
-            <div className="dato"><span className="dato-l">Cliente hace</span><span className="dato-v">4 meses</span></div>
-            <div className="dato"><span className="dato-l">Compras</span><span className="dato-v" style={{ color: 'var(--green)' }}>3</span></div>
-            <div className="dato"><span className="dato-l">Ticket promedio</span><span className="dato-v">$8.400</span></div>
-          </div>
-          <div className="bs">
-            El agente ya sabe esto antes de contestar: cada conversación lleva el historial del cliente pegado.
-          </div>
+          {conv.tipo === 'creador' && conv.colab ? (
+            /* Un creador no tiene compras ni ticket promedio: tiene una pieza que entregar, un
+               precio y una fecha. Por eso el contexto de abajo es otro, no el del cliente. */
+            <div className="colab">
+              <div className="colab-head">
+                <span className="colab-t"><I_Camera size={13} /> La colaboración</span>
+                <span className={`badge ${TONO_ETAPA[etapa]}`} title={AYUDA_ETAPA[etapa]}>{textoEtapa(etapa)}</span>
+              </div>
+              <div className="colab-filas">
+                <div className="colab-f">
+                  <span className="colab-l">Qué le pedís</span>
+                  <span className="colab-v">{conv.colab.pedido}</span>
+                </div>
+                <div className="colab-f">
+                  <span className="colab-l">Precio</span>
+                  <span className="colab-v">{conv.colab.precio}</span>
+                </div>
+                <div className="colab-f">
+                  <span className="colab-l">Plazo</span>
+                  <span className="colab-v">{conv.colab.plazo}</span>
+                </div>
+                <div className="colab-f">
+                  <span className="colab-l">Qué entrega</span>
+                  <span className="colab-v">{conv.colab.entrega}</span>
+                </div>
+              </div>
+              <div className="colab-acc">
+                {etapa !== 'acordado' && (
+                  <Button className="btn-sm"
+                    title={etapa === 'invitado'
+                      ? 'Marca la colaboración como «negociando», para cuando el creador ya contestó y están hablando de precio y plazo. No le manda ningún mensaje al creador y es reversible con Volver a invitación.'
+                      : 'Marca la colaboración como «acordado», con el precio, el plazo y la entrega como quedaron. No le manda ningún mensaje al creador: el acuerdo se lo contás desde el compositor. Es reversible con Volver a negociación.'}
+                    onClick={() => moverEtapa(conv.id, 1)}>
+                    <I_Check size={13} /> {etapa === 'invitado' ? 'Pasó a negociar' : 'Cerrar el acuerdo'}
+                  </Button>
+                )}
+                {etapa !== 'invitado' && (
+                  <Button variant="ghost" className="btn-sm"
+                    title={`Vuelve la colaboración un paso atrás, a «${textoEtapa(etapa === 'acordado' ? 'negociando' : 'invitado')}». Es reversible: podés volver a avanzarla cuando quieras, y no cambia nada de lo que ya se habló.`}
+                    onClick={() => moverEtapa(conv.id, -1)}>
+                    <I_ArrowLeft size={13} /> {etapa === 'acordado' ? 'Volver a negociación' : 'Volver a invitación'}
+                  </Button>
+                )}
+              </div>
+              <div className="bs">
+                Acá no hay compras ni ticket promedio: hay una pieza que se entrega. El precio, el plazo y la
+                etapa son de esta colaboración, no de una venta.
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="datos-row" style={{ marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--border)' }}>
+                <div className="dato"><span className="dato-l">Cliente hace</span><span className="dato-v">4 meses</span></div>
+                <div className="dato"><span className="dato-l">Compras</span><span className="dato-v" style={{ color: 'var(--green)' }}>3</span></div>
+                <div className="dato"><span className="dato-l">Ticket promedio</span><span className="dato-v">$8.400</span></div>
+              </div>
+              <div className="bs">
+                El agente ya sabe esto antes de contestar: cada conversación lleva el historial del cliente pegado.
+              </div>
+            </>
+          )}
 
           {ignoradas.includes(conv.id) ? (
             <div className="composer-hint" style={{ padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 10, background: 'var(--bg2)' }}>
-              Descartaste el borrador que había escrito Rumi en esta conversación. El cliente sigue sin
+              Descartaste el borrador que había escrito Rumi en esta conversación. {conv.tipo === 'creador' ? 'El creador' : 'El cliente'} sigue sin
               respuesta: escribí vos abajo, o pedí el borrador otra vez.
               <div className="row" style={{ gap: 8, marginTop: 9, flexWrap: 'wrap' }}>
                 <Button variant="ghost" className="btn-sm" title="Vuelve a mostrar el borrador que Rumi había escrito. No manda nada al cliente."
@@ -472,6 +634,17 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
         <Button className="btn-sm csec-act"
           title="Agrega una automatización nueva al final de la lista, con el primer paso listo para escribir. Arranca en pausa y no sale ningún mensaje hasta que la guardes y la enciendas. Mientras no la guardes, Descartar la saca de la lista."
           onClick={agregarFlujo}><I_Plus size={13} /> Nueva automatización</Button>
+      </div>
+      {/* Las automatizaciones se disparan con cosas de un CLIENTE (compró, abandonó el carrito, no
+          compra hace 90 días). Con un creador no se disparan: eso se negocia en la conversación. */}
+      <div className="aut-solo-cli">
+        <I_User size={12} />
+        <span>
+          Estas automatizaciones son <b>para clientes</b>: se disparan con lo que hace un cliente (escribe
+          por primera vez, deja el carrito, no compra hace 90 días). <b>No se aplican a los creadores</b>:
+          con un creador el precio, el plazo y lo que entrega se negocian en la conversación, no le sale un
+          mensaje automático.
+        </span>
       </div>
       {/* Un borrado de algo ya guardado deja de ser reversible sólo cuando lo confirmás: por eso el
           deshacer está acá arriba, donde se ve aunque la tarjeta ya no esté. */}

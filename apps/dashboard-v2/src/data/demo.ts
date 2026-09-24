@@ -612,9 +612,35 @@ export const CAMPANAS: Campana[] = [
 
 // ---------------------------------------------------------------------------------------------
 // CONVERSACIONES
+//
+// En la bandeja hay DOS cosas distintas y no se pueden mezclar: un CLIENTE es alguien que te
+// compra (o te quiere comprar) y un CREADOR es alguien que te vende un servicio (te graba la
+// pieza). Por eso cada conversación declara su `tipo` y sólo las de creador llevan `colab`, con
+// los datos de la colaboración (qué se le pide, precio, plazo, qué entrega y en qué etapa va).
+// Si esta distinción se pierde, el dueño no sabe si tiene que contestar como vendedor o como
+// quien contrata, y los números del módulo (mensajes, % de IA, cola de humanos) se ensucian con
+// conversaciones que nunca fueron de venta.
 // ---------------------------------------------------------------------------------------------
 
 export interface Mensaje { de: 'ellos' | 'ia' | 'yo'; txt: string; hora?: string }
+
+/** Quién está del otro lado: el que te compra (cliente) o el que te produce una pieza (creador). */
+export type TipoConversacion = 'cliente' | 'creador';
+
+/** En qué etapa va el acuerdo con un creador. Se avanza de a una y se puede volver atrás. */
+export type EstadoColaboracion = 'invitado' | 'negociando' | 'acordado';
+
+/**
+ * Los datos de la colaboración, sólo en las conversaciones de creador. Acá no hay compras ni
+ * ticket promedio: hay una pieza que se entrega, un precio y una fecha.
+ */
+export interface Colaboracion {
+  pedido: string;   // qué le pide la tienda al creador
+  precio: string;   // lo ofrecido en la charla o lo ya acordado
+  plazo: string;    // cuándo publica / entrega
+  entrega: string;  // qué piezas entrega
+  estado: EstadoColaboracion;
+}
 
 export interface Conversacion {
   id: string;
@@ -626,11 +652,13 @@ export interface Conversacion {
   hora: string;
   esperando: string;
   msgs: Mensaje[];
+  tipo: TipoConversacion;
+  colab?: Colaboracion;
 }
 
 export const CONVERSACIONES: Conversacion[] = [
   {
-    id: 'v1', nombre: 'Valeria G.', tag: 'Lead', color: '#22c55e', canal: 'wa', cola: 'humano', hora: '10:24', esperando: '4 h',
+    id: 'v1', nombre: 'Valeria G.', tag: 'Lead', color: '#22c55e', canal: 'wa', cola: 'humano', tipo: 'cliente', hora: '10:24', esperando: '4 h',
     msgs: [
       { de: 'ellos', txt: '¡Hola! Quería saber si el serum sirve para piel mixta', hora: '10:21' },
       { de: 'ia', txt: '¡Sí! Es ideal para piel mixta: hidrata sin generar grasa en la zona T. Te dejo el link 👇', hora: '10:22' },
@@ -638,25 +666,58 @@ export const CONVERSACIONES: Conversacion[] = [
     ],
   },
   {
-    id: 'v2', nombre: 'Julián D.', tag: 'Post-venta', color: '#c084fc', canal: 'wa', cola: 'ia', hora: '09:12', esperando: '—',
+    id: 'v2', nombre: 'Julián D.', tag: 'Post-venta', color: '#c084fc', canal: 'wa', cola: 'ia', tipo: 'cliente', hora: '09:12', esperando: '—',
     msgs: [
       { de: 'ellos', txt: 'Mi pedido llegó, gracias 🙏', hora: '09:10' },
       { de: 'ia', txt: '¡Nos alegra! ¿Podés dejarnos una reseña de 5⭐? Nos ayuda un montón.', hora: '09:12' },
     ],
   },
   {
-    id: 'v3', nombre: 'Camila T.', tag: 'Lead', color: '#22c55e', canal: 'msgr', cola: 'ia', hora: 'Ayer', esperando: '—',
+    id: 'v3', nombre: 'Camila T.', tag: 'Lead', color: '#22c55e', canal: 'msgr', cola: 'ia', tipo: 'cliente', hora: 'Ayer', esperando: '—',
     msgs: [
       { de: 'ellos', txt: '¿Hacen envíos a Córdoba? Y quería saber opciones de pago en cuotas 🙏' },
       { de: 'ia', txt: '¡Sí, llegamos a todo el país! Córdoba: 3-5 días hábiles. Podés pagar con 3 o 6 cuotas sin interés.' },
     ],
   },
   {
-    id: 'v4', nombre: 'Martín R.', tag: 'Soporte', color: '#ef4444', canal: 'msgr', cola: 'humano', hora: 'Ayer', esperando: '11 h',
+    id: 'v4', nombre: 'Martín R.', tag: 'Soporte', color: '#ef4444', canal: 'msgr', cola: 'humano', tipo: 'cliente', hora: 'Ayer', esperando: '11 h',
     msgs: [
       { de: 'ellos', txt: 'Quiero cancelar mi suscripción, no me está funcionando el producto' },
       { de: 'ia', txt: '¡Lamento escucharlo! ¿Podés contarme el motivo? Quizás lo podemos solucionar.' },
       { de: 'ellos', txt: 'No, directamente quiero cancelar. Es un tema de mi banco, necesito que alguien me lo resuelva.' },
+    ],
+  },
+  // ---- CREADORES: no te compran, te producen una pieza. Rumi negocia precio, plazo y entrega. ----
+  {
+    // Recién invitada: Rumi le escribió la propuesta y todavía no contestó. No espera a nadie.
+    id: 'v5', nombre: 'Sofía Bermúdez', tag: 'Colaboración · unboxing', color: '#a855f7', canal: 'wa', cola: 'ia', tipo: 'creador', hora: '11:02', esperando: '—',
+    colab: {
+      pedido: 'Un video corto de 20 segundos abriendo el pedido y mostrando el serum en la mano',
+      precio: 'Ofrecido: $12.000 por pieza (es lo que tiene publicado)',
+      plazo: 'publica antes del 12 de octubre',
+      entrega: '1 video corto de 20 s + 2 historias con el link de la tienda',
+      estado: 'invitado',
+    },
+    msgs: [
+      { de: 'ia', txt: '¡Hola Sofía! Somos Sinkroo, la tienda de skincare natural de Palermo. Nos gustó tu unboxing del pedido completo y te queremos proponer una colaboración: un video corto de 20 s abriendo el pedido y mostrando el serum. Te ofrecemos $12.000 por la pieza, con dos historias extra, publicado antes del 12 de octubre. ¿Te sirve?', hora: '11:02' },
+    ],
+  },
+  {
+    // En negociación: ya hubo ida y vuelta por el precio ($22.000 pedidos, $20.000 ofrecidos) y por
+    // el plazo (el 6 de octubre, que es la fecha que necesita la marca para la campaña).
+    id: 'v6', nombre: 'Bruno Salinas', tag: 'Colaboración · reseña', color: '#8b5cf6', canal: 'wa', cola: 'ia', tipo: 'creador', hora: '10:47', esperando: '—',
+    colab: {
+      pedido: 'Una reseña del serum mostrando la lista de ingredientes y cómo lo usa de noche',
+      precio: 'Ofrecido: $20.000 por la reseña (él pidió $22.000 por la pieza sola)',
+      plazo: 'publica el 6 de octubre',
+      entrega: '1 reseña de 60 s + 2 historias + 1 foto de producto',
+      estado: 'negociando',
+    },
+    msgs: [
+      { de: 'ia', txt: '¡Hola Bruno! Te escribimos de Sinkroo, la tienda de skincare natural. Seguimos tu rutina de skincare de los lunes y nos interesa una reseña del serum mostrando la lista de ingredientes. ¿Cuánto cobrás por una pieza así?', hora: '10:31' },
+      { de: 'ellos', txt: '¡Hola! Una reseña sola la cobro $22.000. Si querés foto de producto, $26.000 las dos piezas.', hora: '10:38' },
+      { de: 'ia', txt: 'Podemos pagar $20.000 por la reseña, publicada el 6 de octubre, mostrando la lista de ingredientes y cómo lo usás de noche.', hora: '10:44' },
+      { de: 'ellos', txt: 'Por $20.000 hago la reseña y te sumo dos historias, pero necesito publicar el 6 sí o sí: después me voy de viaje. Si te sirve, lo cerramos.', hora: '10:47' },
     ],
   },
 ];
