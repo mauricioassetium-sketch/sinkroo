@@ -3,10 +3,10 @@ import { Card, Badge, Button } from '../components/ui';
 import { MotorEnVivo } from '../components/MotorEnVivo';
 import { Bars, Ring, BarRow, MetricaAnillo } from '../components/viz';
 import { usePerfil, nombreDePila } from '../lib/perfil';
-import { SinkrooMark, I_Check, I_ArrowRight, I_Wallet, I_Eye, I_Vote, I_Users, I_Star, I_Sun, I_Zap, I_Trend, I_Clock } from '../components/icons';
+import { SinkrooMark, I_Check, I_ArrowRight, I_Wallet, I_Eye, I_Vote, I_Star, I_Sun, I_Zap, I_Trend, I_Clock } from '../components/icons';
 import type { Vista } from '../components/Layout';
 import {
-  ALARMAS, DECISIONES, AGENTES, NUMEROS, MIENTRAS_NO_ESTABAS, BITACORA, MODOS, CONSECUENCIA,
+  ALARMAS, DECISIONES, NUMEROS, MIENTRAS_NO_ESTABAS, BITACORA, MODOS, CONSECUENCIA,
   MES, PANEL_PIEZAS,
   type Modo, type Severidad,
 } from '../data/demo';
@@ -145,26 +145,13 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
         </Card>
       </div>
 
-      {/* ====================== FILA 2: EL MOTOR Y LOS NÚMEROS ====================== */}
+      {/* ====================== FILA 2: LOS NÚMEROS DEL MES Y LA CALIDAD ====================== */}
       <div className="csec">
         <span className="csec-n">2</span>
-        <span className="csec-t">El motor y los números</span>
-        <span className="csec-s">Quién está trabajando y cómo van las métricas del modelo</span>
+        <span className="csec-t">Los números del mes y la calidad de lo que produjo</span>
+        <span className="csec-s">Cómo van las métricas del modelo y qué tan buenas salieron las piezas</span>
       </div>
       <div className="duo">
-        <Card
-          title={<span className="row" style={{ gap: 8 }}><I_Users size={14} style={{ color: 'var(--purple3)' }} /> El motor · estrategia y creatividad</span>}
-          action={<Badge tone="green">{AGENTES.filter(a => a.estado === 'trabajando').length} trabajando</Badge>}
-        >
-          <div className="work">
-            {AGENTES.slice(0, 3).map(a => <AgenteRow key={a.id} a={a} setToast={setToast} />)}
-          </div>
-          <div className="acc-why">
-            Cada botón abre <b>el artefacto</b> que produjo ese agente: el informe, las variantes o el porqué.
-            Nada de acá es un estado — es trabajo terminado y revisable.
-          </div>
-        </Card>
-
         <Card
           title={<span className="row" style={{ gap: 8 }}><I_Trend size={14} style={{ color: 'var(--green)' }} /> El modelo en números</span>}
           action={<Badge tone="purple">este mes</Badge>}
@@ -189,35 +176,6 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
           <div className="acc-why">
             Todos salen de tus conexiones reales: Meta Ads, tu WhatsApp y tu tienda.{' '}
             <b>Días de autonomía</b> es cuánto puede seguir trabajando el motor con los créditos que tenés.
-          </div>
-        </Card>
-      </div>
-
-      {/* ====================== FILA 3: EVOLUCIÓN Y CALIDAD ====================== */}
-      <div className="csec">
-        <span className="csec-n">3</span>
-        <span className="csec-t">El motor y la calidad de tus piezas</span>
-        <span className="csec-s">Quién produce y qué tan bueno es lo que produce</span>
-      </div>
-      <div className="duo">
-        <Card
-          title={<span className="row" style={{ gap: 8 }}><I_Users size={14} style={{ color: 'var(--purple3)' }} /> El motor · medios y ventas</span>}
-          action={<Badge tone="amber">1 espera tu OK</Badge>}
-        >
-          <div className="work">
-            {AGENTES.slice(3).map(a => <AgenteRow key={a.id} a={a} setToast={setToast} />)}
-          </div>
-          <div>
-            <div className="bs" style={{ marginBottom: 9 }}>Lo que dejó este equipo hoy, listo para revisar:</div>
-            <div className="guards">
-              <div className="guard"><I_Check size={14} style={{ color: 'var(--green)', flexShrink: 0 }} /><span className="guard-lb">Presupuesto reasignado a la campaña que mejor rinde<small>Kai · hace 3 h · reversible</small></span><span className="guard-val" style={{ color: 'var(--green)' }}>+7,3x</span></div>
-              <div className="guard"><I_Check size={14} style={{ color: 'var(--green)', flexShrink: 0 }} /><span className="guard-lb">Informe de resultados de la semana<small>Sol · hace 5 h</small></span><span className="guard-val">1</span></div>
-              <div className="guard"><I_Check size={14} style={{ color: 'var(--green)', flexShrink: 0 }} /><span className="guard-lb">Clientes que quedaron a un mensaje de comprar<small>Rumi · hace 20 min</small></span><span className="guard-val" style={{ color: 'var(--amber)' }}>4</span></div>
-            </div>
-          </div>
-          <div className="acc-why">
-            Estos tres son los que <b>gastan, miden y venden</b>: Kai mueve el presupuesto, Sol te dice qué funcionó
-            y Rumi atiende a quien escribe. Si algo pasa de su techo, te lo pide antes de hacerlo.
           </div>
         </Card>
 
@@ -253,9 +211,9 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
         </Card>
       </div>
 
-      {/* ====================== FILA 4: AUTONOMÍA Y MEMORIA ====================== */}
+      {/* ====================== FILA 3: AUTONOMÍA Y MEMORIA ====================== */}
       <div className="csec">
-        <span className="csec-n">4</span>
+        <span className="csec-n">3</span>
         <span className="csec-t">Cómo viene el mes y qué hizo solo</span>
         <span className="csec-s">El crecimiento y las acciones que tomó sin vos</span>
       </div>
@@ -281,9 +239,9 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
         </Card>
       </div>
 
-      {/* ====================== FILA 5: CIERRE ====================== */}
+      {/* ====================== FILA 4: CIERRE ====================== */}
       <div className="csec">
-        <span className="csec-n">5</span>
+        <span className="csec-n">4</span>
         <span className="csec-t">Memoria y cierre</span>
         <span className="csec-s">Todo lo que hizo el motor y cómo vas contra tus metas</span>
       </div>
@@ -402,34 +360,6 @@ function Decision({ d, onResolver }: { d: typeof DECISIONES[number]; onResolver:
         ))}
       </div>
       <div className="acc-why">{CONSECUENCIA[d.id]}</div>
-    </div>
-  );
-}
-
-// =============================================================================================
-function AgenteRow({ a, setToast }: { a: typeof AGENTES[number]; setToast: (t: string) => void }) {
-  const clase = a.estado === 'trabajando' ? 'working' : a.estado === 'esperando_ok' ? 'waiting' : 'idle';
-  return (
-    <div className={`work-row ${clase}`}>
-      <div className="work-av" style={{ background: a.color }}>{a.nombre[0]}</div>
-      <div className="work-body">
-        <div className="work-top">
-          <span className="work-name">{a.nombre}</span>
-          <span className="work-role">{a.rol}</span>
-          {a.estado === 'trabajando' && <Badge tone="green">trabajando</Badge>}
-          {a.estado === 'esperando_ok' && <Badge tone="amber">espera tu OK</Badge>}
-          {a.estado === 'al_dia' && <Badge tone="muted">al día</Badge>}
-        </div>
-        <div className="work-anchor" style={{ marginTop: 7, display: 'inline-block' }}>{a.ancla}</div>
-        <div className="work-what">{a.accion}</div>
-        <div className="work-res"><b>→ </b>{a.resultado}</div>
-        <div className="work-foot">
-          <Button variant="ghost" className="btn-sm" title={`Abre: ${a.artefacto}`} onClick={() => setToast(`${a.artefacto} (demo)`)}>
-            <I_ArrowRight size={12} /> {a.artefacto}
-          </Button>
-          <span className="work-when">{a.cuando}</span>
-        </div>
-      </div>
     </div>
   );
 }

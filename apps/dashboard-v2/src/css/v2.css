@@ -70,27 +70,6 @@
 .dec-obj { color: var(--muted); line-height: 1.45; }
 .dec-acts { display: flex; gap: 8px; flex-wrap: wrap; }
 
-/* ---------- El motor: los 6 agentes ---------- */
-.work { display: flex; flex-direction: column; gap: 10px; }
-.work-row { display: flex; gap: 13px; padding: 13px 14px; border: 1px solid var(--border); border-radius: 13px;
-  background: var(--card); align-items: flex-start; }
-.work-row.working { border-color: rgba(34,197,94,.32); background: linear-gradient(90deg, rgba(34,197,94,.06), transparent 55%); }
-.work-row.waiting { border-color: rgba(245,158,11,.4); background: linear-gradient(90deg, rgba(245,158,11,.08), transparent 55%); }
-.work-row.idle { opacity: .78; }
-.work-av { width: 38px; height: 38px; border-radius: 11px; display: flex; align-items: center; justify-content: center;
-  font-weight: 900; font-size: 15px; color: #fff; flex-shrink: 0; }
-.work-body { flex: 1; min-width: 0; }
-.work-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.work-name { font-weight: 800; font-size: 14px; }
-.work-role { font-size: 11.5px; color: var(--muted); }
-.work-anchor { font-size: 11px; color: var(--purple3); background: rgba(168,85,247,.1);
-  border: 1px solid rgba(168,85,247,.26); padding: 2px 8px; border-radius: 99px; }
-.work-what { font-size: 13px; color: var(--txt); margin-top: 6px; line-height: 1.4; }
-.work-res { font-size: 12.5px; color: var(--muted); margin-top: 4px; line-height: 1.45; }
-.work-res b { color: var(--purple4); font-weight: 700; }
-.work-foot { display: flex; align-items: center; gap: 9px; margin-top: 9px; flex-wrap: wrap; }
-.work-when { font-size: 11px; color: var(--muted2); margin-left: auto; }
-
 /* ---------- Bitácora (timeline) ---------- */
 .tl { position: relative; padding-left: 20px; }
 .tl::before { content: ''; position: absolute; left: 5px; top: 14px; bottom: 14px; width: 1px; background: var(--border2); }
@@ -583,7 +562,6 @@
 .duo > .card > .card-b > .tl,
 .duo > .card > .card-b > .guards,
 .duo > .card > .card-b > .exc,
-.duo > .card > .card-b > .work,
 .duo > .card > .card-b > .strike-list,
 .duo > .card > .card-b > .mwb-list,
 .duo > .card > .card-b > .col-stack,

@@ -100,6 +100,12 @@ export interface Agente {
   artefactoNombre: string;
   cuando: string;
   autonomia: Modo;
+  /**
+   * La tarea que tiene entre manos, con su avance: es lo que hace que la tarjeta del agente
+   * muestre una barra que se mueve sola mientras el panel está abierto ('47 de 50 anuncios').
+   * `hecho` es el punto de partida y `total` el techo de la vuelta.
+   */
+  tarea: { etiqueta: string; hecho: number; total: number };
 }
 
 export const AGENTES: Agente[] = [
@@ -113,6 +119,7 @@ export const AGENTES: Agente[] = [
     artefacto: 'Ver el informe',
     artefactoNombre: 'Informe de competencia · 47 anuncios',
     cuando: 'hace 12 min',
+    tarea: { etiqueta: 'anuncios leídos', hecho: 47, total: 50 },
   },
   {
     id: 'rex', nombre: 'Rex', rol: 'Estratega de Marketing', tecnico: 'marketing-strategist', color: '#9333ea',
@@ -124,6 +131,7 @@ export const AGENTES: Agente[] = [
     artefacto: 'Ver por qué',
     artefactoNombre: 'Plan del mes',
     cuando: 'hace 2 h',
+    tarea: { etiqueta: 'días del plan con campaña', hecho: 4, total: 7 },
   },
   {
     id: 'nia', nombre: 'Nia', rol: 'Creativa de Anuncios', tecnico: 'creative-strategist', color: '#ec4899',
@@ -135,6 +143,7 @@ export const AGENTES: Agente[] = [
     artefacto: 'Leer las 6',
     artefactoNombre: '6 variantes del aviso',
     cuando: 'hace 40 min',
+    tarea: { etiqueta: 'variantes escritas', hecho: 6, total: 8 },
   },
   {
     id: 'kai', nombre: 'Kai', rol: 'Comprador de Medios', tecnico: 'media-buyer', color: '#22c55e',
@@ -146,6 +155,7 @@ export const AGENTES: Agente[] = [
     artefacto: 'Aprobar ahora',
     artefactoNombre: 'Retargeting Carrito · espera tu OK',
     cuando: 'espera desde hace 9 min',
+    tarea: { etiqueta: 'conjuntos revisados', hecho: 4, total: 5 },
   },
   {
     id: 'sol', nombre: 'Sol', rol: 'Analista de Resultados', tecnico: 'performance-analyst', color: '#06b6d4',
@@ -157,6 +167,7 @@ export const AGENTES: Agente[] = [
     artefacto: 'Ver la calibración',
     artefactoNombre: 'Informe de resultados de la semana',
     cuando: 'hace 1 día',
+    tarea: { etiqueta: 'informes del día', hecho: 2, total: 3 },
   },
   {
     id: 'rumi', nombre: 'Rumi', rol: 'Vendedor de Cierre', tecnico: 'sales-closer', color: '#f59e0b',
@@ -168,6 +179,7 @@ export const AGENTES: Agente[] = [
     artefacto: 'Ver la conversación',
     artefactoNombre: 'Conversación de Valeria G.',
     cuando: 'hace 20 min',
+    tarea: { etiqueta: 'conversaciones atendidas', hecho: 12, total: 15 },
   },
 ];
 
@@ -273,6 +285,61 @@ export const HALLAZGOS: Hallazgo[] = [
     detalle: 'Por eso el plan del mes empuja el resultado y usa el precio solo como comparación.',
     artefacto: 'Ver el plan del mes',
   },
+];
+
+// ---------------------------------------------------------------------------------------------
+// EL FEED EN VIVO — lo que los agentes están haciendo AHORA, línea por línea
+//
+// Estas son las acciones que entran solas en el feed de arriba del bloque (ver MotorEnVivo.tsx):
+// una cada 2-4 segundos, con el nombre del agente, lo que hizo y el artefacto que dejó. Se
+// recorren barajadas, así que el orden nunca es el mismo. REGLA: cada línea tiene algo del negocio
+// del usuario y un resultado concreto, nunca un "analizando…".
+// ---------------------------------------------------------------------------------------------
+
+export interface AccionFeed {
+  /** Quién la hizo: el id del agente (ver AGENTES). El feed le pone el nombre y el color. */
+  agenteId: string;
+  /** La acción concreta, en una línea. */
+  texto: string;
+  /** El artefacto que dejó, si dejó uno: el feed lo muestra como botón que se abre. */
+  artefacto?: string;
+}
+
+export const ACCIONES_FEED: AccionFeed[] = [
+  // Lux — analista de mercado
+  { agenteId: 'lux', texto: 'leyó 6 anuncios nuevos de Tienda Norte', artefacto: 'Ver los anuncios' },
+  { agenteId: 'lux', texto: 'midió la demanda de «serum vitamina C»: +32%', artefacto: 'Ver la tendencia' },
+  { agenteId: 'lux', texto: 'comparó precios del rubro: tu $34 contra $29 de Tienda Norte', artefacto: 'Ver la tabla de precios' },
+  { agenteId: 'lux', texto: 'encontró 2 competidores nuevos en Villa Crespo', artefacto: 'Ver tu zona' },
+  { agenteId: 'lux', texto: 'revisó 12 reseñas de Belleza & Co: 4 nombran la vitamina C', artefacto: 'Ver las reseñas' },
+  { agenteId: 'lux', texto: 'contó 47 anuncios activos de 6 competidores', artefacto: 'Informe de competencia' },
+  // Rex — estratega
+  { agenteId: 'rex', texto: 'movió $40/día de TikTok a Meta: el CPC baja de $4,20 a $2,10', artefacto: 'Ver el plan del mes' },
+  { agenteId: 'rex', texto: 'sacó «intereses amplios» y dejó la audiencia en lookalike 3%', artefacto: 'Ver la audiencia' },
+  { agenteId: 'rex', texto: 'dejó el ángulo del mes: «resultado», con el precio como comparación', artefacto: 'Ver el ángulo' },
+  { agenteId: 'rex', texto: 'asignó campaña al día 5 del plan: ya van 4 de 7 días', artefacto: 'Ver el calendario' },
+  // Nia — creativa
+  { agenteId: 'nia', texto: 'escribió una variante nueva del aviso para probar', artefacto: 'Leer la variante' },
+  { agenteId: 'nia', texto: 'armó 2 imágenes con el formato before/after', artefacto: 'Ver las imágenes' },
+  { agenteId: 'nia', texto: 'escribió el guion del video de 15 segundos', artefacto: 'Leer el guion' },
+  { agenteId: 'nia', texto: 'cambió el titular a «Resultados en 14 días»', artefacto: 'Ver el cambio' },
+  { agenteId: 'nia', texto: 'dejó 3 respuestas listas para los comentarios del aviso', artefacto: 'Leer las respuestas' },
+  // Kai — comprador de medios
+  { agenteId: 'kai', texto: 'movió $4 al conjunto que mejor rinde', artefacto: 'Ver el movimiento' },
+  { agenteId: 'kai', texto: 'bajó la puja de $1,80 a $1,65 y sostuvo el CPA en $20', artefacto: 'Ver la puja' },
+  { agenteId: 'kai', texto: 'pausó el conjunto «lookalike frío»: gastaba sin convertir', artefacto: 'Ver el conjunto' },
+  { agenteId: 'kai', texto: 'revisó 5 conjuntos: el gasto del día va en $88 de $120', artefacto: 'Ver el gasto del día' },
+  { agenteId: 'kai', texto: 'dejó «Retargeting Carrito» esperando tu OK', artefacto: 'Revisar la campaña' },
+  // Sol — analista de resultados
+  { agenteId: 'sol', texto: 'cerró el informe del día: ROAS 3,8x', artefacto: 'Ver el informe' },
+  { agenteId: 'sol', texto: 'comparó lo que predijo (84) con lo que pasó (79)', artefacto: 'Ver la calibración' },
+  { agenteId: 'sol', texto: 'revisó 3 campañas y marcó 1 para bajar el presupuesto', artefacto: 'Ver qué revisó' },
+  { agenteId: 'sol', texto: 'corrigió el modelo: la próxima subestima 6% menos', artefacto: 'Ver el modelo' },
+  // Rumi — vendedor de cierre
+  { agenteId: 'rumi', texto: 'respondió 3 consultas y cerró 1 venta', artefacto: 'Ver las conversaciones' },
+  { agenteId: 'rumi', texto: 'le contestó a Valeria G.: envío a CABA en 2 a 4 días', artefacto: 'Ver el mensaje' },
+  { agenteId: 'rumi', texto: 'recuperó un carrito abandonado de $59', artefacto: 'Ver el carrito' },
+  { agenteId: 'rumi', texto: 'escaló 1 conversación: la clienta pidió hablar con una persona', artefacto: 'Ver por qué' },
 ];
 
 // ---------------------------------------------------------------------------------------------
