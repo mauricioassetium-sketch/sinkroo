@@ -1659,3 +1659,21 @@ html.marca-cliente .pers-flotante { color: var(--sobre-grad); }
   .pers-drop-prev { width: 68px; height: 68px; border-radius: 12px; }
   .pers-flotante { right: 12px; bottom: 12px; padding: 10px 14px; }
 }
+
+/* =============================================================================================
+   MODALES: que se vea SOLO el modal abierto, y con contraste legible.
+   El panel de personalizar quedó con z-index 130 y el fondo del modal con 100: el panel se dibujaba
+   POR ENCIMA del modal, así que al abrir "Tu perfil" se seguía viendo el otro panel y el dashboard.
+   ============================================================================================= */
+.ob-modal-back { z-index: 190; }                       /* arriba de los paneles (130) y debajo del toast (200) */
+.ob-modal-back .card { box-shadow: 0 24px 80px rgba(0,0,0,.6); }
+
+/* Etiquetas y ayudas del modal: eran `--muted` sobre fondo casi negro y se leían mal. */
+.ob-modal-back .label { color: var(--txt); opacity: .82; }
+.ob-modal-back .tiny.muted, .ob-modal-back .bs { color: var(--txt); opacity: .68; }
+.ob-modal-back .input::placeholder { color: var(--txt); opacity: .38; }
+
+/* Chips sin seleccionar: el texto era `--muted` sobre `--bg3`, el punto más flojo de contraste. */
+.tipo-chip { color: var(--txt); opacity: .74; }
+.tipo-chip:hover { opacity: .95; }
+.tipo-chip.sel { opacity: 1; }
