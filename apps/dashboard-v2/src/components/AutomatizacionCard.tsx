@@ -141,7 +141,7 @@ export function AutomatizacionCard({ flujo, sucio, onCambio, onGuardar, onDescar
       title={
         <span className="row aut-nombre-row" style={{ gap: 8 }}>
           <I_Zap size={14} style={{ color: 'var(--purple3)' }} />
-          <input className="aut-nombre" value={flujo.nombre} placeholder="Ej. Recordatorio de recompra"
+          <input className="aut-nombre" id={`aut-nombre-${flujo.id}`} value={flujo.nombre} placeholder="Ej. Recordatorio de recompra"
             title="El nombre de esta automatización: es el que ves en la lista y el que sale en los avisos. Se puede escribir y, mientras no guardes, Descartar lo devuelve."
             onChange={e => onCambio({ ...flujo, nombre: e.target.value })} />
         </span>

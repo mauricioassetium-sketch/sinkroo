@@ -58,7 +58,6 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
   // posición para que Deshacer las devuelva al mismo lugar del que salieron.
   const [borrados, setBorrados] = useState<{ f: FlujoEditable; i: number }[]>([]);
   const compositor = useRef<HTMLInputElement>(null);
-  const nombreInput = useRef<HTMLInputElement>(null);
 
   const cambiarFlujo = (f: FlujoEditable) =>
     setFlujos(fs => fs.map(x => (x.id === f.id ? f : x)));
@@ -95,7 +94,7 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
     const f = flujoNuevo();
     setFlujos(fs => [...fs, f]);
     setToast('Agregaste una automatización nueva al final de la lista: ponele nombre, elegí cuándo se dispara y escribí el primer mensaje. Arranca en pausa y todavía no está guardada');
-    setTimeout(() => nombreInput.current?.focus(), 0);
+    setTimeout(() => document.querySelector<HTMLInputElement>(`#aut-nombre-${f.id}`)?.focus(), 0);
   };
 
   /**
@@ -469,13 +468,38 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
         <span className="csec-n">1</span>
         <span className="csec-t">Automatizaciones</span>
         <span className="csec-s">Mensajes que salen solos en el momento justo. Encendelas, apagalas y editá cada paso acá mismo</span>
+        {/* El alta de automatizaciones: agrega una tarjeta vacía al final de la grilla. */}
+        <Button className="btn-sm csec-act"
+          title="Agrega una automatización nueva al final de la lista, con el primer paso listo para escribir. Arranca en pausa y no sale ningún mensaje hasta que la guardes y la enciendas. Mientras no la guardes, Descartar la saca de la lista."
+          onClick={agregarFlujo}><I_Plus size={13} /> Nueva automatización</Button>
       </div>
-      <div className="duo">
-        {flujos.map(f => (
-          <AutomatizacionCard key={f.id} flujo={f} sucio={estaSucio(f)} avisar={setToast}
-            onCambio={cambiarFlujo} onGuardar={() => guardarFlujo(f)} onDescartar={() => descartarFlujo(f)} />
-        ))}
-      </div>
+      {/* Un borrado de algo ya guardado deja de ser reversible sólo cuando lo confirmás: por eso el
+          deshacer está acá arriba, donde se ve aunque la tarjeta ya no esté. */}
+      {borrados.length > 0 && (
+        <div className="aut-borrados">
+          <span className="aut-borrados-t">
+            Sacaste {borrados.length === 1 ? 'una automatización' : `${borrados.length} automatizaciones`} de la
+            lista ({borrados.map(b => nombreOFrase(b.f)).join(', ')}). Todavía no se guardó el borrado.
+          </span>
+          <Button variant="ghost" className="btn-sm"
+            title="Devuelve a la lista la automatización que borraste, en el mismo lugar en el que estaba y con sus pasos intactos. Como el borrado todavía no se guardó, no se perdió nada."
+            onClick={deshacerBorrados}>Deshacer</Button>
+        </div>
+      )}
+      {flujos.length === 0 ? (
+        <div className="bs">
+          No hay ninguna automatización en la lista. Agregá una con el botón <b>Nueva automatización</b> de
+          arriba: mientras no la guardes, no le sale nada a ningún cliente.
+        </div>
+      ) : (
+        <div className="duo">
+          {flujos.map(f => (
+            <AutomatizacionCard key={f.id} flujo={f} sucio={estaSucio(f)} avisar={setToast}
+              onCambio={cambiarFlujo} onGuardar={() => guardarFlujo(f)} onDescartar={() => descartarFlujo(f)}
+              onBorrar={() => borrarFlujo(f)} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
