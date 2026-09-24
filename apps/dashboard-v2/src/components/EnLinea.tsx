@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Card, Badge, Button } from './ui';
 import { BarRow } from './viz';
-import { I_Play, I_Eye, I_Zap, I_Trend, I_Check, I_Refresh, I_Credit, I_Pause } from './icons';
+import { I_Play, I_Eye, I_Zap, I_Trend, I_Check, I_Refresh, I_Credit, I_Pause, I_Film, I_Image, I_File } from './icons';
 
 // =============================================================================================
 // EN LÍNEA — el final del flujo: lo que se publicó y cómo está rindiendo AHORA.
@@ -83,7 +83,15 @@ export function EnLinea({ setToast, ir }: { setToast: (t: string) => void; ir?: 
         >
           {PUBLICADAS.map((p, i) => (
             <div key={p.titulo} className="pub">
-              <span className="pub-color" style={{ background: p.color }} />
+              <span className="pub-mini"
+                style={{ background: `linear-gradient(150deg, ${p.color}, ${p.color}22 70%, var(--bg3))` }}
+                title={`${p.formato} · ${p.red}`}>
+                <span className="pub-mini-ico">
+                  {/video|reel/i.test(p.formato) ? <I_Film size={16} />
+                    : /carrusel/i.test(p.formato) ? <I_File size={16} />
+                    : <I_Image size={16} />}
+                </span>
+              </span>
               <span style={{ flex: 1, minWidth: 0 }}>
                 <span className="rank-t">{p.titulo}</span>
                 <span className="rank-m">{p.formato} · {p.red}</span>

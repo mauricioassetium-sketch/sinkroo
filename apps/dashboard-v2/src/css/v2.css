@@ -821,3 +821,10 @@
    las campañas no se cortan con puntos suspensivos). */
 .graf-ancho { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; align-items: center; }
 @media (max-width: 1100px) { .graf-ancho { grid-template-columns: minmax(0, 1fr); gap: 14px; } }
+
+/* ---------- "Lo que está publicado": la miniatura de cada pieza ---------- */
+/* Un marco chico 4:5 con el color de la pieza y el icono del formato adentro, así se ve de un
+   vistazo si lo que está en campaña es un video, una imagen o un carrusel. */
+.pub-mini { width: 46px; aspect-ratio: 4 / 5; flex-shrink: 0; border-radius: 8px; overflow: hidden;
+  border: 1px solid var(--border2); display: grid; place-items: center; }
+.pub-mini-ico { color: rgba(255,255,255,.94); filter: drop-shadow(0 1px 4px rgba(0,0,0,.55)); display: grid; }
