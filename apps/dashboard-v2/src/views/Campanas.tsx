@@ -1,12 +1,13 @@
 import { useState } from 'react';
-import { Card, Badge, Button, Progress } from '../components/ui';
+import { Card, Badge, Button } from '../components/ui';
 import { ViewHead, Bars, Ring, BarRow, Gauge } from '../components/viz';
 import { Publicar } from '../components/Publicar';
 import { FlujoMiroFish } from '../components/FlujoMiroFish';
 import { Stepper, IngestaManual, Galeria, PASOS_CAMPANA, type PasoCampana } from '../components/CampanaPasos';
 import { MotorEnVivo } from '../components/MotorEnVivo';
 import { EnLinea } from '../components/EnLinea';
-import { I_Megaphone, I_Palette, I_Check, I_Vote, I_File, I_Zap, I_Trend, I_Eye, I_Robot, I_Play, I_Upload } from '../components/icons';
+import { CampanaViva } from '../components/CampanaViva';
+import { I_Megaphone, I_Palette, I_Check, I_Vote, I_File, I_Zap, I_Trend, I_Eye, I_Robot, I_Play, I_Upload, I_Pause } from '../components/icons';
 import type { Vista } from '../components/Layout';
 import { CAMPANAS, PANEL_ULTIMO, PANEL_PIEZAS, type Modo } from '../data/demo';
 
@@ -23,6 +24,14 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
   const veredicto = (v: string) => (v === 'go' ? { t: 'Listo', tone: 'green' as const } : v === 'review' ? { t: 'Revisar', tone: 'amber' as const } : { t: 'No lanzar', tone: 'red' as const });
   const artefactos = CAMPANAS.reduce((s, c) => s + c.artefactos, 0);
   const diario = GASTO.reduce((s, v) => s + v, 0);
+  const vivas = CAMPANAS.filter(c => c.estado === 'Activa');
+  const otras = CAMPANAS.filter(c => c.estado !== 'Activa');
+  const lblAccion = (e: string) => (e === 'Borrador' ? 'Publicar' : e === 'En pausa' ? 'Reactivar' : e === 'Finalizada' ? 'Ver el informe' : 'Pausar');
+  const titleAccion = (c: typeof CAMPANAS[number]) =>
+    c.estado === 'Borrador' ? 'Publica la campaña: arranca a gastar su presupuesto diario. Todavía no gastó nada.'
+      : c.estado === 'En pausa' ? 'Reactiva la campaña y sigue desde donde estaba: no perdió ni el historial ni la pieza.'
+        : c.estado === 'Finalizada' ? 'Abre el informe final: qué rindió y cuánto gastó en total.'
+          : 'Pausa la campaña y deja de gastar. Es reversible: la reactivás cuando quieras.';
 
   return (
     <div className="dash">
@@ -94,15 +103,167 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
       <div className="csec" style={{ marginTop: 0 }}>
         <span className="csec-n">5</span>
         <span className="csec-t">Tus campañas y el panel</span>
-        <span className="csec-s">Lo que está corriendo y el veredicto de la última pieza</span>
+        <span className="csec-s">Primero lo que está corriendo ahora, después los gráficos del mes y al final el veredicto de la última pieza</span>
       </div>
 
-      {/* ============ EL PANEL Y LAS PIEZAS ============ */}
-      <div className="csec" style={{ marginTop: 26 }}>
+      {/* ============ 1. LAS QUE ESTÁN EN VIVO — la pieza, el texto del anuncio y el resultado ============ */}
+      <div className="csec" style={{ marginTop: 6 }}>
         <span className="csec-n">1</span>
-        <span className="csec-t">Los 5 jueces de MiroFish</span>
+        <span className="csec-t">Tus campañas en vivo</span>
+        <span className="csec-c purple">{vivas.length} corriendo</span>
+        <span className="csec-s">Cada tarjeta muestra la pieza que se está viendo, el texto del anuncio y cómo está rindiendo</span>
+      </div>
+      <div className="cv-grid">
+        {vivas.map(c => <CampanaViva key={c.id} c={c} setToast={setToast} />)}
+      </div>
+
+      {/* ============ 2. LAS QUE NO ESTÁN CORRIENDO — en fila compacta, sin ocupar media pantalla ============ */}
+      <div className="csec">
+        <span className="csec-n">2</span>
+        <span className="csec-t">Las que no están corriendo</span>
+        <span className="csec-c amber">{otras.length} sin correr</span>
+        <span className="csec-s">No gastan nada y no pierden el historial: las reactivás cuando quieras</span>
+      </div>
+      <Card
+        title={<span className="row" style={{ gap: 8 }}><I_Pause size={14} style={{ color: 'var(--amber)' }} /> El resto de tus campañas</span>}
+        action={<Badge tone="muted">{otras.length} esperando</Badge>}
+      >
+        {otras.map(c => (
+          <div key={c.id} className="cv-fila">
+            <span className="cv-fila-emoji">{c.emoji}</span>
+            <span className="cv-fila-nombre">
+              <span className="bt">{c.nombre}</span>
+              <span className="tiny muted">{c.tipo} · {c.plataforma} · {c.fechas}</span>
+            </span>
+            <Badge tone={c.estado === 'En pausa' ? 'amber' : c.estado === 'Borrador' ? 'muted' : 'purple'}>{c.estado}</Badge>
+            <span className="cv-fila-datos">
+              <span className="dato" title="Cuánto devuelve por cada peso invertido">
+                <span className="dato-l">ROAS</span>
+                <span className="dato-v" style={{ color: c.roas === '—' ? 'var(--muted)' : 'var(--green)' }}>{c.roas}</span>
+              </span>
+              <span className="dato" title="Lo que le pagás a Meta por día cuando la campaña corre">
+                <span className="dato-l">Presupuesto</span>
+                <span className="dato-v">{c.presupuesto}</span>
+              </span>
+              <span className="dato" title="Piezas que el motor ya creó para esta campaña">
+                <span className="dato-l">Piezas</span>
+                <span className="dato-v" style={{ color: 'var(--purple3)' }}>{c.artefactos}</span>
+              </span>
+            </span>
+            <Button variant="ghost" className="btn-sm" title={titleAccion(c)}
+              onClick={() => setToast(`${lblAccion(c.estado)} «${c.nombre}» (demo)`)}>
+              {lblAccion(c.estado)}
+            </Button>
+          </div>
+        ))}
+        <div className="acc-why">
+          Una campaña en pausa no gasta un peso y no pierde nada: queda esperando con sus piezas y su historial.
+          <b> Los borradores no salen solos</b>: publicar siempre necesita tu OK, aunque el modo esté en Automático.
+        </div>
+      </Card>
+
+      {/* ============ 3. LOS GRÁFICOS — cómo va el mes y qué conviene hacer ============ */}
+      <div className="csec">
+        <span className="csec-n">3</span>
+        <span className="csec-t">Cómo va el mes y qué conviene hacer</span>
+        <span className="csec-s">Con cuánta plata contás y en qué te conviene moverla</span>
+      </div>
+      <div className="duo">
+        <Card
+          title={<span className="row" style={{ gap: 8 }}><I_Zap size={14} style={{ color: 'var(--amber)' }} /> Tu presupuesto del mes</span>}
+          action={<Badge tone="amber">queda 24%</Badge>}
+        >
+          <Gauge pct={76} label="Invertido del techo del mes" detalle="$1.240 de $1.640" color="var(--grad)" />
+          <div className="datos-row" style={{ marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--border)' }}>
+            <div className="dato"><span className="dato-l">Cierre proyectado</span><span className="dato-v">$1.580</span></div>
+            <div className="dato"><span className="dato-l">Días que quedan</span><span className="dato-v">8</span></div>
+            <div className="dato"><span className="dato-l">Techo por día</span><span className="dato-v" style={{ color: 'var(--green)' }}>$109</span></div>
+          </div>
+          <div>
+            <div className="bs" style={{ marginBottom: 8 }}>Invertido por semana:</div>
+            <Bars data={[280, 300, 320, 340]} labels={['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4']} color="#a855f7" fmt={v => `$${v}`} />
+          </div>
+          <div className="row" style={{ gap: 9, flexWrap: 'wrap' }}>
+            <Button variant="outline" className="btn-sm" title="Cambiás el techo mensual. El motor nunca lo pasa sin tu permiso."
+              onClick={() => setToast('Cambiar el techo mensual (demo)')}>Cambiar el techo</Button>
+            <Button variant="ghost" className="btn-sm" title="Muestra en qué se fue cada peso, campaña por campaña"
+              onClick={() => setToast('Detalle del gasto (demo)')}>Ver el detalle</Button>
+          </div>
+          <div className="acc-why">
+            Este es el <b>freno de gasto</b>: el motor mueve plata solo, pero nunca más allá del techo que pusiste.
+            Si no cambiás nada, esta campaña se frena sola el día 30.
+          </div>
+        </Card>
+
+        <Card
+          title={<span className="row" style={{ gap: 8 }}><I_Zap size={14} style={{ color: 'var(--green)' }} /> Qué conviene hacer ahora</span>}
+          action={<Badge tone="amber">3 acciones</Badge>}
+        >
+          <div className="guards">
+            <div className="guard">
+              <span style={{ color: 'var(--green)', flexShrink: 0 }}><I_Trend size={14} /></span>
+              <span className="guard-lb">Subirle $5 por día a Retargeting carrito
+                <small>Rinde 7,3x contra 3,8x de promedio: está limitada por presupuesto, no por demanda.</small>
+              </span>
+              <Button className="btn-sm" title="Sube el presupuesto de $18 a $23 por día. Reversible: podés volver al valor anterior cuando quieras."
+                onClick={() => setToast('Retargeting carrito: $18 → $23 por día (demo)')}>+$5/día</Button>
+            </div>
+            <div className="guard">
+              <span style={{ color: 'var(--red)', flexShrink: 0 }}><I_Zap size={14} /></span>
+              <span className="guard-lb">Pausar Marca
+                <small>Gasta $12 por día y devuelve 2,1x, abajo del 3,8x del promedio. Cada semana así cuesta unos $38 de margen.</small>
+              </span>
+              <Button variant="ghost" className="btn-sm" title="Pausa la campaña ahora. Es reversible: la reactivás con un clic desde la bitácora."
+                onClick={() => setToast('Marca pausada. Reversible desde la bitácora (demo)')}>Pausar</Button>
+            </div>
+            <div className="guard">
+              <span style={{ color: 'var(--amber)', flexShrink: 0 }}><I_Eye size={14} /></span>
+              <span className="guard-lb">Refrescar el creativo de Pack completo
+                <small>La frecuencia subió a 4,1 y el CTR bajó 18% en 7 días: la misma gente lo está viendo demasiadas veces.</small>
+              </span>
+              <Button variant="ghost" className="btn-sm" title="Nia escribe 3 variantes del mismo mensaje para rotar el creativo. No toca el presupuesto."
+                onClick={() => setToast('Nia está escribiendo 3 variantes (demo)')}>3 variantes</Button>
+            </div>
+          </div>
+          <div className="datos-row" style={{ marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--border)' }}>
+            <div className="dato"><span className="dato-l">Si aplicás las 3</span><span className="dato-v" style={{ color: 'var(--green)' }}>+$36/día</span></div>
+            <div className="dato"><span className="dato-l">Riesgo</span><span className="dato-v">ninguno</span></div>
+            <div className="dato"><span className="dato-l">Se deshace en</span><span className="dato-v" style={{ color: 'var(--purple3)' }}>24 h</span></div>
+          </div>
+          <div className="acc-why">
+            Sale de tus propios números: compara cada campaña contra tu promedio.
+            <b> Ninguna mueve más del 20% del presupuesto</b>, que es un freno duro que no se puede desactivar.
+          </div>
+        </Card>
+      </div>
+
+      {/* El gráfico de gasto cierra la sección: qué campaña se lleva cada peso del techo diario */}
+      <Card
+        title={<span className="row" style={{ gap: 8 }}><I_Zap size={14} style={{ color: 'var(--green)' }} /> Dónde va tu presupuesto</span>}
+        action={<Badge tone="green">${diario}/día</Badge>}
+      >
+        <div className="graf-ancho">
+          <Bars data={GASTO} labels={GASTO_LB} color="#a855f7" fmt={v => `$${v}`} />
+          <div className="col-stack">
+            <div className="datos-row">
+              <div className="dato"><span className="dato-l">Por semana</span><span className="dato-v">${diario * 7}</span></div>
+              <div className="dato"><span className="dato-l">Por mes</span><span className="dato-v">${diario * 30}</span></div>
+              <div className="dato"><span className="dato-l">La que más rinde</span><span className="dato-v" style={{ color: 'var(--green)' }}>Pack completo · 7,3x</span></div>
+            </div>
+            <div className="acc-why">
+              El presupuesto se reparte según lo que rinde, no según lo que ya estaba cargado.
+              <b> El motor mueve plata solo</b> cuando el modo está en Automático y dentro de los frenos.
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      {/* ============ 4. EL VEREDICTO DE LA ÚLTIMA PIEZA Y LAS PIEZAS — los datos históricos ============ */}
+      <div className="csec">
+        <span className="csec-n">4</span>
+        <span className="csec-t">El veredicto y tus piezas</span>
         <span className="csec-c purple">5 jueces</span>
-        <span className="csec-s">Los 5 jueces dan el veredicto; 500 agentes del público marcan el porcentaje</span>
+        <span className="csec-s">Lo último que votó el panel: los 5 jueces dan el veredicto y 500 agentes del público marcan el porcentaje</span>
       </div>
       <div className="duo">
         <Card
@@ -176,148 +337,6 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
           </div>
           <div className="acc-why">
             <b>Una pieza que no pasa a los jueces nunca se publica.</b> El orden importa: primero convencen a los 5 jueces y reacciona el público, después gasta tu dinero.
-          </div>
-        </Card>
-      </div>
-
-      {/* ============ LAS CAMPAÑAS ============ */}
-      <div className="csec">
-        <span className="csec-n">2</span>
-        <span className="csec-t">Tus campañas</span>
-        <span className="csec-s">Qué corre, cuánto gasta y cuántos artefactos produjo el motor</span>
-      </div>
-      <div className="duo">
-        {CAMPANAS.map(c => (
-          <Card key={c.id}>
-            <div className="row spread" style={{ alignItems: 'flex-start' }}>
-              <div className="row" style={{ gap: 9 }}>
-                <span style={{ fontSize: 20 }}>{c.emoji}</span>
-                <div>
-                  <div className="bt">{c.nombre}</div>
-                  <div className="tiny muted">{c.tipo}</div>
-                </div>
-              </div>
-              <Badge tone={c.estado === 'Activa' ? 'green' : c.estado === 'En pausa' ? 'amber' : 'muted'}>{c.estado}</Badge>
-            </div>
-
-            <div className="datos-row" style={{ marginTop: 14 }}>
-              <div className="dato"><span className="dato-l">ROAS</span><span className="dato-v" style={{ color: c.roas === '—' ? 'var(--muted)' : 'var(--green)' }}>{c.roas}</span></div>
-              <div className="dato"><span className="dato-l">Presupuesto</span><span className="dato-v">{c.presupuesto}</span></div>
-              <div className="dato"><span className="dato-l">Score</span><span className="dato-v" style={{ color: colorScore(c.score) }}>{c.score}</span></div>
-              <div className="dato"><span className="dato-l">Artefactos</span><span className="dato-v" style={{ color: 'var(--purple3)' }}>{c.artefactos}</span></div>
-            </div>
-
-            <div style={{ marginTop: 14 }}>
-              <div className="row spread tiny muted" style={{ marginBottom: 6 }}>
-                <span>Presupuesto consumido</span><span>{c.pct}%</span>
-              </div>
-              <Progress pct={c.pct} color={c.pct > 70 ? 'amber' : 'purple'} />
-            </div>
-
-            <div className="datos-row" style={{ marginTop: 12, paddingTop: 11, borderTop: '1px solid var(--border)' }}>
-              <div className="dato"><span className="dato-l">Costo por venta</span><span className="dato-v">$2,10</span></div>
-              <div className="dato"><span className="dato-l">Últimos 7 días</span><span className="dato-v" style={{ color: c.roas === '—' ? 'var(--muted)' : 'var(--green)' }}>{c.roas === '—' ? 'sin datos' : c.roas}</span></div>
-            </div>
-            <div className="row" style={{ gap: 8, marginTop: 13, flexWrap: 'wrap' }}>
-              <Button variant="ghost" className="btn-sm" title={`Ver las ${c.artefactos} piezas de esta campaña`}
-                onClick={() => setToast(`Artefactos de "${c.nombre}" (demo)`)}><I_File size={12} /> Ver piezas</Button>
-              <Button variant="ghost" className="btn-sm" title={c.estado === 'Activa' ? 'Pausa la campaña y deja de gastar' : 'Reactiva la campaña'}
-                onClick={() => setToast(`${c.estado === 'Activa' ? 'Pausar' : 'Activar'} "${c.nombre}" (demo)`)}>
-                {c.estado === 'Activa' ? 'Pausar' : c.estado === 'Borrador' ? 'Publicar' : 'Reactivar'}
-              </Button>
-            </div>
-          </Card>
-        ))}
-
-        {/* el gráfico de gasto completa la grilla de 2 */}
-        <Card
-          title={<span className="row" style={{ gap: 8 }}><I_Zap size={14} style={{ color: 'var(--green)' }} /> Dónde va tu presupuesto</span>}
-          action={<Badge tone="green">${diario}/día</Badge>}
-        >
-          <Bars data={GASTO} labels={GASTO_LB} color="#a855f7" fmt={v => `$${v}`} />
-          <div className="datos-row" style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
-            <div className="dato"><span className="dato-l">Por semana</span><span className="dato-v">${diario * 7}</span></div>
-            <div className="dato"><span className="dato-l">Por mes</span><span className="dato-v">${diario * 30}</span></div>
-            <div className="dato"><span className="dato-l">La que más rinde</span><span className="dato-v" style={{ color: 'var(--green)' }}>Pack completo · 7,3x</span></div>
-          </div>
-          <div className="acc-why">
-            El presupuesto se reparte según lo que rinde, no según lo que ya estaba cargado.
-            <b> El motor mueve plata solo</b> cuando el modo está en Automático y dentro de los frenos.
-          </div>
-        </Card>
-      </div>
-
-      {/* ============ CÓMO VA EL MES Y QUÉ HACER ============ */}
-      <div className="csec">
-        <span className="csec-n">3</span>
-        <span className="csec-t">Cómo va el mes y qué conviene hacer</span>
-        <span className="csec-s">Con cuánta plata contás y en qué te conviene moverla</span>
-      </div>
-      <div className="duo">
-        <Card
-          title={<span className="row" style={{ gap: 8 }}><I_Zap size={14} style={{ color: 'var(--amber)' }} /> Tu presupuesto del mes</span>}
-          action={<Badge tone="amber">queda 24%</Badge>}
-        >
-          <Gauge pct={76} label="Invertido del techo del mes" detalle="$1.240 de $1.640" color="var(--grad)" />
-          <div className="datos-row" style={{ marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--border)' }}>
-            <div className="dato"><span className="dato-l">Cierre proyectado</span><span className="dato-v">$1.580</span></div>
-            <div className="dato"><span className="dato-l">Días que quedan</span><span className="dato-v">8</span></div>
-            <div className="dato"><span className="dato-l">Techo por día</span><span className="dato-v" style={{ color: 'var(--green)' }}>$109</span></div>
-          </div>
-          <div>
-            <div className="bs" style={{ marginBottom: 8 }}>Invertido por semana:</div>
-            <Bars data={[280, 300, 320, 340]} labels={['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4']} color="#a855f7" fmt={v => `$${v}`} />
-          </div>
-          <div className="row" style={{ gap: 9, flexWrap: 'wrap' }}>
-            <Button variant="outline" className="btn-sm" title="Cambiás el techo mensual. El motor nunca lo pasa sin tu permiso."
-              onClick={() => setToast('Cambiar el techo mensual (demo)')}>Cambiar el techo</Button>
-            <Button variant="ghost" className="btn-sm" title="Muestra en qué se fue cada peso, campaña por campaña"
-              onClick={() => setToast('Detalle del gasto (demo)')}>Ver el detalle</Button>
-          </div>
-          <div className="acc-why">
-            Este es el <b>freno de gasto</b>: el motor mueve plata solo, pero nunca más allá del techo que pusiste.
-            Si no cambiás nada, esta campaña se frena sola el día 30.
-          </div>
-        </Card>
-
-        <Card
-          title={<span className="row" style={{ gap: 8 }}><I_Zap size={14} style={{ color: 'var(--green)' }} /> Qué conviene hacer ahora</span>}
-          action={<Badge tone="amber">3 acciones</Badge>}
-        >
-          <div className="guards">
-            <div className="guard">
-              <span style={{ color: 'var(--green)', flexShrink: 0 }}><I_Trend size={14} /></span>
-              <span className="guard-lb">Subirle $5 por día a Retargeting carrito
-                <small>Rinde 7,3x contra 3,8x de promedio: está limitada por presupuesto, no por demanda.</small>
-              </span>
-              <Button className="btn-sm" title="Sube el presupuesto de $18 a $23 por día. Reversible: podés volver al valor anterior cuando quieras."
-                onClick={() => setToast('Retargeting carrito: $18 → $23 por día (demo)')}>+$5/día</Button>
-            </div>
-            <div className="guard">
-              <span style={{ color: 'var(--red)', flexShrink: 0 }}><I_Zap size={14} /></span>
-              <span className="guard-lb">Pausar Marca
-                <small>Gasta $12 por día y devuelve 2,1x, abajo del 3,8x del promedio. Cada semana así cuesta unos $38 de margen.</small>
-              </span>
-              <Button variant="ghost" className="btn-sm" title="Pausa la campaña ahora. Es reversible: la reactivás con un clic desde la bitácora."
-                onClick={() => setToast('Marca pausada. Reversible desde la bitácora (demo)')}>Pausar</Button>
-            </div>
-            <div className="guard">
-              <span style={{ color: 'var(--amber)', flexShrink: 0 }}><I_Eye size={14} /></span>
-              <span className="guard-lb">Refrescar el creativo de Pack completo
-                <small>La frecuencia subió a 4,1 y el CTR bajó 18% en 7 días: la misma gente lo está viendo demasiadas veces.</small>
-              </span>
-              <Button variant="ghost" className="btn-sm" title="Nia escribe 3 variantes del mismo mensaje para rotar el creativo. No toca el presupuesto."
-                onClick={() => setToast('Nia está escribiendo 3 variantes (demo)')}>3 variantes</Button>
-            </div>
-          </div>
-          <div className="datos-row" style={{ marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--border)' }}>
-            <div className="dato"><span className="dato-l">Si aplicás las 3</span><span className="dato-v" style={{ color: 'var(--green)' }}>+$36/día</span></div>
-            <div className="dato"><span className="dato-l">Riesgo</span><span className="dato-v">ninguno</span></div>
-            <div className="dato"><span className="dato-l">Se deshace en</span><span className="dato-v" style={{ color: 'var(--purple3)' }}>24 h</span></div>
-          </div>
-          <div className="acc-why">
-            Sale de tus propios números: compara cada campaña contra tu promedio.
-            <b> Ninguna mueve más del 20% del presupuesto</b>, que es un freno duro que no se puede desactivar.
           </div>
         </Card>
       </div>

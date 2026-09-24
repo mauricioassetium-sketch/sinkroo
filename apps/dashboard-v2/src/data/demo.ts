@@ -393,7 +393,7 @@ export interface Campana {
   nombre: string;
   tipo: string;
   emoji: string;
-  estado: 'Activa' | 'En pausa' | 'Borrador';
+  estado: 'Activa' | 'En pausa' | 'Borrador' | 'Finalizada';
   roas: string;
   presupuesto: string;
   alcance: string;
@@ -401,14 +401,57 @@ export interface Campana {
   pct: number;
   score: number;
   artefactos: number;
+  // --- La pieza que está corriendo: es lo que se ve en el marco visual de la tarjeta en vivo ---
+  /** Formato de la pieza publicada, con el mismo vocabulario que la galería. */
+  formato: 'Video vertical' | 'Reel' | 'Carrusel' | 'Imagen';
+  medida: string;
+  /** El texto del anuncio tal como lo ve el cliente en el feed. */
+  copy: string;
+  /** El botón del anuncio. */
+  cta: string;
+  /** Color de la pieza para el marco (los mismos colores de marca que usa la galería). */
+  color: string;
+  // --- Dónde corre y a quién le habla ---
+  plataforma: string;
+  publico: string;
+  fechas: string;
+  // --- El resultado: lo gastado en lo que va de la campaña y cuánto le costó cada venta ---
+  /** Lo gastado hasta hoy. Las 3 activas suman $1.240, el invertido del mes que muestra el panel. */
+  gastado: string;
+  costo: string;
 }
 
 export const CAMPANAS: Campana[] = [
-  { id: 'c1', nombre: 'Lanzamiento D2C', tipo: 'Lanzamiento', emoji: '🚀', estado: 'Activa', roas: '3,8x', presupuesto: '$40/día', alcance: '48,5K', conversiones: 214, pct: 72, score: 84, artefactos: 12 },
-  { id: 'c2', nombre: 'Retargeting Carrito', tipo: 'Retargeting', emoji: '🛒', estado: 'Borrador', roas: '—', presupuesto: '$30/día', alcance: '—', conversiones: 0, pct: 15, score: 84, artefactos: 5 },
-  { id: 'c3', nombre: 'Mensajes: Secuencia Bienvenida', tipo: 'Mensajes (WhatsApp)', emoji: '💬', estado: 'Activa', roas: '—', presupuesto: '$12/día', alcance: '3,4K', conversiones: 31, pct: 64, score: 79, artefactos: 8 },
-  { id: 'c4', nombre: 'Marca: Ingredientes limpios', tipo: 'Marca', emoji: '🌿', estado: 'Activa', roas: '2,4x', presupuesto: '$18/día', alcance: '96K', conversiones: 88, pct: 55, score: 81, artefactos: 9 },
-  { id: 'c5', nombre: 'Ventas: Pack completo', tipo: 'Ventas', emoji: '📦', estado: 'En pausa', roas: '7,3x', presupuesto: '$9/día', alcance: '4,2K', conversiones: 44, pct: 41, score: 88, artefactos: 6 },
+  { id: 'c1', nombre: 'Lanzamiento D2C', tipo: 'Lanzamiento', emoji: '🚀', estado: 'Activa', roas: '3,8x', presupuesto: '$40/día', alcance: '48,5K', conversiones: 214, pct: 72, score: 84, artefactos: 12,
+    formato: 'Video vertical', medida: '15 s · 9:16',
+    copy: 'Ese ardor no es normal: es tu piel pidiendo otra cosa. Serum con 3 ingredientes, nada más.',
+    cta: 'Ver el serum', color: '#4A7C59',
+    plataforma: 'Instagram + Facebook', publico: 'Mujeres 25-44 · Buenos Aires y GBA',
+    fechas: '12 ago → hoy · día 15', gastado: '$780', costo: '$2,10' },
+  { id: 'c2', nombre: 'Retargeting Carrito', tipo: 'Retargeting', emoji: '🛒', estado: 'Borrador', roas: '—', presupuesto: '$30/día', alcance: '—', conversiones: 0, pct: 15, score: 84, artefactos: 5,
+    formato: 'Carrusel', medida: '5 placas · 4:5',
+    copy: 'Te quedó el serum en el carrito. Volvé y te lo reservamos 24 h.',
+    cta: 'Terminar la compra', color: '#F5EFE6',
+    plataforma: 'Instagram + Facebook', publico: 'Visitantes de los últimos 30 días que no compraron',
+    fechas: 'Sale cuando le des el OK', gastado: '$135', costo: '—' },
+  { id: 'c3', nombre: 'Mensajes: Secuencia Bienvenida', tipo: 'Mensajes (WhatsApp)', emoji: '💬', estado: 'Activa', roas: '—', presupuesto: '$12/día', alcance: '3,4K', conversiones: 31, pct: 64, score: 79, artefactos: 8,
+    formato: 'Reel', medida: '18 s · 9:16',
+    copy: 'Piel sensible o mixta: escribinos y te armamos la rutina en 2 minutos. Sin cargo.',
+    cta: 'Escribir por WhatsApp', color: '#25d366',
+    plataforma: 'WhatsApp Business', publico: 'Toda la base que escribió en los últimos 90 días',
+    fechas: '2 ago → hoy · día 25', gastado: '$214', costo: '—' },
+  { id: 'c4', nombre: 'Marca: Ingredientes limpios', tipo: 'Marca', emoji: '🌿', estado: 'Activa', roas: '2,4x', presupuesto: '$18/día', alcance: '96K', conversiones: 88, pct: 55, score: 81, artefactos: 9,
+    formato: 'Imagen', medida: '1080 × 1350',
+    copy: 'Tres ingredientes. Ninguno con nombre impronunciable. Mirá la lista completa.',
+    cta: 'Ver la lista', color: '#E8A33D',
+    plataforma: 'Instagram + Facebook', publico: 'Intereses: skincare natural y cosmética vegana · 20-54',
+    fechas: '28 jul → hoy · día 30', gastado: '$246', costo: '$3,80' },
+  { id: 'c5', nombre: 'Ventas: Pack completo', tipo: 'Ventas', emoji: '📦', estado: 'En pausa', roas: '7,3x', presupuesto: '$9/día', alcance: '4,2K', conversiones: 44, pct: 41, score: 88, artefactos: 6,
+    formato: 'Imagen', medida: '1080 × 1080',
+    copy: 'El pack completo sale $59 y rinde 3 meses. Envío gratis desde $15.000.',
+    cta: 'Ver el pack', color: '#4A7C59',
+    plataforma: 'Instagram + Facebook', publico: 'Compradores de los últimos 60 días',
+    fechas: 'Pausada el 21 sep', gastado: '$111', costo: '$1,90' },
 ];
 
 // ---------------------------------------------------------------------------------------------
