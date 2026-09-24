@@ -25,23 +25,32 @@ const CUENTA = {
 
 export function PantallaLogin({ onEntrar }: { onEntrar: (s: Sesion) => void }) {
   const [modo, setModo] = useState<'entrar' | 'crear'>('entrar');
-  const [nombre, setNombre] = useState(CUENTA.nombre);
-  const [email, setEmail] = useState(CUENTA.email);
-  const [clave, setClave] = useState(CUENTA.clave);
+  const [nombre, setNombre] = useState('');
+  const [email, setEmail] = useState('');
+  const [clave, setClave] = useState('');
   const [entrando, setEntrando] = useState<'' | 'email' | 'google' | 'nueva'>('');
   const [recuperar, setRecuperar] = useState('');
   const [error, setError] = useState('');
 
-  const entrar = (via: Sesion['via']) => {
-    if (!email.trim() || !clave.trim()) { setError('Faltan el email o la contraseña: la cuenta de demostración ya viene cargada.'); return; }
+  /** Entrar se ve: el botón pasa a «Entrando…» y recién después aparece el panel con el asistente. */
+  const entrarCon = (via: Sesion['via'], quien: { nombre: string; email: string }) => {
     setError('');
     setEntrando(via);
-    // Entrar se ve: el botón pasa a «Entrando…» y recién después aparece el panel con el asistente.
-    window.setTimeout(() => onEntrar({
-      nombre: via === 'google' ? 'María Paula' : nombre,
-      email,
-      via,
-    }), via === 'google' ? 900 : 550);
+    window.setTimeout(() => onEntrar({ nombre: quien.nombre, email: quien.email, via }), via === 'google' ? 900 : 550);
+  };
+
+  const entrar = () => {
+    if (!email.trim() || !clave.trim()) {
+      setError('Necesitamos tu email y tu contraseña para entrar. Si querés ver el panel ya cargado, entrá con la cuenta de demostración.');
+      return;
+    }
+    entrarCon(modo === 'crear' ? 'nueva' : 'email', { nombre: nombre.trim(), email });
+  };
+
+  /** La puerta rápida: entra con la cuenta ya cargada, sin escribir nada. */
+  const entrarDemo = () => {
+    setNombre(CUENTA.nombre); setEmail(CUENTA.email); setClave(CUENTA.clave);
+    entrarCon('email', { nombre: CUENTA.nombre, email: CUENTA.email });
   };
 
   return (
@@ -67,8 +76,9 @@ export function PantallaLogin({ onEntrar }: { onEntrar: (s: Sesion) => void }) {
           <div className="login-demo">
             <span className="login-demo-lb"><I_Shield size={12} /> Cuenta de demostración</span>
             <div className="login-demo-tx">
-              <b>{CUENTA.nombre}</b> · {TENANT.cuenta} · Plan {TENANT.plan}. El panel viene con un negocio real
-              cargado (productos, precios, campañas y materiales) para que no haya que cargar nada a mano.
+              Entrá con <b>{CUENTA.nombre}</b> ({CUENTA.email}) para ver el panel ya cargado: un negocio real, con
+              productos, precios, campañas y materiales ({TENANT.cuenta}, plan {TENANT.plan}). Y si querés arrancar
+              desde cero, entrá con tu email: el asistente te va a pedir tu negocio, tu descripción y tus archivos.
             </div>
           </div>
         </div>
@@ -117,7 +127,7 @@ export function PantallaLogin({ onEntrar }: { onEntrar: (s: Sesion) => void }) {
           )}
 
           <Button className="login-btn" title="Entra al panel y abre el asistente de bienvenida: lo podés saltar y completarlo después."
-            onClick={() => entrar(modo === 'crear' ? 'nueva' : 'email')}>
+            onClick={entrar}>
             {entrando && entrando !== 'google'
               ? 'Entrando…'
               : <>{modo === 'entrar' ? 'Entrar' : 'Crear la cuenta y entrar'} <I_ArrowRight size={14} /></>}
@@ -125,9 +135,16 @@ export function PantallaLogin({ onEntrar }: { onEntrar: (s: Sesion) => void }) {
 
           <div className="login-o"><span>o</span></div>
 
-          <Button variant="outline" className="login-btn" title="Entra con la cuenta de Google ya vinculada al negocio"
-            onClick={() => entrar('google')}>
+          <Button variant="outline" className="login-btn" title="Entra con tu cuenta de Google y arranca el asistente con ese usuario"
+            onClick={() => entrarCon('google', { nombre: 'María Paula', email: email.trim() || 'maria@gmail.com' })}>
             {entrando === 'google' ? 'Entrando con Google…' : <><span className="login-g">G</span> Entrar con Google</>}
+          </Button>
+
+          {/* La puerta rápida para ver el panel cargado: dice exactamente qué hace. */}
+          <Button variant="ghost" className="login-btn"
+            title="Entra con la cuenta de demostración, que ya viene con un negocio cargado (productos, precios, campañas y materiales). No escribe nada tuyo: es para mirar el panel completo."
+            onClick={entrarDemo}>
+            {entrando && entrando !== 'google' && email === CUENTA.email ? 'Entrando…' : 'Ver el panel con la cuenta de demostración'}
           </Button>
 
           <div className="login-pie">

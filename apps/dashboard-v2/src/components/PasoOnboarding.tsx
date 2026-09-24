@@ -1,14 +1,13 @@
 import { useState } from 'react';
 import { Badge, Button } from '../components/ui';
 import {
-  I_Check, I_Upload, I_Image, I_Film, I_File, I_Shield, I_Rocket, I_ArrowRight,
+  I_Check, I_Upload, I_Image, I_Film, I_File, I_Shield, I_Rocket, I_ArrowRight, I_X,
 } from '../components/icons';
-import { MATERIAL, type CampoPublicacion } from '../data/publicaciones';
-import { CARPETA } from '../data/demo';
 import { useOnboarding } from '../lib/onboarding';
 import { usePlan } from '../lib/plan';
 import {
-  CONEXIONES_ONB, PRIMERA_SEMANA, COSTO_PRIMERA_SEMANA, type CampoOnb, type PasoOnb,
+  CONEXIONES_ONB, PRIMERA_SEMANA, COSTO_PRIMERA_SEMANA, TIPOS_ARCHIVO, ARCHIVOS_ACEPTADOS,
+  type CampoOnb, type PasoOnb,
 } from '../data/onboarding';
 
 // =============================================================================================
@@ -19,8 +18,10 @@ import {
 // haría dos veces y una quedaría vieja. Acá viven los campos, el bloque de conexiones y el arranque.
 // =============================================================================================
 
-const IconoMaterial = ({ tipo }: { tipo: CampoPublicacion['tipo'] }) =>
-  tipo === 'videos' ? <I_Film size={16} /> : tipo === 'archivos' ? <I_File size={16} /> : <I_Image size={16} />;
+/** El ícono de un archivo subido: por el tipo que el motor le va a dar, no por el nombre. */
+const IconoArchivo = ({ tipo }: { tipo: 'doc' | 'imagen' | 'video' | 'audio' | 'otro' }) =>
+  tipo === 'imagen' ? <I_Image size={16} /> : tipo === 'video' ? <I_Film size={16} />
+    : tipo === 'audio' ? <I_Film size={16} /> : <I_File size={16} />;
 
 /** Los campos del paso, según su tipo. Se dibujan desde la data: agregar un dato es una línea. */
 export function CamposPaso({ paso }: { paso: PasoOnb }) {
@@ -53,6 +54,22 @@ export function CamposPaso({ paso }: { paso: PasoOnb }) {
       );
     }
 
+    if (campo.tipo === 'texto-largo') {
+      const largo = ((v as string) || '').length;
+      return (
+        <>
+          <textarea className="input" rows={largo > 260 ? 8 : 5} placeholder={campo.ayuda}
+            value={(v as string) || ''}
+            onChange={e => onb.escribir(campo.id, e.target.value)} />
+          <div className="tiny muted">
+            {largo === 0
+              ? 'Podés escribirlo como te salga: el motor ordena el resto.'
+              : `${largo} caracteres escritos · el motor lo lee y te devuelve qué entendió antes de escribir nada.`}
+          </div>
+        </>
+      );
+    }
+
     if (campo.tipo === 'chips' || campo.tipo === 'chips-multi') {
       const lista = campo.tipo === 'chips-multi' ? ((v as string[]) || []) : [];
       const activo = (op: string) => (campo.tipo === 'chips-multi' ? lista.includes(op) : v === op);
@@ -75,50 +92,52 @@ export function CamposPaso({ paso }: { paso: PasoOnb }) {
       );
     }
 
-    if (campo.tipo === 'material') {
+    if (campo.tipo === 'docs') {
+      const arrastrando = onb.archivos.length > 0;
       return (
-        <div className="onb-mat">
-          {MATERIAL.map(m => {
-            const carpeta = CARPETA[m.id] || [];
-            const puestos = onb.material[m.id] || [];
-            const subidos = puestos.filter(p => !carpeta.some(c => c.nombre === p));
-            return (
-              <div key={m.id} className="onb-mat-fila">
-                <div className="onb-mat-lb">
-                  <span className="onb-mat-ic"><IconoMaterial tipo={m.tipo} /></span>
-                  <span style={{ minWidth: 0 }}>
-                    <b>{m.etiqueta.replace(/^\S+\s/, '')}</b>
-                    <small>{puestos.length ? `${puestos.length} elegido${puestos.length > 1 ? 's' : ''}` : m.ayuda}</small>
-                  </span>
-                  <label className="onb-mat-up" title={`Subir algo nuevo a «${m.etiqueta.replace(/^\S+\s/, '')}»: queda en tu carpeta`}>
-                    <I_Upload size={13} />
-                    <input type="file" multiple style={{ display: 'none' }}
-                      onChange={e => Array.from(e.target.files || []).forEach(f => onb.alternarMaterial(m.id, f.name))} />
-                  </label>
+        <div className="onb-docs">
+          <label className="onb-drop"
+            title="Soltá tus archivos acá: PDF, Word, Excel, PowerPoint, fotos, videos o audios. El motor lee el texto de los documentos y usa las imágenes y los videos en las piezas.">
+            <span className="onb-drop-ic"><I_Upload size={22} /></span>
+            <span className="onb-drop-t">Soltá tus archivos acá</span>
+            <span className="onb-drop-s">o tocá para elegirlos · todos los formatos</span>
+            <input type="file" multiple accept={ARCHIVOS_ACEPTADOS} style={{ display: 'none' }}
+              onChange={e => { const n = onb.subirArchivos(e.target.files); if (n) onb.avisar(`${n} archivo${n > 1 ? 's' : ''} subido${n > 1 ? 's' : ''}: el motor los lee`); }} />
+          </label>
+
+          {onb.archivos.length > 0 && (
+            <div className="onb-archivos">
+              {onb.archivos.map(a => (
+                <div key={a.nombre} className="onb-arch">
+                  <span className="onb-arch-ic"><IconoArchivo tipo={a.tipo} /></span>
+                  <span className="onb-arch-n" title={a.nombre}>{a.nombre}</span>
+                  <span className="onb-arch-p">{a.peso}</span>
+                  <button className="onb-arch-x" title="Sacar este archivo de la ingesta"
+                    onClick={() => { onb.quitarArchivo(a.nombre); onb.avisar('Archivo sacado de la ingesta'); }}><I_X size={12} /></button>
                 </div>
-                <div className="onb-mat-chips">
-                  {carpeta.map(c => {
-                    const puesto = puestos.includes(c.nombre);
-                    return (
-                      <button key={c.nombre} type="button" className={`tipo-chip onb-chip-arch ${puesto ? 'sel' : ''}`}
-                        title={puesto ? `Ya está elegido (${c.peso}). Tocá para sacarlo.` : `Sumar «${c.nombre}» (${c.peso}) sin volver a subirlo.`}
-                        onClick={() => onb.alternarMaterial(m.id, c.nombre)}>
-                        {puesto ? '✓ ' : ''}{c.nombre}
-                      </button>
-                    );
-                  })}
-                  {subidos.map(nombre => (
-                    <button key={nombre} type="button" className="tipo-chip onb-chip-arch sel"
-                      title="Lo subiste recién: queda en tu carpeta para la próxima campaña."
-                      onClick={() => onb.alternarMaterial(m.id, nombre)}>✓ {nombre}</button>
-                  ))}
-                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Qué hace el motor con cada formato: sin esto, subir un PDF sería una apuesta. */}
+          <div className="onb-tipos">
+            <div className="onb-tipos-t">Qué hace el motor con lo que subas</div>
+            {TIPOS_ARCHIVO.map(x => (
+              <div key={x.para} className="onb-tipo-fila">
+                <span className="onb-tipo-para">{x.para}</span>
+                <span className="onb-tipo-lect">{x.lectura}</span>
               </div>
-            );
-          })}
+            ))}
+          </div>
+          {arrastrando && (
+            <div className="tiny onb-ok">
+              <I_Check size={12} /> {onb.archivos.length} archivo{onb.archivos.length > 1 ? 's' : ''} en la ingesta. Podés seguir sumando o pasar al paso siguiente.
+            </div>
+          )}
         </div>
       );
     }
+
     return null;
   };
 

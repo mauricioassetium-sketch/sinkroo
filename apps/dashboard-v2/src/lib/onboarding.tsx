@@ -13,14 +13,18 @@ import { PASOS_ONB, siguientePaso, CONEXIONES_ONB, pasosDe, type TipoCuenta } fr
 export type ValorOnb = string | string[];
 export type DatosOnb = Record<string, ValorOnb>;
 
+/** Un archivo que el cliente subió en la ingesta: lo que el motor va a leer. */
+export type ArchivoIngesta = { nombre: string; peso: string; tipo: 'doc' | 'imagen' | 'video' | 'audio' | 'otro' };
+
 type Ctx = {
   datos: DatosOnb;
-  /** El material elegido de la carpeta, por cargador. */
-  material: Record<string, string[]>;
+  /** Lo que el cliente subió en la ingesta, en orden. Se muestra tal cual: nombre, peso y tipo. */
+  archivos: ArchivoIngesta[];
+  subirArchivos: (files: FileList | File[] | null) => number;
+  quitarArchivo: (nombre: string) => void;
   paso: number;
   irA: (n: number) => void;
   escribir: (id: string, v: ValorOnb) => void;
-  alternarMaterial: (campo: string, archivo: string) => void;
   /** El tipo de cuenta: cambia las preguntas y lo que pasa al terminar. */
   tipo: TipoCuenta | null;
   elegirTipo: (t: TipoCuenta) => void;
@@ -68,7 +72,7 @@ export function OnboardingProvider({ children, avisar }: { children: ReactNode; 
     // real del negocio, no una lista vacía. Lo que se destilda acá no se desconecta solo: se marca.
     conectadas: CONEXIONES_ONB.filter(c => c.habilitadoHoy).map(c => c.key),
   });
-  const [material, setMaterial] = useState<Record<string, string[]>>({});
+  const [archivos, setArchivos] = useState<ArchivoIngesta[]>([]);
   const [paso, setPaso] = useState(1);
   const [hechos, setHechos] = useState<number[]>([]);
   const [arrancado, setArrancado] = useState(false);
@@ -81,18 +85,35 @@ export function OnboardingProvider({ children, avisar }: { children: ReactNode; 
 
   const escribir = (id: string, v: ValorOnb) => setDatos(d => ({ ...d, [id]: v }));
 
-  const alternarMaterial = (campo: string, archivo: string) =>
-    setMaterial(m => {
-      const actual = m[campo] || [];
-      return { ...m, [campo]: actual.includes(archivo) ? actual.filter(a => a !== archivo) : [...actual, archivo] };
+  /** El tipo se mira por la extensión: es lo que el motor va a usar para leer el archivo. */
+  const tipoDe = (nombre: string): ArchivoIngesta['tipo'] =>
+    /\.(pdf|docx?|rtf|txt|md|xlsx?|csv|pptx?|odt|ods)$/i.test(nombre) ? 'doc'
+      : /\.(jpe?g|png|webp|gif|avif|heic|svg)$/i.test(nombre) ? 'imagen'
+        : /\.(mp4|mov|webm|avi|mkv|m4v)$/i.test(nombre) ? 'video'
+          : /\.(mp3|wav|m4a|ogg|aac)$/i.test(nombre) ? 'audio' : 'otro';
+
+  const subirArchivos = (files: FileList | File[] | null) => {
+    if (!files) return 0;
+    const nuevos: ArchivoIngesta[] = Array.from(files).map(f => ({
+      nombre: f.name || 'archivo sin nombre',
+      peso: f.size > 1048576 ? `${(f.size / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(f.size / 1024))} KB`,
+      tipo: tipoDe(f.name || ''),
+    }));
+    setArchivos(a => {
+      const ya = new Set(a.map(x => x.nombre));
+      return [...a, ...nuevos.filter(n => !ya.has(n.nombre))];
     });
+    return nuevos.length;
+  };
+
+  const quitarArchivo = (nombre: string) => setArchivos(a => a.filter(x => x.nombre !== nombre));
 
   /** Un paso está completo cuando están TODOS sus datos mínimos. El material se mira aparte. */
   const completo = (n: number) => {
     const p = pasos.find(x => x.n === n);
     if (!p) return false;
     return p.minima.every(id => {
-      if (id === 'mat:fotos_producto') return (material['fotos_producto'] || []).length > 0;
+      if (id === 'archivos') return archivos.length > 0;
       if (id === 'conectadas') return (datos['conectadas'] as string[] | undefined)?.length ? true : false;
       // El resultado de los pasos de cierre no es un dato escrito: es que el motor haya arrancado
       // (o que el perfil del creador se haya publicado).
@@ -114,7 +135,7 @@ export function OnboardingProvider({ children, avisar }: { children: ReactNode; 
 
   return (
     <OnbCtx.Provider value={{
-      datos, material, paso, irA: setPaso, escribir, alternarMaterial,
+      datos, archivos, subirArchivos, quitarArchivo, paso, irA: setPaso, escribir,
       tipo, elegirTipo, pasos,
       asistente,
       abrirAsistente: (fase = 0) => setAsistente({ abierto: true, fase }),

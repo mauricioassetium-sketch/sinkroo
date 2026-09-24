@@ -83,7 +83,7 @@ export function Asistente({ sesion, setVista }: { sesion: Sesion; setVista: (v: 
           {/* ---------------- BIENVENIDA ---------------- */}
           {fase === 0 && (
             <>
-              <div className="asist-hola">Hola {sesion.nombre.split(' ')[0]} 👋</div>
+              <div className="asist-hola">Hola{sesion.nombre ? ` ${sesion.nombre.split(' ')[0]}` : ''} 👋</div>
               <div className="bs">{BIENVENIDA.sub}</div>
               <div className="asist-que">
                 {BIENVENIDA.queHace.map((q, i) => (

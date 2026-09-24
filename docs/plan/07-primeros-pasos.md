@@ -77,16 +77,15 @@ queda un cartel de bienvenida pegado para siempre.
 Cada paso declara cuatro cosas: el titular, **para qué** se pide (en términos del negocio del
 cliente), **qué deduce el motor solo**, y los datos mínimos para darlo por hecho.
 
-### Paso 1 · Tu negocio — «Tu negocio, en cuatro datos»
+### Paso 1 · Tu negocio — «Contame tu negocio»
 | Se pide | Qué cambia |
 |---|---|
 | Nombre del negocio | Cómo lo nombra el motor y cómo firma las piezas |
-| Instagram o web | De acá saca el tono, los precios, cada cuánto publica y quién le comenta |
-| Qué vendés (chips) | Qué se dice del rubro y qué está prohibido prometer |
-| A quién le hablás (chips) | Define el mensaje y el público que se pauta |
-| Qué querés primero (chips) | Cambia el objetivo de las primeras campañas |
+| **Descripción libre** (obligatoria) | Es lo primero que el motor lee: qué vendés, qué te diferencia y a quién le vendés. Se escribe como salga y el motor lo ordena |
+| Instagram o web (opcional) | De acá saca los precios, el tono, cada cuánto publica y quién le comenta |
+| Qué vendés / a quién le hablás / qué querés primero (chips) | Afinan el mensaje, el público que se pauta y el objetivo |
 
-**Deduce solo:** del Instagram el tono y la frecuencia; de la web los precios y lo más vendido.
+**Deduce solo:** del link el tono y la frecuencia; de la web los precios y lo más vendido.
 **Si no se hace:** el motor arranca igual y lo completa con lo que lee de la cuenta.
 
 ### Paso 2 · Qué vendés — «Lo que vendés, con su precio»
@@ -95,11 +94,16 @@ cómo entrega. **Por qué:** sin precios, el anuncio no puede calcular la gananc
 venta, y la campaña se mide a ciegas. **Deduce solo:** con la tienda conectada, los precios y el
 stock se leen de ahí y se mantienen solos.
 
-### Paso 3 · Tu material — «Tu material, no el de plantilla»
-Los siete cargadores (productos, reseñas, videos, logo, catálogo, local, manual de marca) con **la
-carpeta del negocio**: lo que ya subió antes se elige en un toque; lo nuevo se sube y queda en la
-carpeta. **Por qué:** es lo único que hace que la pieza se parezca a su negocio. **Deduce solo:**
-nada — el material es solo suyo, y por eso es lo único que se sube a mano.
+### Paso 3 · Tu material — «Subí lo que ya tenés»
+**Una sola zona de carga, para todo lo que el cliente tenga**: PDF, Word, Excel, PowerPoint, texto,
+fotos, videos y audios, varios a la vez. La lista muestra cada archivo con su peso y su tipo, y se
+puede sacar de la ingesta con un toque. Al lado está la tabla de **qué hace el motor con cada
+formato** —leer precios y condiciones, tomar la lista de precios, usar los productos reales, armar
+clips, tomar el tono de la voz— porque sin eso subir un PDF sería una apuesta.
+
+**Por qué:** es lo único que hace que la pieza salga con la información real del negocio y no con
+texto genérico. **Deduce solo:** si no sube nada, el motor arranca con la descripción y lo que
+encuentra en su Instagram o su web.
 
 ### Paso 4 · Cómo trabajás — «Cómo querés que trabaje»
 Tono al conversar, palabras propias, **cuánto invertir por día** (techo) y **cuánta autonomía** darle

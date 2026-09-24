@@ -17,10 +17,26 @@
 //     trabajo del motor, no una pantalla de bienvenida.
 // =============================================================================================
 
+// ---------------------------------------------------------------------------------------------
+// LO QUE SE PUEDE SUBIR — la ingesta acepta lo que el cliente tenga, no un formato ideal.
+// Cada tipo declara qué hace el motor con eso: si no lo dijera, subir un PDF sería una apuesta.
+// ---------------------------------------------------------------------------------------------
+export const TIPOS_ARCHIVO: { para: string; lectura: string }[] = [
+  { para: 'PDF, Word o texto', lectura: 'lee el contenido: qué vendés, precios, promesas y condiciones.' },
+  { para: 'Excel o planilla', lectura: 'toma la lista de precios y el stock tal como está.' },
+  { para: 'Fotos', lectura: 'tus productos reales: fondos, colores y cómo se ve la marca.' },
+  { para: 'Videos', lectura: 'clips para armar la pieza y mostrar el producto en uso.' },
+  { para: 'Audio o voz', lectura: 'el tono de la marca: cómo se dice, no sólo qué se dice.' },
+  { para: 'PowerPoint o presentación', lectura: 'lee el orden del relato y los datos que ya tenés armados.' },
+];
+
+export const ARCHIVOS_ACEPTADOS =
+  '.pdf,.doc,.docx,.rtf,.txt,.md,.xls,.xlsx,.csv,.ppt,.pptx,.odt,.ods,image/*,video/*,audio/*';
+
 export type CampoOnb = {
   id: string;
   etiqueta: string;
-  tipo: 'texto' | 'numero' | 'chips' | 'chips-multi' | 'material';
+  tipo: 'texto' | 'texto-largo' | 'numero' | 'chips' | 'chips-multi' | 'material' | 'docs';
   ayuda: string;
   opciones?: string[];
   detalle?: Record<string, string>;
@@ -124,13 +140,14 @@ export const CONEXIONES_ONB: { key: string; nombre: string; icono: string; habil
 export const PASOS_ONB: PasoOnb[] = [
   {
     n: 1, t: 'Tu negocio', d: 'Qué vendés y a quién', icono: '🏪',
-    titular: 'Tu negocio, en cuatro datos',
-    paraQue: 'Con esto el motor sabe a quién le habla cada pieza. Es lo único que no puede deducir de ningún lado y lo que más cambia el resultado.',
-    infiere: 'De tu Instagram saca tu tono, cada cuánto publicás y quién te comenta. De tu web, los precios y qué es lo que más se vende.',
-    minima: ['negocio_nombre', 'negocio_rubro', 'negocio_publico', 'negocio_objetivo'],
+    titular: 'Contame tu negocio',
+    paraQue: 'Con tu descripción el motor entiende qué vendés, a quién y con qué palabras lo decís. Es lo primero que lee antes de escribir una sola pieza.',
+    infiere: 'Del link de tu Instagram o tu web saca los precios, el tono y cada cuánto publicás. Si subís tu catálogo, también los productos.',
+    minima: ['negocio_nombre', 'descripcion'],
     campos: [
       { id: 'negocio_nombre', etiqueta: 'Cómo se llama tu negocio', tipo: 'texto', ayuda: 'El nombre que usa la gente cuando lo recomienda.' },
-      { id: 'negocio_link', etiqueta: 'Tu Instagram o tu web', tipo: 'texto', ayuda: 'De acá el motor saca tu tono, tus precios y a quién le hablás. Con el link no hace falta que llenes nada más.' },
+      { id: 'descripcion', etiqueta: 'Contame qué hacés', tipo: 'texto-largo', ayuda: 'Escribí como se lo contarías a alguien que no te conoce: qué vendés, qué te diferencia y a quién le vendés. Tres o cuatro líneas alcanzan, y no hace falta que esté prolijo: el motor lo ordena.' },
+      { id: 'negocio_link', etiqueta: 'Tu Instagram o tu web (opcional)', tipo: 'texto', ayuda: 'Con el link, el motor completa solo los precios, el tono y el catálogo.' },
       { id: 'negocio_rubro', etiqueta: 'Qué vendés', tipo: 'chips-multi', ayuda: 'Elegí lo que vendés: puede ser más de una cosa.',
         opciones: ['Skincare', 'Maquillaje', 'Perfumes', 'Accesorios', 'Ropa', 'Servicios'],
         detalle: {
@@ -146,7 +163,7 @@ export const PASOS_ONB: PasoOnb[] = [
       { id: 'negocio_objetivo', etiqueta: 'Qué querés primero', tipo: 'chips', ayuda: 'Se puede cambiar cuando quieras: es un objetivo, no una jaula.',
         opciones: OBJETIVOS_NEGOCIO, detalle: DETALLE_OBJETIVO },
     ],
-    nota: 'Si dejás el link, el motor completa esto solo en unas horas y te avisa qué corrigió.',
+    nota: 'Lo único obligatorio es el nombre y la descripción. Todo lo demás se completa después y el motor arranca igual.',
   },
   {
     n: 2, t: 'Qué vendés', d: 'Productos y precios', icono: '💵',
@@ -173,15 +190,15 @@ export const PASOS_ONB: PasoOnb[] = [
     nota: 'Los precios se pueden cargar después: hasta entonces, las piezas no hablan de precio ni de ofertas.',
   },
   {
-    n: 3, t: 'Tu material', d: 'Lo que ya tenés', icono: '📷',
-    titular: 'Tu material, no el de plantilla',
-    paraQue: 'Es lo que hace que la pieza se vea tuya: tus fotos, tus reseñas y tu logo. El motor arranca igual sin nada, pero con material real la pieza se parece a tu negocio.',
-    infiere: 'Nada: el material es sólo tuyo. Por eso es lo único que se sube a mano.',
-    minima: ['mat:fotos_producto'],
+    n: 3, t: 'Tu material', d: 'Subí lo que tengas', icono: '📎',
+    titular: 'Subí lo que ya tenés',
+    paraQue: 'No hagas trabajo de más: subí tu catálogo, la lista de precios, las fotos de tus productos, las reseñas de tus clientes o el PDF de tu marca, y el motor lo lee. Con eso las piezas salen con tu información real y no con texto genérico.',
+    infiere: 'Si no subís nada, el motor arranca igual con tu descripción y lo que encuentra en tu Instagram o tu web: va a preguntar menos y a copiar menos.',
+    minima: ['archivos'],
     campos: [
-      { id: 'material', etiqueta: 'Tu carpeta', tipo: 'material', ayuda: 'Elegí lo que ya está subido o sumá algo nuevo. Un producto nuevo se sube acá.' },
+      { id: 'docs', etiqueta: 'Tus archivos', tipo: 'docs', ayuda: 'Soltá acá lo que tengas o elegí archivos: PDF, Word, Excel, PowerPoint, fotos, videos o audios. Podés subir varios a la vez y de cualquier formato.' },
     ],
-    nota: 'Puede quedar a medias: se puede seguir subiendo desde cualquier campaña, y lo que subas queda en tu carpeta para la próxima.',
+    nota: 'Lo que subas queda en tu carpeta y se puede usar en cualquier campaña. Nada se publica con tus archivos sin que lo veas antes: primero pasa por el panel.',
   },
   {
     n: 4, t: 'Cómo trabajás', d: 'Tono, presupuesto y frenos', icono: '🎚️',
@@ -337,15 +354,15 @@ export const PASOS_CREADOR: PasoOnb[] = [
     nota: 'El dinero se acuerda con cada marca. Sinkroo no intermedia el pago: te muestra la oportunidad y vos cerrás.',
   },
   {
-    n: 3, t: 'Tus muestras', d: 'Lo que ya grabaste', icono: '📷',
-    titular: 'Muestras de tu trabajo',
-    paraQue: 'Nada convence más a una marca que ver tres piezas tuyas. Con dos o tres muestras buenas ya se puede mandar tu perfil.',
-    infiere: 'Nada: lo que grabaste es tuyo. Por eso se sube a mano.',
-    minima: ['mat:fotos_producto'],
+    n: 3, t: 'Tus muestras', d: 'Subí lo que grabaste', icono: '📎',
+    titular: 'Subí tus muestras',
+    paraQue: 'Nada convence más a una marca que ver lo que ya hiciste. Subí las piezas (videos, fotos, historias) y también tu media kit o la lista de precios si la tenés en un PDF o una planilla: el motor lo lee y arma el resumen de tu perfil.',
+    infiere: 'Si no subís nada, el motor arma el perfil con tu descripción y lo que encuentra en tu Instagram o tu TikTok.',
+    minima: ['archivos'],
     campos: [
-      { id: 'material', etiqueta: 'Tus piezas', tipo: 'material', ayuda: 'Elegí lo que ya está subido o sumá algo nuevo. Una marca mira primero lo que ya hiciste.' },
+      { id: 'docs', etiqueta: 'Tus archivos', tipo: 'docs', ayuda: 'Soltá acá tus piezas o elegí archivos: videos, fotos, PDF, Word, Excel. Podés subir varios a la vez.' },
     ],
-    nota: 'Con dos o tres alcanza para arrancar; la carpeta queda guardada para las próximas postulaciones.',
+    nota: 'Con dos o tres muestras buenas ya se puede mandar tu perfil; la carpeta queda guardada para las próximas postulaciones.',
   },
   {
     n: 4, t: 'Cómo trabajás', d: 'Ritmo, derechos y tono', icono: '🎚️',
