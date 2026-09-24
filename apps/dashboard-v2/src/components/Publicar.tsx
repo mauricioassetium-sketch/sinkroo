@@ -140,6 +140,14 @@ export function Publicar({ setToast, modo, irAConversaciones, soloIngesta }: {
                   <b style={{ color: 'var(--txt)' }}>Se mide por:</b> {tipo.kpi}
                 </div>
               </div>
+              {/* La aclaración va DENTRO del bloque del objetivo: explica el control que está en
+                  pantalla. Antes estaba al pie de la tarjeta y se mostraba también en las 6 formas
+                  de publicar que NO tienen objetivo, donde hablaba de un «tipo» que no existía. */}
+              <div className="acc-why">
+                El <b>objetivo define el mensaje y la audiencia</b>: una campaña de recuperación de
+                carrito y una de posicionamiento de marca requieren mensajes distintos, aunque el
+                producto sea el mismo.
+              </div>
             </div>
           )}
 
@@ -158,10 +166,6 @@ export function Publicar({ setToast, modo, irAConversaciones, soloIngesta }: {
             </div>
           )}
 
-          <div className="acc-why">
-            El tipo <b>cambia lo que el motor escribe y a quién le muestra la pieza</b>. Un anuncio de
-            retargeting y uno de marca no dicen lo mismo aunque sea el mismo producto.
-          </div>
         </Card>
 
         <Card
