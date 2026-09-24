@@ -5,6 +5,7 @@ import { Progress } from './ui';
 import { usePerfil, inicialesDe } from '../lib/perfil';
 import { usePlan } from '../lib/plan';
 import { useOnboarding } from '../lib/onboarding';
+import { VISTAS_CREADOR } from '../data/creador';
 import { PerfilModal } from './PerfilModal';
 import { PersonalizarPanel } from './PersonalizarPanel';
 
@@ -41,9 +42,11 @@ const NAV_CONF: { key: Vista; nombre: string; Icon: any }[] = [
   { key: 'kyc', nombre: 'Verificación', Icon: I_Shield },
 ];
 
-export function Layout({ vista, setVista, children, theme, cicloTema, toast, modo, avisar }: {
+export function Layout({ vista, setVista, children, theme, cicloTema, toast, modo, avisar, cuentaEmail }: {
   vista: Vista; setVista: (v: Vista) => void; children: ReactNode;
   theme: string; cicloTema: () => void; toast: string; modo: Modo; avisar?: (t: string) => void;
+  /** El correo de la cuenta: es su identidad, y el tipo de cuenta viene con él. */
+  cuentaEmail?: string;
 }) {
   // `perfilVisible` es el perfil guardado MÁS la edición en curso: así el logo y los colores que
   // el cliente está eligiendo en el pop-up de personalización se ven ya en el sidebar, la barra de
@@ -69,6 +72,7 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
   const dias = Math.max(0, Math.round(TENANT.creditos / 150));
   const { plan } = usePlan();
   const onb = useOnboarding();
+  const piel = onb.tipo || 'empresa';
   const todosLosDias = Math.round(plan.creditosMes / 150);
   const pctCreditos = Math.min(100, Math.round((TENANT.creditos / plan.creditosMes) * 100));
   // Ir a una vista del menú y cerrar la bandeja en celular: el mismo gesto para la tarjeta de
@@ -133,10 +137,24 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
         </div>
 
         <div className="sb-section-label">TRABAJO</div>
+        {/* El tipo de cuenta: se eligió al crear la cuenta y ES lo que la cuenta es. No es un
+            interruptor: un correo no se convierte en lo otro, se crea otra cuenta con otro correo. */}
+        <div className="sb-piel">
+          <span className="sb-piel-lb" title={piel === 'creador'
+            ? 'Tu cuenta es de creador de contenido: el panel muestra contenido, mensajes de marcas, nicho y deals.'
+            : 'Tu cuenta es de negocio: el panel muestra campañas, anuncios y ventas.'}>
+            Tipo de cuenta
+          </span>
+          <div className="sb-piel-fija">
+            <span className="sb-piel-chip on">{piel === 'creador' ? '🎬 Creador de contenido' : '🏪 Negocio'}</span>
+            <button className="sb-piel-info" title={`El tipo se eligió cuando creaste la cuenta (${cuentaEmail || 'tu correo'}) y no se cambia: un correo es una cuenta. Si necesitás el otro panel, se crea otra cuenta con otro correo.`}
+              onClick={() => avisar?.('El tipo de cuenta es fijo: se elige al crear la cuenta y no se cambia')}>por qué</button>
+          </div>
+        </div>
         {NAV.slice(0, 4).map(n => (
           <div key={n.key} className={`nav-item ${vista === n.key ? 'active' : ''}`} onClick={() => { setVista(n.key); setMenuAbierto(false); }}>
             <n.Icon size={17} />
-            <span className="nav-label">{n.nombre}</span>
+            <span className="nav-label">{piel === 'creador' ? (VISTAS_CREADOR[n.key]?.nombre || n.nombre) : n.nombre}</span>
             {n.key === 'conversaciones' && esperando > 0 && (
               <span className="badge badge-amber" style={{ marginLeft: 'auto', fontSize: 9 }}>{esperando}</span>
             )}
@@ -147,7 +165,7 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
         {NAV_CRECER.map(n => (
           <div key={n.key} className={`nav-item ${vista === n.key ? 'active' : ''}`} onClick={() => { setVista(n.key); setMenuAbierto(false); }}>
             <n.Icon size={17} />
-            <span className="nav-label">{n.nombre}</span>
+            <span className="nav-label">{piel === 'creador' ? (VISTAS_CREADOR[n.key]?.nombre || n.nombre) : n.nombre}</span>
             {n.key === 'creditos' && (
               <span className="badge badge-amber" style={{ marginLeft: 'auto', fontSize: 9 }} title={`Autonomía: ${dias} días al consumo de hoy`}>{dias} días</span>
             )}
@@ -158,7 +176,7 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
         {NAV_CONF.map(n => (
           <div key={n.key} className={`nav-item ${vista === n.key ? 'active' : ''}`} onClick={() => { setVista(n.key); setMenuAbierto(false); }}>
             <n.Icon size={17} />
-            <span className="nav-label">{n.nombre}</span>
+            <span className="nav-label">{piel === 'creador' ? (VISTAS_CREADOR[n.key]?.nombre || n.nombre) : n.nombre}</span>
             {n.key === 'onboarding' && !onb.arrancado && (
               <span className="badge badge-amber" style={{ marginLeft: 'auto', fontSize: 9 }}
                 title={`Primeros pasos: ${onb.listos.length} de 5 hechos. Faltan los datos que el motor no puede deducir solo.`}>
@@ -215,8 +233,8 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
                 : <SinkrooMark size={26} />}
             </span>
             <div className="titles-wrap">
-              <div className="ttl">{tituloVista(vista)}</div>
-              <div className="sub">{subtituloVista(vista)}</div>
+              <div className="ttl">{tituloVista(vista, piel === 'creador')}</div>
+              <div className="sub">{subtituloVista(vista, piel === 'creador')}</div>
             </div>
 
             <div className="ticker" style={{ marginLeft: 8 }}>
@@ -312,10 +330,13 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
   );
 }
 
-function tituloVista(v: Vista) {
+// El mismo Centro de Mando, dos pieles: los títulos salen de la piel activa (data/creador.ts).
+function tituloVista(v: Vista, creador: boolean) {
+  if (creador && VISTAS_CREADOR[v]) return VISTAS_CREADOR[v].nombre;
   return ({ hoy: 'Tu día', onboarding: 'Primeros pasos', campanas: 'Campañas', conversaciones: 'Conversaciones', mercado: 'Mercado', cuenta: 'Cuenta y autonomía', creditos: 'Créditos', referidos: 'Referidos', kyc: 'Verificación de identidad' } as const)[v];
 }
-function subtituloVista(v: Vista) {
+function subtituloVista(v: Vista, creador: boolean) {
+  if (creador && VISTAS_CREADOR[v]) return VISTAS_CREADOR[v].sub;
   return ({
     hoy: 'Lo que el motor hizo, lo que espera de vos y lo que necesita tu atención',
     onboarding: 'Cinco pantallas cortas y el motor queda trabajando',

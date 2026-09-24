@@ -37,9 +37,9 @@ export default function App() {
   return (
     <PerfilProvider>
     <PlanProvider>
-    <OnboardingProvider avisar={avisar}>
+    <OnboardingProvider avisar={avisar} tipoDeLaCuenta={sesion.tipo}>
     <DetalleProvider>
-    <Layout vista={vista} setVista={setVista} theme={theme} cicloTema={cycle} toast={toast} modo={modo} avisar={avisar}>
+    <Layout vista={vista} setVista={setVista} theme={theme} cicloTema={cycle} toast={toast} modo={modo} avisar={avisar} cuentaEmail={sesion.email}>
       {vista === 'onboarding' && <ViewOnboarding setToast={avisar} setVista={setVista} />}
       {vista === 'hoy' && <ViewHoy setToast={avisar} setVista={setVista} modo={modo} />}
       {vista === 'campanas' && <ViewCampanas setToast={avisar} modo={modo} setVista={setVista} />}

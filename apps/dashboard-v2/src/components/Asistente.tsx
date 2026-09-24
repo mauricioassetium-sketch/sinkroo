@@ -40,7 +40,9 @@ export function Asistente({ sesion, setVista }: { sesion: Sesion; setVista: (v: 
   const tipo = TIPOS_CUENTA.find(t => t.key === onb.tipo);
 
   const cerrar = (aviso: string) => { onb.cerrarAsistente(); onb.avisar(aviso); };
-  const siguiente = () => onb.irAFase(Math.min(6, fase + 1));
+  // La cuenta ya tiene su tipo (se eligió al registrarse): no se vuelve a preguntar, se saltea.
+  const saltarTipo = onb.cuentaBloqueada;
+  const siguiente = () => onb.irAFase(fase === 0 && saltarTipo ? 2 : Math.min(6, fase + 1));
   const atras = () => onb.irAFase(Math.max(0, fase - 1));
 
   return (
@@ -74,8 +76,8 @@ export function Asistente({ sesion, setVista }: { sesion: Sesion; setVista: (v: 
         <div className="asist-barra">
           {[0, 1, 2, 3, 4, 5, 6].map(f => (
             <button key={f} className={`asist-barra-t ${fase >= f ? 'on' : ''} ${fase === f ? 'act' : ''}`}
-              title={f === 0 ? 'Bienvenida' : f === 1 ? 'Tipo de cuenta' : `Paso ${f - 1}: ${onb.pasos[f - 2]?.t}`}
-              onClick={() => onb.irAFase(f)} />
+              title={f === 0 ? 'Bienvenida' : f === 1 ? (saltarTipo ? `Tu cuenta: ${tipo?.nombre || ''}` : 'Tipo de cuenta') : `Paso ${f - 1}: ${onb.pasos[f - 2]?.t}`}
+              onClick={() => { if (f === 1 && saltarTipo) { onb.avisar(`Tu cuenta es de ${(tipo?.nombre || '').toLowerCase()}: no se cambia`); return; } onb.irAFase(f); }} />
           ))}
         </div>
 
@@ -107,7 +109,34 @@ export function Asistente({ sesion, setVista }: { sesion: Sesion; setVista: (v: 
           )}
 
           {/* ---------------- TIPO DE CUENTA ---------------- */}
-          {fase === 1 && (
+          {fase === 1 && saltarTipo && (
+            <>
+              <div className="asist-hola">Tu cuenta es de {tipo?.nombre.toLowerCase() || 'un tipo'} {tipo?.icono}</div>
+              <div className="bs">
+                Lo elegiste al crear la cuenta, así que <b>el asistente ya sabe qué preguntarte</b> y no te lo vuelve a pedir.
+                Un correo es una cuenta: si algún día necesitás el otro panel, se crea otra cuenta con otro correo.
+              </div>
+              <div className="asist-tipos">
+                {TIPOS_CUENTA.map(x => (
+                  <button key={x.key} className={`asist-tipo ${onb.tipo === x.key ? 'sel' : ''}`}
+                    title={onb.tipo === x.key ? `Esta cuenta es de ${x.nombre.toLowerCase()}: es lo que el correo es y no se cambia.` : `${x.nombre}: para esta cuenta no aplica. Se necesita otro correo.`}
+                    onClick={() => onb.avisar(onb.tipo === x.key ? `Ya sos ${x.nombre.toLowerCase()}` : `Para ${x.nombre.toLowerCase()} hace falta otra cuenta, con otro correo`)}>
+                    <span className="asist-tipo-ic">{x.icono}</span>
+                    <span className="asist-tipo-t">{x.nombre}{onb.tipo === x.key ? ' ✓' : ''}</span>
+                    <span className="asist-tipo-q">{onb.tipo === x.key ? 'Tu cuenta' : 'No aplica a esta cuenta'}</span>
+                    <span className="asist-tipo-p">{x.quien}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="asist-reglas" style={{ marginTop: 12 }}>
+                <div className="asist-regla"><I_Check size={12} /> El tipo se elige una sola vez y queda en el correo: no se puede usar el mismo correo para dos cuentas.</div>
+                <div className="asist-regla"><I_Check size={12} /> Las preguntas del asistente y el panel salen de acá: se arman para {onb.tipo === 'creador' ? 'un creador' : 'un negocio'}.</div>
+              </div>
+            </>
+          )}
+
+          {/* ---------------- TIPO DE CUENTA (cuenta nueva) ---------------- */}
+          {fase === 1 && !saltarTipo && (
             <>
               <div className="bs">Lo primero es para qué vas a usar Sinkroo, porque cambia las preguntas y lo que pasa al final.</div>
               <div className="asist-tipos">
@@ -194,7 +223,8 @@ export function Asistente({ sesion, setVista }: { sesion: Sesion; setVista: (v: 
             <Button variant="ghost" className="btn-sm" disabled={fase === 0} title="Volvé a la pantalla anterior"
               onClick={atras}><I_ArrowLeft size={13} /> Atrás</Button>
             {fase === 0 && (
-              <Button className="btn-sm" title="Arranca el asistente: elegís el tipo de cuenta y después los cinco pasos"
+              <Button className="btn-sm"
+                title={saltarTipo ? `Arranca el asistente: como tu cuenta es de ${(tipo?.nombre || '').toLowerCase()}, va derecho a los cinco pasos` : 'Arranca el asistente: elegís el tipo de cuenta y después los cinco pasos'}
                 onClick={siguiente}>Empezar <I_ArrowRight size={13} /></Button>
             )}
             {fase === 1 && (

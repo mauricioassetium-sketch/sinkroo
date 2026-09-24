@@ -15,13 +15,29 @@ import { TENANT } from '../data/demo';
 // contraseña deja la línea de a dónde se mandó el link.
 // =============================================================================================
 
-export type Sesion = { nombre: string; email: string; via: 'email' | 'google' | 'nueva' };
-
-const CUENTA = {
-  nombre: 'María Paula',
-  email: 'maria@skincarenatural.com',
-  clave: '••••••••',
+export type Sesion = {
+  nombre: string; email: string; via: 'email' | 'google' | 'nueva';
+  /** El tipo de cuenta. Se elige UNA vez, en el onboarding, y queda fijo: es la identidad del correo. */
+  tipo: 'empresa' | 'creador' | null;
 };
+
+// ---------------------------------------------------------------------------------------------
+// LAS CUENTAS DE DEMOSTRACIÓN — una por tipo, cada una con SU correo. Es la regla del producto: un
+// correo es un usuario y no se puede usar el mismo correo para dos cuentas.
+// ---------------------------------------------------------------------------------------------
+const CUENTAS_DEMO: { nombre: string; email: string; clave: string; tipo: 'empresa' | 'creador'; etiqueta: string; quien: string }[] = [
+  { nombre: 'María Paula', email: 'maria@skincarenatural.com', clave: 'demo2026', tipo: 'empresa',
+    etiqueta: 'Cuenta de negocio', quien: 'Skincare Natural: productos, campañas y ventas.' },
+  { nombre: 'Camila', email: 'camila@cami.crea', clave: 'demo2026', tipo: 'creador',
+    etiqueta: 'Cuenta de creadora', quien: 'Camila Ferreyra: contenido, marcas y deals.' },
+];
+
+/** El registro de correos que ya tienen cuenta. En producción esto lo responde el servidor. */
+const CUENTAS_REGISTRADAS = CUENTAS_DEMO.map(c => ({ email: c.email, tipo: c.tipo, nombre: c.nombre }));
+
+const cuentaDe = (email: string) =>
+  CUENTAS_REGISTRADAS.find(c => c.email.toLowerCase() === email.trim().toLowerCase());
+
 
 export function PantallaLogin({ onEntrar }: { onEntrar: (s: Sesion) => void }) {
   const [modo, setModo] = useState<'entrar' | 'crear'>('entrar');
@@ -33,24 +49,40 @@ export function PantallaLogin({ onEntrar }: { onEntrar: (s: Sesion) => void }) {
   const [error, setError] = useState('');
 
   /** Entrar se ve: el botón pasa a «Entrando…» y recién después aparece el panel con el asistente. */
-  const entrarCon = (via: Sesion['via'], quien: { nombre: string; email: string }) => {
+  const entrarCon = (via: Sesion['via'], quien: { nombre: string; email: string; tipo: Sesion['tipo'] }) => {
     setError('');
     setEntrando(via);
-    window.setTimeout(() => onEntrar({ nombre: quien.nombre, email: quien.email, via }), via === 'google' ? 900 : 550);
+    // El tipo sale de la cuenta: un correo ya registrado entra con SU tipo, y uno nuevo lo elige en
+    // el onboarding. Después no se cambia: es lo que el correo es.
+    window.setTimeout(() => onEntrar({ nombre: quien.nombre, email: quien.email, via, tipo: quien.tipo }),
+      via === 'google' ? 900 : 550);
   };
 
   const entrar = () => {
     if (!email.trim() || !clave.trim()) {
-      setError('Necesitamos tu email y tu contraseña para entrar. Si querés ver el panel ya cargado, entrá con la cuenta de demostración.');
+      setError('Necesitamos tu email y tu contraseña para entrar. Si querés ver un panel ya cargado, entrá con una de las dos cuentas de demostración.');
       return;
     }
-    entrarCon(modo === 'crear' ? 'nueva' : 'email', { nombre: nombre.trim(), email });
+    const cuenta = cuentaDe(email);
+
+    // LA REGLA DEL PRODUCTO: un correo, una cuenta. Si el correo ya existe, no se registra de nuevo
+    // ni se elige otro tipo: se entra con el tipo que ese correo ya tiene.
+    if (modo === 'crear' && cuenta) {
+      setError(`Ese correo ya tiene una cuenta de ${cuenta.tipo === 'creador' ? 'creador de contenido' : 'negocio'} (${cuenta.nombre}). Entrá con ese correo, o creá la otra cuenta con un correo distinto.`);
+      return;
+    }
+    if (modo === 'entrar' && !cuenta) {
+      setError('Ese correo todavía no tiene cuenta. Creala con «Crear una cuenta nueva»: elegís ahí si sos negocio o creador de contenido, y después no se cambia.');
+      return;
+    }
+    entrarCon(modo === 'crear' ? 'nueva' : 'email',
+      { nombre: nombre.trim() || cuenta?.nombre || '', email, tipo: cuenta?.tipo ?? null });
   };
 
-  /** La puerta rápida: entra con la cuenta ya cargada, sin escribir nada. */
-  const entrarDemo = () => {
-    setNombre(CUENTA.nombre); setEmail(CUENTA.email); setClave(CUENTA.clave);
-    entrarCon('email', { nombre: CUENTA.nombre, email: CUENTA.email });
+  /** Las dos puertas de demostración: una cuenta por tipo, cada una con su correo. */
+  const entrarDemo = (c: typeof CUENTAS_DEMO[number]) => {
+    setNombre(c.nombre); setEmail(c.email); setClave(c.clave);
+    entrarCon('email', { nombre: c.nombre, email: c.email, tipo: c.tipo });
   };
 
   return (
@@ -76,9 +108,11 @@ export function PantallaLogin({ onEntrar }: { onEntrar: (s: Sesion) => void }) {
           <div className="login-demo">
             <span className="login-demo-lb"><I_Shield size={12} /> Cuenta de demostración</span>
             <div className="login-demo-tx">
-              Entrá con <b>{CUENTA.nombre}</b> ({CUENTA.email}) para ver el panel ya cargado: un negocio real, con
-              productos, precios, campañas y materiales ({TENANT.cuenta}, plan {TENANT.plan}). Y si querés arrancar
-              desde cero, entrá con tu email: el asistente te va a pedir tu negocio, tu descripción y tus archivos.
+              Podés mirar los dos paneles ya cargados: <b>{CUENTAS_DEMO[0].etiqueta}</b> ({CUENTAS_DEMO[0].email}) con
+              {TENANT.cuenta} —productos, campañas y ventas— y <b>{CUENTAS_DEMO[1].etiqueta}</b> ({CUENTAS_DEMO[1].email})
+              con Camila Ferreyra —contenido, marcas y deals—. Cada correo entra con su panel y no se puede usar el
+              mismo correo para las dos cuentas. Si querés arrancar desde cero, creá la tuya: elegís si sos negocio
+              o creador y queda así.
             </div>
           </div>
         </div>
@@ -136,16 +170,18 @@ export function PantallaLogin({ onEntrar }: { onEntrar: (s: Sesion) => void }) {
           <div className="login-o"><span>o</span></div>
 
           <Button variant="outline" className="login-btn" title="Entra con tu cuenta de Google y arranca el asistente con ese usuario"
-            onClick={() => entrarCon('google', { nombre: 'María Paula', email: email.trim() || 'maria@gmail.com' })}>
+            onClick={() => entrarCon('google', { nombre: nombre.trim() || 'María Paula', email: email.trim() || 'maria@gmail.com', tipo: cuentaDe(email)?.tipo ?? null })}>
             {entrando === 'google' ? 'Entrando con Google…' : <><span className="login-g">G</span> Entrar con Google</>}
           </Button>
 
-          {/* La puerta rápida para ver el panel cargado: dice exactamente qué hace. */}
-          <Button variant="ghost" className="login-btn"
-            title="Entra con la cuenta de demostración, que ya viene con un negocio cargado (productos, precios, campañas y materiales). No escribe nada tuyo: es para mirar el panel completo."
-            onClick={entrarDemo}>
-            {entrando && entrando !== 'google' && email === CUENTA.email ? 'Entrando…' : 'Ver el panel con la cuenta de demostración'}
-          </Button>
+          {/* Las dos puertas de demostración: una cuenta por tipo, cada una con su correo. */}
+          {CUENTAS_DEMO.map(c => (
+            <Button key={c.email} variant="ghost" className="login-btn"
+              title={`${c.etiqueta}: ${c.quien} Entra con ${c.email} (correo propio de esta cuenta: no se comparte con la otra).`}
+              onClick={() => entrarDemo(c)}>
+              {entrando && email === c.email ? 'Entrando…' : `Ver el panel · ${c.etiqueta}`}
+            </Button>
+          ))}
 
           <div className="login-pie">
             <button className="login-link" title="Te manda el link para cambiar la contraseña al email que pusiste"

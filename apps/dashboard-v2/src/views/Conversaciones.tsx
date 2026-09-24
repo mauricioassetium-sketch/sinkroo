@@ -11,6 +11,8 @@ import {
   type Modo, type Mensaje, type Conversacion,
   type TipoConversacion, type EstadoColaboracion,
 } from '../data/demo';
+import { useOnboarding } from '../lib/onboarding';
+import { ViewMensajesCreador } from './MensajesCreador';
 
 /**
  * Quién atiende la conversación: Rumi (la IA) o vos.
@@ -60,6 +62,9 @@ const sinComillas = (t: string) => t.replace(/^«\s*/, '').replace(/\s*»$/, '')
 const horaAhora = () => new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
 
 export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) => void; modo: Modo }) {
+  // La misma vista, dos pieles: un creador no ve la bandeja de clientes, ve sus DMs de marcas y
+  // seguidores, con la respuesta que escribió Rumi y la etapa del pipeline de cada marca.
+  const onb = useOnboarding();
   const [sel, setSel] = useState(CONVERSACIONES[0].id);
   // Quién atiende cada conversación. Las que llegaron a la cola de humanos arrancan en tus manos:
   // Rumi ya se corrió y nadie contestó.
@@ -99,6 +104,13 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
   const [tokenNuevo, setTokenNuevo] = useState('');
   const [tokenCambiado, setTokenCambiado] = useState(false);
   const compositor = useRef<HTMLInputElement>(null);
+
+  // -------------------------------------------------------------------------------------------
+  // LA PIEL DE CREADOR. Los DMs de un creador no son la bandeja de clientes de un negocio: se
+  // contestan con la respuesta que Rumi ya escribió, y lo que mueve plata lo manda el creador.
+  // El corte va acá, después de los hooks, para que el motor siga leyéndose igual en las dos pieles.
+  // -------------------------------------------------------------------------------------------
+  if (onb.tipo === 'creador') return <ViewMensajesCreador setToast={setToast} />;
 
   const cambiarFlujo = (f: FlujoEditable) =>
     setFlujos(fs => fs.map(x => (x.id === f.id ? f : x)));

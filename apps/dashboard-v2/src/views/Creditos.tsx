@@ -5,6 +5,8 @@ import { I_Credit, I_Wallet, I_Zap, I_Download, I_Shield, I_Plus, I_ArrowRight }
 import { TENANT, CREDITOS_MOV, PLANES } from '../data/demo';
 import { useDetalle } from '../components/Detalle';
 import { usePlan } from '../lib/plan';
+import { useOnboarding } from '../lib/onboarding';
+import { ViewCreditosCreador } from './CreditosCreador';
 
 // Paquetes de recarga. El precio por crédito baja cuanto más grande el paquete.
 const PAQUETES = [
@@ -56,7 +58,24 @@ const PORCIONES = (() => {
   }).join(', ');
 })();
 
+// =============================================================================================
+// CRÉDITOS, SEGÚN LA PIEL DE LA CUENTA — el mismo bloque del motor, con dos idiomas.
+//
+// La decisión se toma EN ESTE componente, que no tiene estado: así el cambio de piel se resuelve
+// antes de montar nada. Si el `if` viviera adentro de la pantalla de negocio (después de sus
+// useState), cambiar de piel con Créditos abierto cambiaría la cantidad de hooks del mismo
+// componente y React cortaría el render; acá el único hook es leer la piel, y se lee siempre.
+//
+// La pantalla de negocio queda tal cual estaba: sólo cambia el nombre de la función.
+// =============================================================================================
+
 export function ViewCreditos({ setToast }: { setToast: (t: string) => void }) {
+  const onb = useOnboarding();
+  if (onb.tipo === 'creador') return <ViewCreditosCreador setToast={setToast} />;
+  return <ViewCreditosNegocio setToast={setToast} />;
+}
+
+function ViewCreditosNegocio({ setToast }: { setToast: (t: string) => void }) {
   const detalle = useDetalle();
   const { plan, cambiarPlan } = usePlan();
   // El plan recién cambiado: la tarjeta lo deja a la vista con lo que cambió, no en un aviso.
