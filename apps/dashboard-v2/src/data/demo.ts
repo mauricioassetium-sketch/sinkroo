@@ -86,6 +86,8 @@ export interface Agente {
   id: string;
   nombre: string;
   rol: string;
+  /** La función del agente en lenguaje llano: qué hace por el negocio, sin jerga. */
+  funcion: string;
   tecnico: string;
   color: string;
   estado: 'trabajando' | 'esperando_ok' | 'al_dia';
@@ -94,6 +96,8 @@ export interface Agente {
   ancla: string;
   resultado: string;
   artefacto: string;
+  /** El nombre del artefacto que dejó: es lo que se lee en el botón que lo abre. */
+  artefactoNombre: string;
   cuando: string;
   autonomia: Modo;
 }
@@ -101,57 +105,173 @@ export interface Agente {
 export const AGENTES: Agente[] = [
   {
     id: 'lux', nombre: 'Lux', rol: 'Analista de Mercado', tecnico: 'market-analyst', color: '#a855f7',
+    funcion: 'Lee los anuncios de tu competencia, la demanda, los precios y tu zona.',
     estado: 'trabajando', autonomia: 'auto',
     accion: 'Leyó 47 anuncios de 6 competidores de tu zona',
     ancla: 'Mercado · skincare Buenos Aires',
     resultado: 'Tienda Norte bajó precios 15% y duplicó su gasto en video corto',
     artefacto: 'Ver el informe',
+    artefactoNombre: 'Informe de competencia · 47 anuncios',
     cuando: 'hace 12 min',
   },
   {
     id: 'rex', nombre: 'Rex', rol: 'Estratega de Marketing', tecnico: 'marketing-strategist', color: '#9333ea',
+    funcion: 'Define el ángulo, la audiencia y el plan del mes.',
     estado: 'trabajando', autonomia: 'auto',
     accion: 'Reasignó $40/día de TikTok a Meta',
     ancla: 'Campaña · Lanzamiento D2C',
     resultado: 'TikTok daba $4,20 de CPC contra $2,10 de Meta con la misma audiencia',
     artefacto: 'Ver por qué',
+    artefactoNombre: 'Plan del mes',
     cuando: 'hace 2 h',
   },
   {
     id: 'nia', nombre: 'Nia', rol: 'Creativa de Anuncios', tecnico: 'creative-strategist', color: '#ec4899',
+    funcion: 'Escribe los textos, arma las imágenes y los prompts de video.',
     estado: 'trabajando', autonomia: 'auto',
     accion: 'Escribió 6 variantes nuevas',
     ancla: 'Producto · Serum Vitamina C',
     resultado: 'Apoyadas en el ángulo "resultado", que el panel puntuó 12% mejor que "precio"',
     artefacto: 'Leer las 6',
+    artefactoNombre: '6 variantes del aviso',
     cuando: 'hace 40 min',
   },
   {
     id: 'kai', nombre: 'Kai', rol: 'Comprador de Medios', tecnico: 'media-buyer', color: '#22c55e',
+    funcion: 'Maneja el presupuesto, las plataformas y las pujas.',
     estado: 'esperando_ok', autonomia: 'shared',
     accion: 'Quiere publicar "Retargeting Carrito"',
     ancla: 'Campaña · Retargeting Carrito',
     resultado: 'Presupuesto $30/día. El panel le dio 84 (aprobado), 1 de 5 vendedores dudó',
     artefacto: 'Aprobar ahora',
+    artefactoNombre: 'Retargeting Carrito · espera tu OK',
     cuando: 'espera desde hace 9 min',
   },
   {
     id: 'sol', nombre: 'Sol', rol: 'Analista de Resultados', tecnico: 'performance-analyst', color: '#06b6d4',
+    funcion: 'Mide los resultados y explica qué funcionó.',
     estado: 'al_dia', autonomia: 'auto',
     accion: 'Comparó lo que predijo con lo que pasó',
     ancla: 'Campaña · Lanzamiento D2C',
     resultado: 'Predijo 84, pasó 79. Corrigió el modelo: la próxima subestima 6% menos',
     artefacto: 'Ver la calibración',
+    artefactoNombre: 'Informe de resultados de la semana',
     cuando: 'hace 1 día',
   },
   {
     id: 'rumi', nombre: 'Rumi', rol: 'Vendedor de Cierre', tecnico: 'sales-closer', color: '#f59e0b',
+    funcion: 'Atiende y cierra las conversaciones con tus clientes.',
     estado: 'al_dia', autonomia: 'shared',
     accion: 'Cerró 2 ventas y escaló 1 conversación',
     ancla: 'Conversaciones · WhatsApp',
     resultado: 'Valeria G. pidió envío a CABA: la IA no pudo confirmar la cobertura',
     artefacto: 'Ver la conversación',
+    artefactoNombre: 'Conversación de Valeria G.',
     cuando: 'hace 20 min',
+  },
+];
+
+// ---------------------------------------------------------------------------------------------
+// LA INVESTIGACIÓN DEL MERCADO — el equipo revisando el mercado desde que terminaste el onboarding
+//
+// El motor no arranca cuando le pedís una campaña: arranca solo cuando terminás el onboarding y
+// no para. Revisa tu zona, la demanda, los precios y los anuncios de la competencia cada 15
+// minutos, y deja un hallazgo con hora. Esto NO es la evaluación de una pieza (eso es MiroFish,
+// ver mirofish.ts): es investigación de mercado, y cada línea se puede abrir.
+// ---------------------------------------------------------------------------------------------
+
+export const INVESTIGACION_MERCADO = {
+  /** Cuándo se puso a trabajar solo. */
+  arranco: 'hace 3 días',
+  desde: 'cuando terminaste el onboarding',
+  /** Cada cuánto vuelve a mirar el mercado. */
+  cadencia: 'cada 15 minutos',
+  cadenciaMin: 15,
+  /** La última vez que dejó un resultado. */
+  ultimaRevision: 'hace 4 min',
+  /** Cuántas veces revisó el mercado desde que arrancó (3 días a 15 minutos = 288). */
+  revisiones: 288,
+  /** Dónde mira: la zona del negocio. */
+  zona: 'Buenos Aires y GBA',
+  zonaDetalle: '6 competidores a menos de 8 km de tu tienda: Palermo, Villa Crespo y Colegiales.',
+};
+
+export interface FrenteInvestigacion {
+  id: string;
+  /** Qué del negocio se está revisando. */
+  t: string;
+  /** La cifra que resume el frente. */
+  dato: string;
+  /** El resultado concreto de esa revisión. */
+  resultado: string;
+  /** El ancla: de qué parte de tu negocio habla. */
+  ancla: string;
+  color: string;
+  cuando: string;
+}
+
+export const FRENTES_INVESTIGACION: FrenteInvestigacion[] = [
+  {
+    id: 'zona', t: 'Tu zona', dato: '6', color: '#a855f7', cuando: 'hace 6 min',
+    resultado: 'Competidores activos a menos de 8 km: Palermo, Villa Crespo y Colegiales.',
+    ancla: '📍 Dónde vendés',
+  },
+  {
+    id: 'demanda', t: 'La demanda', dato: '+32%', color: '#22c55e', cuando: 'hace 3 h',
+    resultado: 'Se busca "serum vitamina C" un 32% más que el mes pasado en tu zona.',
+    ancla: '🔎 Búsquedas de tus clientes',
+  },
+  {
+    id: 'precios', t: 'Los precios', dato: '$29', color: '#f59e0b', cuando: 'hace 2 h',
+    resultado: 'Tienda Norte bajó a $29. Belleza & Co está en $39 y DermaMarket en $44.',
+    ancla: '💲 Tu precio: $34',
+  },
+  {
+    id: 'anuncios', t: 'Los anuncios activos', dato: '47', color: '#06b6d4', cuando: 'hace 12 min',
+    resultado: '47 anuncios de 6 competidores: 14 son de Tienda Norte y 21 usan before/after.',
+    ancla: '📣 Tu campaña: Lanzamiento D2C',
+  },
+];
+
+export interface Hallazgo {
+  id: string;
+  /** 3) el tiempo: cuándo lo encontró. */
+  cuando: string;
+  /** Quién lo encontró. */
+  agente: string;
+  color: string;
+  /** 2) el resultado concreto, en una línea. */
+  texto: string;
+  /** Por qué le importa a tu negocio. */
+  detalle: string;
+  /** El artefacto que dejó, si dejó uno: se abre. */
+  artefacto: string;
+}
+
+export const HALLAZGOS: Hallazgo[] = [
+  {
+    id: 'h1', cuando: 'hace 2 h', agente: 'Lux', color: '#a855f7',
+    texto: 'Tienda Norte bajó el precio de $34 a $29',
+    detalle: 'Es tu competidor más cercano y el único del rubro que baja: puede llevarse tu tráfico frío.',
+    artefacto: 'Ver los 14 anuncios de Tienda Norte',
+  },
+  {
+    id: 'h2', cuando: 'hace 3 h', agente: 'Lux', color: '#a855f7',
+    texto: 'La demanda de "serum vitamina C" creció 32% en tu zona',
+    detalle: 'Es el término que más crece en Buenos Aires en los últimos 30 días.',
+    artefacto: 'Ver la tendencia de búsqueda',
+  },
+  {
+    id: 'h3', cuando: 'hace 1 día', agente: 'Nia', color: '#ec4899',
+    texto: 'El formato before/after es el que más crece: +41%',
+    detalle: 'Lo usa 1 de cada 5 anuncios nuevos del rubro, y tus piezas todavía no lo usan.',
+    artefacto: 'Ver las 6 variantes con before/after',
+  },
+  {
+    id: 'h4', cuando: 'hace 1 día', agente: 'Rex', color: '#9333ea',
+    texto: 'El ángulo "resultado" rinde 12% más que "precio"',
+    detalle: 'Por eso el plan del mes empuja el resultado y usa el precio solo como comparación.',
+    artefacto: 'Ver el plan del mes',
   },
 ];
 
@@ -637,45 +757,12 @@ export const CREDITOS_MOV = [
 ];
 
 // ---------------------------------------------------------------------------------------------
-// EL MOTOR ANDANDO — mercado secundario predictivo (portado del dashboard original)
-// La propuesta se prueba en un mercado simulado ANTES de gastar un peso.
+// EL MOTOR, EN VIVO — la investigación del mercado la muestra MotorEnVivo con AGENTES,
+// INVESTIGACION_MERCADO, FRENTES_INVESTIGACION y HALLAZGOS. El viejo "mercado secundario
+// predictivo" (que votaba una propuesta en 6 etapas, con chat de 500 observadores y conteo de
+// votos) se descartó entero: lo que el motor prueba en serio es la pieza, y eso lo hace MiroFish
+// (ver mirofish.ts: los 5 jueces y las 5 opciones).
 // ---------------------------------------------------------------------------------------------
-
-export const ETAPAS_MOTOR = [
-  { t: 'Ingesta', d: 'La propuesta entra al mercado para ser probada.' },
-  { t: 'Reacción', d: 'El mercado reacciona como lo haría tu audiencia real.' },
-  { t: 'Debate', d: 'El público discute pros y contras en el feed de comentarios.' },
-  { t: 'Votación', d: 'Cada bot vota positivo o negativo y suma su score.' },
-  { t: 'Ranking', d: 'La propuesta se ordena contra las demás del lote.' },
-  { t: 'Veredicto', d: 'Se decide publicar o descartar antes de salir live.' },
-];
-
-export const PIEZAS_MOTOR = [
-  { n: 'propuesta_imagen_01', t: 'Imagen', e: '🖼️' },
-  { n: 'propuesta_reel_v2', t: 'Reel', e: '🎬' },
-  { n: 'propuesta_video_a', t: 'Video', e: '📹' },
-  { n: 'propuesta_paleta_v3', t: 'Paleta', e: '🎨' },
-  { n: 'propuesta_publicacion', t: 'Publicación', e: '📝' },
-  { n: 'propuesta_reel_antes_despues', t: 'Reel', e: '🎬' },
-  { n: 'propuesta_video_demo', t: 'Video', e: '📹' },
-];
-
-export const CHAT_MOTOR = [
-  { t: 'positivo', m: 'Los colores de esta pieza conectan con el nicho. +1' },
-  { t: 'positivo', m: 'El ángulo de venta está alineado con la intención real. Me gusta' },
-  { t: 'negativo', m: 'El titular se pierde en móvil. No la veo ganando' },
-  { t: 'analisis', m: 'Estimando retención del primer segundo en 72%…' },
-  { t: 'positivo', m: 'El hook de los primeros 3s engancha. Voto a favor' },
-  { t: 'negativo', m: 'La oferta llega tarde en el reel. Riesgo de caída' },
-  { t: 'analisis', m: 'Comparando esta contra 3 propuestas previas del lote' },
-  { t: 'positivo', m: 'Contraste y legibilidad sólidos en escritorio y móvil' },
-  { t: 'negativo', m: 'La paleta no resuena con la audiencia objetivo. Rechazo' },
-  { t: 'analisis', m: 'Simulando la reacción de 500 agentes del público' },
-  { t: 'positivo', m: 'CPA proyectado cae bajo el umbral. Vale publicar' },
-  { t: 'positivo', m: 'Señal de compra real detectada en los comentarios simulados' },
-];
-
-export const VOTOS_MOTOR = ['Aprueba', 'Rechaza', 'Aprueba con reserva', 'Neutro'];
 
 // ---------------------------------------------------------------------------------------------
 // QUÉ HACE CADA BOTÓN — para que no haya que adivinar

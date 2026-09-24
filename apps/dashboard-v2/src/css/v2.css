@@ -1036,3 +1036,94 @@
   .reparto-hole { width: 96px; height: 96px; }
   .reparto-v { font-size: 26px; }
 }
+
+/* =============================================================================================
+   EL EQUIPO TRABAJANDO (MotorEnVivo.tsx) — la investigación del mercado, hecha por los 6 agentes
+   El bloque muestra el motor andando en lo que SIEMPRE corre: el equipo revisando el mercado del
+   negocio desde que terminó el onboarding. No es la evaluación de una pieza (eso es MiroFish).
+   Son dos tarjetas en una fila .duo (miden lo mismo) con el encabezado arriba y el puente a
+   MiroFish abajo. Dentro de cada tarjeta, las listas crecen (flex: 1 1 auto) para repartir el aire
+   cuando la de al lado es más alta: nunca queda un hueco en blanco.
+   ============================================================================================= */
+.eq-wrap { margin-bottom: 4px; }
+
+.eq-head { display: flex; flex-direction: column; gap: 9px; padding: 14px 16px; margin-bottom: 16px;
+  border: 1px solid rgba(168,85,247,.32); border-radius: 14px;
+  background: linear-gradient(120deg, rgba(124,58,237,.14), transparent 62%), var(--card); }
+.eq-head-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.eq-head-t { font-size: 16px; font-weight: 800; letter-spacing: -.3px; min-width: 0; }
+.eq-live { display: flex; align-items: center; gap: 7px; padding: 3px 9px; border-radius: 99px; white-space: nowrap;
+  font-size: 10px; font-weight: 800; letter-spacing: .6px; color: var(--green);
+  background: rgba(34,197,94,.14); border: 1px solid rgba(34,197,94,.3); }
+.eq-arranque { font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+.eq-arranque b { color: var(--purple3); font-weight: 700; }
+.eq-estado { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; font-size: 11.5px; color: var(--muted2); }
+.eq-estado b { color: var(--txt); font-weight: 800; }
+.eq-sep { color: var(--border2); }
+.eq-prox b { font-variant-numeric: tabular-nums; }
+.eq-count { margin-left: auto; padding: 2px 9px; border-radius: 99px;
+  background: var(--bg3); border: 1px solid var(--border2); white-space: nowrap; }
+
+/* --- Tarjeta 1: el equipo, agente por agente --- */
+.eq-lista { display: flex; flex-direction: column; gap: 10px; flex: 1 1 auto; justify-content: space-between; }
+.eq-ag { border: 1px solid var(--border); border-radius: 12px; padding: 11px 12px; background: var(--bg2); }
+.eq-ag.working { border-color: rgba(34,197,94,.32); background: linear-gradient(90deg, rgba(34,197,94,.06), transparent 55%); }
+.eq-ag.waiting { border-color: rgba(245,158,11,.4); background: linear-gradient(90deg, rgba(245,158,11,.08), transparent 55%); }
+.eq-ag.idle { opacity: .84; }
+.eq-ag-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.eq-av { width: 26px; height: 26px; border-radius: 9px; display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 12px; font-weight: 800; flex-shrink: 0; }
+.eq-nm { font-size: 13.5px; font-weight: 800; }
+.eq-rol { font-size: 11.5px; color: var(--muted); }
+.eq-est { margin-left: auto; font-size: 10px; font-weight: 800; padding: 3px 8px; border-radius: 99px; white-space: nowrap; }
+.eq-est.working { background: rgba(34,197,94,.16); color: #4ade80; }
+.eq-est.waiting { background: rgba(245,158,11,.16); color: #fcd34d; }
+.eq-est.idle { background: var(--bg3); color: var(--muted); border: 1px solid var(--border2); }
+.eq-fn { font-size: 12.5px; color: var(--txt); line-height: 1.45; margin-top: 5px; }
+.eq-ancla { display: inline-block; max-width: 100%; margin-top: 7px; padding: 2px 8px; border-radius: 99px;
+  font-size: 10.5px; color: var(--purple3); background: rgba(168,85,247,.1); border: 1px solid rgba(168,85,247,.22); }
+.eq-ahora { font-size: 12px; color: var(--txt); line-height: 1.45; margin-top: 6px; }
+.eq-ahora b { color: var(--purple4); font-weight: 700; }
+.eq-cz { color: var(--muted2); }
+.eq-res { font-size: 12px; color: var(--muted); line-height: 1.45; margin-top: 4px; }
+.eq-res b { color: var(--purple4); font-weight: 700; }
+.eq-ag .btn { margin-top: 9px; }
+
+/* --- Tarjeta 2: qué está investigando del mercado ahora --- */
+.eq-inv { display: flex; flex-direction: column; gap: 11px; flex: 1 1 auto; justify-content: space-between; }
+.eq-zona { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border-radius: 11px;
+  border: 1px solid var(--border2); background: var(--bg2); flex-wrap: wrap; }
+.eq-zona-t { font-size: 12.5px; font-weight: 700; }
+.eq-zona-d { font-size: 11.5px; color: var(--muted); line-height: 1.45; margin-top: 3px; }
+.eq-tag { margin-left: auto; font-size: 10.5px; color: var(--muted2); white-space: nowrap; }
+.eq-frentes { display: grid; grid-template-columns: repeat(auto-fit, minmax(178px, 1fr)); gap: 9px; }
+.eq-frente { display: flex; flex-direction: column; gap: 5px; padding: 10px 11px; border-radius: 11px;
+  border: 1px solid var(--border); border-left: 3px solid var(--purple2); background: var(--bg2); }
+.eq-frente-top { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.eq-frente-t { font-size: 10.5px; font-weight: 800; letter-spacing: .3px; color: var(--muted); text-transform: uppercase; }
+.eq-frente-v { margin-left: auto; font-size: 17px; font-weight: 900; font-variant-numeric: tabular-nums; }
+.eq-frente-r { font-size: 12px; color: var(--txt); line-height: 1.45; }
+.eq-frente-a { font-size: 10.5px; color: var(--muted2); margin-top: auto; }
+.eq-hallazgos { display: flex; flex-direction: column; gap: 8px; flex: 1 1 auto; justify-content: space-between; }
+.eq-hall { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 9px 11px; border-radius: 11px;
+  border: 1px solid var(--border); background: var(--bg2); }
+.eq-hall-when { width: 62px; flex-shrink: 0; font-size: 10.5px; font-weight: 800; color: var(--muted2);
+  font-variant-numeric: tabular-nums; }
+.eq-hall-b { flex: 1 1 190px; min-width: 0; }
+.eq-hall-t { font-size: 12.5px; font-weight: 700; line-height: 1.4; }
+.eq-hall-d { font-size: 11.5px; color: var(--muted); line-height: 1.45; margin-top: 2px; }
+
+/* --- El puente a MiroFish: lo que sí evalúa piezas --- */
+.eq-puente { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 14px; padding: 11px 14px;
+  border: 1px solid rgba(34,211,238,.28); border-radius: 12px; background: rgba(34,211,238,.07); }
+.eq-puente-t { flex: 1 1 320px; min-width: 0; font-size: 11.5px; color: var(--muted); line-height: 1.5; }
+.eq-puente-t b { color: #22d3ee; font-weight: 700; }
+
+@media (max-width: 620px) {
+  .eq-head { padding: 13px; }
+  .eq-head-t { font-size: 15px; }
+  .eq-count { margin-left: 0; }
+  .eq-hall-when { width: auto; }
+  .eq-hall-btn { width: 100%; justify-content: center; }
+  .eq-frentes { grid-template-columns: minmax(0, 1fr); }
+}

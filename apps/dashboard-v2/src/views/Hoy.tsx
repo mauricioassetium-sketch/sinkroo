@@ -69,7 +69,13 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
       </div>
 
       {/* ====================== EL MOTOR ANDANDO ====================== */}
-      <div id="motor"><MotorEnVivo setToast={setToast} /></div>
+      <div id="motor">
+        <MotorEnVivo setToast={setToast}
+          irAGaleria={() => {
+            setVista('campanas');
+            setToast('En Campañas, entrá al paso «Galería»: ahí están las piezas que MiroFish ya puntuó');
+          }} />
+      </div>
 
       {/* ====================== FILA 1: ACCIÓN ====================== */}
       <div className="csec">
