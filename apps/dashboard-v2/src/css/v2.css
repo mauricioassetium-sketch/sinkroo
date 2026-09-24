@@ -852,3 +852,93 @@
 .pz-fila-t { display: block; font-size: 12.5px; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pz-fila-m { display: block; font-size: 10.5px; color: var(--muted); }
 .pz-fila-v { display: block; font-size: 10px; color: var(--muted2); margin-top: 2px; font-variant-numeric: tabular-nums; }
+
+/* =============================================================================================
+   AUTOMATIZACIONES EDITABLES — sección 1 de Conversaciones
+   Las 4 tarjetas de flujos ya no son de sólo lectura: cada una lleva el interruptor de
+   encendido/apagado, los pasos editables en el lugar, el aviso de variables, el pie con
+   Agregar paso / Ver cómo le llega / Guardar / Descartar, y la prueba del primer paso.
+   .aut-card existe para que el encabezado de estas tarjetas pueda bajar los resultados
+   (.aut-res) a una segunda línea sin apretar el nombre de la automatización.
+   .wa-burbuja dibuja el globito de la prueba con la misma pinta que las burbujas del hilo de
+   Conversaciones (fondo --bg3, borde --border, radio 13, padding 10/13): la prueba tiene que
+   parecerse al WhatsApp real del cliente, no a un panel del dashboard.
+   ============================================================================================= */
+.aut-card > .card-head { flex-wrap: wrap; gap: 8px; }
+.aut-res { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; flex: 1 1 100%; }
+.aut-res-i { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; padding: 4px 9px;
+  border-radius: 9px; background: var(--bg3); border: 1px solid var(--border); min-width: 0; }
+.aut-res-i b { font-size: 12px; font-weight: 800; letter-spacing: -.2px; white-space: nowrap; }
+.aut-res-i i { font-style: normal; font-size: 9.5px; color: var(--muted); white-space: nowrap; }
+
+/* La barra del interruptor: switch + badge de estado (los dos leen el mismo dato) + a qué grupo va */
+.aut-barra { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.aut-barra-nota { flex: 1 1 160px; min-width: 0; font-size: 11px; color: var(--muted); line-height: 1.4; }
+
+/* El aviso de variables que se pueden escribir en cualquier mensaje */
+.aut-vars { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; padding: 8px 10px;
+  border: 1px dashed var(--border2); border-radius: 10px; background: var(--bg2); }
+.aut-vars-t { font-size: 11px; color: var(--muted); }
+.aut-vars-n { font-size: 10.5px; color: var(--muted2); }
+.aut-var { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; font-weight: 700;
+  color: var(--purple3); background: rgba(168,85,247,.12); border: 1px solid rgba(168,85,247,.3);
+  border-radius: 6px; padding: 1px 6px; white-space: nowrap; }
+
+/* Los pasos: el retardo y el mensaje se editan donde se leen */
+.aut-pasos { width: 100%; }
+.aut-clic { cursor: text; border-bottom: 1px dotted transparent; transition: border-color .15s; }
+.aut-clic:hover { border-bottom-color: var(--purple3); }
+.aut-in { padding: 6px 9px; font-size: 12.5px; border-radius: 8px; }
+.aut-in-delay { width: 108px; flex: 0 0 108px; }
+.aut-paso-acts { display: flex; gap: 5px; margin-top: 7px; }
+.aut-mini { width: 24px; height: 24px; border-radius: 7px; }
+.aut-vacio { color: var(--muted2); font-style: italic; }
+
+/* La prueba del primer paso, como le llega al cliente */
+.aut-prueba { display: flex; flex-direction: column; gap: 9px; padding: 11px 12px; border-radius: 11px;
+  border: 1px solid var(--border); border-left: 3px solid var(--green);
+  background: linear-gradient(90deg, rgba(34,197,94,.06), transparent 70%); }
+.aut-prueba-t { display: flex; align-items: center; gap: 7px; font-size: 11.5px; font-weight: 800; color: var(--green); }
+.aut-hilo { max-height: none; }
+.wa-burbuja { align-self: flex-start; max-width: 92%; background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 13px; padding: 10px 13px; }
+.wa-burbuja-hora { margin-top: 4px; text-align: right; }
+
+/* El pie de la tarjeta: agregar, ver la prueba y guardar/descartar */
+.aut-pie { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 12px;
+  padding-top: 12px; border-top: 1px solid var(--border); }
+.aut-sucio { margin-left: auto; }
+
+@media (max-width: 700px) {
+  .aut-res, .aut-res-i { align-items: flex-start; }
+  .aut-res { justify-content: flex-start; }
+  .aut-sucio { margin-left: 0; }
+  .aut-in-delay { width: 84px; flex: 0 0 84px; }
+}
+
+/* =============================================================================================
+   SCORE EN VIVO DEL MOTOR (MotorEnVivo.tsx) — el anillo del puntaje + la tira de movimientos
+   Reemplaza el gráfico de línea por el mismo lenguaje circular del resto del panel: un anillo
+   grande con el puntaje adentro y, al lado, una tira de barras verticales hechas con DIVS (no
+   SVG, no se deforman) con los últimos movimientos del puntaje. La tarjeta del score se lleva
+   el ancho completo de la fila de .motor-kpis para que el anillo y las barritas entren juntos
+   sin apretarse; las otras dos tarjetas de la fila quedan una al lado de la otra y miden igual.
+   El color (--c) es la franja del puntaje, la misma que usa el resto de la app.
+   ============================================================================================= */
+.score-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.score-kpis > .score { grid-column: 1 / -1; }
+.score-fila { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.score-movs { flex: 1 1 170px; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.score-tira { display: flex; align-items: flex-end; gap: 5px; height: 64px; }
+.score-col { flex: 1; min-width: 0; height: 100%; display: flex; align-items: flex-end; }
+.score-bar { width: 100%; border-radius: 4px 4px 2px 2px; transition: height .5s ease, background .3s ease; }
+/* Las lecturas viejas van atenuadas: la barrita encendida es la de ahora. */
+.score-col:not(.ahora) .score-bar { opacity: .4; }
+.score-col.ahora .score-bar { box-shadow: 0 0 12px -2px currentColor; }
+.score-lee { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 10.5px; color: var(--muted); }
+@media (max-width: 620px) {
+  .score-kpis { grid-template-columns: minmax(0, 1fr); }
+  .score-fila { gap: 12px; }
+  .score-movs { flex: 1 1 130px; }
+  .score-tira { height: 52px; }
+}

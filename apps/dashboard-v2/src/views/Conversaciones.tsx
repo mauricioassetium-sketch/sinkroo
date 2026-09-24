@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { Card, Badge, Button, Avatar } from '../components/ui';
 import { ViewHead, BarRow } from '../components/viz';
+import { AutomatizacionCard, clonarFlujo, flujoNuevo, nombreOFrase, type FlujoEditable } from '../components/AutomatizacionCard';
 import {
   I_Whatsapp, I_Chat, I_Send, I_Zap, I_Check, I_Plus, I_Users,
   I_Clock, I_Edit, I_Robot, I_User,
@@ -48,7 +49,81 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
   const [borrador, setBorrador] = useState<Record<string, string>>({});
   const [filtro, setFiltro] = useState<'todas' | 'esperan'>('todas');
   const [ignoradas, setIgnoradas] = useState<string[]>([]);
+  // AUTOMATIZACIONES EDITABLES. `base` es lo último guardado (la automatización que está
+  // funcionando de verdad) y `flujos` es la copia que se toca en pantalla. Mientras no aprietes
+  // Guardar, la automatización real sigue siendo la de `base`: por eso se puede Descartar.
+  const [base, setBase] = useState<FlujoEditable[]>(() => FLUJOS.map(clonarFlujo));
+  const [flujos, setFlujos] = useState<FlujoEditable[]>(() => FLUJOS.map(clonarFlujo));
+  // Automatizaciones que sacaste de la lista y todavía no se guardó el borrado. Guardan su
+  // posición para que Deshacer las devuelva al mismo lugar del que salieron.
+  const [borrados, setBorrados] = useState<{ f: FlujoEditable; i: number }[]>([]);
   const compositor = useRef<HTMLInputElement>(null);
+  const nombreInput = useRef<HTMLInputElement>(null);
+
+  const cambiarFlujo = (f: FlujoEditable) =>
+    setFlujos(fs => fs.map(x => (x.id === f.id ? f : x)));
+
+  /** Hay cambios sin guardar: la copia editable no coincide con lo guardado. */
+  const estaSucio = (f: FlujoEditable) => {
+    const g = base.find(x => x.id === f.id);
+    return !g || JSON.stringify(f) !== JSON.stringify(g);
+  };
+
+  const guardarFlujo = (f: FlujoEditable) => {
+    // Una automatización nueva no estaba en `base`: al guardarla se agrega a lo que está funcionando.
+    setBase(bs => (bs.some(x => x.id === f.id) ? bs.map(x => (x.id === f.id ? clonarFlujo(f) : x)) : [...bs, clonarFlujo(f)]));
+    const cuantos = `${f.pasos.length} paso${f.pasos.length === 1 ? '' : 's'}`;
+    setToast(`Guardaste "${nombreOFrase(f)}": ${f.estado === 'Activo'
+      ? `queda encendida con ${cuantos}`
+      : `queda en pausa, con ${cuantos} listo${f.pasos.length === 1 ? '' : 's'} para cuando la enciendas`} (demo)`);
+  };
+
+  const descartarFlujo = (f: FlujoEditable) => {
+    const original = base.find(x => x.id === f.id);
+    // Nunca se guardó: descartar es sacarla de la lista, no queda nada pendiente.
+    if (!original) {
+      setFlujos(fs => fs.filter(x => x.id !== f.id));
+      setToast(`Descartaste "${nombreOFrase(f)}": como no la habías guardado, sale de la lista y no queda nada (demo)`);
+      return;
+    }
+    setFlujos(fs => fs.map(x => (x.id === f.id ? clonarFlujo(original) : x)));
+    setToast(`Descartaste los cambios de "${nombreOFrase(f)}": volvió a como estaba (demo)`);
+  };
+
+  /** Crea una automatización vacía al final de la grilla, lista para editar. */
+  const agregarFlujo = () => {
+    const f = flujoNuevo();
+    setFlujos(fs => [...fs, f]);
+    setToast('Agregaste una automatización nueva al final de la lista: ponele nombre, elegí cuándo se dispara y escribí el primer mensaje. Arranca en pausa y todavía no está guardada');
+    setTimeout(() => nombreInput.current?.focus(), 0);
+  };
+
+  /**
+   * Saca una automatización entera de la lista. Es distinto de pausarla: en pausa queda guardada
+   * y deja de mandar; borrada deja de existir. Si ya estaba guardada, el borrado queda pendiente y
+   * se puede deshacer (una tarjeta borrada no tiene botón Descartar, así que el deshacer va acá).
+   */
+  const borrarFlujo = (f: FlujoEditable) => {
+    const i = flujos.findIndex(x => x.id === f.id);
+    setFlujos(fs => fs.filter(x => x.id !== f.id));
+    if (base.some(x => x.id === f.id)) {
+      setBorrados(bs => [...bs, { f: clonarFlujo(f), i }]);
+      setToast(`Sacaste "${nombreOFrase(f)}" de la lista. No se guardó todavía: Deshacer la devuelve como estaba. Si querías sólo frenarla, la pausa la deja guardada (demo)`);
+    } else {
+      setToast(`Sacaste "${nombreOFrase(f)}" de la lista. Como no la habías guardado, no queda nada pendiente (demo)`);
+    }
+  };
+
+  const deshacerBorrados = () => {
+    setFlujos(fs => {
+      const out = [...fs];
+      // De menor a mayor: así cada automatización vuelve al lugar exacto del que salió.
+      [...borrados].sort((a, b) => a.i - b.i).forEach(({ f, i }) => out.splice(Math.min(i, out.length), 0, clonarFlujo(f)));
+      return out;
+    });
+    setToast(`Volvieron ${borrados.length === 1 ? 'la automatización que habías sacado' : `las ${borrados.length} automatizaciones que habías sacado`}: quedan como estaban (demo)`);
+    setBorrados([]);
+  };
 
   const conv = CONVERSACIONES.find(c => c.id === sel) ?? CONVERSACIONES[0];
   /** La cola de trabajo: las conversaciones que esperan a un humano. */
@@ -115,7 +190,7 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
           { v: '128', l: 'mensajes hoy' },
           { v: '94%', l: 'resueltos por la IA', c: 'var(--green)' },
           { v: String(cola.length), l: 'esperan a un humano', c: cola.length ? 'var(--red)' : 'var(--green)' },
-          { v: String(FLUJOS.length), l: 'automatizaciones activas', c: 'var(--purple3)' },
+          { v: String(flujos.filter(f => f.estado === 'Activo').length), l: `de ${flujos.length} automatizaciones encendidas`, c: 'var(--purple3)' },
         ]}
       />
 
@@ -393,31 +468,12 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
       <div className="csec">
         <span className="csec-n">1</span>
         <span className="csec-t">Automatizaciones</span>
-        <span className="csec-s">Mensajes que salen solos en el momento justo, sin que los dispares vos</span>
+        <span className="csec-s">Mensajes que salen solos en el momento justo. Encendelas, apagalas y editá cada paso acá mismo</span>
       </div>
       <div className="duo">
-        {FLUJOS.map(f => (
-          <Card key={f.id}
-            title={<span className="row" style={{ gap: 8 }}><I_Zap size={14} style={{ color: 'var(--purple3)' }} />{f.nombre}</span>}
-            action={<Badge tone={f.estado === 'Activo' ? 'green' : 'muted'}>{f.estado}</Badge>}>
-            <div className="tl">
-              {f.pasos.map((p, i) => (
-                <div key={i} className="tl-item">
-                  <span className="tl-dot" style={{ background: p.condicion ? 'var(--amber)' : 'var(--purple2)' }} />
-                  <span className="tl-time" style={{ color: p.condicion ? 'var(--amber)' : undefined }}>
-                    {p.condicion ? 'SI' : ''} {p.delay.replace(' después', '')}
-                  </span>
-                  <div className="tl-body"><div className="tl-text" style={{ fontSize: 12.5 }}>{p.txt}</div></div>
-                </div>
-              ))}
-            </div>
-            <div className="row" style={{ gap: 8, marginTop: 11, flexWrap: 'wrap' }}>
-              <Button variant="ghost" className="btn-sm" title="Abre el editor de pasos de este flujo"
-                onClick={() => setToast(`Editando "${f.nombre}" (demo)`)}>Editar</Button>
-              <Button variant="ghost" className="btn-sm" title={f.estado === 'Activo' ? 'Lo apaga: deja de enviar mensajes' : 'Lo enciende'}
-                onClick={() => setToast('Pausar flujo (demo)')}>{f.estado === 'Activo' ? 'Pausar' : 'Activar'}</Button>
-            </div>
-          </Card>
+        {flujos.map(f => (
+          <AutomatizacionCard key={f.id} flujo={f} sucio={estaSucio(f)} avisar={setToast}
+            onCambio={cambiarFlujo} onGuardar={() => guardarFlujo(f)} onDescartar={() => descartarFlujo(f)} />
         ))}
       </div>
     </div>

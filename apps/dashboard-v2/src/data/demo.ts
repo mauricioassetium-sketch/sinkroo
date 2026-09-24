@@ -474,35 +474,91 @@ export const CONVERSACIONES: Conversacion[] = [
   },
 ];
 
+// ---------------------------------------------------------------------------------------------
+// AUTOMATIZACIONES — flujos, tiempos, condiciones y disparadores
+// ---------------------------------------------------------------------------------------------
+// Los tiempos del reloj NO se escriben a mano: se eligen de esta lista. Es una lista corta y
+// cerrada a propósito, por dos razones: (1) el motor sólo sabe medir estos tiempos, cualquier
+// otro no se puede cumplir; (2) escribir el retardo a mano confundía al dueño de la tienda, que
+// terminaba tipeando cosas como "AI instante". `pasos[].delay` guarda siempre uno de estos textos.
+export const RETARDOS = [
+  'Al instante',
+  '5 minutos después',
+  '30 minutos después',
+  '1 hora después',
+  '3 horas después',
+  '6 horas después',
+  '1 día después',
+  '3 días después',
+  '7 días después',
+  '30 días después',
+];
+
+// Los pasos que NO esperan un tiempo: dependen de lo que haga el cliente. Se guardan en el mismo
+// campo `delay` del paso, pero con `condicion: true`, y se eligen de esta otra lista.
+export const CONDICIONES = ['Si responde', 'Si no responde', 'Si no compra', 'Después de la compra'];
+
+// Cuándo arranca cada automatización. También se elige de la lista: es el momento del negocio que
+// la dispara, no un texto libre.
+export const DISPARADORES = [
+  'Cuando alguien escribe por primera vez',
+  'Cuando abandona el carrito',
+  '30 días después de comprar',
+  'Cuando un cliente deja de comprar hace 90 días',
+  'Después de la primera compra',
+];
+
+// Automatizaciones que manda el motor solo. `resultado` son dos cifras del negocio (clientes y
+// plata) calculadas con el ticket promedio real de la tienda ($8.400): sirven para saber, de un
+// vistazo, si la automatización está sirviendo o hay que tocarla. `pasos[].id` existe para poder
+// editar el paso en la pantalla sin confundirlo con otro.
 export const FLUJOS = [
   {
-    id: 'f1', nombre: 'Secuencia de Bienvenida', grupo: 'Mensajes', estado: 'Activo',
+    id: 'f1', nombre: 'Secuencia de Bienvenida', disparador: 'Cuando alguien escribe por primera vez', grupo: 'Mensajes', estado: 'Activo',
+    resultado: [
+      { v: '38 chats nuevos', l: 'abrió este mes' },
+      { v: '$63.000', l: 'en primeras compras' },
+    ],
     pasos: [
-      { delay: 'Al instante', txt: '👋 ¡Hola {nombre}! Gracias por escribirnos. Soy Rumi, el vendedor de la tienda.' },
-      { delay: '2 min después', txt: 'Veo que te interesan productos de skincare. ¿Qué tipo de piel tenés? 🤔' },
-      { delay: 'Si responde', txt: '→ Recomiendo productos según su tipo de piel.', condicion: true },
-      { delay: '1 día después', txt: 'Solo pasé a recordarte: tenemos envío gratis en compras +$59.' },
+      { id: 'f1p1', delay: 'Al instante', txt: '👋 ¡Hola {nombre}! Gracias por escribirnos. Soy Rumi, el vendedor de la tienda.' },
+      // '2 min después' era un tiempo que el motor no medía: quedó normalizado al más parecido de la lista.
+      { id: 'f1p2', delay: '5 minutos después', txt: 'Veo que te interesan productos de skincare. ¿Qué tipo de piel tenés? 🤔' },
+      { id: 'f1p3', delay: 'Si responde', txt: '→ Recomiendo productos según su tipo de piel.', condicion: true },
+      { id: 'f1p4', delay: '1 día después', txt: 'Solo pasé a recordarte: tenemos envío gratis en compras +$59.' },
     ],
   },
   {
-    id: 'f2', nombre: 'Recupera carritos', grupo: 'Ventas', estado: 'Activo',
+    id: 'f2', nombre: 'Recupera carritos', disparador: 'Cuando abandona el carrito', grupo: 'Ventas', estado: 'Activo',
+    resultado: [
+      { v: '19 carritos', l: 'recuperados este mes' },
+      { v: '$159.600', l: 'volvió a la caja' },
+    ],
     pasos: [
-      { delay: '1 h después', txt: '🛒 ¡Hola! Quedó algo en tu carrito. ¿Te ayudo a terminar la compra?' },
-      { delay: '24 h después', txt: 'Tu carrito sigue guardado. Te dejé un cupón de 15%: VOLVE15 ⏳' },
-      { delay: 'Si no responde', txt: '→ Marcar lead como "frío" y pausar la secuencia.', condicion: true },
+      // '1 h después' y '24 h después' se normalizaron a las opciones de la lista de tiempos.
+      { id: 'f2p1', delay: '1 hora después', txt: '🛒 ¡Hola! Quedó algo en tu carrito. ¿Te ayudo a terminar la compra?' },
+      { id: 'f2p2', delay: '1 día después', txt: 'Tu carrito sigue guardado. Te dejé un cupón de 15%: VOLVE15 ⏳' },
+      { id: 'f2p3', delay: 'Si no responde', txt: '→ Marcar lead como "frío" y pausar la secuencia.', condicion: true },
     ],
   },
   {
-    id: 'f3', nombre: 'Recompra a los 30 días', grupo: 'Recuperación', estado: 'Activo',
+    id: 'f3', nombre: 'Recompra a los 30 días', disparador: '30 días después de comprar', grupo: 'Recuperación', estado: 'Activo',
+    resultado: [
+      { v: '12 clientes', l: 'volvieron a comprar' },
+      { v: '$100.800', l: 'sumó este mes' },
+    ],
     pasos: [
-      { delay: '30 días después de la compra', txt: '¡Hola {nombre}! Ya se te debe estar terminando el serum. ¿Te reservo otro?' },
-      { delay: 'Si no responde', txt: '→ Ofrecer 10% en la segunda compra.', condicion: true },
+      { id: 'f3p1', delay: '30 días después', txt: '¡Hola {nombre}! Ya se te debe estar terminando el serum. ¿Te reservo otro?' },
+      { id: 'f3p2', delay: 'Si no responde', txt: '→ Ofrecer 10% en la segunda compra.', condicion: true },
     ],
   },
   {
-    id: 'f4', nombre: 'Programa de referidos', grupo: 'Referidos', estado: 'En pausa',
+    id: 'f4', nombre: 'Programa de referidos', disparador: 'Después de la primera compra', grupo: 'Referidos', estado: 'En pausa',
+    resultado: [
+      { v: '7 amigos', l: 'traídos este mes' },
+      { v: '$58.800', l: 'en ventas nuevas' },
+    ],
     pasos: [
-      { delay: '7 días después de la compra', txt: '¿Le recomendarías el serum a alguien? Con tu código ganás 250 créditos 🎁' },
+      { id: 'f4p1', delay: '7 días después', txt: '¿Le recomendarías el serum a alguien? Con tu código ganás 250 créditos 🎁' },
     ],
   },
 ];
