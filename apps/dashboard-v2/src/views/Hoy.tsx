@@ -14,7 +14,8 @@ import {
 const SEV_LB: Record<Severidad, string> = { critico: 'CRÍTICO', atencion: 'ATENCIÓN', oportunidad: 'OPORTUNIDAD', info: 'RESUELTO SOLO' };
 
 export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) => void; setVista: (v: Vista) => void; modo: Modo }) {
-  const { perfil } = usePerfil();
+  // Ve el perfil que se está editando (así el logo y el nombre se ven al instante al subirlos).
+  const { perfilVisible: perfil } = usePerfil();
   const [hechas, setHechas] = useState<string[]>([]);
   const [alarmasExtra, setAlarmasExtra] = useState(false);
   const [bitacoraCompleta, setBitacoraCompleta] = useState(false);
@@ -31,8 +32,16 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
       <div className="hero card">
         <div className="hero-side">
           <div className="hero-greet">
-            <span className="hero-logo">
-              <SinkrooMark size={136} />
+            {/* El logo del cliente manda en el hero: es SU panel. El búho de Sinkroo queda como
+                marca del producto en el sidebar y también acá mientras no haya logo propio. */}
+            <span className={`hero-logo ${perfil.logo ? 'propio' : ''}`}
+              title={perfil.logo
+                ? `El logo de ${perfil.marca}: así se ve tu marca en tu panel`
+                : 'Sinkroo. Cargá el logo de tu marca en tu perfil y aparece acá'}>
+              {perfil.logo
+                ? <img className="marca-logo" src={perfil.logo} alt={`Logo de ${perfil.marca}`} />
+                : <SinkrooMark size={136} />}
+              {perfil.logo ? <span className="hero-logo-lb">{perfil.marca}</span> : null}
             </span>
             <div className="hero-txt">
               <div className="hero-live" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

@@ -39,7 +39,9 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
   vista: Vista; setVista: (v: Vista) => void; children: ReactNode;
   theme: string; cicloTema: () => void; toast: string; modo: Modo; avisar?: (t: string) => void;
 }) {
-  const { perfil } = usePerfil();
+  // `perfilVisible` es el perfil guardado MÁS la edición en curso: así el logo y los colores que
+  // el cliente está eligiendo en el modal se ven ya en el sidebar, la barra de arriba y el hero.
+  const { perfilVisible: perfil } = usePerfil();
   const [perfilAbierto, setPerfilAbierto] = useState(false);
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [notif, setNotif] = useState(false);
@@ -106,7 +108,7 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
         ))}
 
         <div className="sb-user" onClick={() => setPerfilAbierto(true)} role="button" tabIndex={0}
-          title="Tu perfil: nombre, marca, email, zona horaria y moneda. Se puede editar."
+          title="Tu perfil: nombre, marca, logo y colores de tu negocio, email, zona horaria y moneda. Se puede editar."
           onKeyDown={e => { if (e.key === 'Enter') setPerfilAbierto(true); }}>
           <div className="av" style={{ width: 34, height: 34, fontSize: 12, background: `linear-gradient(135deg, ${perfil.color}, ${perfil.color}bb)` }}>
             {inicialesDe(perfil.nombre)}
@@ -130,6 +132,16 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
             <button className="menu-btn" title="Abrir el menú" onClick={() => setMenuAbierto(true)}>
               <I_Menu size={18} />
             </button>
+            {/* El logo del cliente, chiquito, a la izquierda del título. Si no subió ninguno se ve
+                el símbolo de Sinkroo, como hasta ahora. */}
+            <span className={`tb-logo ${perfil.logo ? 'propio' : ''}`}
+              title={perfil.logo
+                ? `El logo de ${perfil.marca}, tu negocio`
+                : 'Sinkroo. Si querés tu logo acá, cargalo en tu perfil (bloque de abajo del menú)'}>
+              {perfil.logo
+                ? <img src={perfil.logo} alt={`Logo de ${perfil.marca}`} />
+                : <SinkrooMark size={26} />}
+            </span>
             <div className="titles-wrap">
               <div className="ttl">{tituloVista(vista)}</div>
               <div className="sub">{subtituloVista(vista)}</div>
