@@ -9,9 +9,16 @@ import { FlujoMiroFish } from './FlujoMiroFish';
 import { TIPOS_CAMPANA, type ObjetivoCampana } from '../data/campana';
 import { FORMATOS, MATERIAL, NO_SE_PUBLICA, type CampoPublicacion, type FormatoKey } from '../data/publicaciones';
 import type { Modo } from '../data/demo';
+import { CARPETA } from '../data/demo';
 
-type Archivo = { nombre: string; peso: string; url: string | null; esImagen: boolean };
+type Archivo = { nombre: string; peso: string; url: string | null; esImagen: boolean; deCarpeta?: boolean };
 type Valor = string | string[];
+
+/** El ícono de una miniatura que no se puede ver: por la extensión, no por adivinanza. */
+const iconoDe = (nombre: string) =>
+  /\.(pdf|xls|xlsx|csv|docx?|pptx?|txt)$/i.test(nombre) ? <I_File size={18} />
+    : /\.(mp4|mov|webm|avi|mkv|m4v)$/i.test(nombre) ? <I_Film size={18} />
+      : <I_Image size={18} />;
 
 // LA HORA EXACTA DEL MENSAJE: 48 medias horas en formato de 24 h (00:00 … 23:30). Lo que se guarda
 // en el campo es el texto 'A las 15:30', así la hora que elige el usuario y las opciones de la
@@ -132,8 +139,8 @@ export function Publicar({ setToast, modo, irAConversaciones, soloIngesta }: {
               <div key={i} className="mat-thumb">
                 {f.esImagen && f.url
                   ? <img src={f.url} alt={f.nombre} />
-                  : <span className="mat-thumb-ico">{f.esImagen ? <I_Image size={18} /> : <I_Film size={18} />}</span>}
-                <span className="mat-thumb-n" title={f.nombre}>{f.nombre}</span>
+                  : <span className="mat-thumb-ico">{iconoDe(f.nombre)}</span>}
+                <span className="mat-thumb-n" title={f.deCarpeta ? `${f.nombre} · ya estaba en tu carpeta` : f.nombre}>{f.nombre}</span>
                 <span className="mat-thumb-p">{f.peso}</span>
                 <button className="mat-thumb-x" title="Quitar" onClick={() => quitar(campo.id, i)}><I_Trash size={12} /></button>
               </div>
@@ -141,6 +148,38 @@ export function Publicar({ setToast, modo, irAConversaciones, soloIngesta }: {
           </div>
         )}
       </>
+    );
+  };
+
+  /** La carpeta del negocio: lo que ya subió antes, para sumarlo a esta campaña sin volver a subirlo. */
+  const carpetaDe = (campo: CampoPublicacion) => {
+    const yaEsta = CARPETA[campo.id] || [];
+    if (!yaEsta.length) return null;
+    const puestos = material[campo.id] || [];
+    return (
+      <div className="carpeta">
+        <div className="carpeta-lb">Ya lo tenés subido <span className="tiny muted">— tocá para sumarlo a esta campaña</span></div>
+        <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+          {yaEsta.map(f => {
+            const puesto = puestos.some(a => a.nombre === f.nombre);
+            return (
+              <button key={f.nombre} type="button" className={`tipo-chip carpeta-chip ${puesto ? 'sel' : ''}`}
+                title={puesto
+                  ? `Ya está en esta campaña: ${f.peso}. Tocá para sacarlo.`
+                  : `Sumar «${f.nombre}» (${f.peso}) a esta campaña, sin volver a subirlo.`}
+                onClick={() => setMaterial(m => {
+                  const actuales = m[campo.id] || [];
+                  const esta = actuales.some(a => a.nombre === f.nombre);
+                  return { ...m, [campo.id]: esta
+                    ? actuales.filter(a => a.nombre !== f.nombre)
+                    : [...actuales, { nombre: f.nombre, peso: f.peso, url: null, esImagen: /\.(jpe?g|png|webp|gif|avif|heic)$/i.test(f.nombre), deCarpeta: true }] };
+                })}>
+                {puesto ? '✓ ' : ''}{f.nombre}
+              </button>
+            );
+          })}
+        </div>
+      </div>
     );
   };
 
@@ -379,7 +418,8 @@ export function Publicar({ setToast, modo, irAConversaciones, soloIngesta }: {
           {MATERIAL.map(campo => (
             <div key={campo.id} className="mat-campo">
               <label className="label">{campo.etiqueta}</label>
-              {cargador(campo, campo.tipo as 'imagenes' | 'videos' | 'archivos', campo.ayuda)}
+              {cargador(campo, campo.tipo as 'imagenes' | 'videos' | 'media' | 'archivos', campo.ayuda)}
+              {carpetaDe(campo)}
             </div>
           ))}
           </div>

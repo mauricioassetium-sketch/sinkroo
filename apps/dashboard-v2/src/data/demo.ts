@@ -966,6 +966,45 @@ export const TAREAS_EXCLUIDAS = [
 ];
 
 // ---------------------------------------------------------------------------------------------
+// LA CARPETA DEL NEGOCIO — lo que el cliente YA subió en campañas anteriores, cargador por
+// cargador. En «Tu material real» se ofrece para sumar en un toque (el mismo producto, otra
+// campaña) sin volver a subir el archivo. Lo nuevo —un producto que recién sale— se sube a mano.
+// ---------------------------------------------------------------------------------------------
+export const CARPETA: Record<string, { nombre: string; peso: string }[]> = {
+  fotos_producto: [
+    { nombre: 'serum-vitamina-c-frente.jpg', peso: '1,8 MB' },
+    { nombre: 'serum-30ml-detalle.jpg', peso: '2,1 MB' },
+    { nombre: 'pack-regalo-duo.jpg', peso: '1,4 MB' },
+    { nombre: 'textura-serum-en-la-mano.jpg', peso: '980 KB' },
+  ],
+  resenas: [
+    { nombre: 'whatsapp-marce-agosto.png', peso: '240 KB' },
+    { nombre: 'reseña-instagram-sofia.png', peso: '310 KB' },
+    { nombre: 'google-5-estrellas.png', peso: '185 KB' },
+  ],
+  videos_producto: [
+    { nombre: 'unboxing-pedido-rosario.mp4', peso: '24 MB' },
+    { nombre: 'rutina-de-noche-30s.mp4', peso: '18 MB' },
+  ],
+  logo: [
+    { nombre: 'logo-skincare-natural.png', peso: '120 KB' },
+    { nombre: 'logo-marca-blanca.png', peso: '96 KB' },
+  ],
+  catalogo: [
+    { nombre: 'lista-de-precios-septiembre.pdf', peso: '1,2 MB' },
+    { nombre: 'catalogo-verano.xlsx', peso: '340 KB' },
+  ],
+  negocio: [
+    { nombre: 'local-mardel-plaza.jpg', peso: '2,6 MB' },
+    { nombre: 'equipo-preparando-pedidos.jpg', peso: '1,9 MB' },
+  ],
+  manual_marca: [
+    { nombre: 'manual-de-marca-2026.pdf', peso: '4,5 MB' },
+    { nombre: 'paleta-y-tipografias.pdf', peso: '780 KB' },
+  ],
+};
+
+// ---------------------------------------------------------------------------------------------
 // OFERTAS QUE YA USÓ — el historial del negocio. En el formulario de publicar se ofrecen para
 // repetir: son las que ya corrieron, con el mes y cómo le fue. Lo que se ve en pantalla sale de
 // acá; no se inventa una oferta nueva en cada lugar.

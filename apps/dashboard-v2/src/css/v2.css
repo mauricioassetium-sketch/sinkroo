@@ -1225,6 +1225,13 @@
   .eq-hall { grid-template-columns: 46px minmax(0, 1fr) auto; }
 }
 
+/* --- La carpeta del negocio en «Tu material real»: lo que ya está subido, para sumarlo sin volver
+       a subirlo. Va debajo del cargador, en pastillas con el nombre del archivo. --- */
+.carpeta { margin-top: 9px; display: flex; flex-direction: column; gap: 7px; }
+.carpeta-lb { font-size: 10.5px; font-weight: 800; letter-spacing: .4px; text-transform: uppercase; color: var(--muted2); }
+.carpeta-lb span { text-transform: none; letter-spacing: 0; font-weight: 400; }
+.carpeta-chip { font-size: 10.5px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 /* =============================================================================================
    CONVERSACIONES · CLIENTES Y CREADORES — no mezclar al que te compra con el que te produce
    ============================================================================================= */
