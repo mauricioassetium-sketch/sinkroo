@@ -80,6 +80,25 @@ const DETALLE_DESTINOS: Record<string, string> = {
 };
 
 // ---------------------------------------------------------------------------------------------
+// FORMAS DE PAGO — lista predefinida, seleccionable. El cliente NO las escribe: elige las que usa.
+// Los precios van en su propio campo. Cada forma explica cómo le entra la plata al negocio.
+// ---------------------------------------------------------------------------------------------
+const FORMAS_PAGO = [
+  'Efectivo', 'Transferencia bancaria', 'Tarjeta de débito o crédito', 'Cuotas sin interés',
+  'Mercado Pago', 'PayPal', 'USDT (cripto)', 'Bitcoin (cripto)',
+];
+const DETALLE_PAGOS: Record<string, string> = {
+  'Efectivo': 'Lo cobrás en el momento, sin comisión ni espera.',
+  'Transferencia bancaria': 'Entra derecho a tu cuenta. Es lo más común para montos grandes.',
+  'Tarjeta de débito o crédito': 'Cobrás al instante, con la comisión del posnet o de la pasarela.',
+  'Cuotas sin interés': 'Financiás vos el costo: sube la venta de tickets altos.',
+  'Mercado Pago': 'Link o QR: es la forma que más se usa para cobrar a distancia.',
+  'PayPal': 'Para clientes de afuera: cobra en dólares.',
+  'USDT (cripto)': 'Dólar digital: entra al instante, sin banco y sin la volatilidad del bitcoin.',
+  'Bitcoin (cripto)': 'Pago en BTC: para clientes que ya operan con cripto.',
+};
+
+// ---------------------------------------------------------------------------------------------
 // LAS FORMAS DE PUBLICAR
 // ---------------------------------------------------------------------------------------------
 export const FORMATOS: Formato[] = [
@@ -102,7 +121,10 @@ export const FORMATOS: Formato[] = [
       { id: 'link', etiqueta: 'El link exacto (opcional)', tipo: 'link', ayuda: 'Pegá la dirección completa. Si elegiste WhatsApp o Instagram, el motor arma el link solo.' },
     ],
     avanzados: [
-      { id: 'precios', etiqueta: 'Precios y formas de pago', tipo: 'texto', ayuda: 'Cuánto cuesta cada cosa, cuotas, medios de pago.' },
+      { id: 'precios', etiqueta: 'Precios', tipo: 'texto', ayuda: 'Cuánto cuesta cada cosa. Ej. serum $34, pack $89 con envío gratis.' },
+      { id: 'formas_pago', etiqueta: 'Formas de pago que aceptás', tipo: 'opciones', multi: true,
+        ayuda: 'Elegí las que ya usás: la pieza va a decir el botón y la aclaración que correspondan.',
+        opciones: FORMAS_PAGO, detalle: DETALLE_PAGOS },
       { id: 'ofertas', etiqueta: 'Ofertas vigentes', tipo: 'texto', ayuda: 'Descuentos, 2x1, envío gratis. Con fecha de vencimiento si tienen.' },
       { id: 'testimonios', etiqueta: 'Reseñas reales de tus clientes', tipo: 'texto', ayuda: 'Copiá mensajes de WhatsApp o comentarios. Es lo que más sube el puntaje del panel.' },
       { id: 'tono', etiqueta: 'Cómo hablás vos', tipo: 'texto', ayuda: 'Formal o divertida, cercana o directa, palabras que usás siempre y las que no dirías.' },
