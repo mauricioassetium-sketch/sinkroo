@@ -4,8 +4,6 @@ import { ViewHead, Gauge, BarRow } from '../components/viz';
 import { I_Settings, I_Check, I_Shield, I_Lock, I_Plus, I_Zap, I_Credit, I_Link, I_Clock, I_Sun, I_X } from '../components/icons';
 import { MODOS, EXCEPCIONES, FRENOS, CONEXIONES, CREDITOS_MOV, TENANT, INVESTIGACION_MERCADO, type Modo, type Conexion } from '../data/demo';
 import { useDetalle, type Bloque } from '../components/Detalle';
-import { useOnboarding } from '../lib/onboarding';
-import { ViewCuentaCreador } from './CuentaCreador';
 
 const NOMBRE: Record<Modo, string> = { auto: 'Automático', shared: 'Compartido', manual: 'Manual' };
 
@@ -19,8 +17,6 @@ export function ViewCuenta({ setToast, modo, setModo }: { setToast: (t: string) 
   // acción por acción, los guardrails y su Ficha). El corte va en el cuerpo de esta función, antes
   // que cualquier otro hook, así el cambio de piel no altera el orden de los hooks de la vista de
   // negocio: ésa vive intacta abajo, en `ViewCuentaNegocio`.
-  const onb = useOnboarding();
-  if (onb.tipo === 'creador') return <ViewCuentaCreador setToast={setToast} modo={modo} setModo={setModo} />;
   return <ViewCuentaNegocio setToast={setToast} modo={modo} setModo={setModo} />;
 }
 

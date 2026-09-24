@@ -5,8 +5,6 @@ import { I_Credit, I_Wallet, I_Zap, I_Download, I_Shield, I_Plus, I_ArrowRight }
 import { TENANT, CREDITOS_MOV, PLANES } from '../data/demo';
 import { useDetalle } from '../components/Detalle';
 import { usePlan } from '../lib/plan';
-import { useOnboarding } from '../lib/onboarding';
-import { ViewCreditosCreador } from './CreditosCreador';
 
 // Paquetes de recarga. El precio por crédito baja cuanto más grande el paquete.
 const PAQUETES = [
@@ -70,8 +68,6 @@ const PORCIONES = (() => {
 // =============================================================================================
 
 export function ViewCreditos({ setToast }: { setToast: (t: string) => void }) {
-  const onb = useOnboarding();
-  if (onb.tipo === 'creador') return <ViewCreditosCreador setToast={setToast} />;
   return <ViewCreditosNegocio setToast={setToast} />;
 }
 

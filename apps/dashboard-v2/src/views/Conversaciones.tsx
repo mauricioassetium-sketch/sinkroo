@@ -11,8 +11,6 @@ import {
   type Modo, type Mensaje, type Conversacion,
   type TipoConversacion, type EstadoColaboracion,
 } from '../data/demo';
-import { useOnboarding } from '../lib/onboarding';
-import { ViewComunidadCreador } from './ComunidadCreador';
 
 // =============================================================================================
 // CONVERSACIONES, SEGÚN LA PIEL DE LA CUENTA — el mismo bloque del motor, con dos idiomas.
@@ -24,15 +22,6 @@ import { ViewComunidadCreador } from './ComunidadCreador';
 //
 // La pantalla de negocio queda tal cual estaba: sólo cambia el nombre de la función.
 // =============================================================================================
-
-export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) => void; modo: Modo }) {
-  // Un creador no ve la bandeja de clientes de un negocio: ve la comunidad de su cuenta —los
-  // comentarios y mensajes de su audiencia—, con la respuesta que Rumi ya escribió y la decisión
-  // de mandarla en sus manos.
-  const onb = useOnboarding();
-  if (onb.tipo === 'creador') return <ViewComunidadCreador setToast={setToast} />;
-  return <ViewConversacionesNegocio setToast={setToast} modo={modo} />;
-}
 
 /**
  * Quién atiende la conversación: Rumi (la IA) o vos.
@@ -81,9 +70,8 @@ const sinComillas = (t: string) => t.replace(/^«\s*/, '').replace(/\s*»$/, '')
 
 const horaAhora = () => new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
 
-function ViewConversacionesNegocio({ setToast, modo }: { setToast: (t: string) => void; modo: Modo }) {
+export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) => void; modo: Modo }) {
   // La bandeja de clientes del negocio (y los creadores que te producen una pieza): Rumi contesta
-  // sola, negocia con quien produce y vos entrás sólo cuando hace falta. La piel de creador tiene
   // su propia vista —Comunidad— y el corte está arriba, en `ViewConversaciones`.
   const [sel, setSel] = useState(CONVERSACIONES[0].id);
   // Quién atiende cada conversación. Las que llegaron a la cola de humanos arrancan en tus manos:
@@ -127,7 +115,6 @@ function ViewConversacionesNegocio({ setToast, modo }: { setToast: (t: string) =
 
   // -------------------------------------------------------------------------------------------
   // LA PIEL DE CREADOR NO PASA POR ACÁ. El corte está en `ViewConversaciones`, arriba y antes de
-  // cualquier hook: una cuenta de creador ve su comunidad —los comentarios y mensajes de su
   // audiencia, con la respuesta que escribió Rumi—. Lo que sigue es la bandeja de clientes.
   // -------------------------------------------------------------------------------------------
 

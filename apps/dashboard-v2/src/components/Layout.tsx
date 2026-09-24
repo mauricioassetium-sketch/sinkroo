@@ -1,18 +1,14 @@
 import { useState, type ReactNode } from 'react';
-import { SinkrooMark, I_Home, I_Megaphone, I_Whatsapp, I_Globe, I_Settings, I_Bell, I_Sun, I_Moon, I_Zap, I_Clock, I_Vote, I_Robot, I_Credit, I_Gift, I_Shield, I_User, I_Palette, I_Menu, I_X, I_Rocket, I_Camera, I_Send, I_Trend } from './icons';
+import { SinkrooMark, I_Home, I_Megaphone, I_Whatsapp, I_Globe, I_Settings, I_Bell, I_Sun, I_Moon, I_Zap, I_Clock, I_Vote, I_Robot, I_Credit, I_Gift, I_Shield, I_User, I_Palette, I_Menu, I_X, I_Rocket } from './icons';
 import { TENANT, AGENTES, ALARMAS, DECISIONES, MODOS, type Modo } from '../data/demo';
 import { Progress } from './ui';
 import { usePerfil, inicialesDe } from '../lib/perfil';
 import { usePlan } from '../lib/plan';
 import { useOnboarding } from '../lib/onboarding';
-import { VISTAS_CREADOR } from '../data/creador';
 import { PerfilModal } from './PerfilModal';
 import { PersonalizarPanel } from './PersonalizarPanel';
 
-export type Vista =
-  | 'hoy' | 'onboarding' | 'campanas' | 'conversaciones' | 'mercado'
-  | 'avatar' | 'publicacion' | 'crecimiento'
-  | 'cuenta' | 'creditos' | 'referidos' | 'kyc';
+export type Vista = 'hoy' | 'onboarding' | 'campanas' | 'conversaciones' | 'mercado' | 'cuenta' | 'creditos' | 'referidos' | 'kyc';
 
 
 /** Lleva al motor andando: si no estás en Hoy, cambia de vista y después baja hasta el bloque. */
@@ -37,19 +33,6 @@ const NAV_CRECER: { key: Vista; nombre: string; Icon: any }[] = [
   { key: 'referidos', nombre: 'Referidos', Icon: I_Gift },
 ];
 
-// PIEL DE CREADOR: el trabajo es el contenido. Producir (Contenido, Avatar), publicar (Publicación),
-// la comunidad, y el nicho y el crecimiento. El motor es el mismo: cambia el orden y el idioma.
-const NAV_CREADOR_TRABAJO: { key: Vista; nombre: string; Icon: any }[] = [
-  { key: 'campanas', nombre: 'Contenido', Icon: I_Megaphone },
-  { key: 'avatar', nombre: 'Avatar', Icon: I_Camera },
-  { key: 'publicacion', nombre: 'Publicación', Icon: I_Send },
-  { key: 'conversaciones', nombre: 'Comunidad', Icon: I_Whatsapp },
-];
-const NAV_CREADOR_CRECER: { key: Vista; nombre: string; Icon: any }[] = [
-  { key: 'mercado', nombre: 'Nicho', Icon: I_Globe },
-  { key: 'crecimiento', nombre: 'Crecimiento', Icon: I_Trend },
-];
-
 // Para habilitar cosas dentro del sistema. «Primeros pasos» va primero: es lo que se hace una vez
 // y deja al motor trabajando; el resto de la configuración se toca cuando hace falta.
 const NAV_CONF: { key: Vista; nombre: string; Icon: any }[] = [
@@ -58,11 +41,9 @@ const NAV_CONF: { key: Vista; nombre: string; Icon: any }[] = [
   { key: 'kyc', nombre: 'Verificación', Icon: I_Shield },
 ];
 
-export function Layout({ vista, setVista, children, theme, cicloTema, toast, modo, avisar, cuentaEmail }: {
+export function Layout({ vista, setVista, children, theme, cicloTema, toast, modo, avisar }: {
   vista: Vista; setVista: (v: Vista) => void; children: ReactNode;
   theme: string; cicloTema: () => void; toast: string; modo: Modo; avisar?: (t: string) => void;
-  /** El correo de la cuenta: es su identidad, y el tipo de cuenta viene con él. */
-  cuentaEmail?: string;
 }) {
   // `perfilVisible` es el perfil guardado MÁS la edición en curso: así el logo y los colores que
   // el cliente está eligiendo en el pop-up de personalización se ven ya en el sidebar, la barra de
@@ -88,7 +69,6 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
   const dias = Math.max(0, Math.round(TENANT.creditos / 150));
   const { plan } = usePlan();
   const onb = useOnboarding();
-  const piel = onb.tipo || 'empresa';
   const todosLosDias = Math.round(plan.creditosMes / 150);
   const pctCreditos = Math.min(100, Math.round((TENANT.creditos / plan.creditosMes) * 100));
   // Ir a una vista del menú y cerrar la bandeja en celular: el mismo gesto para la tarjeta de
@@ -153,24 +133,10 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
         </div>
 
         <div className="sb-section-label">TRABAJO</div>
-        {/* El tipo de cuenta: se eligió al crear la cuenta y ES lo que la cuenta es. No es un
-            interruptor: un correo no se convierte en lo otro, se crea otra cuenta con otro correo. */}
-        <div className="sb-piel">
-          <span className="sb-piel-lb" title={piel === 'creador'
-            ? 'Tu cuenta es de creador de contenido: el panel muestra tu contenido, tu avatar, la publicación en tus redes, tu comunidad y el crecimiento de tu cuenta.'
-            : 'Tu cuenta es de negocio: el panel muestra campañas, anuncios y ventas.'}>
-            Tipo de cuenta
-          </span>
-          <div className="sb-piel-fija">
-            <span className="sb-piel-chip on">{piel === 'creador' ? '🎬 Creador de contenido' : '🏪 Negocio'}</span>
-            <button className="sb-piel-info" title={`El tipo se eligió cuando creaste la cuenta (${cuentaEmail || 'tu correo'}) y no se cambia: un correo es una cuenta. Si necesitás el otro panel, se crea otra cuenta con otro correo.`}
-              onClick={() => avisar?.('El tipo de cuenta es fijo: se elige al crear la cuenta y no se cambia')}>por qué</button>
-          </div>
-        </div>
-        {(piel === 'creador' ? [{ key: 'hoy' as Vista, nombre: 'Hoy', Icon: I_Home }, ...NAV_CREADOR_TRABAJO] : NAV.slice(0, 4)).map(n => (
+        {NAV.slice(0, 4).map(n => (
           <div key={n.key} className={`nav-item ${vista === n.key ? 'active' : ''}`} onClick={() => { setVista(n.key); setMenuAbierto(false); }}>
             <n.Icon size={17} />
-            <span className="nav-label">{piel === 'creador' ? (VISTAS_CREADOR[n.key]?.nombre || n.nombre) : n.nombre}</span>
+            <span className="nav-label">{n.nombre}</span>
             {n.key === 'conversaciones' && esperando > 0 && (
               <span className="badge badge-amber" style={{ marginLeft: 'auto', fontSize: 9 }}>{esperando}</span>
             )}
@@ -178,10 +144,10 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
         ))}
 
         <div className="sb-section-label" style={{ marginTop: 10 }}>CRECER</div>
-        {(piel === 'creador' ? [...NAV_CREADOR_CRECER, ...NAV_CRECER] : NAV_CRECER).map(n => (
+        {NAV_CRECER.map(n => (
           <div key={n.key} className={`nav-item ${vista === n.key ? 'active' : ''}`} onClick={() => { setVista(n.key); setMenuAbierto(false); }}>
             <n.Icon size={17} />
-            <span className="nav-label">{piel === 'creador' ? (VISTAS_CREADOR[n.key]?.nombre || n.nombre) : n.nombre}</span>
+            <span className="nav-label">{n.nombre}</span>
             {n.key === 'creditos' && (
               <span className="badge badge-amber" style={{ marginLeft: 'auto', fontSize: 9 }} title={`Autonomía: ${dias} días al consumo de hoy`}>{dias} días</span>
             )}
@@ -192,7 +158,7 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
         {NAV_CONF.map(n => (
           <div key={n.key} className={`nav-item ${vista === n.key ? 'active' : ''}`} onClick={() => { setVista(n.key); setMenuAbierto(false); }}>
             <n.Icon size={17} />
-            <span className="nav-label">{piel === 'creador' ? (VISTAS_CREADOR[n.key]?.nombre || n.nombre) : n.nombre}</span>
+            <span className="nav-label">{n.nombre}</span>
             {n.key === 'onboarding' && !onb.arrancado && (
               <span className="badge badge-amber" style={{ marginLeft: 'auto', fontSize: 9 }}
                 title={`Primeros pasos: ${onb.listos.length} de 5 hechos. Faltan los datos que el motor no puede deducir solo.`}>
@@ -249,8 +215,8 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
                 : <SinkrooMark size={26} />}
             </span>
             <div className="titles-wrap">
-              <div className="ttl">{tituloVista(vista, piel === 'creador')}</div>
-              <div className="sub">{subtituloVista(vista, piel === 'creador')}</div>
+              <div className="ttl">{tituloVista(vista)}</div>
+              <div className="sub">{subtituloVista(vista)}</div>
             </div>
 
             <div className="ticker" style={{ marginLeft: 8 }}>
@@ -346,22 +312,16 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
   );
 }
 
-// El mismo Centro de Mando, dos pieles: los títulos salen de la piel activa (data/creador.ts).
-function tituloVista(v: Vista, creador: boolean) {
-  if (creador && VISTAS_CREADOR[v]) return VISTAS_CREADOR[v].nombre;
-  return ({ hoy: 'Tu día', onboarding: 'Primeros pasos', campanas: 'Campañas', conversaciones: 'Conversaciones', mercado: 'Mercado', avatar: 'Avatar', publicacion: 'Publicación', crecimiento: 'Crecimiento', cuenta: 'Cuenta y autonomía', creditos: 'Créditos', referidos: 'Referidos', kyc: 'Verificación de identidad' } as const)[v];
+function tituloVista(v: Vista) {
+  return ({ hoy: 'Tu día', onboarding: 'Primeros pasos', campanas: 'Campañas', conversaciones: 'Conversaciones', mercado: 'Mercado', cuenta: 'Cuenta y autonomía', creditos: 'Créditos', referidos: 'Referidos', kyc: 'Verificación de identidad' } as const)[v];
 }
-function subtituloVista(v: Vista, creador: boolean) {
-  if (creador && VISTAS_CREADOR[v]) return VISTAS_CREADOR[v].sub;
+function subtituloVista(v: Vista) {
   return ({
     hoy: 'Lo que el motor hizo, lo que espera de vos y lo que necesita tu atención',
     onboarding: 'Cinco pantallas cortas y el motor queda trabajando',
     campanas: 'Cada campaña con el veredicto de los 5 jueces y sus artefactos',
     conversaciones: 'Todo lo que tus agentes contestan, con el contexto de cada cliente',
     mercado: 'Qué está haciendo tu competencia y por dónde conviene ir',
-    avatar: 'El equipo crea por vos con tu cara y tu voz',
-    publicacion: 'Qué sale, en qué red y a qué hora',
-    crecimiento: 'Qué hizo crecer tu cuenta esta semana',
     cuenta: 'Cuánto decide la IA y cuánto decidís vos',
     creditos: 'Con qué se carga el motor y en qué se va cada crédito',
     referidos: 'Traé gente y el motor te devuelve créditos',

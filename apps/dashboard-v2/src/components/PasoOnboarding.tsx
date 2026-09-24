@@ -195,41 +195,6 @@ export function BloqueConexiones() {
 export function BloqueArranque({ enAsistente, alCerrar }: { enAsistente?: boolean; alCerrar?: () => void }) {
   const onb = useOnboarding();
   const { plan } = usePlan();
-  const creador = onb.tipo === 'creador';
-  const listo = creador ? onb.publicado : onb.arrancado;
-
-  // El creador no arranca campañas: publica su perfil para que las marcas lo encuentren.
-  if (creador && listo) {
-    return (
-      <>
-        <div className="onb-arrancado">
-          <I_Check size={15} />
-          <span><b>Tu perfil está visible para las marcas.</b> Lo ven las marcas que están publicando en Sinkroo,
-            filtradas por rubro, idioma y formato. Cuando les sirvas, te escriben: <b>el trabajo lo decidís vos</b>.</span>
-        </div>
-        <div className="onb-semana">
-          {[
-            { t: 'Qué ven de vos', s: 'tus muestras, los rubros para los que grabás, tu audiencia, tus idiomas y tu precio por pieza.' },
-            { t: 'Cómo te contactan', s: 'por el mismo canal que ya tenés conectado: el mensaje llega a Conversaciones con el pedido concreto.' },
-            { t: 'Cuándo se cobra', s: 'lo acuerdan con la marca. Sinkroo no intermedia el pago ni cobra comisión por pieza.' },
-            { t: 'Qué podés cambiar', s: 'el precio, los plazos y la disponibilidad, en cualquier momento desde Primeros pasos.' },
-          ].map(d => (
-            <div key={d.t} className="onb-dia" style={{ gridTemplateColumns: '150px minmax(0,1fr)' }}>
-              <span className="onb-dia-n">{d.t}</span>
-              <span className="onb-dia-que">{d.s}</span>
-            </div>
-          ))}
-        </div>
-        {enAsistente && (
-          <div className="row" style={{ gap: 9, marginTop: 14, flexWrap: 'wrap' }}>
-            <Button className="btn-sm" title="Cierra el asistente y te deja en el panel, con tu perfil ya publicado"
-              onClick={alCerrar}><I_ArrowRight size={13} /> Ir a mi panel</Button>
-          </div>
-        )}
-      </>
-    );
-  }
-
   if (onb.arrancado) {
     return (
       <>
@@ -265,14 +230,9 @@ export function BloqueArranque({ enAsistente, alCerrar }: { enAsistente?: boolea
   return (
     <div className="row" style={{ gap: 9, marginTop: 14, flexWrap: 'wrap' }}>
       <Button className="btn-sm"
-        title={creador
-          ? 'Publica tu perfil en el mercado de creadores: las marcas te ven por lo que hacés y te contactan. No publica nada en tus redes.'
-          : `Arranca el motor ahora: investiga tu mercado y prepara las piezas de la semana. Cuesta ${COSTO_PRIMERA_SEMANA} créditos y no gasta plata hasta que las piezas pasan el panel.`}
-        onClick={() => {
-          if (creador) { onb.publicar(); onb.marcar(5); onb.avisar('Tu perfil quedó publicado: las marcas te van a poder encontrar'); }
-          else { onb.arrancar(); onb.marcar(5); onb.avisar('El motor arrancó: empieza por el mercado, no gasta nada hasta publicar'); }
-        }}>
-        {creador ? <><I_Check size={13} /> Publicar mi perfil</> : <><I_Rocket size={13} /> Arrancar el motor</>}
+        title={`Arranca el motor ahora: investiga tu mercado y prepara las piezas de la semana. Cuesta ${COSTO_PRIMERA_SEMANA} créditos y no gasta plata hasta que las piezas pasan el panel.`}
+        onClick={() => { onb.arrancar(); onb.marcar(5); onb.avisar('El motor arrancó: empieza por el mercado, no gasta nada hasta publicar'); }}>
+        <I_Rocket size={13} /> Arrancar el motor
       </Button>
       {!enAsistente && (
         <Button variant="ghost" className="btn-sm" title="Guarda lo que pusiste y te deja seguir después desde Hoy"

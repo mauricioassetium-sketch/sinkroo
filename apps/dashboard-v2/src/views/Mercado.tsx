@@ -5,8 +5,6 @@ import { I_Globe, I_Trend, I_Star, I_Eye, I_Zap, I_Check, I_ArrowRight, I_Plus, 
 import { COMPETIDORES, ANGULOS, TENDENCIAS } from '../data/demo';
 import { useDetalle } from '../components/Detalle';
 import type { Vista } from '../components/Layout';
-import { useOnboarding } from '../lib/onboarding';
-import { ViewNichoCreador } from './NichoCreador';
 
 /** El día en que vuelve un hallazgo silenciado 7 días: se calcula, no se escribe a mano. */
 const enUnaSemana = () =>
@@ -24,7 +22,6 @@ const OFERTA = [
 
 export function ViewMercado({ setToast, setVista }: { setToast: (t: string) => void; setVista?: (v: Vista) => void }) {
   const detalle = useDetalle();
-  const onb = useOnboarding();
   const maxAnuncios = Math.max(...COMPETIDORES.map(c => c.anuncios));
   const maxLeads = Math.max(...COMPETIDORES.map(c => c.leads));
   // Lo que el motor quedó haciendo: se ve en la pantalla, no en un aviso que se va solo.
@@ -38,7 +35,6 @@ export function ViewMercado({ setToast, setVista }: { setToast: (t: string) => v
   // La misma vista, dos pieles: un creador no ve el mercado de una empresa (competidores, anuncios,
   // precios propios), ve su nicho. Es la entrada «mercado» del Centro de Mando con el idioma de la
   // piel; todos los hooks de arriba ya se llamaron, así que el orden no cambia entre una piel y otra.
-  if (onb.tipo === 'creador') return <ViewNichoCreador setToast={setToast} setVista={v => setVista?.(v)} />;
 
   return (
     <div className="dash">

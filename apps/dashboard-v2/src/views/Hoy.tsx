@@ -7,7 +7,6 @@ import { SinkrooMark, I_Check, I_ArrowRight, I_Wallet, I_Eye, I_Vote, I_Star, I_
 import type { Vista } from '../components/Layout';
 import { useDetalle, type Bloque } from '../components/Detalle';
 import { useOnboarding } from '../lib/onboarding';
-import { ViewHoyCreador } from './HoyCreador';
 import { PASOS_ONB } from '../data/onboarding';
 import {
   ALARMAS, DECISIONES, NUMEROS, MIENTRAS_NO_ESTABAS, BITACORA, MODOS, CONSECUENCIA,
@@ -229,9 +228,6 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
   const criticas = visibles.filter(a => a.severidad === 'critico' && !atendidas[a.id]).length;
 
   // --- La meta: todo lo que se muestra sale de acá.
-  // La misma vista, dos pieles: un creador no ve «Tu día» de negocio, ve lo que su equipo hizo.
-  const creador = onb.tipo === 'creador';
-
   const P = planPara(metaVentas);
   const faltaVentas = faltaPara(metaVentas);
   const porDiaVentas = porDiaPara(metaVentas);
@@ -350,8 +346,6 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
           ],
     });
   };
-
-  if (creador) return <ViewHoyCreador setToast={setToast} setVista={setVista} />;
 
   return (
     <div className="dash">

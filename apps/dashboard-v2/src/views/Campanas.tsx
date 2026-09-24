@@ -14,8 +14,6 @@ import { usePlan } from '../lib/plan';
 import { PERFILES, puntaje, ranking, objeciones, TARIFA } from '../data/mirofish';
 import { useDetalle } from '../components/Detalle';
 import { numeroConMiles } from '../lib/perfil';
-import { useOnboarding } from '../lib/onboarding';
-import { ViewContenidoCreador } from './ContenidoCreador';
 
 const GASTO_LB = CAMPANAS.map(c => c.nombre.split(' ')[0]);
 
@@ -36,8 +34,6 @@ type EstadoCamp = Campana['estado'];
 export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: string) => void; modo: Modo; setVista: (v: Vista) => void }) {
   const detalle = useDetalle();
   const { plan } = usePlan();
-  // La misma vista, dos pieles: en el carril de un creador, Campañas es Contenido.
-  const onb = useOnboarding();
   const [paso, setPaso] = useState<PasoCampana>(1);
   const [manual, setManual] = useState(false);
   // --- Lo que un botón cambia en la pantalla. Nada de avisos que se van solos: la campaña se muda
@@ -253,8 +249,6 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
     ],
   });
 
-  // La misma vista, dos pieles: si la cuenta es de un creador, Campañas se muestra como Contenido.
-  if (onb.tipo === 'creador') return <ViewContenidoCreador setToast={setToast} setVista={setVista} />;
 
   return (
     <div className="dash">

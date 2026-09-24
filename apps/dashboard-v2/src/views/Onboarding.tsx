@@ -4,30 +4,27 @@ import { ViewHead } from '../components/viz';
 import { I_Rocket, I_Check, I_ArrowLeft, I_ArrowRight, I_Zap, I_Users, I_Credit, I_Clock, I_Checklist } from '../components/icons';
 import { useDetalle } from '../components/Detalle';
 import type { Vista } from '../components/Layout';
+import { usePlan } from '../lib/plan';
 import { useOnboarding } from '../lib/onboarding';
 import { CamposPaso, BloqueConexiones, BloqueArranque, AvisoVerificacion } from '../components/PasoOnboarding';
-import { TIPOS_CUENTA, COSTO_PRIMERA_SEMANA } from '../data/onboarding';
+import { COSTO_PRIMERA_SEMANA } from '../data/onboarding';
 
 // =============================================================================================
-// PRIMEROS PASOS — el mismo onboarding, dentro del panel.
+// PRIMEROS PASOS — los cinco pasos del negocio, dentro del panel.
 //
-// Es el lugar donde se completa lo que se salteó en el asistente de entrada. Comparte los controles
-// con el asistente (components/PasoOnboarding): un paso se llena igual en los dos lados, así que no
-// hay dos versiones del mismo control que se puedan separar.
-//
-// El tipo de cuenta —negocio o creador— se elige y se cambia desde acá: cambia las preguntas de los
-// cinco pasos y lo que pasa al terminar.
+// Es donde se completa lo que se salteó en el asistente de entrada. Comparte los controles con el
+// asistente (`components/PasoOnboarding`): un paso se llena igual en los dos lados, así que no hay
+// dos versiones del mismo control que se puedan separar.
 // =============================================================================================
 
 export function ViewOnboarding({ setToast, setVista }: { setToast: (t: string) => void; setVista: (v: Vista) => void }) {
   const onb = useOnboarding();
   const detalle = useDetalle();
+  const { plan } = usePlan();
   const [pendiente, setPendiente] = useState(false);
-  const [cambiandoTipo, setCambiandoTipo] = useState(false);
   const paso = onb.pasos.find(p => p.n === onb.paso)!;
   const ultimo = paso.n === onb.pasos.length;
   const esteListo = onb.listos.includes(paso.n);
-  const tipo = TIPOS_CUENTA.find(t => t.key === onb.tipo);
   const puesto = (id: string) => {
     const v = onb.datos[id];
     return Array.isArray(v) ? v.length > 0 : !!String(v || '').trim();
@@ -49,42 +46,10 @@ export function ViewOnboarding({ setToast, setVista }: { setToast: (t: string) =
         nums={[
           { v: `${onb.listos.length} de ${onb.pasos.length}`, l: 'pasos hechos', c: onb.listos.length === onb.pasos.length ? 'var(--green)' : 'var(--purple3)' },
           { v: onb.arrancado ? 'En marcha' : 'Sin arrancar', l: 'el motor', c: onb.arrancado ? 'var(--green)' : 'var(--amber)' },
-          { v: tipo ? tipo.nombre : 'Sin elegir', l: 'tipo de cuenta', c: tipo ? undefined : 'var(--amber)' },
+          { v: `Plan ${plan.nombre}`, l: `${plan.creditosMes.toLocaleString('es-AR')} créditos por mes` },
           { v: String(COSTO_PRIMERA_SEMANA), l: 'créditos de la primera semana' },
         ]}
       />
-
-      {/* El tipo de cuenta: cambia las preguntas de todo el onboarding, así que se ve y se cambia acá. */}
-      <Card
-        title={<span className="row" style={{ gap: 8 }}><I_Users size={14} style={{ color: 'var(--purple3)' }} /> Cómo vas a usar Sinkroo</span>}
-        action={<Badge tone={tipo ? 'purple' : 'amber'}>{tipo ? tipo.nombre : 'falta elegir'}</Badge>}
-      >
-        {!tipo || cambiandoTipo ? (
-          <>
-            <div className="bs">Cambia las preguntas de los cinco pasos y lo que pasa al terminar. Se puede cambiar después y los pasos se rearman.</div>
-            <div className="asist-tipos">
-              {TIPOS_CUENTA.map(t => (
-                <button key={t.key} className={`asist-tipo ${onb.tipo === t.key ? 'sel' : ''}`}
-                  title={`${t.nombre}: ${t.paraQue}`}
-                  onClick={() => { onb.elegirTipo(t.key); setCambiandoTipo(false); setToast(`Listo: ${t.nombre}. Los pasos son los de ahora en más.`); }}>
-                  <span className="asist-tipo-ic">{t.icono}</span>
-                  <span className="asist-tipo-t">{t.nombre}{onb.tipo === t.key ? ' ✓' : ''}</span>
-                  <span className="asist-tipo-q">{t.quien}</span>
-                  <span className="asist-tipo-p">{t.paraQue}</span>
-                </button>
-              ))}
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="bs">{tipo.quien} {tipo.paraQue}</div>
-            <div className="row" style={{ gap: 9, marginTop: 12, flexWrap: 'wrap' }}>
-              <Button variant="ghost" className="btn-sm" title="Vuelve al selector: cambia las preguntas del onboarding y lo que pasa al terminar"
-                onClick={() => setCambiandoTipo(true)}>Cambiar el tipo de cuenta</Button>
-            </div>
-          </>
-        )}
-      </Card>
 
       {/* El stepper: el mismo de Campañas, para que las dos etapas del producto se lean igual. */}
       <div className="pasos">
@@ -174,72 +139,38 @@ export function ViewOnboarding({ setToast, setVista }: { setToast: (t: string) =
       <div className="duo" style={{ marginTop: 16 }}>
         <Card
           title={<span className="row" style={{ gap: 8 }}><I_Users size={14} style={{ color: 'var(--purple3)' }} /> Quién va a trabajar con esto</span>}
-          action={<Badge tone="purple">{onb.tipo === 'creador' ? 'tu perfil y las marcas' : '6 agentes + el panel'}</Badge>}
+          action={<Badge tone="purple">6 agentes + el panel</Badge>}
         >
-          {onb.tipo === 'creador' ? (
-            <>
-              <div className="bs">
-                Tu perfil queda publicado con lo que hacés, tus rubros, tu audiencia y tu precio. Las marcas que
-                publican en Sinkroo te ven ahí y te contactan: <b>el contenido lo producís vos y el pago lo acordás
-                con ellas</b>.
-              </div>
-              <div className="onb-datos">
-                <div className="dato"><span className="dato-l">Ofrecerte</span><span className="dato-v" style={{ color: 'var(--green)' }}>sin costo</span></div>
-                <div className="dato"><span className="dato-l">El pago por pieza</span><span className="dato-v">lo acuerdan ustedes</span></div>
-                <div className="dato"><span className="dato-l">Sinkroo</span><span className="dato-v">no cobra comisión por pieza</span></div>
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="bs">
-                Los <b>6 agentes</b> investigan y producen (Lux el mercado, Rex el presupuesto, Nia las piezas,
-                Kai la pauta, Sol los números, Rumi las conversaciones). Lo que producen pasa por el <b>panel</b>:
-                los 5 jueces lo puntúan y 500 personas del público reaccionan. Las 3 mejores salen.
-              </div>
-              <div className="onb-datos">
-                <div className="dato"><span className="dato-l">Investigación del mercado</span><span className="dato-v" style={{ color: 'var(--green)' }}>no cuesta créditos</span></div>
-                <div className="dato"><span className="dato-l">Los 500 del público</span><span className="dato-v" style={{ color: 'var(--green)' }}>no cuesta créditos</span></div>
-                <div className="dato"><span className="dato-l">Publicar</span><span className="dato-v" style={{ color: 'var(--amber)' }}>es lo único que gasta plata</span></div>
-              </div>
-            </>
-          )}
+          <div className="bs">
+            Los <b>6 agentes</b> investigan y producen (Lux el mercado, Rex el presupuesto, Nia las piezas,
+            Kai la pauta, Sol los números, Rumi las conversaciones). Lo que producen pasa por el <b>panel</b>:
+            los 5 jueces lo puntúan y 500 personas del público reaccionan. Las 3 mejores salen.
+          </div>
+          <div className="onb-datos">
+            <div className="dato"><span className="dato-l">Investigación del mercado</span><span className="dato-v" style={{ color: 'var(--green)' }}>no cuesta créditos</span></div>
+            <div className="dato"><span className="dato-l">Los 500 del público</span><span className="dato-v" style={{ color: 'var(--green)' }}>no cuesta créditos</span></div>
+            <div className="dato"><span className="dato-l">Publicar</span><span className="dato-v" style={{ color: 'var(--amber)' }}>es lo único que gasta plata</span></div>
+          </div>
           <div className="acc-why">
-            {onb.tipo === 'creador'
-              ? <>Ofrecerte no te compromete a nada: <b>cada trabajo lo decidís vos</b> y podés pausar tu perfil cuando quieras.</>
-              : <>Nada sale a tus cuentas sin pasar por el panel: si ninguna pieza convence, no se publica ninguna y sólo se gastaron los créditos de escribirla.</>}
+            Nada sale a tus cuentas sin pasar por el panel: si ninguna pieza convence, no se publica ninguna
+            y sólo se gastaron los créditos de escribirla.
           </div>
         </Card>
 
         <Card
           title={<span className="row" style={{ gap: 8 }}><I_Clock size={14} style={{ color: 'var(--green)' }} /> Cuánto tarda</span>}
-          action={<Badge tone="green">{onb.arrancado ? 'ya está en marcha' : onb.tipo === 'creador' ? 'tu perfil, en minutos' : 'unas 3 horas'}</Badge>}
+          action={<Badge tone="green">{onb.arrancado ? 'ya está en marcha' : 'unas 3 horas'}</Badge>}
         >
-          {onb.tipo === 'creador' ? (
-            <>
-              <div className="bs">
-                Tu perfil queda armado en minutos: el motor escribe el resumen con tus muestras y tus datos, y lo
-                podés revisar antes de que quede visible para las marcas. No publica nada en tus redes.
-              </div>
-              <div className="onb-datos">
-                <div className="dato"><span className="dato-l">Resumen del perfil</span><span className="dato-v">minutos</span></div>
-                <div className="dato"><span className="dato-l">Visible para las marcas</span><span className="dato-v">cuando lo apruebes</span></div>
-                <div className="dato"><span className="dato-l">Primer contacto</span><span className="dato-v">lo decide la marca</span></div>
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="bs">
-                Con las cuentas conectadas, el motor tarda <b>unas 3 horas</b> en tener el primer informe del mercado
-                y las primeras piezas listas. No hace falta que estés mirando: te avisa por WhatsApp cuando hay
-                algo para decidir.
-              </div>
-              <div className="onb-datos">
-                <div className="dato"><span className="dato-l">Primer informe del mercado</span><span className="dato-v">~2 h</span></div>
-                <div className="dato"><span className="dato-l">Primeras piezas</span><span className="dato-v">~3 h</span></div>
-                <div className="dato"><span className="dato-l">Veredicto del panel</span><span className="dato-v">al terminar las piezas</span></div>
-              </div>
-            </>
-          )}
+          <div className="bs">
+            Con las cuentas conectadas, el motor tarda <b>unas 3 horas</b> en tener el primer informe del mercado
+            y las primeras piezas listas. No hace falta que estés mirando: te avisa por WhatsApp cuando hay
+            algo para decidir.
+          </div>
+          <div className="onb-datos">
+            <div className="dato"><span className="dato-l">Primer informe del mercado</span><span className="dato-v">~2 h</span></div>
+            <div className="dato"><span className="dato-l">Primeras piezas</span><span className="dato-v">~3 h</span></div>
+            <div className="dato"><span className="dato-l">Veredicto del panel</span><span className="dato-v">al terminar las piezas</span></div>
+          </div>
           <div className="row" style={{ gap: 9, marginTop: 4, flexWrap: 'wrap' }}>
             <Button variant="ghost" className="btn-sm" title="Muestra qué hace el motor mientras trabajás en esto"
               onClick={() => detalle({
@@ -264,9 +195,8 @@ export function ViewOnboarding({ setToast, setVista }: { setToast: (t: string) =
       </div>
 
       <div className="acc-why" style={{ marginTop: 14 }}>
-        <b>Nada de esto es obligatorio.</b> Podés dejarlo así: {onb.tipo === 'creador'
-          ? 'tu perfil se completa solo con lo que ya está subido y las marcas te contactan igual.'
-          : 'el motor trabaja con dos datos y completa el resto con lo que aprende de tus cuentas y tus conversaciones.'}
+        <b>Nada de esto es obligatorio.</b> Podés dejarlo así: el motor trabaja con dos datos y completa el
+        resto con lo que aprende de tus cuentas y tus conversaciones.
       </div>
     </div>
   );

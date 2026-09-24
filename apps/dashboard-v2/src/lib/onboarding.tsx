@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, type ReactNode } from 'react';
-import { PASOS_ONB, siguientePaso, CONEXIONES_ONB, pasosDe, type TipoCuenta } from '../data/onboarding';
+import { PASOS_ONB, siguientePaso, CONEXIONES_ONB } from '../data/onboarding';
 
 // =============================================================================================
 // EL ESTADO DE LOS PRIMEROS PASOS
@@ -25,13 +25,6 @@ type Ctx = {
   paso: number;
   irA: (n: number) => void;
   escribir: (id: string, v: ValorOnb) => void;
-  /** El tipo de cuenta: cambia las preguntas y lo que pasa al terminar. */
-  tipo: TipoCuenta | null;
-  /** Si la cuenta ya tiene su tipo elegido en el registro, no se puede cambiar. */
-  cuentaBloqueada: boolean;
-  elegirTipo: (t: TipoCuenta) => void;
-  /** Los pasos del tipo elegido (empresa por defecto hasta que se elija). */
-  pasos: typeof PASOS_ONB;
   /** El asistente de entrada: bienvenida y tipo primero, después los cinco pasos. */
   asistente: { abierto: boolean; fase: number };
   abrirAsistente: (fase?: number) => void;
@@ -46,11 +39,10 @@ type Ctx = {
   /** El motor ya arrancó: desde acá, el panel muestra el plan de la semana. */
   arrancado: boolean;
   arrancar: () => void;
-  /** El perfil del creador quedó visible para las marcas (es su equivalente a arrancar). */
-  publicado: boolean;
-  publicar: () => void;
   /** Aviso del panel: lo usan los controles compartidos, que viven fuera de las vistas. */
   avisar: (t: string) => void;
+  /** Los cinco pasos del negocio, en orden. */
+  pasos: typeof PASOS_ONB;
   /** Los datos mínimos del paso están puestos: se calcula, no se declara. */
   completo: (n: number) => boolean;
   siguiente: number;
@@ -68,11 +60,7 @@ export function useOnboarding(): Ctx {
 const tieneValor = (v: ValorOnb | undefined) =>
   Array.isArray(v) ? v.length > 0 : !!String(v || '').trim();
 
-export function OnboardingProvider({ children, avisar, tipoDeLaCuenta }: {
-  children: ReactNode; avisar: (t: string) => void;
-  /** El tipo ya elegido en el registro. Si viene, la cuenta ES de ese tipo y no se cambia. */
-  tipoDeLaCuenta?: TipoCuenta | null;
-}) {
+export function OnboardingProvider({ children, avisar }: { children: ReactNode; avisar: (t: string) => void }) {
   const [datos, setDatos] = useState<DatosOnb>({
     // Las cuentas que la cuenta YA tenía conectadas arrancan puestas: el paso 5 muestra el estado
     // real del negocio, no una lista vacía. Lo que se destilda acá no se desconecta solo: se marca.
@@ -80,19 +68,8 @@ export function OnboardingProvider({ children, avisar, tipoDeLaCuenta }: {
   });
   const [archivos, setArchivos] = useState<ArchivoIngesta[]>([]);
   const [paso, setPaso] = useState(1);
-  // El avance se guarda por piel: si el cliente cambia de negocio a creador y vuelve, no pierde nada.
-  const [hechosPorPiel, setHechosPorPiel] = useState<{ empresa: number[]; creador: number[] }>({ empresa: [], creador: [] });
+  const [hechos, setHechos] = useState<number[]>([]);
   const [arrancado, setArrancado] = useState(false);
-  const [publicado, setPublicado] = useState(false);
-  // El tipo de cuenta se elige en la bienvenida y cambia los pasos y el cierre.
-  const [tipo, setTipo] = useState<TipoCuenta | null>(tipoDeLaCuenta ?? null);
-  // Un correo es una cuenta y una cuenta es un tipo: si ya viene elegido, no se toca.
-  const cuentaBloqueada = !!tipoDeLaCuenta;
-  const pasos = pasosDe(tipo);
-  // El avance se guarda por piel (negocio / creador) y se resuelve acá arriba porque lo usan tanto
-  // `listos` como el valor del contexto: declararlo más abajo lo dejaba en zona muerta.
-  const clave: 'empresa' | 'creador' = tipo === 'creador' ? 'creador' : 'empresa';
-  const hechos = hechosPorPiel[clave];
   // El asistente de entrada: fase 0 la bienvenida, 1 el tipo de cuenta, 2..6 los cinco pasos.
   const [asistente, setAsistente] = useState({ abierto: false, fase: 0 });
 
@@ -123,48 +100,33 @@ export function OnboardingProvider({ children, avisar, tipoDeLaCuenta }: {
 
   /** Un paso está completo cuando están TODOS sus datos mínimos. El material se mira aparte. */
   const completo = (n: number) => {
-    const p = pasos.find(x => x.n === n);
+    const p = PASOS_ONB.find(x => x.n === n);
     if (!p) return false;
     return p.minima.every(id => {
       if (id === 'archivos') return archivos.length > 0;
       if (id === 'conectadas') return (datos['conectadas'] as string[] | undefined)?.length ? true : false;
-      // El resultado de los pasos de cierre no es un dato escrito: es que el motor haya arrancado
-      // (o que el perfil del creador se haya publicado).
+      // El resultado del paso de cierre no es un dato escrito: es que el motor haya arrancado.
       if (id === 'arrancado') return arrancado;
-      if (id === 'publicado') return publicado;
       return tieneValor(datos[id]);
     });
   };
 
-  const listos = pasos.filter(p => completo(p.n) || hechos.includes(p.n)).map(p => p.n);
+  const listos = PASOS_ONB.filter(p => completo(p.n) || hechos.includes(p.n)).map(p => p.n);
 
-  const marcar = (n: number) =>
-    setHechosPorPiel(h => ({ ...h, [clave]: h[clave].includes(n) ? h[clave] : [...h[clave], n] }));
-  const desmarcar = (n: number) =>
-    setHechosPorPiel(h => ({ ...h, [clave]: h[clave].filter(x => x !== n) }));
-
-  /**
-   * El tipo arrastra los pasos y el idioma del panel, y sólo se elige UNA vez (en el registro o en el
-   * onboarding de una cuenta nueva). Si la cuenta ya es de un tipo, esto no hace nada: un correo no se
-   * convierte en lo otro, se crea otra cuenta con otro correo.
-   */
-  const elegirTipo = (t: TipoCuenta) => {
-    if (cuentaBloqueada) return;
-    if (t !== tipo) { setTipo(t); setPaso(1); }
-  };
+  const marcar = (n: number) => setHechos(h => (h.includes(n) ? h : [...h, n]));
+  const desmarcar = (n: number) => setHechos(h => h.filter(x => x !== n));
 
   return (
     <OnbCtx.Provider value={{
       datos, archivos, subirArchivos, quitarArchivo, paso, irA: setPaso, escribir,
-      tipo, elegirTipo, pasos, cuentaBloqueada,
       asistente,
       abrirAsistente: (fase = 0) => setAsistente({ abierto: true, fase }),
       irAFase: (f: number) => setAsistente(a => ({ ...a, fase: f })),
       cerrarAsistente: () => setAsistente(a => ({ ...a, abierto: false })),
       avisar,
+      pasos: PASOS_ONB,
       hechos, marcar, desmarcar, arrancado, arrancar: () => setArrancado(true),
-      publicado, publicar: () => setPublicado(true),
-      completo, siguiente: siguientePaso(pasos, listos), listos,
+      completo, siguiente: siguientePaso(listos), listos,
     }}>
       {children}
     </OnbCtx.Provider>
