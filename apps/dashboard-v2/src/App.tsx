@@ -4,6 +4,8 @@ import { DetalleProvider } from './components/Detalle';
 import { useTheme } from './lib/theme';
 import { PerfilProvider } from './lib/perfil';
 import { PlanProvider } from './lib/plan';
+import { OnboardingProvider } from './lib/onboarding';
+import { ViewOnboarding } from './views/Onboarding';
 import { ViewHoy } from './views/Hoy';
 import { ViewCampanas } from './views/Campanas';
 import { ViewConversaciones } from './views/Conversaciones';
@@ -28,8 +30,10 @@ export default function App() {
   return (
     <PerfilProvider>
     <PlanProvider>
+    <OnboardingProvider>
     <DetalleProvider>
     <Layout vista={vista} setVista={setVista} theme={theme} cicloTema={cycle} toast={toast} modo={modo} avisar={avisar}>
+      {vista === 'onboarding' && <ViewOnboarding setToast={avisar} setVista={setVista} />}
       {vista === 'hoy' && <ViewHoy setToast={avisar} setVista={setVista} modo={modo} />}
       {vista === 'campanas' && <ViewCampanas setToast={avisar} modo={modo} setVista={setVista} />}
       {vista === 'conversaciones' && <ViewConversaciones setToast={avisar} modo={modo} />}
@@ -40,6 +44,7 @@ export default function App() {
       {vista === 'kyc' && <ViewKyc setToast={avisar} />}
     </Layout>
     </DetalleProvider>
+    </OnboardingProvider>
     </PlanProvider>
     </PerfilProvider>
   );

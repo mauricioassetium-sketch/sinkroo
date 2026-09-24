@@ -1,13 +1,14 @@
 import { useState, type ReactNode } from 'react';
-import { SinkrooMark, I_Home, I_Megaphone, I_Whatsapp, I_Globe, I_Settings, I_Bell, I_Sun, I_Moon, I_Zap, I_Clock, I_Vote, I_Robot, I_Credit, I_Gift, I_Shield, I_User, I_Palette, I_Menu, I_X } from './icons';
+import { SinkrooMark, I_Home, I_Megaphone, I_Whatsapp, I_Globe, I_Settings, I_Bell, I_Sun, I_Moon, I_Zap, I_Clock, I_Vote, I_Robot, I_Credit, I_Gift, I_Shield, I_User, I_Palette, I_Menu, I_X, I_Rocket } from './icons';
 import { TENANT, AGENTES, ALARMAS, DECISIONES, MODOS, type Modo } from '../data/demo';
 import { Progress } from './ui';
 import { usePerfil, inicialesDe } from '../lib/perfil';
 import { usePlan } from '../lib/plan';
+import { useOnboarding } from '../lib/onboarding';
 import { PerfilModal } from './PerfilModal';
 import { PersonalizarPanel } from './PersonalizarPanel';
 
-export type Vista = 'hoy' | 'campanas' | 'conversaciones' | 'mercado' | 'cuenta' | 'creditos' | 'referidos' | 'kyc';
+export type Vista = 'hoy' | 'onboarding' | 'campanas' | 'conversaciones' | 'mercado' | 'cuenta' | 'creditos' | 'referidos' | 'kyc';
 
 
 /** Lleva al motor andando: si no estás en Hoy, cambia de vista y después baja hasta el bloque. */
@@ -32,8 +33,10 @@ const NAV_CRECER: { key: Vista; nombre: string; Icon: any }[] = [
   { key: 'referidos', nombre: 'Referidos', Icon: I_Gift },
 ];
 
-// Para habilitar cosas dentro del sistema
+// Para habilitar cosas dentro del sistema. «Primeros pasos» va primero: es lo que se hace una vez
+// y deja al motor trabajando; el resto de la configuración se toca cuando hace falta.
 const NAV_CONF: { key: Vista; nombre: string; Icon: any }[] = [
+  { key: 'onboarding', nombre: 'Primeros pasos', Icon: I_Rocket },
   { key: 'cuenta', nombre: 'Cuenta y autonomía', Icon: I_Settings },
   { key: 'kyc', nombre: 'Verificación', Icon: I_Shield },
 ];
@@ -65,6 +68,7 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
   // desincronizaría en la primera recarga.
   const dias = Math.max(0, Math.round(TENANT.creditos / 150));
   const { plan } = usePlan();
+  const onb = useOnboarding();
   const todosLosDias = Math.round(plan.creditosMes / 150);
   const pctCreditos = Math.min(100, Math.round((TENANT.creditos / plan.creditosMes) * 100));
   // Ir a una vista del menú y cerrar la bandeja en celular: el mismo gesto para la tarjeta de
@@ -155,6 +159,16 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
           <div key={n.key} className={`nav-item ${vista === n.key ? 'active' : ''}`} onClick={() => { setVista(n.key); setMenuAbierto(false); }}>
             <n.Icon size={17} />
             <span className="nav-label">{n.nombre}</span>
+            {n.key === 'onboarding' && !onb.arrancado && (
+              <span className="badge badge-amber" style={{ marginLeft: 'auto', fontSize: 9 }}
+                title={`Primeros pasos: ${onb.listos.length} de 5 hechos. Faltan los datos que el motor no puede deducir solo.`}>
+                {onb.listos.length} de 5
+              </span>
+            )}
+            {n.key === 'onboarding' && onb.arrancado && (
+              <span className="badge badge-green" style={{ marginLeft: 'auto', fontSize: 9 }}
+                title="El motor ya arrancó con lo que le pusiste">en marcha</span>
+            )}
             {n.key === 'kyc' && (
               <span className="badge badge-amber" style={{ marginLeft: 'auto', fontSize: 9 }}>falta</span>
             )}
@@ -299,11 +313,12 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
 }
 
 function tituloVista(v: Vista) {
-  return ({ hoy: 'Tu día', campanas: 'Campañas', conversaciones: 'Conversaciones', mercado: 'Mercado', cuenta: 'Cuenta y autonomía', creditos: 'Créditos', referidos: 'Referidos', kyc: 'Verificación de identidad' } as const)[v];
+  return ({ hoy: 'Tu día', onboarding: 'Primeros pasos', campanas: 'Campañas', conversaciones: 'Conversaciones', mercado: 'Mercado', cuenta: 'Cuenta y autonomía', creditos: 'Créditos', referidos: 'Referidos', kyc: 'Verificación de identidad' } as const)[v];
 }
 function subtituloVista(v: Vista) {
   return ({
     hoy: 'Lo que el motor hizo, lo que espera de vos y lo que necesita tu atención',
+    onboarding: 'Cinco pantallas cortas y el motor queda trabajando',
     campanas: 'Cada campaña con el veredicto de los 5 jueces y sus artefactos',
     conversaciones: 'Todo lo que tus agentes contestan, con el contexto de cada cliente',
     mercado: 'Qué está haciendo tu competencia y por dónde conviene ir',

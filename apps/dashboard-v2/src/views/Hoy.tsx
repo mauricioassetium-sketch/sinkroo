@@ -3,9 +3,11 @@ import { Card, Badge, Button, Dinero, NotaMoneda } from '../components/ui';
 import { EquipoInvestigando } from '../components/EquipoInvestigando';
 import { Bars, Ring, BarRow, MetricaAnillo } from '../components/viz';
 import { usePerfil, nombreDePila } from '../lib/perfil';
-import { SinkrooMark, I_Check, I_ArrowRight, I_Wallet, I_Eye, I_Vote, I_Star, I_Sun, I_Zap, I_Trend, I_Clock } from '../components/icons';
+import { SinkrooMark, I_Check, I_ArrowRight, I_Wallet, I_Eye, I_Vote, I_Star, I_Sun, I_Zap, I_Trend, I_Clock, I_Rocket } from '../components/icons';
 import type { Vista } from '../components/Layout';
 import { useDetalle, type Bloque } from '../components/Detalle';
+import { useOnboarding } from '../lib/onboarding';
+import { PASOS_ONB } from '../data/onboarding';
 import {
   ALARMAS, DECISIONES, NUMEROS, MIENTRAS_NO_ESTABAS, BITACORA, MODOS, CONSECUENCIA,
   MES, PANEL_PIEZAS, INVESTIGACION_MERCADO,
@@ -197,6 +199,7 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
   // Ve el perfil que se está editando (así el logo y el nombre se ven al instante al subirlos).
   const { perfilVisible: perfil } = usePerfil();
   const detalle = useDetalle();
+  const onb = useOnboarding();
   const [hechas, setHechas] = useState<string[]>([]);
   const [alarmasExtra, setAlarmasExtra] = useState(false);
   const [bitacoraCompleta, setBitacoraCompleta] = useState(false);
@@ -400,6 +403,56 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
           </button>
         </div>
       </div>
+
+      {/* ============== PRIMEROS PASOS: lo que falta para que el motor trabaje mejor ==============
+          Va arriba de todo, después del hero: es lo único que el cliente tiene que hacer. Cuando el
+          motor ya arrancó y los cinco pasos están hechos, desaparece sola (no queda un cartel fijo). */}
+      {!(onb.arrancado && onb.listos.length === 5) && (
+        <Card
+          title={<span className="row" style={{ gap: 8 }}><I_Rocket size={14} style={{ color: 'var(--purple3)' }} /> Primeros pasos
+            <span className="tiny muted">· lo que el motor no puede deducir solo</span></span>}
+          action={<Badge tone={onb.arrancado ? 'green' : onb.listos.length > 0 ? 'purple' : 'amber'}>
+            {onb.arrancado ? 'el motor está en marcha' : `${onb.listos.length} de 5 hechos`}
+          </Badge>}
+        >
+          <div className="bs">
+            {onb.arrancado
+              ? <>Arrancó con lo que le pusiste y sigue por el mercado. Podés completar los pasos que faltan cuando quieras: el motor los toma en la próxima vuelta.</>
+              : <>Son <b>cinco pantallas cortas</b> y el motor queda trabajando. Nada es obligatorio: lo que no pongas, lo deduce de tu cuenta y de tus conversaciones.</>}
+          </div>
+          <div className="onb-datos">
+            {PASOS_ONB.map(p => (
+              <div key={p.n} className="dato">
+                <span className="dato-l">{p.n}. {p.t}</span>
+                <span className="dato-v" style={{ color: onb.listos.includes(p.n) ? 'var(--green)' : 'var(--muted2)' }}>
+                  {onb.listos.includes(p.n) ? 'hecho' : 'falta'}
+                </span>
+              </div>
+            ))}
+          </div>
+          <div className="row" style={{ gap: 9, marginTop: 14, flexWrap: 'wrap' }}>
+            <Button className="btn-sm"
+              title={`Abre el paso ${onb.siguiente}: ${PASOS_ONB.find(p => p.n === onb.siguiente)?.t}. Todo lo que pongas lo usa el motor en la próxima vuelta.`}
+              onClick={() => { setVista('onboarding'); setToast(`Seguimos por el paso ${onb.siguiente}: ${PASOS_ONB.find(p => p.n === onb.siguiente)?.t}`); }}>
+              <I_ArrowRight size={13} /> {onb.listos.length === 0 ? 'Empezar por el paso 1' : `Seguir por el paso ${onb.siguiente}: ${PASOS_ONB.find(p => p.n === onb.siguiente)?.t}`}
+            </Button>
+            <Button variant="ghost" className="btn-sm" title="Te muestra qué hace el motor con cada dato y de dónde saca el resto"
+              onClick={() => detalle({
+                titulo: 'Qué hace el motor con cada paso',
+                sub: 'El onboarding no es un formulario para el motor: es la corrección de lo que ya sabe. Cada dato cambia algo concreto de lo que produce.',
+                bloques: [
+                  { tipo: 'filas', items: PASOS_ONB.map(p => ({
+                    t: `${p.n}. ${p.t}`, s: p.infiere ? `Lo que saca solo: ${p.infiere}` : 'Esto sólo lo sabés vos.',
+                    etiqueta: onb.listos.includes(p.n) ? 'hecho' : 'falta', tono: onb.listos.includes(p.n) ? 'green' as const : 'muted' as const,
+                  })) },
+                  { tipo: 'aviso', texto: 'Nada de esto frena al motor: trabaja igual con dos datos y va corrigiendo con lo que aprende de tus conversaciones y de tu cuenta.' },
+                ],
+                fuente: 'Primeros pasos: los cinco pasos y lo que deduce cada uno.',
+                acciones: [{ label: 'Ir a Primeros pasos', variante: 'primary', title: 'Abre el primer paso pendiente', onClick: () => setVista('onboarding') }],
+              })}>Qué hace con cada cosa</Button>
+          </div>
+        </Card>
+      )}
 
       {/* ============== LA INVESTIGACIÓN DEL MERCADO (los 6 agentes, en vivo) ============== */}
       <div id="motor">

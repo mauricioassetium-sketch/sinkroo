@@ -1248,6 +1248,72 @@
 .acc-why.det-amber { border-color: rgba(245,158,11,.35); background: rgba(245,158,11,.07); }
 
 /* =============================================================================================
+   PRIMEROS PASOS (Onboarding.tsx) — el flujo de arranque. Usa el mismo stepper que Campañas
+   (`.pasos`) para que las dos etapas del producto se lean igual; acá va sólo lo propio: los
+   campos, el bloque de lo que el motor deduce solo y el plan de la primera semana.
+   ============================================================================================= */
+.onb-campos { display: flex; flex-direction: column; gap: 14px; margin-top: 14px; }
+.onb-campo { display: flex; flex-direction: column; gap: 6px; }
+.onb-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.onb-elegido { flex: 1 1 100%; display: flex; align-items: flex-start; gap: 6px; color: var(--green);
+  line-height: 1.5; padding: 2px 0 0 2px; }
+.onb-elegido svg { flex-shrink: 0; margin-top: 2px; }
+.onb-elegido b { color: var(--green); }
+
+.onb-infiere { display: flex; align-items: flex-start; gap: 10px; flex-wrap: wrap; padding: 11px 13px;
+  border-radius: 12px; border: 1px dashed var(--border2); background: var(--bg2); font-size: 12px;
+  line-height: 1.55; color: var(--txt); opacity: .82; margin-top: 12px; }
+.onb-infiere-ic { display: grid; place-items: center; width: 24px; height: 24px; flex-shrink: 0;
+  border-radius: 8px; background: rgba(168,85,247,.14); color: var(--purple3); }
+.onb-infiere span:last-child { flex: 1 1 320px; min-width: 0; }
+.onb-link { background: none; border: none; padding: 0; cursor: pointer; color: var(--amber);
+  font: inherit; font-weight: 800; text-decoration: underline; }
+
+.onb-mat { display: flex; flex-direction: column; gap: 12px; }
+.onb-mat-fila { border: 1px solid var(--border); border-radius: 12px; background: var(--bg2); padding: 11px 12px; }
+.onb-mat-lb { display: flex; align-items: center; gap: 9px; }
+.onb-mat-lb > span:nth-child(2) { flex: 1; min-width: 0; }
+.onb-mat-lb b { font-size: 12.5px; }
+.onb-mat-lb small { display: block; font-size: 10.5px; color: var(--muted2); line-height: 1.45; margin-top: 2px; }
+.onb-mat-ic { display: grid; place-items: center; width: 28px; height: 28px; flex-shrink: 0; border-radius: 9px;
+  background: rgba(168,85,247,.13); color: var(--purple3); }
+.onb-mat-up { display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0; cursor: pointer;
+  font-size: 11px; font-weight: 700; color: var(--purple3); border: 1px solid var(--border2);
+  border-radius: 99px; padding: 4px 10px; }
+.onb-mat-up:hover { border-color: var(--purple3); }
+.onb-mat-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
+.onb-chip-arch { font-size: 10.5px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.onb-conexiones { margin-top: 12px; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: var(--bg2); }
+.onb-conexiones .guard { padding: 10px 13px; }
+
+.onb-arrancado { display: flex; align-items: flex-start; gap: 10px; flex-wrap: wrap; margin-top: 14px;
+  padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(34,197,94,.35);
+  background: rgba(34,197,94,.08); font-size: 12.5px; line-height: 1.55; }
+.onb-arrancado svg { color: var(--green); flex-shrink: 0; margin-top: 2px; }
+.onb-arrancado span { flex: 1 1 320px; min-width: 0; }
+
+.onb-semana { margin-top: 12px; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+.onb-dia { display: grid; grid-template-columns: 62px 74px minmax(0,1fr) auto; align-items: baseline;
+  gap: 8px 12px; padding: 10px 13px; border-bottom: 1px solid var(--border); font-size: 12.5px; }
+.onb-dia:last-of-type { border-bottom: none; }
+.onb-dia-n { font-weight: 800; color: var(--purple3); }
+.onb-dia-quien { font-weight: 700; font-size: 11.5px; color: var(--muted2); }
+.onb-dia-que { line-height: 1.5; }
+.onb-dia-cr { font-size: 10.5px; color: var(--muted2); white-space: nowrap; }
+.onb-dia-total { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+  padding: 11px 13px; background: var(--bg2); font-size: 12px; }
+
+.onb-datos { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 12px; }
+.onb-datos .dato { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.onb-datos .dato-v { font-size: 12px; font-weight: 800; }
+@media (max-width: 620px) {
+  .onb-dia { grid-template-columns: 54px minmax(0,1fr); }
+  .onb-dia-quien { grid-column: 2; }
+  .onb-dia-que, .onb-dia-cr { grid-column: 1 / -1; }
+}
+
+/* =============================================================================================
    CONVERSACIONES · CLIENTES Y CREADORES — no mezclar al que te compra con el que te produce
    ============================================================================================= */
 
