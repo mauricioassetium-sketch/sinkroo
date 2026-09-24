@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Card, Badge, Button } from '../components/ui';
-import { ViewHead, Gauge, BarRow } from '../components/viz';
+import { ViewHead, Gauge } from '../components/viz';
 import { I_Credit, I_Wallet, I_Zap, I_Download, I_Shield, I_Plus, I_ArrowRight } from '../components/icons';
 import { TENANT, CREDITOS_MOV } from '../data/demo';
 
@@ -18,12 +18,30 @@ const FACTURAS = [
   { id: 'INV-1822', fecha: '15 Sep 2026', concepto: 'Recarga · paquete Pro', monto: 39, estado: 'Pendiente' },
 ];
 
+// En qué se van los créditos del mes. Cada rubro es una porción del anillo y su `costo` es el
+// precio por unidad: es el dato que permite decidir si el rubro vale la pena, así que va visible
+// en la leyenda y no como nota al pie.
 const CONSUMO = [
-  { l: 'Campañas', v: 180, c: 'var(--purple2)', nota: '$60 por campaña activa al mes' },
-  { l: 'Piezas y videos', v: 96, c: '#ec4899', nota: '16 por pieza con video' },
-  { l: 'Análisis de mercado', v: 40, c: 'var(--green)', nota: '10 por informe profundo' },
-  { l: 'Conversaciones', v: 0, c: 'var(--muted)', nota: 'incluidas en tu plan' },
+  { l: 'Campañas', v: 180, c: 'var(--purple2)', costo: '$60', detalle: 'por campaña activa al mes' },
+  { l: 'Piezas y videos', v: 96, c: '#ec4899', costo: '16', detalle: 'por pieza con video' },
+  { l: 'Análisis de mercado', v: 40, c: 'var(--green)', costo: '10', detalle: 'por informe profundo' },
+  { l: 'Conversaciones', v: 0, c: 'var(--muted)', costo: '0', detalle: 'por conversación: incluidas en tu plan' },
 ];
+
+// El número que cierra la tarjeta: el anillo, la leyenda y el título muestran ESTE total. Los rubros
+// de arriba están anclados a cargos reales (2 campañas de 120 y 60, un análisis de 40 en Movimientos;
+// 6 videos × 16), así que el total es su suma y no el plan menos el saldo.
+const CONSUMO_TOTAL = CONSUMO.reduce((a, c) => a + c.v, 0);
+
+// Las porciones del anillo, en grados. El anillo arranca arriba (-90deg) y cierra en 360.
+const PORCIONES = (() => {
+  let acum = 0;
+  return CONSUMO.map(c => {
+    const desde = (acum / CONSUMO_TOTAL) * 360;
+    acum += c.v;
+    return `${c.c} ${desde.toFixed(3)}deg ${(acum / CONSUMO_TOTAL * 360).toFixed(3)}deg`;
+  }).join(', ');
+})();
 
 export function ViewCreditos({ setToast }: { setToast: (t: string) => void }) {
   const [saldo, setSaldo] = useState(TENANT.creditos);
@@ -150,23 +168,41 @@ export function ViewCreditos({ setToast }: { setToast: (t: string) => void }) {
       <div className="duo" style={{ marginTop: 16 }}>
         <Card
           title={<span className="row" style={{ gap: 8 }}><I_Credit size={14} style={{ color: 'var(--purple3)' }} /> En qué se van</span>}
-          action={<Badge tone="purple">{usados.toLocaleString('es-AR')} usados este mes</Badge>}
+          action={<Badge tone="purple">{CONSUMO_TOTAL.toLocaleString('es-AR')} usados este mes</Badge>}
         >
-          <div className="grow-list">
-            {CONSUMO.map(c => (
-              <div key={c.l} style={{ padding: '8px 0' }}>
-                <div className="row spread" style={{ marginBottom: 6 }}>
-                  <span className="bt">{c.l}</span>
-                  <span style={{ fontWeight: 900, fontSize: 14, color: c.c }}>{c.v === 0 ? '0' : c.v.toLocaleString('es-AR')}</span>
-                </div>
-                <BarRow valor={c.v} max={180} color={c.c} />
-                <div className="tiny muted" style={{ marginTop: 5 }}>{c.nota}</div>
-              </div>
-            ))}
+          <div className="como-se-lee">
+            <b>Cómo se lee:</b> el anillo es <b>el total de lo que consumió el motor este mes</b>, y cada
+            porción es un rubro. Si un rubro te sorprende, podés abrir la bitácora y ver qué lo generó.
           </div>
+
+          <div className="reparto">
+            <div className="reparto-ring" style={{ background: `conic-gradient(from -90deg, ${PORCIONES})` }}
+              title={`Reparto de los ${CONSUMO_TOTAL.toLocaleString('es-AR')} créditos que consumió el motor este mes`}>
+              <div className="reparto-hole">
+                <div>
+                  <div className="reparto-v">{CONSUMO_TOTAL.toLocaleString('es-AR')}</div>
+                  <div className="reparto-l">créditos del mes</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="reparto-leyenda">
+              {CONSUMO.map(c => (
+                <div key={c.l} className="reparto-item">
+                  <span className="reparto-dot" style={{ background: c.c }} />
+                  <span className="reparto-lb">
+                    {c.l}<span className="reparto-pct">{Math.round((c.v / CONSUMO_TOTAL) * 100)}%</span>
+                    <small><b>{c.costo}</b> {c.detalle}</small>
+                  </span>
+                  <span className="reparto-num" style={{ color: c.c }}>{c.v.toLocaleString('es-AR')}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
           <div className="acc-why">
-            Cada fila es <b>trabajo real, no una tarifa</b>: "piezas y videos" son 6 videos producidos este mes.
-            Si ves un consumo que no reconocés, podés abrir la bitácora y ver exactamente qué lo generó.
+            Cada porción es <b>trabajo real, no una tarifa</b>: "piezas y videos" son 6 videos producidos
+            este mes. Las conversaciones con tus clientes están incluidas en el plan, por eso no gastan créditos.
           </div>
         </Card>
 

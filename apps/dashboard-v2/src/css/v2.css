@@ -999,3 +999,40 @@
 @media (max-width: 1100px) {
   .aut-sel-disparo { font-size: 11px; padding: 6px 6px; }
 }
+
+/* =============================================================================================
+   CRÉDITOS — "En qué se van": un anillo de reparto, no cuatro barras sueltas
+   Cada rubro es una porción del total del mes (un solo conic-gradient, como los anillos del
+   panel: ver .ring) y la leyenda muestra créditos + costo por unidad. El bloque crece y reparte
+   sus filas para no dejar huecos cuando la tarjeta de al lado es más alta.
+   ============================================================================================= */
+.reparto { display: flex; flex-wrap: wrap; align-items: stretch; gap: 14px 20px; flex: 1 1 auto; min-width: 0; }
+/* El agujero va del color de la tarjeta, igual que .ring::after, pero como caja propia para que
+   el número quede adentro sin posicionar nada en absoluto. */
+.reparto-ring { position: relative; width: 164px; height: 164px; border-radius: 50%; flex: 0 0 auto;
+  align-self: center; margin: 0 auto; display: grid; place-items: center; }
+.reparto-hole { width: 106px; height: 106px; border-radius: 50%; background: var(--card);
+  display: grid; place-items: center; text-align: center; line-height: 1; padding: 0 6px; }
+.reparto-v { font-size: 30px; font-weight: 900; letter-spacing: -1.2px; }
+.reparto-l { font-size: 8.5px; font-weight: 800; letter-spacing: .5px; color: var(--muted);
+  text-transform: uppercase; margin-top: 4px; }
+.reparto-leyenda { flex: 1 1 214px; min-width: 0; display: flex; flex-direction: column; gap: 8px;
+  justify-content: space-around; }
+/* Las filas crecen con la tarjeta (hasta un tope) y reparten el aire entre ellas: si la tarjeta
+   de al lado es más alta, la leyenda se estira en vez de dejar huecos. */
+.reparto-item { display: flex; align-items: center; gap: 9px; min-width: 0; padding: 7px 10px;
+  flex: 1 1 auto; max-height: 94px; min-height: 46px;
+  border: 1px solid var(--border); border-radius: 10px; background: var(--bg2); }
+.reparto-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+.reparto-lb { flex: 1 1 auto; min-width: 0; font-size: 12px; font-weight: 700; color: var(--txt); line-height: 1.25; }
+.reparto-pct { font-size: 10px; font-weight: 800; color: var(--muted2); margin-left: 6px; }
+/* El costo por unidad: dato visible de la fila, no nota al pie. */
+.reparto-lb small { display: block; font-size: 10.5px; font-weight: 500; color: var(--muted); margin-top: 2px; }
+.reparto-lb small b { color: var(--txt); font-weight: 900; }
+.reparto-num { flex-shrink: 0; font-size: 15px; font-weight: 900; font-variant-numeric: tabular-nums; }
+@media (max-width: 560px) {
+  .reparto { gap: 12px; }
+  .reparto-ring { width: 148px; height: 148px; }
+  .reparto-hole { width: 96px; height: 96px; }
+  .reparto-v { font-size: 26px; }
+}
