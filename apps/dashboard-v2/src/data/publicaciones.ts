@@ -257,7 +257,6 @@ export const FORMATOS: Formato[] = [
     paraQue: 'Sinkroo no busca colaboradores: el acuerdo lo cerrás vos por fuera y acá subís el link y el video. El motor monta esa pieza con lo suyo y todo va a la misma evaluación.',
     campos: [
       { id: 'link_colab', etiqueta: 'El link del colaborador', tipo: 'link', ayuda: 'Su perfil o la publicación donde se ve. El motor entra, ve quién es y con quién habla.' },
-      { id: 'acuerdo_colab', etiqueta: 'Lo que arreglaron por fuera', tipo: 'texto', ayuda: 'Qué le pedís, qué le das a cambio y para cuándo. El acuerdo es entre ustedes: Sinkroo no lo cobra ni lo intermedia.' },
       { id: 'video_colab', etiqueta: 'El video del colaborador', tipo: 'videos', ayuda: 'El archivo tal como te lo entregó. Podés subir varios: se suman a los que produce el motor para esta campaña.' },
       { id: 'cuando_colab', etiqueta: 'Cuándo sale', tipo: 'opciones', diaHora: true, opcionDiaHora: 'Elegí el día y la hora', opciones: ['Que lo recomiende el motor'], ayuda: 'Dos caminos: elegís el día y la hora, o el motor recomienda la mejor franja.' },
       { id: 'filtro_colab', etiqueta: 'Su contenido y el filtro de MiroFish', tipo: 'opciones',
