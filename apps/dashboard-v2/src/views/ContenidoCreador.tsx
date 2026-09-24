@@ -1,308 +1,338 @@
+// =============================================================================================
+// CONTENIDO, EN PIEL DE CREADOR — «Tus piezas: borrador, verificadas por el panel y publicadas».
+//
+// EL MODELO (la corrección del dueño manda sobre lo anterior): esta herramienta sirve para CREAR
+// CONTENIDO, VERIFICARLO y PUBLICARLO en las redes del creador, y para hacer crecer su cuenta según
+// su nicho. Acá no hay marcas, ni pitches, ni deals, ni rates: el trabajo del equipo es el ciclo de
+// una pieza —
+//
+//    1. PRODUCIR   · Nia escribe el guion, el hook y el caption; tu avatar arma la pieza con tu material.
+//    2. VERIFICAR  · el panel de 5 la puntúa de 0 a 100: con 80 o más aprueba, si no vuelve con la objeción.
+//    3. PUBLICAR   · Kai la programa y la publica en tus redes, en la ventana que le conviene a tu audiencia.
+//    4. CRECER     · Rex y Sol miden qué retuvo y qué hizo crecer la cuenta.
+//
+// LA REGLA DEL PANEL, que se ve en la pantalla: la pieza que el panel rechaza NO le cuesta créditos al
+// creador — la regeneración por gate la paga el sistema. Por eso la pieza frenada muestra «0 créditos
+// tuyos» y su botón de regenerar no suma nada a la semana.
+//
+// ES PARA CUALQUIER CREADOR: nada de acá asume un rubro. El tipo de cuenta —el que publica por gusto, el
+// que hace crecer su audiencia, el que graba para otros, el que muestra su oficio, el que habla de su
+// ciudad— cambia QUÉ se publica y QUÉ se mide, nunca cómo funciona el ciclo.
+//
+// NINGÚN NÚMERO ESTÁ ESCRITO A MANO: las piezas y sus puntajes salen de PIEZAS_DEL_MES, los tipos de
+// PIEZAS_CREADOR, los créditos de GRILLA_CREDITOS, el mes de PLAN_DEL_MES, los pasos de CICLO_PASOS y
+// los agentes de AGENTES_CREADOR. Un crédito en dólares sale del pack extra de PLANES_CREADOR.
+// =============================================================================================
+
 import { useState } from 'react';
 import { Card, Badge, Button, Dinero, NotaMoneda } from '../components/ui';
 import { ViewHead } from '../components/viz';
 import {
-  I_File, I_Check, I_Refresh, I_Eye, I_Star, I_Zap, I_Credit, I_Cal, I_Film, I_Users, I_Chat, I_ArrowRight,
+  I_File, I_Play, I_Star, I_Check, I_Refresh, I_Eye, I_Vote, I_Zap, I_Credit, I_Cal,
 } from '../components/icons';
 import { useDetalle } from '../components/Detalle';
 import type { Vista } from '../components/Layout';
+import { usePlan } from '../lib/plan';
+import { usePerfil } from '../lib/perfil';
+import { importe } from '../lib/moneda';
 import {
-  VISTAS_CREADOR, PIEZAS_CREADOR, GRILLA_CREDITOS, OPORTUNIDADES, ETAPAS_PIPELINE,
-  PLANES_CREADOR, RATES, RITMO_SEMANA, FICHA_CREADOR,
+  VISTAS_CREADOR, PIEZAS_CREADOR, GRILLA_CREDITOS, PLANES_CREADOR, PIEZAS_DEL_MES, CICLO_PIEZA,
+  CICLO_PASOS, PLAN_DEL_MES, AGENTES_CREADOR, FICHA_CREADOR, type EstadoPieza,
 } from '../data/creador';
 
-// =============================================================================================
-// CONTENIDO, EN PIEL DE CREADOR — «Series activas, piezas del mes y estado de cada una».
-//
-// En el carril de un creador, la vista de Campañas es esta: el mismo motor (el plan del mes, el
-// panel de 5 que puntúa cada pieza, el pipeline de marcas y la grilla de créditos) contado como
-// contenido y no como campañas. El equipo propone y el creador aprueba: publicar, regenerar y
-// cerrar entregas son las decisiones que se toman acá.
-//
-// LO QUE MANDA LA REGLA DEL MODELO Y SE VE EN LA PANTALLA: la pieza que el panel rechaza no le
-// cuesta créditos al creador — la regeneración por gate la paga el sistema. Por eso una pieza
-// frenada muestra «0 créditos tuyos» y su botón de regenerar no suma nada a la semana.
-//
-// NINGÚN NÚMERO ESTÁ ESCRITO A MANO: los créditos salen de GRILLA_CREDITOS, las marcas y sus pagos
-// de OPORTUNIDADES, el plan de PLANES_CREADOR y los textos de PIEZAS_CREADOR / RITMO_SEMANA.
-// =============================================================================================
+/** Una pieza del mes, con su estado en el ciclo y el puntaje que le puso el panel. */
+type Pieza = typeof PIEZAS_DEL_MES[number];
 
-type EstadoPieza = 'borrador' | 'ok' | 'publicada' | 'entregada';
+// ---------------------------------------------------------------------------------------------
+// LAS CUENTAS Y LOS MAPAS QUE SALEN DE LA DATA (nada escrito dos veces)
+// ---------------------------------------------------------------------------------------------
 
-const ESTADO: Record<EstadoPieza, { nombre: string; tono: 'purple' | 'green' | 'amber' | 'muted' }> = {
-  borrador: { nombre: 'Borrador', tono: 'muted' },
-  ok: { nombre: 'Esperando tu OK', tono: 'amber' },
-  publicada: { nombre: 'Publicada', tono: 'green' },
-  entregada: { nombre: 'Entregada a la marca', tono: 'purple' },
+/** Las piezas que el panel frenó: volvieron con menos de 80 y no salen hasta corregirse. */
+const FRENADAS = PIEZAS_DEL_MES.filter(p => p.puntaje > 0 && p.puntaje < 80).map(p => p.id);
+/** …y las paga el sistema: corregirlas no le cuesta créditos al creador. */
+const esFrenada = (id: string) => FRENADAS.includes(id);
+
+/** Las que ya pasaron el panel. El puntaje de una pieza nueva es el promedio de las que aprobó el mes. */
+const APROBADAS_MES = PIEZAS_DEL_MES.filter(p => p.puntaje >= 80);
+const PUNTAJE_PANEL = Math.round(APROBADAS_MES.reduce((s, p) => s + p.puntaje, 0) / APROBADAS_MES.length);
+
+/** 1 crédito en dólares, leído del pack extra del creador (1.000 créditos por su precio): no se inventa. */
+const USD_POR_CREDITO = (() => {
+  const pack = PLANES_CREADOR.find(p => p.key === 'topup');
+  return pack && pack.creditosMes ? pack.precio / pack.creditosMes : 0;
+})();
+const enPlata = (creditos: number) => Math.round(creditos * USD_POR_CREDITO * 100) / 100;
+
+/** El tipo de una pieza, leído de PIEZAS_CREADOR: su icono, su red y para qué sirve. */
+const tipoDe = (nombre: string) =>
+  PIEZAS_CREADOR.find(t => t.nombre === nombre) ?? PIEZAS_CREADOR.find(t => t.key === nombre);
+
+/**
+ * El estado de una pieza dice en qué paso del ciclo está: cada paso trabaja sobre las piezas que
+ * están en un estado. Producir las deja en borrador, Verificar las puntúa, lo aprobado espera en
+ * Publicar y lo que ya salió a las redes se mide en Crecer.
+ */
+const ESTADOS_DEL_PASO: number[][] = [[0], [1], [2], [3, 4]];
+const estadosDePaso = (i: number) => ESTADOS_DEL_PASO[i].map(k => CICLO_PIEZA[k]);
+/** En qué paso del ciclo está una pieza, según su estado. */
+const pasoDe = (estado: EstadoPieza) => {
+  const i = ESTADOS_DEL_PASO.findIndex(k => k.some(n => CICLO_PIEZA[n] === estado));
+  return i < 0 ? 0 : i;
 };
 
-/** Lo que la marca está esperando de una entrega del pipeline. */
-type EstadoEntrega = 'pendiente' | 'entregada' | 'cerrada' | 'movida';
-
-const ENTREGA_LB: Record<EstadoEntrega, string> = {
-  pendiente: 'En curso',
-  entregada: 'Entregada',
-  cerrada: 'Cerrada con vos',
-  movida: 'Rumi la movió',
+/** El color de cada estado de la pieza en el ciclo. */
+const TONO_ESTADO: Record<EstadoPieza, 'purple' | 'green' | 'amber' | 'muted'> = {
+  'Borrador': 'muted',
+  'En verificación': 'amber',
+  'Aprobada por el panel': 'purple',
+  'Publicada': 'green',
+  'Medida': 'green',
 };
 
-type Pieza = {
-  id: string; titulo: string; /** La clave de PIEZAS_CREADOR: post, historias, entregable, remaster… */
-  tipo: string; serie: string; panel: number; estado: EstadoPieza;
-  /** La línea exacta de GRILLA_CREDITOS con la que se genera esta pieza. */
-  grilla: string; cuando: string; nota: string;
-  /** El panel la frenó: no se publica y, si hay que regenerarla, la paga el sistema. */
-  gate?: boolean;
-  /** Idea de reel: es un post del creador con el guion escrito. */
-  reel?: boolean;
-  marca?: string;
-};
-
-const PIEZAS: Pieza[] = [
-  { id: 'p1', titulo: 'Rutina de noche en 30 s', tipo: 'post', serie: 'Piel real', panel: 91, estado: 'publicada',
-    grilla: 'Imagen hero (portada o feed)', cuando: 'Salió hace 3 días',
-    nota: 'Tu formato dominante: cara a cámara y paso a paso. Es la que mejor retuvo del mes.' },
-  { id: 'p2', titulo: 'Lo probé 30 días: lo que cambió', tipo: 'post', serie: 'Lo probé 30 días', panel: 86, estado: 'ok',
-    grilla: 'Imagen hero (portada o feed)', cuando: 'Espera tu OK desde ayer',
-    nota: 'El formato que más crece en tu nicho: a las marcas les sirve para pauta.' },
-  { id: 'p3', titulo: 'Antes y después con piel real', tipo: 'post', serie: 'Piel real', panel: 78, estado: 'borrador', gate: true,
-    grilla: 'Imagen hero (portada o feed)', cuando: 'Volvió del panel hace 2 h',
-    nota: 'El panel la frenó en 78: abajo de 80 no sale. Nia ya corrigió la objeción del juez que votó más bajo.' },
-  { id: 'p4', titulo: 'Lanzamiento: 3 historias', tipo: 'historias', serie: 'Lanzamiento de marca', panel: 84, estado: 'publicada',
-    grilla: 'Imagen con texto montado', cuando: 'Salió hace 5 días',
-    nota: 'Las tres historias del lanzamiento, con el sticker y el link que pidió la marca.' },
-  { id: 'p5', titulo: 'Unboxing con voz y cara', tipo: 'post', reel: true, serie: 'Lo probé 30 días', panel: 88, estado: 'borrador',
-    grilla: 'Texto (hook, caption, guion)', cuando: 'Guion listo',
-    nota: 'Idea de reel de Rex con el guion escrito. Generar el video es aparte: sale de la grilla.' },
-  { id: 'p6', titulo: '3 cosas que no haría con mi piel', tipo: 'post', reel: true, serie: 'Lo probé 30 días', panel: 81, estado: 'ok',
-    grilla: 'Texto (hook, caption, guion)', cuando: 'Espera tu OK desde el lunes',
-    nota: 'La segunda idea de reel: la cara más personal del perfil, para los que ya te siguen.' },
-  { id: 'p7', titulo: 'Foto de producto para Bienestar Sur', tipo: 'entregable', serie: 'Lanzamiento de marca', panel: 92, estado: 'entregada',
-    grilla: 'Foto UGC (producto en mano)', cuando: 'Entregada hace 6 días', marca: 'Bienestar Sur',
-    nota: 'La que pidió la marca para su ficha de producto: fondo limpio y luz natural.' },
-  { id: 'p8', titulo: 'Remaster 4K de la pieza de Bienestar Sur', tipo: 'remaster', serie: 'Lanzamiento de marca', panel: 90, estado: 'entregada',
-    grilla: 'Remaster 4K de tu pieza', cuando: 'Entregada hace 2 días', marca: 'Bienestar Sur',
-    nota: 'Encuadre, color y sonido: la marca la quiere para su catálogo.' },
-  { id: 'p9', titulo: 'Reel para Skincare Natural (cortes de 5 s)', tipo: 'entregable', serie: 'Lanzamiento de marca', panel: 89,
-    estado: 'ok', marca: 'Skincare Natural', grilla: 'Video 5 s estándar', cuando: 'Espera tu OK para generar',
-    nota: 'La entrega comprometida del viernes: el guion pasó el panel y la marca ya lo aprobó.' },
-];
-
-/** Lo que le falta a cada marca del pipeline para tener la pieza en la mano. */
-const FALTA: Record<string, { dias: number; falta: string }> = {
-  'Skincare Natural': { dias: 0, falta: 'Tu OK para generar el reel: el guion ya pasó el panel y la marca lo aprobó.' },
-  'Bienestar Sur': { dias: 0, falta: 'Que cierres el pack de tres: Rumi dejó el precio listo y espera tu OK.' },
-  'Verde Vivo': { dias: 9, falta: 'El precio del uso en pauta, que se cobra aparte del precio por pieza.' },
-  'Farmacia del Barrio': { dias: 14, falta: 'Que abran el pitch: Rumi lo mandó hace 2 días.' },
-  'DermaMarket': { dias: 21, falta: 'El media kit con tus métricas y dos piezas de muestra.' },
-};
-
-/** Los días que faltan hasta el próximo día de la semana (0 = domingo … 6 = sábado). */
-const hastaElDia = (dia: number) => (dia - new Date().getDay() + 7) % 7 || 7;
-// Las dos entregas comprometidas caen en el día que ya está escrito en la data: la de Skincare
-// Natural el viernes y el primer entregable de Bienestar Sur el martes.
-FALTA['Skincare Natural'].dias = hastaElDia(5);
-FALTA['Bienestar Sur'].dias = hastaElDia(2);
-
-/** La fecha real de una entrega: se calcula desde hoy, no se escribe a mano. */
-const fecha = (dias: number) =>
-  new Date(Date.now() + dias * 86400000).toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
-
-/** El día en que una pieza sale a las redes. */
+/** El día en que una pieza sale a las redes: se calcula con la fecha de hoy, no se escribe a mano. */
 const hoy = () => new Date().toLocaleDateString('es-AR', { day: 'numeric', month: 'long' });
-
-/** Los créditos de una pieza, leídos de la grilla de generación. */
-const costoDe = (grilla: string) => GRILLA_CREDITOS.find(g => g.pieza === grilla)?.creditos ?? 0;
-
-/** El primer importe que aparece en un texto de la data: '$420 por las tres' → 420. */
-const usdDe = (texto: string) => Number((/\$\s?([\d.]+)/.exec(texto)?.[1] ?? '0').replace(/\./g, ''));
-
-/** El rate del video corto, leído de la lista de precios del creador: es la pieza más pedida. */
-const RATE_VIDEO = RATES[0];
 
 export function ViewContenidoCreador({ setToast, setVista }: { setToast: (t: string) => void; setVista: (v: Vista) => void }) {
   const detalle = useDetalle();
-  // --- Lo que cada botón cambia, y se ve: el estado de la pieza, su puntaje, el día en que salió,
-  // las que volvieron del panel, la etapa de una marca y lo que le falta a su entrega.
+  const { perfil } = usePerfil();
+  const { plan } = usePlan();
+
+  // --- Lo que cada botón cambia, y se ve en la misma pantalla: el estado de la pieza en el ciclo, el
+  // puntaje del panel, el día en que salió, las que volvieron del panel y el lote que salió de una.
   const [estados, setEstados] = useState<Record<string, EstadoPieza>>({});
   const [paneles, setPaneles] = useState<Record<string, number>>({});
   const [salidas, setSalidas] = useState<Record<string, string>>({});
-  const [regen, setRegen] = useState<string[]>([]);
+  const [regeneradas, setRegeneradas] = useState<string[]>([]);
   const [lote, setLote] = useState<string[] | null>(null);
-  const [etapas, setEtapas] = useState<Record<string, string>>({});
-  const [entregas, setEntregas] = useState<Record<string, EstadoEntrega>>({});
-  const [serieSel, setSerieSel] = useState<string | null>(null);
-  const plan = PLANES_CREADOR.find(p => p.key === 'pro')!;
 
   const estadoDe = (p: Pieza): EstadoPieza => estados[p.id] ?? p.estado;
-  const panelDe = (p: Pieza) => paneles[p.id] ?? p.panel;
-  const colorPanel = (s: number) => (s >= 80 ? 'var(--green)' : s >= 60 ? 'var(--amber)' : 'var(--red)');
-  const tipoNombre = (p: Pieza) => PIEZAS_CREADOR.find(t => t.key === p.tipo)?.nombre ?? p.tipo;
-  const etapaDe = (marca: string, etapa: string) => etapas[marca] ?? etapa;
-  const entregaDe = (marca: string): EstadoEntrega => entregas[marca] ?? 'pendiente';
+  const puntajeDe = (p: Pieza) => paneles[p.id] ?? p.puntaje;
+  const regen = (id: string) => regeneradas.includes(id);
+  /** Un cambio hecho con un botón: es lo que hace aparecer «Volver a como estaba» al lado. */
+  const cambio = (p: Pieza) => estados[p.id] !== undefined || regen(p.id) || salidas[p.id] !== undefined;
 
-  /** Los créditos que le cuesta al creador: lo que el panel rechazó no se cobra. */
-  const costoDePieza = (p: Pieza) => (p.gate ? 0 : costoDe(p.grilla));
-  const costoDelSistema = (p: Pieza) => (p.gate ? costoDe(p.grilla) : 0);
+  /** El color del puntaje: verde con 80 o más (el panel aprueba), ámbar abajo. */
+  const colorPanel = (s: number) => (s >= 80 ? 'var(--green)' : s > 0 ? 'var(--amber)' : 'var(--muted)');
+  /** Los créditos que le cuesta al creador: lo que el panel frenó no se le cobra. */
+  const costoDePieza = (p: Pieza) => (esFrenada(p.id) ? 0 : p.creditos);
+  const costoDelSistema = (p: Pieza) => (esFrenada(p.id) ? p.creditos : 0);
+
+  /** El importe con sus dos textos, para los paneles de detalle (ahí entra texto, no JSX). */
+  const plata = (monto: number) => {
+    const t = importe(monto, perfil.moneda);
+    return `${t.principal}${t.equivalente ? ` ${t.equivalente}` : ''}`;
+  };
 
   // ============================ LOS NÚMEROS, TODOS DE LA DATA ============================
-  const arriba80 = PIEZAS.filter(p => panelDe(p) >= 80).length;
-  const costoSemana = PIEZAS.reduce((s, p) => s + costoDePieza(p), 0);
-  const costoGate = PIEZAS.reduce((s, p) => s + costoDelSistema(p), 0);
-  const pctPlan = Math.round((costoSemana / plan.creditosMes) * 100);
-  const entregasSemana = OPORTUNIDADES.filter(o => FALTA[o.marca].dias <= 7).length;
-  const cerrado = OPORTUNIDADES.filter(o => o.etapa === 'Deal' || o.etapa === 'Negociación')
-    .reduce((s, o) => s + usdDe(o.paga), 0);
-  const todoElPipeline = OPORTUNIDADES.reduce((s, o) => s + usdDe(o.paga), 0);
+  const piezas = PIEZAS_DEL_MES.length;
+  const arriba80 = PIEZAS_DEL_MES.filter(p => puntajeDe(p) >= 80).length;
+  const publicadas = PIEZAS_DEL_MES.filter(p => estadoDe(p) === 'Publicada').length;
+  const costoMes = PIEZAS_DEL_MES.reduce((s, p) => s + costoDePieza(p), 0);
+  const costoGate = PIEZAS_DEL_MES.reduce((s, p) => s + costoDelSistema(p), 0);
+  const pctPlan = plan.creditosMes ? Math.round((costoMes / plan.creditosMes) * 100) : 0;
+  const esperan = PIEZAS_DEL_MES.filter(p => estadoDe(p) === 'Aprobada por el panel');
+  const enElPanel = PIEZAS_DEL_MES.filter(p => estadoDe(p) === 'En verificación');
+  const enBorrador = PIEZAS_DEL_MES.filter(p => estadoDe(p) === 'Borrador');
+  const mezclaTotal = PLAN_DEL_MES.mezcla.reduce((s, m) => s + m.cuantas, 0);
+  const veredictoPanel = esperan.length
+    ? `${esperan.length} ${esperan.length === 1 ? 'espera' : 'esperan'} tu OK`
+    : enElPanel.length ? `${enElPanel.length} en verificación`
+      : enBorrador.length ? `${enBorrador.length} en borrador` : 'todo en tus redes';
 
-  // El plan del mes, contado desde las piezas: 3 posts, 1 secuencia de historias, 2 ideas de reel.
-  const posts = PIEZAS.filter(p => p.tipo === 'post' && !p.reel).length;
-  const historias = PIEZAS.filter(p => p.tipo === 'historias').length;
-  const reels = PIEZAS.filter(p => p.reel).length;
-  /** Los posts del mes, agrupados por serie: es lo que hace que las series estén «activas». */
-  const series = [...new Set(PIEZAS.map(p => p.serie))].map(nombre => {
-    const del = PIEZAS.filter(p => p.serie === nombre);
-    return {
-      nombre,
-      piezas: del.length,
-      panel: Math.round(del.reduce((s, p) => s + panelDe(p), 0) / del.length),
-      frenadas: del.filter(p => p.gate && estadoDe(p) === 'borrador').length,
-      salidas: del.filter(p => estadoDe(p) === 'publicada' || estadoDe(p) === 'entregada').length,
-    };
-  });
-
-  const visibles = serieSel ? PIEZAS.filter(p => p.serie === serieSel) : PIEZAS;
-  const esperan = visibles.filter(p => estadoDe(p) === 'ok' && panelDe(p) >= 80);
-  const cuantasEsperan = PIEZAS.filter(p => estadoDe(p) === 'ok' && panelDe(p) >= 80).length;
-
+  /** Cuándo sale (o salió) una pieza: lo que dice el ciclo, y lo que cambió un botón. */
   const cuandoDe = (p: Pieza) => {
-    if (salidas[p.id]) return `Salió a tus redes el ${salidas[p.id]}`;
-    if (regen.includes(p.id)) return 'La regeneró el sistema y volvió al panel';
-    if (p.estado === 'publicada' && estadoDe(p) !== 'publicada') return 'La sacaste de tus redes: espera tu OK';
-    return p.cuando;
+    const e = estadoDe(p);
+    if (salidas[p.id]) return `Salió el ${salidas[p.id]}, en tu mejor ventana`;
+    if (e === 'Publicada') return `Salió ${p.cuando}`;
+    if (e === 'Aprobada por el panel') return p.cuando === '—' ? 'Sale en tu próxima ventana' : `Sale ${p.cuando}`;
+    if (e === 'En verificación') return 'Todavía sin fecha: está en el panel';
+    if (esFrenada(p.id) && !regen(p.id)) return 'Espera la corrección: el panel la frenó';
+    return 'Todavía sin fecha: es un borrador';
   };
 
-  /** Lo que le falta a una entrega, según cómo quedó la conversación con la marca. */
-  const faltaDe = (o: (typeof OPORTUNIDADES)[number]) => {
-    const e = entregaDe(o.marca);
-    if (e === 'entregada') return 'El cobro: Rumi arma el link y no sale sin tu OK.';
-    if (e === 'cerrada') return `El primer entregable: la fecha es el ${fecha(FALTA[o.marca].dias)}.`;
-    if (e === 'movida') return 'Esperar la respuesta: Rumi la sigue y te avisa cuando conteste.';
-    return FALTA[o.marca].falta;
-  };
+  /** Lo que cuesta una pieza, contado como el creador lo va a ver en su saldo. */
+  const costoTexto = (p: Pieza) => (esFrenada(p.id)
+    ? `0 créditos tuyos: los ${p.creditos} de regenerarla los paga el sistema`
+    : `${p.creditos} ${p.creditos === 1 ? 'crédito' : 'créditos'} · ${plata(enPlata(p.creditos))}`);
 
   // ============================ LOS BOTONES QUE HACEN (y se ve en la pantalla) ============================
 
-  /** Publicar una pieza: cambia su estado, le pone la fecha y baja lo que espera tu OK. */
+  /** Producir → Verificar: la pieza entró al panel de 5. */
+  const mandarAlPanel = (p: Pieza) => {
+    setEstados(s => ({ ...s, [p.id]: 'En verificación' }));
+    setToast(`«${p.titulo}» entró al panel de 5: la puntúa de 0 a 100 y con 80 o más la aprueba`);
+  };
+
+  /** Verificar: el panel la puntúa y, si llega a 80, queda aprobada y pasa a la cola de publicación. */
+  const verificar = (p: Pieza) => {
+    setPaneles(s => ({ ...s, [p.id]: PUNTAJE_PANEL }));
+    setEstados(s => ({ ...s, [p.id]: 'Aprobada por el panel' }));
+    setToast(`El panel puntuó «${p.titulo}» ${PUNTAJE_PANEL} de 100: aprobada y esperando tu OK para salir`);
+  };
+
+  /** Publicar: sale a la red de la pieza, en la ventana que le conviene a la audiencia. */
   const publicar = (p: Pieza) => {
-    setEstados(s => ({ ...s, [p.id]: 'publicada' }));
+    setEstados(s => ({ ...s, [p.id]: 'Publicada' }));
     setSalidas(s => ({ ...s, [p.id]: hoy() }));
-    setToast(`«${p.titulo}» salió a tus redes con el texto que aprobó el panel`);
-  };
-  const bajar = (p: Pieza) => {
-    setEstados(s => ({ ...s, [p.id]: 'ok' }));
-    setSalidas(s => { const n = { ...s }; delete n[p.id]; return n; });
-    setToast(`«${p.titulo}» volvió a tu OK: no está en tus redes`);
+    setToast(`«${p.titulo}» salió a ${p.red} el ${hoy()}, en tu mejor ventana`);
   };
 
-  /** La pieza que el panel rechazó: regenerarla no cuesta créditos, los paga el sistema. */
-  const regenerar = (p: Pieza) => {
-    setRegen(r => [...r, p.id]);
-    setPaneles(s => ({ ...s, [p.id]: 87 }));
-    setEstados(s => ({ ...s, [p.id]: 'ok' }));
-    setToast(`«${p.titulo}» volvió del panel con 87: los ${costoDe(p.grilla)} créditos de regenerarla los pagó el sistema`);
-  };
-  const volverALaDeAntes = (p: Pieza) => {
-    setRegen(r => r.filter(x => x !== p.id));
-    setPaneles(s => { const n = { ...s }; delete n[p.id]; return n; });
-    setEstados(s => ({ ...s, [p.id]: 'borrador' }));
-    setToast(`«${p.titulo}» vuelve a la versión que el panel frenó: 78`);
-  };
-
-  /** La semana de una sola vez: publica todas las que están arriba de 80 y esperan tu OK. */
+  /** El lote de la semana: todas las que el panel aprobó y esperan tu OK, de una. */
   const publicarSemana = () => {
-    const ids = PIEZAS.filter(p => estadoDe(p) === 'ok' && panelDe(p) >= 80).map(p => p.id);
-    setEstados(s => { const n = { ...s }; ids.forEach(id => { n[id] = 'publicada'; }); return n; });
+    const ids = esperan.map(p => p.id);
+    setEstados(s => { const n = { ...s }; ids.forEach(id => { n[id] = 'Publicada'; }); return n; });
     setSalidas(s => { const n = { ...s }; ids.forEach(id => { n[id] = hoy(); }); return n; });
     setLote(ids);
-    setToast(`${ids.length} piezas salieron a tus redes el ${hoy()}`);
+    setToast(`${ids.length} ${ids.length === 1 ? 'pieza salió' : 'piezas salieron'} a tus redes el ${hoy()}`);
   };
   const deshacerSemana = () => {
     const ids = lote ?? [];
-    setEstados(s => { const n = { ...s }; ids.forEach(id => { n[id] = 'ok'; }); return n; });
+    setEstados(s => { const n = { ...s }; ids.forEach(id => { n[id] = 'Aprobada por el panel'; }); return n; });
     setSalidas(s => { const n = { ...s }; ids.forEach(id => { delete n[id]; }); return n; });
     setLote(null);
-    setToast(`${ids.length} piezas volvieron a esperar tu OK: no se publicó nada`);
+    setToast(`${ids.length} ${ids.length === 1 ? 'pieza volvió' : 'piezas volvieron'} a esperar tu OK: no quedó nada publicado del lote`);
   };
 
-  /** Las tres decisiones del pipeline: registrar la entrega, cerrar el pack o insistir con Rumi. */
-  const accionDe = (o: (typeof OPORTUNIDADES)[number]) => {
-    const etapa = etapaDe(o.marca, o.etapa);
-    if (etapa === 'Deal') return {
-      label: 'Registrar la entrega',
-      title: `${o.marca} recibe la pieza: queda registrada y Rumi deja el cobro listo para tu OK. Es reversible: con Deshacer vuelve a decir que falta entregarla.`,
-      run: () => { setEntregas(e => ({ ...e, [o.marca]: 'entregada' })); setToast(`${o.marca}: entrega registrada. El cobro te espera antes de salir`); },
-    };
-    if (etapa === 'Negociación') return {
-      label: 'Cerrar el pack de tres',
-      title: `Cierra el pack de tres piezas con el uso en pauta: la marca queda avisada y Rumi agenda la entrega. Es reversible: podés dejarlo otra vez en negociación.`,
-      run: () => { setEntregas(e => ({ ...e, [o.marca]: 'cerrada' })); setToast(`${o.marca}: pack cerrado. El primer entregable sale el ${fecha(FALTA[o.marca].dias)}`); },
-    };
-    if (etapa === 'Respuesta') return {
-      label: 'Que Rumi conteste el precio',
-      title: `Rumi contesta con el precio del uso en pauta, que se cobra aparte de la pieza. Es reversible: la respuesta vuelve a esperar tu OK.`,
-      run: () => { setEntregas(e => ({ ...e, [o.marca]: 'movida' })); setToast(`${o.marca}: Rumi contestó con el precio del uso en pauta`); },
-    };
-    return {
-      label: 'Que Rumi insista',
-      title: `Rumi vuelve a escribirle a ${o.marca} y la marca pasa de Pitch a Respuesta en el pipeline. Es reversible: con Deshacer vuelve al pitch original.`,
-      run: () => {
-        setEtapas(t => ({ ...t, [o.marca]: 'Respuesta' }));
-        setEntregas(e => ({ ...e, [o.marca]: 'movida' }));
-        setToast(`${o.marca}: el pitch salió y pasó a la etapa de Respuesta`);
-      },
-    };
-  };
-  const deshacerEntrega = (marca: string) => {
-    setEntregas(e => { const n = { ...e }; delete n[marca]; return n; });
-    setEtapas(t => { const n = { ...t }; delete n[marca]; return n; });
-    setToast(`${marca}: la entrega vuelve a como estaba`);
+  /** La pieza que el panel frenó: la regenera el sistema y no le cuesta créditos al creador. */
+  const regenerar = (p: Pieza) => {
+    setRegeneradas(r => [...r, p.id]);
+    setPaneles(s => ({ ...s, [p.id]: PUNTAJE_PANEL }));
+    setEstados(s => ({ ...s, [p.id]: 'Aprobada por el panel' }));
+    setToast(`«${p.titulo}» volvió del panel con ${PUNTAJE_PANEL}: 0 créditos tuyos, los ${p.creditos} los pagó el sistema`);
   };
 
-  /** El panel de detalle de una pieza: el puntaje, su costo en créditos y por qué está donde está. */
-  const verPieza = (p: Pieza) => detalle({
-    titulo: p.titulo,
-    sub: `${tipoNombre(p)} de la serie «${p.serie}». El panel la puntuó ${panelDe(p)} de 100 y el mínimo para publicar es 80.`,
+  /** La baja de las redes: vuelve a esperar tu OK. */
+  const sacarDeRedes = (p: Pieza) => {
+    setEstados(s => ({ ...s, [p.id]: 'Aprobada por el panel' }));
+    setSalidas(s => { const n = { ...s }; delete n[p.id]; return n; });
+    setToast(`«${p.titulo}» ya no está en tus redes: vuelve a esperar tu OK y no pierde su historial`);
+  };
+
+  /** Deshace cualquier cambio de la fila: la pieza vuelve a como está en el plan del mes. */
+  const volverAComoEstaba = (p: Pieza) => {
+    setEstados(s => { const n = { ...s }; delete n[p.id]; return n; });
+    setPaneles(s => { const n = { ...s }; delete n[p.id]; return n; });
+    setSalidas(s => { const n = { ...s }; delete n[p.id]; return n; });
+    setRegeneradas(r => r.filter(x => x !== p.id));
+    setToast(`«${p.titulo}» vuelve a como está en el plan del mes: ${p.estado.toLowerCase()}${p.puntaje > 0 ? `, con ${p.puntaje} del panel` : ', sin puntaje del panel'}`);
+  };
+
+  // ============================ LOS PANELES DE DETALLE ============================
+
+  /** El puntaje, el costo, el estado y la regla del gate: el por qué de una pieza. */
+  const verPieza = (p: Pieza) => {
+    const e = estadoDe(p);
+    const s = puntajeDe(p);
+    const paso = pasoDe(e);
+    const t = tipoDe(p.tipo);
+    return detalle({
+      titulo: p.titulo,
+      sub: `${p.tipo} para ${p.red}. El panel la puntúa de 0 a 100 y con 80 o más la aprueba: el estado dice en qué parte del ciclo está.`,
+      bloques: [
+        { tipo: 'datos', filas: [
+          { k: 'Puntaje del panel', v: s > 0 ? `${s} de 100` : 'todavía sin puntaje',
+            tono: s >= 80 ? 'green' : s > 0 ? 'amber' : 'muted',
+            s: s >= 80 ? 'pasa: con 80 o más el panel la aprueba' : s > 0 ? 'no llega al mínimo de 80: vuelve con la objeción' : 'la puntúa cuando entra al panel de 5' },
+          { k: 'Estado en el ciclo', v: e, s: `paso ${paso + 1} de ${CICLO_PASOS.length} · ${CICLO_PASOS[paso].nombre}: lo hace ${CICLO_PASOS[paso].quien}` },
+          { k: 'Cuándo sale', v: cuandoDe(p) },
+          { k: 'Lo que cuesta', v: esFrenada(p.id) ? `0 créditos tuyos · ${p.creditos} los paga el sistema` : `${p.creditos} ${p.creditos === 1 ? 'crédito' : 'créditos'} · ${plata(enPlata(p.creditos))}`,
+            s: esFrenada(p.id) ? 'la regeneración de una pieza que el panel frena no se le cobra al creador' : 'sale de la grilla de producción' },
+          { k: 'Quién la hizo', v: p.quien, s: 'Nia escribe el guion, el hook y el caption; el avatar pone tu cara y tu voz' },
+          { k: 'Tipo de pieza', v: p.tipo, s: t?.para },
+          { k: 'Red', v: p.red, s: 'ahí la programa y la publica Kai' },
+          ...(p.retencion ? [{ k: 'Cómo rindió', v: p.retencion, tono: 'green' as const, s: 'medida por Sol: es lo que mueve el alcance' }] : []),
+        ] },
+        { tipo: 'filas', items: CICLO_PIEZA.map(est => ({
+          t: est,
+          s: `${CICLO_PASOS[pasoDe(est)].nombre} · lo hace ${CICLO_PASOS[pasoDe(est)].quien}`,
+          etiqueta: est === e ? 'está acá' : CICLO_PASOS[pasoDe(est)].nombre,
+          tono: est === e ? 'purple' as const : 'muted' as const,
+        })) },
+        ...(p.nota ? [{ tipo: 'texto' as const, texto: `Lo que dijo el panel al frenarla: ${p.nota}` }] : []),
+        ...(regen(p.id) ? [{ tipo: 'texto' as const, texto: `La regeneró el sistema y el panel la volvió a votar en ${PUNTAJE_PANEL}: la objeción quedó contestada y no gastó créditos tuyos.` }] : []),
+        { tipo: 'aviso' as const, texto: 'El panel puntúa cada pieza de 0 a 100 y con 80 o más la aprueba. Si la frena, regenerarla no te cuesta créditos: los paga el sistema.' },
+      ],
+      fuente: 'Las piezas del mes y el ciclo de una pieza · el costo sale de la grilla de producción.',
+      acciones: [
+        ...(e === 'Borrador' && !esFrenada(p.id) ? [{ label: 'Mandar al panel', variante: 'primary' as const, title: 'Entra al panel de 5: la puntúa y con 80 o más la aprueba. No cuesta créditos y es reversible con «Volver a como estaba».', onClick: () => mandarAlPanel(p) }] : []),
+        ...(e === 'Borrador' && esFrenada(p.id) && !regen(p.id) ? [{ label: 'Regenerarla sin costo', variante: 'primary' as const, title: `Nia contesta la objeción y el panel la vuelve a votar. No gasta créditos tuyos: los ${p.creditos} los paga el sistema. Es reversible.`, onClick: () => regenerar(p) }] : []),
+        ...(e === 'En verificación' ? [{ label: 'Verificar', variante: 'primary' as const, title: 'El panel de 5 la puntúa ahora: con 80 o más queda aprobada y espera tu OK. No cuesta créditos y es reversible.', onClick: () => verificar(p) }] : []),
+        ...(e === 'Aprobada por el panel' ? [{ label: 'Publicar', variante: 'primary' as const, title: `Sale a ${p.red} en tu mejor ventana. Es reversible: la bajás de tus redes cuando quieras.`, onClick: () => publicar(p) }] : []),
+        ...(salidas[p.id] ? [{ label: 'Sacarla de mis redes', title: 'La baja de tus redes y vuelve a esperar tu OK. Es reversible: la volvés a publicar cuando quieras.', onClick: () => sacarDeRedes(p) }] : []),
+        { label: 'Ver el calendario', title: 'Abre Publicación: qué sale, en qué red y a qué hora', onClick: () => setVista('publicacion') },
+      ],
+    });
+  };
+
+  /** Un paso del ciclo: quién lo hace, qué hace y qué piezas del mes están ahí en este momento. */
+  const verPaso = (i: number, enEstePaso: Pieza[]) => {
+    const c = CICLO_PASOS[i];
+    const agentes = AGENTES_CREADOR.filter(a => c.quien.includes(a.nombre));
+    return detalle({
+      titulo: `${i + 1}. ${c.nombre}`,
+      sub: `${c.quien}: ${c.que}`,
+      bloques: [
+        { tipo: 'datos', filas: [
+          { k: 'Quién lo hace', v: c.quien },
+          { k: 'Qué hace', v: c.que },
+          { k: 'Estado de la pieza en este paso', v: estadosDePaso(i).join(' · ') },
+          { k: 'Piezas del mes acá ahora', v: String(enEstePaso.length), s: enEstePaso.length ? 'son las mismas piezas de la lista de abajo' : 'ninguna pieza está en este paso en este momento' },
+        ] },
+        ...(agentes.length ? [{ tipo: 'filas' as const, items: agentes.map(a => ({ t: a.nombre, s: a.enCreadores, etiqueta: a.tecnico, tono: 'purple' as const })) }] : []),
+        ...(agentes.length ? agentes.map(a => ({ tipo: 'texto' as const, texto: `${a.nombre}: ${a.que}` })) : []),
+        ...(enEstePaso.length ? [{ tipo: 'filas' as const, items: enEstePaso.map(p => ({ t: p.titulo, s: `${p.tipo} · ${p.red} · lo hizo ${p.quien}`, etiqueta: estadoDe(p), tono: TONO_ESTADO[estadoDe(p)] })) }] : []),
+        { tipo: 'aviso' as const, texto: 'La pieza pasa al paso siguiente cuando cambia de estado: es el recorrido que muestra la lista de piezas del mes.' },
+      ],
+      fuente: 'El ciclo de una pieza: producir, verificar, publicar y crecer.',
+    });
+  };
+
+  /** El plan del mes, con lo que ya tiene cada tipo en la lista de piezas. */
+  const verPlan = () => detalle({
+    titulo: `El plan del mes · serie «${PLAN_DEL_MES.serie}»`,
+    sub: `${PLAN_DEL_MES.piezasPorSemana} piezas por semana sobre tu Ficha: ${FICHA_CREADOR.nicho}, en tu tono.`,
     bloques: [
+      { tipo: 'filas', items: PLAN_DEL_MES.mezcla.map(m => {
+        const hechas = PIEZAS_DEL_MES.filter(p => p.tipo === m.tipo).length;
+        return {
+          t: `${m.cuantas}× ${m.tipo} por semana`,
+          s: m.para,
+          etiqueta: hechas ? `${hechas} ya en el mes` : 'todavía ninguna este mes',
+          tono: hechas ? 'green' as const : 'muted' as const,
+        };
+      }) },
       { tipo: 'datos', filas: [
-        { k: 'Puntaje del panel', v: `${panelDe(p)} de 100`, tono: panelDe(p) >= 80 ? 'green' : 'amber',
-          s: panelDe(p) >= 80 ? 'pasa: arriba de 80 se publica' : 'no llega al mínimo de 80: no sale' },
-        { k: 'Estado', v: ESTADO[estadoDe(p)].nombre, s: cuandoDe(p) },
-        { k: 'Serie', v: p.serie, s: 'lo que hace que la serie siga viva este mes' },
-        { k: 'Tipo de pieza', v: tipoNombre(p), s: PIEZAS_CREADOR.find(t => t.key === p.tipo)?.para },
-        { k: 'Lo que cuesta generarla', v: p.gate ? 'Nada: 0 créditos tuyos' : `${costoDe(p.grilla)} créditos`,
-          s: `grilla: ${p.grilla}` },
-        ...(p.marca ? [{ k: 'Es para', v: p.marca, s: 'la entrega va a esta marca del pipeline' }] : []),
+        { k: 'Piezas por semana', v: `${PLAN_DEL_MES.piezasPorSemana}`, s: 'es el ritmo que armó Rex, no un tope del sistema' },
+        { k: 'La serie del mes', v: PLAN_DEL_MES.serie, s: 'el hilo que sostiene las piezas entre sí' },
+        { k: 'Tu ritmo de hoy', v: FICHA_CREADOR.ritmoActual },
+        { k: 'A dónde apunta', v: FICHA_CREADOR.ritmoObjetivo, tono: 'green' as const },
+        { k: 'Tu mejor ventana', v: FICHA_CREADOR.mejorVentana.split(',')[0], s: FICHA_CREADOR.mejorVentana },
       ] },
-      { tipo: 'texto', texto: p.nota },
-      ...(p.marca ? [{ tipo: 'texto' as const, texto: `La entrega para ${p.marca}: ${faltaDe(OPORTUNIDADES.find(o => o.marca === p.marca)!)}` }] : []),
-      ...(p.gate ? [{ tipo: 'aviso' as const, texto: 'La pieza que el panel rechaza no te cuesta créditos: si hay que regenerarla, los paga el sistema.' }] : []),
+      { tipo: 'texto', texto: `El objetivo del mes: ${PLAN_DEL_MES.objetivo}` },
+      { tipo: 'aviso' as const, texto: 'El plan se rearma cada lunes con lo que midió Sol: lo que no rinde se cae y lo que el panel frena se corrige sin costo.' },
     ],
-    fuente: 'El puntaje y el estado de la pieza del mes · los créditos salen de la grilla de generación.',
-    acciones: [
-      ...(panelDe(p) >= 80 && estadoDe(p) === 'ok'
-        ? [{ label: 'Publicar', variante: 'primary' as const, title: 'Sale a tus redes con el texto que aprobó el panel. Es reversible: la sacás cuando quieras.', onClick: () => publicar(p) }]
-        : []),
-      ...(estadoDe(p) === 'publicada'
-        ? [{ label: 'Sacarla de mis redes', title: 'La baja de tus redes. Es reversible: vuelve a esperar tu OK y no pierde el historial.', onClick: () => bajar(p) }]
-        : []),
-      ...(p.gate && estadoDe(p) === 'borrador'
-        ? [{ label: 'Regenerarla sin costo', variante: 'primary' as const, title: `Nia corrige la objeción y el panel la vuelve a votar. No gasta créditos tuyos: los ${costoDe(p.grilla)} los paga el sistema. Es reversible.`, onClick: () => regenerar(p) }]
-        : []),
-      ...(p.marca
-        ? [{ label: 'Ver la entrega', title: `Qué falta para que ${p.marca} tenga la pieza en la mano`, onClick: () => setVista('conversaciones') }]
-        : []),
+    fuente: 'El plan de contenido del mes y tu Ficha de creador.',
+  });
+
+  /** La grilla de producción: de dónde sale el costo de cada pieza del mes. */
+  const verGrilla = () => detalle({
+    titulo: 'La grilla de créditos',
+    sub: `Cada pieza se cobra por su línea de la grilla y un crédito son ${plata(USD_POR_CREDITO)}. La verificación del panel no cuesta créditos.`,
+    bloques: [
+      { tipo: 'filas', items: GRILLA_CREDITOS.map(g => ({
+        t: g.pieza,
+        s: `lo hace ${g.quien} · ${plata(enPlata(g.creditos))}`,
+        etiqueta: `${g.creditos.toLocaleString('es-AR')} ${g.creditos === 1 ? 'crédito' : 'créditos'}`,
+        tono: g.quien === 'Avatar' ? 'purple' as const : 'muted' as const,
+      })) },
+      { tipo: 'datos', filas: [
+        { k: 'Las piezas del mes', v: `${costoMes} créditos`, s: `${plata(enPlata(costoMes))} · el ${pctPlan}% de los ${plan.creditosMes.toLocaleString('es-AR')} del plan ${plan.nombre}` },
+        { k: 'Lo pagó el sistema', v: `${costoGate} créditos`, tono: 'green' as const, s: 'la regeneración de la pieza que el panel frenó: no salió de tu cuenta' },
+        { k: 'La verificación', v: '0 créditos', s: 'el panel de 5 puntúa cada pieza antes de que salga y no se cobra' },
+      ] },
+      { tipo: 'aviso' as const, texto: 'Con 80 o más el panel aprueba; si la frena, la regeneración la paga el sistema: corregir una pieza nunca te saca créditos de la semana.' },
     ],
+    fuente: 'La grilla de producción del creador: cada pieza con sus créditos y quién la hace.',
   });
 
   const vista = (
@@ -312,213 +342,231 @@ export function ViewContenidoCreador({ setToast, setVista }: { setToast: (t: str
         titulo={VISTAS_CREADOR.campanas.nombre}
         sub={VISTAS_CREADOR.campanas.sub}
         nums={[
-          { v: String(PIEZAS.length), l: 'piezas del mes' },
+          { v: String(piezas), l: 'piezas del mes' },
           { v: String(arriba80), l: 'con el panel arriba de 80', c: 'var(--green)' },
-          { v: String(entregasSemana), l: 'entregas de marcas esta semana', c: 'var(--amber)' },
-          { v: String(costoSemana), l: 'créditos que cuesta la semana', c: 'var(--purple3)' },
+          { v: String(publicadas), l: 'publicadas esta semana', c: 'var(--purple3)' },
+          { v: String(costoMes), l: 'créditos que va a costar la semana', c: 'var(--amber)' },
         ]}
       />
 
-      {/* LA REGLA DEL MODELO, CON LAS PIEZAS DEL MES ADENTRO: el gate no se le cobra al creador. */}
+      {/* LA REGLA DEL PANEL, CON LAS PIEZAS DEL MES ADENTRO: el gate no se le cobra al creador. */}
       <div className="onb-infiere" style={{ marginTop: 0 }}>
         <span className="onb-infiere-ic"><I_Zap size={13} /></span>
         <span>
-          <b>La pieza que el panel rechaza no te cuesta créditos: la regeneración por gate la paga el sistema. </b>
-          De las {PIEZAS.length} piezas del mes, {PIEZAS.filter(p => p.gate).length} volvió del panel y sus{' '}
-          {costoGate} créditos no salieron de tu cuenta.
+          <b>El panel puntúa cada pieza de 0 a 100 y con 80 o más la aprueba. </b>
+          De las {piezas} piezas del mes, {FRENADAS.length} {FRENADAS.length === 1 ? 'volvió' : 'volvieron'} del panel
+          y sus {costoGate} créditos no salieron de tu cuenta: si el panel la frena, corregirla la paga el sistema.
         </span>
       </div>
 
-      {/* EL PLAN DEL MES Y LAS SERIES: qué armó Rex y qué series quedan vivas con esas piezas. */}
-      <div className="duo" style={{ marginTop: 16 }}>
-        <Card
-          title={<span className="row" style={{ gap: 8 }}><I_Star size={14} style={{ color: 'var(--purple3)' }} /> El plan del mes que armó Rex</span>}
-          action={<Badge tone="purple">{series.length} series activas</Badge>}
-        >
-          <div className="bs">
-            Rex armó el mes sobre tu Ficha: <b>{FICHA_CREADOR.nicho}</b>. {RITMO_SEMANA.lunes.audiencia}
-          </div>
-          {[
-            { icono: <span style={{ fontSize: 15 }}>{PIEZAS_CREADOR.find(t => t.key === 'post')?.icono}</span>, nombre: tipoNombreDe('post'), para: PIEZAS_CREADOR.find(t => t.key === 'post')?.para ?? '', n: posts },
-            { icono: <span style={{ fontSize: 15 }}>{PIEZAS_CREADOR.find(t => t.key === 'historias')?.icono}</span>, nombre: tipoNombreDe('historias'), para: PIEZAS_CREADOR.find(t => t.key === 'historias')?.para ?? '', n: historias },
-            { icono: <I_Film size={14} style={{ color: 'var(--amber)' }} />, nombre: 'Ideas de reel', para: 'Guiones escritos por Nia: cada idea de reel es un post del creador con su hook.', n: reels },
-          ].map(f => (
-            <div key={f.nombre} className="guard">
-              <span style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>{f.icono}</span>
-              <span className="guard-lb">{f.nombre}<small>{f.para}</small></span>
-              <Badge tone="purple">{f.n} del mes</Badge>
-            </div>
-          ))}
-          <div className="guard">
-            <span style={{ fontSize: 15, flexShrink: 0 }}>{PIEZAS_CREADOR.find(t => t.key === 'pauta')?.icono}</span>
-            <span className="guard-lb">{tipoNombreDe('pauta')}
-              <small>{PIEZAS_CREADOR.find(t => t.key === 'pauta')?.para}</small>
-            </span>
-            <Badge tone="muted">sin pauta este mes</Badge>
-          </div>
-
-          <div className="csec" style={{ margin: '16px 0 8px' }}>
-            <span className="csec-t" style={{ fontSize: 13.5 }}>Entregas UGC comprometidas</span>
-            <span className="csec-s">Con las marcas del pipeline y su fecha</span>
-          </div>
-          {OPORTUNIDADES.filter(o => o.etapa === 'Deal' || o.etapa === 'Negociación').map(o => (
-            <div key={o.marca} className="guard">
-              <span style={{ color: 'var(--green)', flexShrink: 0 }}><I_Cal size={14} /></span>
-              <span className="guard-lb">{o.marca}
-                <small>{o.queBusca} · entrega el {fecha(FALTA[o.marca].dias)}</small>
-              </span>
-              <span className="guard-val"><Dinero monto={o.paga} /></span>
-            </div>
-          ))}
-          <div className="row" style={{ gap: 9, marginTop: 14, flexWrap: 'wrap' }}>
-            <Button className="btn-sm" title="Muestra el mes pieza por pieza, con lo que cuesta cada una y lo que ya salió"
-              onClick={() => detalle({
-                titulo: 'El mes que armó Rex',
-                sub: `${posts} posts, ${historias} secuencia de historias y ${reels} ideas de reel, más las entregas comprometidas con cada marca.`,
-                bloques: [
-                  { tipo: 'filas', items: PIEZAS.map(p => ({
-                    t: p.titulo,
-                    s: `${tipoNombre(p)} · serie «${p.serie}» · ${ESTADO[estadoDe(p)].nombre.toLowerCase()}`,
-                    etiqueta: p.gate ? '0 créditos' : `${costoDe(p.grilla)} créditos`,
-                    tono: (p.gate ? 'green' : estadoDe(p) === 'entregada' ? 'purple' : 'muted') as 'green' | 'purple' | 'muted',
-                  })) },
-                  { tipo: 'datos', filas: [
-                    { k: 'Lunes · la propuesta', v: 'El plan de la semana', s: RITMO_SEMANA.lunes.audiencia },
-                    { k: 'Viernes · el resumen', v: 'Qué funcionó', s: RITMO_SEMANA.viernes.audiencia },
-                    { k: 'Créditos de la semana', v: `${costoSemana}`, s: `de los ${plan.creditosMes.toLocaleString('es-AR')} del plan ${plan.nombre}` },
-                  ] },
-                  { tipo: 'aviso', texto: 'El plan se ajusta cada lunes: lo que no rinde se cae y las piezas que el panel frena se corrigen sin costo.' },
-                ],
-                fuente: 'Modelo de producto v2.0 · §10 y §13: el plan del mes y el ritmo de la semana.',
-              })}>
-              <I_Eye size={13} /> Ver el plan completo
-            </Button>
-            <Button variant="ghost" className="btn-sm" title="Muestra la grilla de generación: es de donde sale el costo de cada pieza"
-              onClick={() => verGrilla()}>Ver la grilla de créditos</Button>
-          </div>
-        </Card>
-
-        <Card
-          title={<span className="row" style={{ gap: 8 }}><I_Star size={14} style={{ color: 'var(--green)' }} /> Tus series activas</span>}
-          action={<Badge tone="green">{PIEZAS.length} piezas del mes</Badge>}
-        >
-          <div className="bs">
-            Una serie sigue viva mientras tenga piezas en el mes. El puntaje es el promedio del panel en las
-            piezas de la serie: el mínimo para publicar es 80.
-          </div>
-          {series.map(s => (
-            <div key={s.nombre} className="guard">
-              <span style={{ width: 34, flexShrink: 0, textAlign: 'center', fontSize: 16, fontWeight: 900,
-                fontVariantNumeric: 'tabular-nums', color: colorPanel(s.panel) }}>{s.panel}</span>
-              <span className="guard-lb">{s.nombre}
-                <small>{s.piezas} {s.piezas === 1 ? 'pieza' : 'piezas'} del mes · {s.salidas} ya salieron
-                  {s.frenadas ? ` · ${s.frenadas} volvió del panel` : ' · ninguna volvió del panel'}</small>
-              </span>
-              {s.frenadas
-                ? <Badge tone="amber">{s.frenadas} {s.frenadas === 1 ? 'frenada' : 'frenadas'}</Badge>
-                : <Badge tone="green">al día</Badge>}
-              <Button variant="ghost" className="btn-sm"
-                title={serieSel === s.nombre
-                  ? 'Vuelve a la lista completa del mes, con todas las piezas'
-                  : `Filtra las piezas del mes para mostrar solo las de «${s.nombre}». No cambia nada más.`}
-                onClick={() => {
-                  const otra = serieSel !== s.nombre;
-                  setSerieSel(otra ? s.nombre : null);
-                  setToast(otra ? `Piezas del mes filtradas por «${s.nombre}»` : 'La lista del mes volvió completa');
-                }}>
-                {serieSel === s.nombre ? 'Ver todas' : 'Ver sus piezas'}
-              </Button>
-            </div>
-          ))}
-          <div className="acc-why">
-            El promedio del panel es lo que te dice si la serie sigue rindiendo: <b>una serie que baja de 80 en
-            todas sus piezas se cae del plan</b> y Rex te propone otra cosa para el mes que viene.
-          </div>
-        </Card>
-      </div>
-
-      {/* ============ LAS PIEZAS DEL MES: el puntaje del panel y el estado de cada una ============ */}
-      <div className="csec">
+      {/* ============ 1 · EL CICLO: en qué parte está cada pieza ============ */}
+      <div className="csec" style={{ marginTop: 18 }}>
         <span className="csec-n">1</span>
-        <span className="csec-t">Las piezas del mes y el puntaje del panel</span>
-        <span className="csec-c purple">{arriba80} arriba de 80</span>
-        <span className="csec-s">Cada pieza con su puntaje sobre 100, su estado y lo que cuesta generarla</span>
+        <span className="csec-t">El ciclo de una pieza</span>
+        <span className="csec-c purple">{CICLO_PASOS.length} pasos</span>
+        <span className="csec-s">Producir → Verificar → Publicar → Crecer, con quién lo hace en cada paso</span>
       </div>
       <Card
-        title={<span className="row" style={{ gap: 8 }}><I_File size={14} style={{ color: 'var(--purple3)' }} /> {serieSel ? `Piezas de «${serieSel}»` : 'Las piezas del mes'}</span>}
-        action={
-          <span className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-            <Badge tone={cuantasEsperan ? 'amber' : 'green'}>{cuantasEsperan ? `${cuantasEsperan} esperan tu OK` : 'al día'}</Badge>
-            {serieSel && (
-              <Button variant="ghost" className="btn-sm" title="Vuelve a la lista completa del mes, con todas las series"
-                onClick={() => { setSerieSel(null); setToast('La lista del mes volvió completa'); }}>Ver todas</Button>
-            )}
-          </span>
-        }
+        title={<span className="row" style={{ gap: 8 }}><I_Play size={14} style={{ color: 'var(--purple3)' }} /> De la idea a la cuenta que crece</span>}
+        action={<Badge tone="purple">Estados: {CICLO_PIEZA.join(' → ')}</Badge>}
       >
-        {visibles.map(p => {
-          const e = estadoDe(p);
-          const s = panelDe(p);
-          const regenerada = regen.includes(p.id);
-          return (
-            <div key={p.id} className="guard" style={{ alignItems: 'flex-start', paddingTop: 12, paddingBottom: 12 }}>
-              <span style={{ width: 34, flexShrink: 0, textAlign: 'center', fontSize: 17, fontWeight: 900,
-                fontVariantNumeric: 'tabular-nums', color: colorPanel(s) }}
-                title={`Puntaje del panel: ${s} de 100. El mínimo para publicar es 80.`}>{s}</span>
-              <span className="guard-lb" style={{ minWidth: 0 }}>
-                <span className="row" style={{ gap: 7, flexWrap: 'wrap' }}>
-                  <span className="bt">{p.titulo}</span>
-                  <Badge tone={ESTADO[e].tono}>{ESTADO[e].nombre}</Badge>
-                  {p.marca && <Badge tone="purple">{p.marca}</Badge>}
-                  {p.reel && <Badge tone="muted">idea de reel</Badge>}
+        <div className="bs">
+          Toda pieza pasa por estos {CICLO_PASOS.length} pasos. <b>Su estado dice en qué parte está</b>, así que
+          una pieza en borrador no es lo mismo que una esperando tu OK o una que ya salió a tus redes.
+        </div>
+
+        <div className="transv" style={{ marginTop: 12 }}>
+          {CICLO_PASOS.map((c, i) => {
+            const enEstePaso = PIEZAS_DEL_MES.filter(p => estadosDePaso(i).includes(estadoDe(p)));
+            const agentes = AGENTES_CREADOR.filter(a => c.quien.includes(a.nombre));
+            return (
+              <button key={c.nombre} className="transv-item"
+                title={`Abre el paso ${i + 1} «${c.nombre}»: quién lo hace, qué hace y qué piezas del mes están acá ahora. No cambia nada de ninguna pieza.`}
+                onClick={() => verPaso(i, enEstePaso)}>
+                <span className="transv-ic">{i + 1}</span>
+                <span className="transv-t">{c.nombre}</span>
+                <span className="transv-q">{c.quien}: {c.que}</span>
+                <span className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                  {agentes.map(a => (
+                    <span key={a.id} className="row" style={{ gap: 5, fontSize: 10.5, fontWeight: 800, color: a.color }}>
+                      <span style={{ width: 7, height: 7, borderRadius: 99, background: a.color }} />
+                      {a.nombre}
+                    </span>
+                  ))}
+                  <Badge tone={enEstePaso.length ? 'purple' : 'muted'}>
+                    {enEstePaso.length ? `${enEstePaso.length} ${enEstePaso.length === 1 ? 'pieza del mes' : 'piezas del mes'}` : 'sin piezas acá'}
+                  </Badge>
                 </span>
-                <small>
-                  {tipoNombre(p)} · serie «{p.serie}» · {cuandoDe(p)} ·{' '}
-                  {p.gate
-                    ? `0 créditos tuyos: los ${costoDe(p.grilla)} los paga el sistema`
-                    : `${costoDe(p.grilla)} créditos`}
-                </small>
-                <small>{p.nota}</small>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="acc-why">
+          Lo que el panel no aprueba no sale a tus redes: <b>una pieza se corrige hasta llegar a 80</b>, y esa
+          corrección no te cuesta créditos. El estado de cada pieza de abajo es el mismo idioma que este ciclo.
+        </div>
+      </Card>
+
+      {/* ============ 2 · EL PLAN DEL MES: la serie, la mezcla y el objetivo ============ */}
+      <div className="csec">
+        <span className="csec-n">2</span>
+        <span className="csec-t">El plan del mes</span>
+        <span className="csec-c purple">Serie «{PLAN_DEL_MES.serie}»</span>
+        <span className="csec-s">Cuántas piezas por semana, la mezcla por tipo con su por qué y el objetivo</span>
+      </div>
+      <Card
+        title={<span className="row" style={{ gap: 8 }}><I_Star size={14} style={{ color: 'var(--purple3)' }} /> La mezcla que armó Rex esta semana</span>}
+        action={<Badge tone="purple">{PLAN_DEL_MES.piezasPorSemana} piezas por semana</Badge>}
+      >
+        <div className="bs">
+          Rex armó el mes sobre tu Ficha: <b>{FICHA_CREADOR.nicho}</b>, en tu tono. Tu ritmo hoy es{' '}
+          <b>{FICHA_CREADOR.ritmoActual.toLowerCase()}</b> y el plan apunta a <b>{FICHA_CREADOR.ritmoObjetivo.toLowerCase()}</b>.
+        </div>
+
+        {PLAN_DEL_MES.mezcla.map(m => {
+          const t = tipoDe(m.tipo);
+          const hechas = PIEZAS_DEL_MES.filter(p => p.tipo === m.tipo).length;
+          return (
+            <div key={m.tipo} className="guard">
+              <span style={{ fontSize: 16, flexShrink: 0 }}>{t?.icono}</span>
+              <span className="guard-lb">{m.tipo}
+                <small>{m.para}{t?.red ? ` Sale en ${t.red}.` : ''}</small>
               </span>
-              <span className="row" style={{ gap: 7, flexWrap: 'wrap' }}>
-                {p.gate && e === 'borrador' && (
-                  <Button className="btn-sm"
-                    title={`Nia corrige la objeción y el panel la vuelve a votar. No gasta créditos tuyos: los ${costoDe(p.grilla)} los paga el sistema. Es reversible: con «Volver a la de antes» queda como el panel la frenó.`}
-                    onClick={() => regenerar(p)}><I_Refresh size={13} /> Regenerarla sin costo</Button>
-                )}
-                {regenerada && (
-                  <Button className="btn-sm" title="Sale a tus redes con el texto que aprobó el panel. Es reversible: la sacás cuando quieras."
-                    onClick={() => publicar(p)}><I_Check size={13} /> Publicar</Button>
-                )}
-                {!regenerada && e === 'ok' && (
-                  <Button className="btn-sm" title="Sale a tus redes con el texto que aprobó el panel. Es reversible: la sacás cuando quieras y no pierde el historial."
-                    onClick={() => publicar(p)}><I_Check size={13} /> Publicar</Button>
-                )}
-                {e === 'publicada' && (
-                  <Button variant="ghost" className="btn-sm" title="La baja de tus redes. Es reversible: vuelve a esperar tu OK."
-                    onClick={() => bajar(p)}>Sacarla de mis redes</Button>
-                )}
-                {regenerada && (
-                  <Button variant="ghost" className="btn-sm" title="Vuelve a la versión que el panel frenó en 78. No se pierde nada: la corrección queda guardada."
-                    onClick={() => volverALaDeAntes(p)}>Volver a la de antes</Button>
-                )}
-                <Button variant="ghost" className="btn-sm" title="Muestra el puntaje, de dónde sale, cuánto cuesta generarla y qué pasa si la publicás"
-                  onClick={() => verPieza(p)}>Ver por qué</Button>
+              <Badge tone="purple">{m.cuantas} por semana</Badge>
+              <span className="guard-val" style={{ color: hechas ? 'var(--green)' : 'var(--muted)' }}>
+                {hechas ? `${hechas} en el mes` : 'ninguna todavía'}
               </span>
             </div>
           );
         })}
 
         <div className="datos-row" style={{ marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--border)' }}>
-          <div className="dato" title="La suma de lo que cuesta generar las piezas del mes, sin contar las que el panel rechazó.">
-            <span className="dato-l">Va a costar la semana</span>
-            <span className="dato-v" style={{ color: 'var(--purple3)' }}>{costoSemana} créditos</span>
+          <div className="dato" title="La mezcla del plan, sumada: es el ritmo semanal que armó Rex.">
+            <span className="dato-l">La mezcla suma</span>
+            <span className="dato-v">{mezclaTotal} de {PLAN_DEL_MES.piezasPorSemana} por semana</span>
           </div>
-          <div className="dato" title="Las piezas que el panel rechazó no se te cobran: la regeneración por gate la paga el sistema.">
+          <div className="dato" title="Las piezas que ya están en la lista del mes, con las que ya salieron.">
+            <span className="dato-l">Piezas ya en el mes</span>
+            <span className="dato-v" style={{ color: 'var(--purple3)' }}>{piezas} · {publicadas} publicadas</span>
+          </div>
+          <div className="dato" title="La serie que sostiene el mes: es el hilo que elige Rex para tus piezas.">
+            <span className="dato-l">La serie del mes</span>
+            <span className="dato-v">«{PLAN_DEL_MES.serie}»</span>
+          </div>
+        </div>
+
+        <div className="acc-why">
+          <b>El objetivo del mes:</b> {PLAN_DEL_MES.objetivo}
+        </div>
+
+        <div className="row" style={{ gap: 9, marginTop: 14, flexWrap: 'wrap' }}>
+          <Button variant="outline" className="btn-sm"
+            title="Abre el plan completo: cada tipo con lo que ya salió este mes, tu ritmo de hoy y tu mejor ventana. No cambia nada."
+            onClick={verPlan}><I_Eye size={13} /> Ver el plan completo</Button>
+        </div>
+      </Card>
+
+      {/* ============ 3 · LAS PIEZAS DEL MES: el puntaje del panel y el estado en el ciclo ============ */}
+      <div className="csec">
+        <span className="csec-n">3</span>
+        <span className="csec-t">Las piezas del mes y el puntaje del panel</span>
+        <span className="csec-c purple">{arriba80} arriba de 80</span>
+        <span className="csec-s">Cada pieza con su tipo, su estado en el ciclo, la red, cuándo sale y quién la hizo</span>
+      </div>
+      <Card
+        title={<span className="row" style={{ gap: 8 }}><I_File size={14} style={{ color: 'var(--purple3)' }} /> Las piezas del mes</span>}
+        action={<Badge tone={esperan.length ? 'amber' : enElPanel.length || enBorrador.length ? 'purple' : 'green'}>{veredictoPanel}</Badge>}
+      >
+        {PIEZAS_DEL_MES.map(p => {
+          const e = estadoDe(p);
+          const s = puntajeDe(p);
+          const paso = pasoDe(e);
+          const t = tipoDe(p.tipo);
+          const frenada = esFrenada(p.id);
+          const regenerada = regen(p.id);
+          return (
+            <div key={p.id} className="guard" style={{ alignItems: 'flex-start', paddingTop: 12, paddingBottom: 12 }}>
+              <span style={{ width: 34, flexShrink: 0, textAlign: 'center', fontSize: 17, fontWeight: 900, fontVariantNumeric: 'tabular-nums', color: colorPanel(s) }}
+                title={s > 0
+                  ? `Puntaje del panel: ${s} de 100. Con 80 o más la aprueba.`
+                  : 'Todavía no pasó por el panel de 5: no tiene puntaje.'}>
+                {s > 0 ? s : '—'}
+              </span>
+
+              <span className="guard-lb" style={{ minWidth: 0 }}>
+                <span className="row" style={{ gap: 7, flexWrap: 'wrap' }}>
+                  <span className="bt">{p.titulo}</span>
+                  <Badge tone={TONO_ESTADO[e]}>{e}</Badge>
+                  <Badge tone="muted">{t?.icono} {p.tipo}</Badge>
+                  <Badge tone="muted">{p.red}</Badge>
+                  {p.retencion && <Badge tone="green">medida · {p.retencion}</Badge>}
+                </span>
+                <small>
+                  Paso {paso + 1} de {CICLO_PASOS.length} · {CICLO_PASOS[paso].nombre}: {CICLO_PASOS[paso].quien} · {cuandoDe(p)}
+                </small>
+                <small>{costoTexto(p)} · la hizo {p.quien}</small>
+                {p.nota && (
+                  <small style={{ color: frenada && !regenerada ? 'var(--amber)' : 'var(--muted2)' }}>
+                    Objeción del panel: {p.nota}
+                  </small>
+                )}
+                {regenerada && (
+                  <small style={{ color: 'var(--green)', fontWeight: 700 }}>
+                    Regenerada sin costo: el panel la volvió a votar en {PUNTAJE_PANEL}. 0 créditos tuyos, los {p.creditos} los pagó el sistema.
+                  </small>
+                )}
+              </span>
+
+              <span className="row" style={{ gap: 7, flexWrap: 'wrap' }}>
+                {e === 'Borrador' && !frenada && (
+                  <Button className="btn-sm"
+                    title="Manda la pieza al panel de 5: la puntúa de 0 a 100 y con 80 o más la aprueba. La verificación no cuesta créditos. Es reversible: con «Volver a como estaba» vuelve a borrador."
+                    onClick={() => mandarAlPanel(p)}><I_Vote size={13} /> Mandar al panel</Button>
+                )}
+                {e === 'Borrador' && frenada && !regenerada && (
+                  <Button className="btn-sm"
+                    title={`Nia contesta la objeción y el panel la vuelve a votar. No gasta créditos tuyos: los ${p.creditos} los paga el sistema. Es reversible: con «Volver a como estaba» queda como el panel la frenó.`}
+                    onClick={() => regenerar(p)}><I_Refresh size={13} /> Regenerarla sin costo</Button>
+                )}
+                {e === 'En verificación' && (
+                  <Button className="btn-sm"
+                    title="El panel de 5 la puntúa ahora: con 80 o más queda aprobada y pasa a la cola de publicación. No cuesta créditos. Es reversible: con «Volver a como estaba» vuelve a verificación."
+                    onClick={() => verificar(p)}><I_Check size={13} /> Verificar</Button>
+                )}
+                {e === 'Aprobada por el panel' && (
+                  <Button className="btn-sm"
+                    title={`Kai la publica en ${p.red}, en tu mejor ventana. Es reversible: con «Sacarla de mis redes» vuelve a esperar tu OK y no pierde el historial.`}
+                    onClick={() => publicar(p)}><I_Check size={13} /> Publicar</Button>
+                )}
+                {salidas[p.id] && (
+                  <Button variant="ghost" className="btn-sm"
+                    title="La baja de tus redes y vuelve a «Aprobada por el panel», esperando tu OK. Es reversible: la volvés a publicar cuando quieras."
+                    onClick={() => sacarDeRedes(p)}><I_Refresh size={12} /> Sacarla de mis redes</Button>
+                )}
+                {cambio(p) && !salidas[p.id] && (
+                  <Button variant="ghost" className="btn-sm"
+                    title={`La deja como está en el plan del mes: ${p.estado.toLowerCase()}${p.puntaje > 0 ? `, con ${p.puntaje} del panel` : ', sin puntaje del panel'}. Es reversible: podés volver a cambiarla.`}
+                    onClick={() => volverAComoEstaba(p)}><I_Refresh size={12} /> Volver a como estaba</Button>
+                )}
+                <Button variant="ghost" className="btn-sm"
+                  title="Muestra el puntaje del panel, en qué parte del ciclo está, cuándo sale, quién la hizo y lo que cuesta. No cambia nada de la pieza."
+                  onClick={() => verPieza(p)}><I_Eye size={13} /> Ver por qué</Button>
+              </span>
+            </div>
+          );
+        })}
+
+        <div className="datos-row" style={{ marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--border)' }}>
+          <div className="dato" title="La suma de lo que cuesta producir las piezas del mes, sin contar la que el panel frenó.">
+            <span className="dato-l">Va a costar la semana</span>
+            <span className="dato-v" style={{ color: 'var(--purple3)' }}>{costoMes} créditos · <Dinero monto={enPlata(costoMes)} /></span>
+          </div>
+          <div className="dato" title="La regeneración de la pieza que el panel frenó: no salió de tu cuenta, la pagó el sistema.">
             <span className="dato-l">Lo pagó el sistema</span>
             <span className="dato-v" style={{ color: 'var(--green)' }}>{costoGate} créditos</span>
           </div>
-          <div className="dato" title={`Créditos del plan ${plan.nombre}, que es el que tenés contratado este mes.`}>
+          <div className="dato" title={`Créditos que entran por mes con el plan ${plan.nombre}.`}>
             <span className="dato-l">Del plan del mes</span>
             <span className="dato-v">{pctPlan}% de {plan.creditosMes.toLocaleString('es-AR')}</span>
           </div>
@@ -528,191 +576,45 @@ export function ViewContenidoCreador({ setToast, setVista }: { setToast: (t: str
           {esperan.length > 0 ? (
             <>
               <Button className="btn-sm"
-                title={`Publica de una las ${esperan.length} piezas que están arriba de 80 y esperan tu OK. Es reversible: con Deshacer vuelven a esperar tu OK y no se publica nada.`}
+                title={`Publica de una las ${esperan.length} piezas que el panel aprobó y esperan tu OK, cada una en su red y en tu mejor ventana. Es reversible: con Deshacer vuelven a esperar tu OK.`}
                 onClick={publicarSemana}><I_Check size={13} /> Publicar las {esperan.length} de la semana</Button>
               <span className="tiny muted" style={{ alignSelf: 'center' }}>
-                Las que están abajo de 80 no entran: primero se corrigen.
+                Las que están abajo de 80 no entran: {enElPanel.length
+                  ? `${enElPanel.length === 1 ? 'la que está' : `las ${enElPanel.length} que están`} en verificación primero pasa${enElPanel.length === 1 ? '' : 'n'} el panel.`
+                  : 'primero se corrigen.'}
               </span>
             </>
           ) : lote ? (
             <>
               <span className="tiny" style={{ display: 'flex', alignItems: 'center', gap: 7, color: 'var(--green)', fontWeight: 700, alignSelf: 'center' }}>
-                <I_Check size={13} /> {lote.length} piezas salieron a tus redes el {hoy()}.
+                <I_Check size={13} /> {lote.length} {lote.length === 1 ? 'pieza salió' : 'piezas salieron'} a tus redes el {hoy()}.
               </span>
-              <Button variant="ghost" className="btn-sm" title="Deshace la publicación de la semana: las piezas vuelven a esperar tu OK y no se publica nada."
+              <Button variant="ghost" className="btn-sm"
+                title="Deshace la publicación del lote: las piezas vuelven a «Aprobada por el panel» y esperan tu OK. Se despublica todo lo que salió junto."
                 onClick={deshacerSemana}><I_Refresh size={12} /> Deshacer</Button>
             </>
           ) : (
             <span className="tiny" style={{ display: 'flex', alignItems: 'center', gap: 7, color: 'var(--green)', fontWeight: 700 }}>
-              <I_Check size={13} /> Nada espera tu OK: todo lo que estaba listo ya salió a tus redes.
+              <I_Check size={13} /> Nada espera tu OK: todo lo que el panel aprobó ya está en tus redes.
             </span>
           )}
-          <Button variant="ghost" className="btn-sm" title="Muestra la grilla de generación y los créditos de cada tipo de pieza"
-            onClick={() => verGrilla()}><I_Credit size={13} /> Ver la grilla de créditos</Button>
+          <Button variant="ghost" className="btn-sm"
+            title="Abre la grilla de producción: cada pieza con sus créditos, quién la hace y lo que cuesta en plata. No cambia nada."
+            onClick={verGrilla}><I_Credit size={13} /> Ver la grilla de créditos</Button>
+          <Button variant="ghost" className="btn-sm"
+            title="Abre Publicación: qué sale, en qué red y a qué hora, con las redes conectadas."
+            onClick={() => setVista('publicacion')}><I_Cal size={13} /> Ver el calendario</Button>
         </div>
+
         <div className="acc-why">
-          El panel puntúa cada pieza antes de publicarse: <b>arriba de 80 sale, abajo no</b>. Y lo que el panel
-          rechaza no te cuesta: la regeneración por gate la paga el sistema, así que corregir una pieza nunca te
-          saca créditos de la semana.
-        </div>
-      </Card>
-
-      {/* ============ LAS ENTREGAS A LAS MARCAS: la fecha y qué falta para que la pieza llegue ============ */}
-      <div className="csec">
-        <span className="csec-n">2</span>
-        <span className="csec-t">Las entregas a las marcas</span>
-        <span className="csec-c amber">{entregasSemana} esta semana</span>
-        <span className="csec-s">Cada marca del pipeline con su fecha de entrega y lo que falta para entregar</span>
-      </div>
-      <Card
-        title={<span className="row" style={{ gap: 8 }}><I_Users size={14} style={{ color: 'var(--green)' }} /> Tu pipeline de marcas</span>}
-        action={<Badge tone="green">{OPORTUNIDADES.length} marcas · {ETAPAS_PIPELINE.join(' → ')}</Badge>}
-      >
-        {OPORTUNIDADES.map(o => {
-          const etapa = etapaDe(o.marca, o.etapa);
-          const est = entregaDe(o.marca);
-          const a = accionDe(o);
-          return (
-            <div key={o.marca} className="guard" style={{ alignItems: 'flex-start', flexDirection: 'column', gap: 8, paddingTop: 12, paddingBottom: 12 }}>
-              <span className="row" style={{ gap: 8, width: '100%', flexWrap: 'wrap' }}>
-                <span className="bt">{o.marca}</span>
-                <span className="tiny muted">{o.rubro} · {o.encaje}</span>
-                <Badge tone={etapa === 'Deal' ? 'green' : etapa === 'Negociación' ? 'purple' : etapa === 'Respuesta' ? 'amber' : 'muted'}>{etapa}</Badge>
-                {est !== 'pendiente' && <Badge tone={est === 'entregada' || est === 'cerrada' ? 'green' : 'amber'}>{ENTREGA_LB[est]}</Badge>}
-                <Badge tone="muted"><Dinero monto={o.paga} equivalente={false} /></Badge>
-              </span>
-              <span className="guard-lb" style={{ minWidth: 0 }}>
-                {o.queBusca}
-                <small>Entrega: {fecha(FALTA[o.marca].dias)} · Qué falta: {faltaDe(o)}</small>
-                {o.nota && <small>{o.nota}</small>}
-              </span>
-              <span className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-                {est === 'pendiente' ? (
-                  <Button className="btn-sm" title={a.title} onClick={a.run}>{a.label}</Button>
-                ) : (
-                  <Button variant="ghost" className="btn-sm" title={`Deshace lo último de ${o.marca}: la entrega y la etapa del pipeline vuelven a como estaban.`}
-                    onClick={() => deshacerEntrega(o.marca)}><I_Refresh size={12} /> Deshacer</Button>
-                )}
-                <Button variant="ghost" className="btn-sm" title={`Muestra el deal de ${o.marca}: qué busca, cuánto paga y en qué etapa está`}
-                  onClick={() => detalle({
-                    titulo: `${o.marca} · ${etapa}`,
-                    sub: `${o.queBusca}. Encaje con tu perfil: ${o.encaje}`,
-                    bloques: [
-                      { tipo: 'datos', filas: [
-                        { k: 'Rubro', v: o.rubro, s: 'de tu nicho declarado en la Ficha' },
-                        { k: 'Qué buscan', v: o.queBusca },
-                        { k: 'Cuánto pagan', v: o.paga, s: 'en dólares por pieza, según lo que se paga en tu nicho' },
-                        { k: 'Etapa del pipeline', v: etapa, s: ETAPAS_PIPELINE.join(' → ') },
-                        { k: 'Qué falta para entregar', v: faltaDe(o) },
-                        { k: 'Quién la trabaja', v: 'Rumi', s: 'contesta, propone y escala cuando la marca pide hablar con vos' },
-                      ] },
-                      ...(o.nota ? [{ tipo: 'aviso' as const, texto: o.nota }] : []),
-                      { tipo: 'texto', texto: 'Ningún cobro sale sin tu OK: los rates y los links de cobro son manuales por diseño.' },
-                    ],
-                    fuente: 'Misma estructura que las campañas de Negocios, con las etapas de un deal de creador.',
-                    acciones: [
-                      { label: 'Ver la conversación', variante: 'primary', title: 'Abre Mensajes: los DMs de la marca con la respuesta que propone Rumi', onClick: () => setVista('conversaciones') },
-                      { label: 'Ver mis rates', title: 'Tu lista de precios por pieza: es lo que Rumi usa para responder', onClick: () => verRates() },
-                    ],
-                  })}>Ver el deal <I_ArrowRight size={13} /></Button>
-              </span>
-            </div>
-          );
-        })}
-
-        <div className="datos-row" style={{ marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--border)' }}>
-          <div className="dato" title="Lo que hay en juego en las marcas que ya están en deal o en negociación.">
-            <span className="dato-l">En deal o negociación</span>
-            <span className="dato-v" style={{ color: 'var(--green)' }}><Dinero monto={cerrado} /></span>
-          </div>
-          <div className="dato" title="La suma de lo que paga cada marca del pipeline, contando una pieza de cada una.">
-            <span className="dato-l">Todo el pipeline</span>
-            <span className="dato-v"><Dinero monto={todoElPipeline} equivalente={false} /></span>
-          </div>
-          <div className="dato" title="Las entregas cuya fecha cae dentro de los próximos siete días.">
-            <span className="dato-l">Entregas esta semana</span>
-            <span className="dato-v" style={{ color: 'var(--amber)' }}>{entregasSemana} de {OPORTUNIDADES.length}</span>
-          </div>
-        </div>
-
-        <div className="row" style={{ gap: 9, marginTop: 14, flexWrap: 'wrap' }}>
-          <Button variant="ghost" className="btn-sm" title="Abre Mensajes: los DMs de marcas y seguidores, con la respuesta que propone Rumi"
-            onClick={() => setVista('conversaciones')}><I_Chat size={13} /> Ver los mensajes</Button>
-          <Button variant="ghost" className="btn-sm" title="Muestra el pipeline completo, etapa por etapa, con las marcas que están en cada una"
-            onClick={() => detalle({
-              titulo: 'El pipeline, etapa por etapa',
-              sub: `Las ${OPORTUNIDADES.length} marcas de tu carril de trabajo, desde el primer pitch hasta el cobro.`,
-              bloques: [
-                { tipo: 'filas', items: ETAPAS_PIPELINE.map(et => {
-                  const en = OPORTUNIDADES.filter(o => etapaDe(o.marca, o.etapa) === et);
-                  return {
-                    t: et,
-                    s: en.length ? en.map(o => o.marca).join(' · ') : 'sin marcas en esta etapa',
-                    etiqueta: `${en.length}`,
-                    tono: (en.length ? 'green' : 'muted') as 'green' | 'muted',
-                  };
-                }) },
-                { tipo: 'datos', filas: [
-                  { k: 'Marcas que repiten', v: String(FICHA_CREADOR.marcasTrabajadas.length), s: FICHA_CREADOR.marcasTrabajadas.join(' · ') },
-                  { k: 'Lo que tardás en contestar', v: 'Menos de 24 h', s: FICHA_CREADOR.tiempoRespuesta },
-                  { k: 'Ticket de una pieza', v: RATE_VIDEO.precio, s: RATE_VIDEO.nota },
-                ] },
-                { tipo: 'aviso', texto: 'Cobrar sigue siendo tuyo: los rates, los links de pago y el cierre de precios son manuales por diseño.' },
-              ],
-              fuente: 'Tu Ficha de creador y las marcas del pipeline, en el orden del deal.',
-            })}>Ver el pipeline</Button>
-          <Button variant="ghost" className="btn-sm" title="Muestra tu lista de precios por pieza y qué conviene cobrar por el uso en pauta"
-            onClick={() => verRates()}><I_Credit size={13} /> Ver mis rates</Button>
-        </div>
-        <div className="acc-why">
-          Cada entrega se sigue hasta el cobro: <b>la marca paga por la pieza y, si la usa en pauta, eso se cobra
-          aparte</b>. Ningún cobro sale sin tu OK, y lo que la marca pide hablar con vos lo escala Rumi primero.
+          El panel puntúa cada pieza antes de que salga: <b>con 80 o más sale, abajo no</b>. Y lo que el panel
+          frena no te cuesta: la regeneración la paga el sistema, así que corregir una pieza nunca te saca
+          créditos de la semana.
         </div>
         <NotaMoneda />
       </Card>
     </div>
   );
 
-  /** La grilla de generación: de dónde sale el costo de cada pieza del mes. */
-  function verGrilla() {
-    return detalle({
-      titulo: 'La grilla de créditos',
-      sub: 'Cada pieza del mes se cobra por la línea de la grilla que le corresponde. Lo que el panel rechaza no se cobra: la regeneración la paga el sistema.',
-      bloques: [
-        { tipo: 'filas', items: GRILLA_CREDITOS.map(g => ({
-          t: g.pieza,
-          etiqueta: `${g.creditos} ${g.creditos === 1 ? 'crédito' : 'créditos'}`,
-          tono: g.pieza.startsWith('Ultra') ? 'green' : 'purple',
-        })) },
-        { tipo: 'datos', filas: [
-          { k: 'Plan del mes', v: `${plan.nombre} · ${plan.creditosMes.toLocaleString('es-AR')} créditos`, s: 'el plan de creador que tenés contratado este mes' },
-          { k: 'Esta semana come', v: `${costoSemana} créditos`, s: `${pctPlan}% de los créditos del mes` },
-          { k: 'Y el sistema pagó', v: `${costoGate} créditos`, s: 'la regeneración de la pieza que el panel frenó' },
-        ] },
-        { tipo: 'aviso', texto: 'La pieza que el panel rechaza no te cuesta créditos: la regeneración por gate la paga el sistema.' },
-      ],
-      fuente: 'Modelo de producto v2.0 · §11: la grilla de créditos con margen del 40%.',
-    });
-  }
-
-  /** Los rates: lo que Rumi usa para contestar y lo que se cobra por el uso en pauta. */
-  function verRates() {
-    return detalle({
-      titulo: 'Tus rates',
-      sub: 'Lo que cobrás por pieza. Rumi los usa para responder y ningún cobro sale sin tu OK.',
-      bloques: [
-        { tipo: 'datos', filas: RATES.map(r => ({ k: r.pieza, v: r.precio, s: r.nota })) },
-        { tipo: 'aviso', texto: 'El uso en pauta se cobra aparte: la marca paga por mostrarla a gente que no te conoce y eso vale más que la pieza.' },
-      ],
-      fuente: 'Tu lista de rates, en la Ficha de creador. Se puede cambiar cuando quieras.',
-    });
-  }
-
   return vista;
-}
-
-/** El nombre de un tipo de pieza, leído de PIEZAS_CREADOR (post del creador, secuencia de historias,
- *  entregable UGC, remaster 4K): el tipo se nombra como lo nombra la data, nunca a mano. */
-function tipoNombreDe(key: string) {
-  return PIEZAS_CREADOR.find(t => t.key === key)?.nombre ?? key;
 }

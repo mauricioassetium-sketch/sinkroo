@@ -12,7 +12,27 @@ import {
   type TipoConversacion, type EstadoColaboracion,
 } from '../data/demo';
 import { useOnboarding } from '../lib/onboarding';
-import { ViewMensajesCreador } from './MensajesCreador';
+import { ViewComunidadCreador } from './ComunidadCreador';
+
+// =============================================================================================
+// CONVERSACIONES, SEGÚN LA PIEL DE LA CUENTA — el mismo bloque del motor, con dos idiomas.
+//
+// La decisión se toma EN ESTE componente, que no tiene estado: así el cambio de piel se resuelve
+// antes de montar nada. Si el `if` viviera adentro de la pantalla de negocio (después de sus
+// useState), cambiar de piel con Conversaciones abierto cambiaría la cantidad de hooks del mismo
+// componente y React cortaría el render; acá el único hook es leer la piel, y se lee siempre.
+//
+// La pantalla de negocio queda tal cual estaba: sólo cambia el nombre de la función.
+// =============================================================================================
+
+export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) => void; modo: Modo }) {
+  // Un creador no ve la bandeja de clientes de un negocio: ve la comunidad de su cuenta —los
+  // comentarios y mensajes de su audiencia—, con la respuesta que Rumi ya escribió y la decisión
+  // de mandarla en sus manos.
+  const onb = useOnboarding();
+  if (onb.tipo === 'creador') return <ViewComunidadCreador setToast={setToast} />;
+  return <ViewConversacionesNegocio setToast={setToast} modo={modo} />;
+}
 
 /**
  * Quién atiende la conversación: Rumi (la IA) o vos.
@@ -61,10 +81,10 @@ const sinComillas = (t: string) => t.replace(/^«\s*/, '').replace(/\s*»$/, '')
 
 const horaAhora = () => new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
 
-export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) => void; modo: Modo }) {
-  // La misma vista, dos pieles: un creador no ve la bandeja de clientes, ve sus DMs de marcas y
-  // seguidores, con la respuesta que escribió Rumi y la etapa del pipeline de cada marca.
-  const onb = useOnboarding();
+function ViewConversacionesNegocio({ setToast, modo }: { setToast: (t: string) => void; modo: Modo }) {
+  // La bandeja de clientes del negocio (y los creadores que te producen una pieza): Rumi contesta
+  // sola, negocia con quien produce y vos entrás sólo cuando hace falta. La piel de creador tiene
+  // su propia vista —Comunidad— y el corte está arriba, en `ViewConversaciones`.
   const [sel, setSel] = useState(CONVERSACIONES[0].id);
   // Quién atiende cada conversación. Las que llegaron a la cola de humanos arrancan en tus manos:
   // Rumi ya se corrió y nadie contestó.
@@ -106,11 +126,10 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
   const compositor = useRef<HTMLInputElement>(null);
 
   // -------------------------------------------------------------------------------------------
-  // LA PIEL DE CREADOR. Los DMs de un creador no son la bandeja de clientes de un negocio: se
-  // contestan con la respuesta que Rumi ya escribió, y lo que mueve plata lo manda el creador.
-  // El corte va acá, después de los hooks, para que el motor siga leyéndose igual en las dos pieles.
+  // LA PIEL DE CREADOR NO PASA POR ACÁ. El corte está en `ViewConversaciones`, arriba y antes de
+  // cualquier hook: una cuenta de creador ve su comunidad —los comentarios y mensajes de su
+  // audiencia, con la respuesta que escribió Rumi—. Lo que sigue es la bandeja de clientes.
   // -------------------------------------------------------------------------------------------
-  if (onb.tipo === 'creador') return <ViewMensajesCreador setToast={setToast} />;
 
   const cambiarFlujo = (f: FlujoEditable) =>
     setFlujos(fs => fs.map(x => (x.id === f.id ? f : x)));

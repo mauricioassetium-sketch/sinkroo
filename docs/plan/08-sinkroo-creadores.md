@@ -1,8 +1,39 @@
 # 08 · Sinkroo Creadores — la otra piel del mismo motor
 
-> Modelo de producto v2.0 (documento del dueño, 24/09/2026): «Creadores deja de ser otro producto:
-> es **la misma máquina, otra piel**». Este archivo registra cómo quedó implementado en el Centro de
-> Mando v2, qué está cubierto y qué falta. Fuente: `modelo-de-producto (2).pdf` + `src/data/creador.ts`.
+> Modelo de producto v2.0 (documento del dueño) **con la corrección del 24/09/2026, que manda sobre
+> todo lo demás**: el panel de creador es una herramienta para **crear contenido, verificarlo y
+> publicarlo** en sus redes y para **hacer crecer su cuenta** según su nicho. **No se le vende nada
+> a nadie: cero marcas, cero pitches, cero deals, cero rates.** Y **sirve para todo tipo de creador
+> de contenido**: nada puede asumir un rubro.
+>
+> Fuente: `modelo-de-producto (2).pdf` + `src/data/creador.ts` + las correcciones del dueño.
+
+---
+
+## 0 · EL TRABAJO DEL EQUIPO, EN UN CICLO
+
+```
+  1 · PRODUCIR   →  2 · VERIFICAR  →  3 · PUBLICAR  →  4 · CRECER
+  Nia y tu avatar    El panel de 5      Kai en tus redes   Rex y Sol
+  guion + pieza      puntúa de 0 a 100  en la mejor        miden qué retuvo
+  (borrador)         (mínimo 80)        ventana            y qué hacer después
+```
+
+- Estados de una pieza: **Borrador → En verificación → Aprobada por el panel → Publicada → Medida**.
+- **La verificación no cuesta créditos y no se puede saltear.** Si el panel rechaza una pieza,
+  regenerarla **la paga el sistema**, no el creador.
+- **El avatar** es la pieza central de producción: se entrena con las piezas del creador y después
+  crea por él (cara y voz). Todo lo que produce pasa por el panel y por su OK.
+- **Publicar es la función**: el equipo programa y publica en las redes del creador, en la franja
+  que le conviene a su audiencia. Lo que ya salió **no se toca**: editar o borrar es siempre del creador.
+- Nadie entra al panel para aprobar: las decisiones llegan por **WhatsApp o Telegram**.
+
+## 0b · PARA TODO TIPO DE CREADOR
+
+La herramienta es la misma para cualquier tipo; cambia **qué publica, qué métrica persigue y cada
+cuánto puede** (`TIPOS_CREADOR`): publico por gusto · hago crecer mi audiencia · grabo para otros ·
+muestro mi oficio · hablo de mi ciudad. El tipo se elige en el onboarding y se cambia desde Cuenta y
+autonomía (el equipo rearma el plan con el tipo nuevo).
 
 ---
 

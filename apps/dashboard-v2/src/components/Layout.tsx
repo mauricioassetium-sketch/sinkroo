@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { SinkrooMark, I_Home, I_Megaphone, I_Whatsapp, I_Globe, I_Settings, I_Bell, I_Sun, I_Moon, I_Zap, I_Clock, I_Vote, I_Robot, I_Credit, I_Gift, I_Shield, I_User, I_Palette, I_Menu, I_X, I_Rocket } from './icons';
+import { SinkrooMark, I_Home, I_Megaphone, I_Whatsapp, I_Globe, I_Settings, I_Bell, I_Sun, I_Moon, I_Zap, I_Clock, I_Vote, I_Robot, I_Credit, I_Gift, I_Shield, I_User, I_Palette, I_Menu, I_X, I_Rocket, I_Camera, I_Send, I_Trend } from './icons';
 import { TENANT, AGENTES, ALARMAS, DECISIONES, MODOS, type Modo } from '../data/demo';
 import { Progress } from './ui';
 import { usePerfil, inicialesDe } from '../lib/perfil';
@@ -9,7 +9,10 @@ import { VISTAS_CREADOR } from '../data/creador';
 import { PerfilModal } from './PerfilModal';
 import { PersonalizarPanel } from './PersonalizarPanel';
 
-export type Vista = 'hoy' | 'onboarding' | 'campanas' | 'conversaciones' | 'mercado' | 'cuenta' | 'creditos' | 'referidos' | 'kyc';
+export type Vista =
+  | 'hoy' | 'onboarding' | 'campanas' | 'conversaciones' | 'mercado'
+  | 'avatar' | 'publicacion' | 'crecimiento'
+  | 'cuenta' | 'creditos' | 'referidos' | 'kyc';
 
 
 /** Lleva al motor andando: si no estás en Hoy, cambia de vista y después baja hasta el bloque. */
@@ -32,6 +35,19 @@ const NAV: { key: Vista; nombre: string; Icon: any }[] = [
 const NAV_CRECER: { key: Vista; nombre: string; Icon: any }[] = [
   { key: 'creditos', nombre: 'Créditos', Icon: I_Credit },
   { key: 'referidos', nombre: 'Referidos', Icon: I_Gift },
+];
+
+// PIEL DE CREADOR: el trabajo es el contenido. Producir (Contenido, Avatar), publicar (Publicación),
+// la comunidad, y el nicho y el crecimiento. El motor es el mismo: cambia el orden y el idioma.
+const NAV_CREADOR_TRABAJO: { key: Vista; nombre: string; Icon: any }[] = [
+  { key: 'campanas', nombre: 'Contenido', Icon: I_Megaphone },
+  { key: 'avatar', nombre: 'Avatar', Icon: I_Camera },
+  { key: 'publicacion', nombre: 'Publicación', Icon: I_Send },
+  { key: 'conversaciones', nombre: 'Comunidad', Icon: I_Whatsapp },
+];
+const NAV_CREADOR_CRECER: { key: Vista; nombre: string; Icon: any }[] = [
+  { key: 'mercado', nombre: 'Nicho', Icon: I_Globe },
+  { key: 'crecimiento', nombre: 'Crecimiento', Icon: I_Trend },
 ];
 
 // Para habilitar cosas dentro del sistema. «Primeros pasos» va primero: es lo que se hace una vez
@@ -141,7 +157,7 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
             interruptor: un correo no se convierte en lo otro, se crea otra cuenta con otro correo. */}
         <div className="sb-piel">
           <span className="sb-piel-lb" title={piel === 'creador'
-            ? 'Tu cuenta es de creador de contenido: el panel muestra contenido, mensajes de marcas, nicho y deals.'
+            ? 'Tu cuenta es de creador de contenido: el panel muestra tu contenido, tu avatar, la publicación en tus redes, tu comunidad y el crecimiento de tu cuenta.'
             : 'Tu cuenta es de negocio: el panel muestra campañas, anuncios y ventas.'}>
             Tipo de cuenta
           </span>
@@ -151,7 +167,7 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
               onClick={() => avisar?.('El tipo de cuenta es fijo: se elige al crear la cuenta y no se cambia')}>por qué</button>
           </div>
         </div>
-        {NAV.slice(0, 4).map(n => (
+        {(piel === 'creador' ? [{ key: 'hoy' as Vista, nombre: 'Hoy', Icon: I_Home }, ...NAV_CREADOR_TRABAJO] : NAV.slice(0, 4)).map(n => (
           <div key={n.key} className={`nav-item ${vista === n.key ? 'active' : ''}`} onClick={() => { setVista(n.key); setMenuAbierto(false); }}>
             <n.Icon size={17} />
             <span className="nav-label">{piel === 'creador' ? (VISTAS_CREADOR[n.key]?.nombre || n.nombre) : n.nombre}</span>
@@ -162,7 +178,7 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
         ))}
 
         <div className="sb-section-label" style={{ marginTop: 10 }}>CRECER</div>
-        {NAV_CRECER.map(n => (
+        {(piel === 'creador' ? [...NAV_CREADOR_CRECER, ...NAV_CRECER] : NAV_CRECER).map(n => (
           <div key={n.key} className={`nav-item ${vista === n.key ? 'active' : ''}`} onClick={() => { setVista(n.key); setMenuAbierto(false); }}>
             <n.Icon size={17} />
             <span className="nav-label">{piel === 'creador' ? (VISTAS_CREADOR[n.key]?.nombre || n.nombre) : n.nombre}</span>
@@ -333,7 +349,7 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
 // El mismo Centro de Mando, dos pieles: los títulos salen de la piel activa (data/creador.ts).
 function tituloVista(v: Vista, creador: boolean) {
   if (creador && VISTAS_CREADOR[v]) return VISTAS_CREADOR[v].nombre;
-  return ({ hoy: 'Tu día', onboarding: 'Primeros pasos', campanas: 'Campañas', conversaciones: 'Conversaciones', mercado: 'Mercado', cuenta: 'Cuenta y autonomía', creditos: 'Créditos', referidos: 'Referidos', kyc: 'Verificación de identidad' } as const)[v];
+  return ({ hoy: 'Tu día', onboarding: 'Primeros pasos', campanas: 'Campañas', conversaciones: 'Conversaciones', mercado: 'Mercado', avatar: 'Avatar', publicacion: 'Publicación', crecimiento: 'Crecimiento', cuenta: 'Cuenta y autonomía', creditos: 'Créditos', referidos: 'Referidos', kyc: 'Verificación de identidad' } as const)[v];
 }
 function subtituloVista(v: Vista, creador: boolean) {
   if (creador && VISTAS_CREADOR[v]) return VISTAS_CREADOR[v].sub;
@@ -343,6 +359,9 @@ function subtituloVista(v: Vista, creador: boolean) {
     campanas: 'Cada campaña con el veredicto de los 5 jueces y sus artefactos',
     conversaciones: 'Todo lo que tus agentes contestan, con el contexto de cada cliente',
     mercado: 'Qué está haciendo tu competencia y por dónde conviene ir',
+    avatar: 'El equipo crea por vos con tu cara y tu voz',
+    publicacion: 'Qué sale, en qué red y a qué hora',
+    crecimiento: 'Qué hizo crecer tu cuenta esta semana',
     cuenta: 'Cuánto decide la IA y cuánto decidís vos',
     creditos: 'Con qué se carga el motor y en qué se va cada crédito',
     referidos: 'Traé gente y el motor te devuelve créditos',

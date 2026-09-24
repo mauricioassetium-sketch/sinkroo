@@ -65,15 +65,16 @@ Las decisiones llegan por WhatsApp o Telegram: el cliente aprueba sin entrar al 
 
 | # | Módulo | Qué tiene | Estado |
 |---|---|---|---|
-| 9 | **Hoy** | decisiones que esperan el OK con su motivo, bitácora reversible, 4 principios del equipo, pipeline de marcas, equipo calibrado, ritmo lunes/viernes, funciones transversales | ✅ hecho |
-| 10 | **Contenido** (antes Campañas) | plan del mes de Rex, piezas con el puntaje del panel, estados, entregas comprometidas | ✅ hecho |
-| 11 | **Mensajes** (antes Conversaciones) | DMs de marcas y seguidores con la respuesta propuesta por Rumi, mandar/editar/escalar | ✅ hecho |
-| 12 | **Nicho** (antes Mercado) | trends de Lux, formatos del feed, marcas que buscan UGC y cuánto pagan, precios por pieza | ✅ hecho |
-| 13 | **Créditos del creador** | grilla de generación, planes de creador, techo diario, regla de la pieza rechazada | ✅ hecho |
-| 14 | **Cuenta y autonomía del creador** | Ficha (perfil, carril, nicho, tono, tabúes, redes, portafolio, rates), dial por acción, guardrails | ✅ hecho |
-| 15 | **Mi perfil / media kit** | lo que ven las marcas: muestras, audiencia, formato, idiomas, precio, y el media kit listo para mandar | ⬜ pendiente |
-| 16 | **Material del creador** | el mismo motor de material re-etiquetado: piezas propias, comentarios de fans, estilo, lista de rates | ⬜ pendiente |
-| 17 | **Onboarding §4** | la conversación de 8–10 minutos: pregunta raíz del carril, nicho, estado real, bifurcación, **el espejo** y cierre con **100 créditos de regalo** | ⬜ pendiente |
+| 9 | **Hoy** | decisiones que esperan el OK (publicar, producir con el avatar, contestar), bitácora reversible, el ciclo de 4 pasos, cómo va la cuenta, el equipo y el interruptor del avatar | ✅ hecho |
+| 10 | **Contenido** | las piezas del mes en el ciclo (borrador → en verificación → aprobada → publicada → medida), el puntaje del panel, el plan del mes de Rex y la regla de la pieza rechazada | 🟡 en curso |
+| 11 | **Avatar** (nuevo) | el avatar: estado, con qué se entrenó, parecido y voz, lo que crea por vos, lo que ya creó, sus límites y cómo se entrena | 🟡 en curso |
+| 12 | **Publicación** (nuevo) | qué sale, en qué red y a qué hora; publicar/reintentar/conectar redes, la franja de la audiencia y las reglas | ✅ hecho |
+| 13 | **Comunidad** (antes Mensajes) | comentarios y mensajes de la AUDIENCIA (preguntas, elogios, consultas personales, críticas) con la respuesta propuesta y de qué habla su gente | 🟡 en curso |
+| 14 | **Nicho** | qué trendea, qué formato retiene, los temas que más le piden, las franjas de la audiencia y lo que cuesta producir | 🟡 en curso |
+| 15 | **Crecimiento** (nuevo) | seguidores, alcance, **retención a los 3 s**, interacción, cómo va cada red, qué funcionó y el plan de la semana | 🟡 en curso |
+| 16 | **Créditos del creador** | la grilla de producción (con quién produce cada cosa), los planes (avatar y publicación), el techo diario y lo que cuesta el avatar | 🟡 en curso |
+| 17 | **Cuenta y autonomía del creador** | **tipo de creador** (los 5), objetivo de perfil, Ficha, dial por acción (8) y guardrails (7) | 🟡 en curso |
+| 18 | **Onboarding del creador** | la conversación de arranque: tipo de creador, nicho, estado real, el espejo (lectura del perfil) y cierre con 100 créditos | ⬜ pendiente |
 
 ## Piel Negocio
 

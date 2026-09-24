@@ -7,6 +7,9 @@ import { PlanProvider } from './lib/plan';
 import { OnboardingProvider } from './lib/onboarding';
 import { ViewOnboarding } from './views/Onboarding';
 import { PantallaLogin, type Sesion } from './views/Login';
+import { ViewAvatarCreador } from './views/AvatarCreador';
+import { ViewPublicacionCreador } from './views/PublicacionCreador';
+import { ViewCrecimientoCreador } from './views/CrecimientoCreador';
 import { Asistente } from './components/Asistente';
 import { ViewHoy } from './views/Hoy';
 import { ViewCampanas } from './views/Campanas';
@@ -36,8 +39,8 @@ export default function App() {
 
   return (
     <PerfilProvider>
-    <PlanProvider>
     <OnboardingProvider avisar={avisar} tipoDeLaCuenta={sesion.tipo}>
+    <PlanProvider>
     <DetalleProvider>
     <Layout vista={vista} setVista={setVista} theme={theme} cicloTema={cycle} toast={toast} modo={modo} avisar={avisar} cuentaEmail={sesion.email}>
       {vista === 'onboarding' && <ViewOnboarding setToast={avisar} setVista={setVista} />}
@@ -45,6 +48,9 @@ export default function App() {
       {vista === 'campanas' && <ViewCampanas setToast={avisar} modo={modo} setVista={setVista} />}
       {vista === 'conversaciones' && <ViewConversaciones setToast={avisar} modo={modo} />}
       {vista === 'mercado' && <ViewMercado setToast={avisar} setVista={setVista} />}
+      {vista === 'avatar' && <ViewAvatarCreador setToast={avisar} setVista={setVista} />}
+      {vista === 'publicacion' && <ViewPublicacionCreador setToast={avisar} setVista={setVista} />}
+      {vista === 'crecimiento' && <ViewCrecimientoCreador setToast={avisar} setVista={setVista} />}
       {vista === 'cuenta' && <ViewCuenta setToast={avisar} modo={modo} setModo={setModo} />}
       {vista === 'creditos' && <ViewCreditos setToast={avisar} />}
       {vista === 'referidos' && <ViewReferidos setToast={avisar} />}
@@ -53,8 +59,8 @@ export default function App() {
     {/* El asistente de entrada: se abre solo la primera vez que hay sesión. */}
     <Asistente sesion={sesion} setVista={setVista} />
     </DetalleProvider>
-    </OnboardingProvider>
     </PlanProvider>
+    </OnboardingProvider>
     </PerfilProvider>
   );
 }

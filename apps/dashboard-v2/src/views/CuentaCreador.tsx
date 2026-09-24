@@ -1,28 +1,40 @@
 import { useState, type ReactNode } from 'react';
-import { Card, Badge, Button, Dinero, NotaMoneda, Avatar } from '../components/ui';
+import { Card, Badge, Button, Avatar } from '../components/ui';
 import { ViewHead } from '../components/viz';
 import {
   I_Settings, I_Shield, I_Lock, I_Check, I_Clock, I_Edit, I_Eye, I_Refresh, I_Chat, I_Whatsapp,
-  I_ArrowRight, I_User, I_Trend, I_Star, I_Camera, I_Globe, I_Film, I_File, I_Users, I_Zap,
+  I_ArrowRight, I_User, I_Users, I_Trend, I_Star, I_Camera, I_Globe, I_Film, I_Target, I_Cal, I_Zap,
 } from '../components/icons';
 import { useDetalle, type Bloque } from '../components/Detalle';
 import { MODOS, type Modo } from '../data/demo';
 import {
-  AUTONOMIA_CREADOR, GUARDRAILS_CREADOR, FICHA_CREADOR, PERFILES_CREADOR, CARRILES, AGENTES_CREADOR,
-  CANAL_AVISO, MENSAJES_CREADOR, NICHO, RITMO_SEMANA,
+  TIPOS_CREADOR, TIPO_DE_LA_CUENTA, OBJETIVOS_PERFIL, FICHA_CREADOR,
+  AUTONOMIA_CREADOR, GUARDRAILS_CREADOR, CANAL_AVISO, AGENTES_CREADOR, NICHO, RITMO_SEMANA, PLAN_DEL_MES,
 } from '../data/creador';
 
 // =============================================================================================
-// CUENTA Y AUTONOMÍA, EN PIEL DE CREADOR — la cuenta de quien vive de lo que graba.
+// CUENTA Y AUTONOMÍA, EN PIEL DE CREADOR — el panel de quien crea contenido.
 //
-// Arriba su Ficha (lo que el equipo necesita saber de ella), después el dial acción por acción,
-// los guardrails que el motor trae puestos y el canal por el que aprueba sin entrar al panel.
+// MODELO NUEVO (manda sobre lo anterior): esta pantalla habla del creador, de su contenido y de su
+// cuenta. La cuenta sirve para cuatro cosas y ninguna es vender: PRODUCIR (Nia y su avatar),
+// VERIFICAR (el panel de 5), PUBLICAR (Kai) y CRECER (Rex y Sol), con Rumi contestando a la
+// audiencia.
 //
-// Es la misma pantalla de la cuenta de negocio, con otro idioma y otro orden de prioridades: acá
-// el dinero que se mueve son sus créditos y sus deals, no el presupuesto de una empresa.
+// Y es UNA herramienta para TODO tipo de creador de contenido: el que publica por gusto, el que
+// hace crecer su audiencia, el que graba para otros, el que muestra su oficio y el que habla de su
+// ciudad. El MOTOR ES EL MISMO para todos —los 6 agentes, el panel de 5, el dial y los guardrails—
+// y lo que cambia con el tipo es qué se publica, qué se persigue y cada cuánto. Por eso el tipo de
+// creador es lo PRIMERO de la pantalla y se puede cambiar: el plan se rearma, nada se pierde.
 //
-// Cada control hace algo que se ve: mover un nivel deja su línea con la hora y el nivel que venía,
-// y cambiar un dato de la Ficha queda escrito en la fila, con la vuelta atrás a mano.
+// Orden de la vista: el tipo → el objetivo del perfil → la Ficha (lo que el equipo necesita saber)
+// → el dial acción por acción → los guardrails que el motor trae puestos → el canal de aviso.
+//
+// Cada control hace algo que se ve: mover un nivel o cambiar un dato deja su línea con la hora y lo
+// que había antes, con la vuelta atrás a mano. La vigilancia del nicho es la única acción sin
+// palanca: es automática y no se puede bajar (su `title` lo dice y el clic no la cambia).
+//
+// Todos los números y todos los textos salen de `src/data/creador.ts`: acá no se escribe un dato que
+// no esté en la data.
 // =============================================================================================
 
 const NOMBRE: Record<Modo, string> = { auto: 'Automático', shared: 'Compartido', manual: 'Manual' };
@@ -34,34 +46,38 @@ const DESC = Object.fromEntries(MODOS.map(m => [m.key, m.desc])) as Record<Modo,
 const ahora = () => new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
 
 /** La vigilancia del nicho: la única acción del dial que no tiene palanca. */
-const FIJA = AUTONOMIA_CREADOR[0].accion;
+const VIGILANCIA = AUTONOMIA_CREADOR.find(a => a.accion.startsWith('Vigilar'))!;
 
-/** El perfil declarado en la Ficha, con su carril: de ahí sale todo lo que el equipo produce. */
-const perfilDe = (nombre: string) => PERFILES_CREADOR.find(p => p.nombre === nombre) ?? PERFILES_CREADOR[0];
+/** Los tres frenos que esta pantalla cita por nombre, para no depender de su posición. */
+const FRENO_PANEL = GUARDRAILS_CREADOR.find(g => g.nombre.startsWith('Nada se publica'))!;
+const FRENO_KYC = GUARDRAILS_CREADOR.find(g => g.nombre.startsWith('Publicar requiere'))!;
+const FRENO_PUBLICADA = GUARDRAILS_CREADOR.find(g => g.nombre.startsWith('No se toca'))!;
 
-/** Un importe escrito dentro de un texto del motor, con su «USD»: `≈ $3 de generación`. */
-const MONTO = /\$\s?\d[\d.]*(?:,\d+)?/;
+/** El tipo de creador por su clave: si la clave no existe, cae en el primero (nunca queda vacío). */
+const tipoDe = (key: string) => TIPOS_CREADOR.find(t => t.key === key) ?? TIPOS_CREADOR[0];
+
+/** El objetivo de perfil por su clave. */
+const objetivoDe = (key: string) => OBJETIVOS_PERFIL.find(o => o.key === key) ?? OBJETIVOS_PERFIL[0];
+
+/** El objetivo que la Ficha ya declara: es el que la cuenta tiene puesto hoy. */
+const OBJETIVO_DECLARADO = OBJETIVOS_PERFIL.find(o => o.nombre === FICHA_CREADOR.objetivo) ?? OBJETIVOS_PERFIL[0];
+
+/** La franja horaria en la que Kai publica hoy: la que la data tiene por mejor para la audiencia. */
+const VENTANA_EN_USO = NICHO.ventanas.find(v => v.usarla) ?? NICHO.ventanas[0];
+
+/** Los seguidores de la Ficha sumados entre sus redes: '9.400' + '4.100' + '1.200' → 14.700. */
+const SEGUIDORES = FICHA_CREADOR.redes.reduce((a, r) => a + Number(r.seguidores.replace(/\./g, '')), 0);
+const CONECTADAS = FICHA_CREADOR.redes.filter(r => r.estado === 'conectada').length;
 
 /**
- * Los textos que el motor ya trae escritos pasan por acá para que sus importes se lean como en el
- * resto del panel. En las filas compactas va sólo el monto en dólares (con el equivalente no entra)
- * y el equivalente completo aparece en el panel de detalle y al pie de la tarjeta, con la nota de
- * moneda.
+ * Qué cambia cuando el creador cambia de tipo: el plan pasa a apuntar al norte del tipo nuevo, con
+ * su ritmo. Es la línea que se ve después de elegir, por ejemplo «ahora el plan apunta a
+ * constancia: 2 o 3 piezas por semana».
  */
-function ConDinero({ texto, equivalente = false }: { texto: string; equivalente?: boolean }) {
-  const m = MONTO.exec(texto);
-  if (!m) return <>{texto}</>;
-  const i = texto.indexOf(m[0]);
-  return (
-    <>
-      {texto.slice(0, i)}
-      <Dinero monto={m[0]} equivalente={equivalente} />
-      {texto.slice(i + m[0].length)}
-    </>
-  );
-}
+const cambioDeTipo = (t: typeof TIPOS_CREADOR[number]) =>
+  `el plan apunta a ${t.persigue.split(':')[0].toLowerCase()}: ${t.ritmo.toLowerCase()}`;
 
-/** Una fila de la Ficha: lo que dice hoy, por qué se pide y quién lo usa. */
+/** Un dato de la Ficha: lo que dice hoy, por qué se pide y quién lo usa. */
 type Fila = {
   key: string;
   label: string;
@@ -69,7 +85,7 @@ type Fila = {
   porQue: string;
   /** De dónde salió el dato: se muestra en el panel, para que no quede un número sin origen. */
   fuente: string;
-  /** El agente del equipo que trabaja con este dato. */
+  /** El id del agente del equipo que trabaja con este dato. */
   agente: string;
   icono: ReactNode;
   /** Si tiene opciones, la fila se puede cambiar y el cambio queda a la vista. */
@@ -86,7 +102,18 @@ export function ViewCuentaCreador({ setToast, modo, setModo }: {
   // del momento en que se produjo el cambio. Nada de acá vive en un aviso que se va solo.
   // =============================================================================================
 
-  /** El nivel de cada una de las 7 acciones: arranca con el que trae la data de la piel. */
+  /** El tipo de creador elegido: arranca con el que la cuenta ya tiene. */
+  const [tipoKey, setTipoKey] = useState(TIPO_DE_LA_CUENTA.key);
+  /** El tipo del que se viene, con la hora: sólo existe mientras haya un cambio sin volver atrás. */
+  const [tipoAntes, setTipoAntes] = useState<{ key: string; hora: string } | null>(null);
+  /** El objetivo del perfil: arranca con el que la Ficha declara. */
+  const [objetivoKey, setObjetivoKey] = useState(OBJETIVO_DECLARADO.key);
+  const [objetivoAntes, setObjetivoAntes] = useState<{ key: string; hora: string } | null>(null);
+  /** Los datos de la Ficha que se pueden tocar, con lo que dicen ahora. */
+  const [ficha, setFicha] = useState({ formato: FICHA_CREADOR.formatoDominante, ventana: VENTANA_EN_USO.franja });
+  /** Lo cambiado en la Ficha en esta visita: campo → la hora y lo que decía antes. */
+  const [tocado, setTocado] = useState<Record<string, { hora: string; antes: string }>>({});
+  /** El nivel de cada una de las 8 acciones: arranca con el que trae la data de la piel. */
   const [niveles, setNiveles] = useState<Record<string, Modo>>(
     () => Object.fromEntries(AUTONOMIA_CREADOR.map(a => [a.accion, a.nivel])),
   );
@@ -96,207 +123,226 @@ export function ViewCuentaCreador({ setToast, modo, setModo }: {
   const [historial, setHistorial] = useState<{ hora: string; t: string; s: string }[]>([]);
   /** La hora en que cambió el nivel general: la línea de la pantalla la muestra, no una hora fija. */
   const [generalDesde, setGeneralDesde] = useState('');
-  /** Los datos de la Ficha que se pueden cambiar, con lo escrito en cada uno. */
-  const [ficha, setFicha] = useState({
-    perfil: FICHA_CREADOR.perfil,
-    nicho: FICHA_CREADOR.nicho,
-    tono: FICHA_CREADOR.tono,
-    tabues: FICHA_CREADOR.tabues,
-    tiempo: FICHA_CREADOR.tiempoSemana,
-    equipamiento: FICHA_CREADOR.equipamiento,
-    formato: FICHA_CREADOR.formatoDominante,
-  });
-  /** Lo cambiado en la Ficha en esta visita: campo → la hora y lo que decía antes. */
-  const [tocado, setTocado] = useState<Record<string, { hora: string; antes: string }>>({});
-  /** El canal por el que llegan las decisiones: WhatsApp o Telegram. */
+  /** El canal por el que llegan las decisiones que esperan un OK. */
   const [canal, setCanal] = useState<'WhatsApp' | 'Telegram'>('WhatsApp');
   const [canalDesde, setCanalDesde] = useState('');
 
   const registrar = (t: string, s: string) => setHistorial(h => [...h, { hora: ahora(), t, s }]);
 
-  const perfilActual = perfilDe(ficha.perfil);
-  const carril = CARRILES[perfilActual.carril];
+  const tipoActual = tipoDe(tipoKey);
+  const objetivoActual = objetivoDe(objetivoKey);
 
-  // ---------------------------------------------------------------------------------------------
-  // EL DIAL, ACCIÓN POR ACCIÓN — mover un nivel es lo que cambia la tarjeta y el encabezado.
-  // ---------------------------------------------------------------------------------------------
-
-  const mover = (accion: string, m: Modo) => {
-    const antes = niveles[accion];
-    if (antes === m) { setToast(`«${accion}» ya trabaja en ${NOMBRE[m]}`); return; }
-    setNiveles(n => ({ ...n, [accion]: m }));
-    setMovido(v => ({ ...v, [accion]: { hora: ahora(), antes } }));
-    registrar(`«${accion}» pasa a ${NOMBRE[m]}`, `venía en ${NOMBRE[antes]}`);
-    setToast(`«${accion}» ahora trabaja en ${NOMBRE[m]}: ${DESC[m]}`);
-  };
-
-  /** Devuelve una acción al nivel que tenía antes de moverla en esta visita. Reversible. */
-  const volverAccion = (accion: string) => {
-    const mv = movido[accion];
-    if (!mv) return;
-    setNiveles(n => ({ ...n, [accion]: mv.antes }));
-    setMovido(v => { const c = { ...v }; delete c[accion]; return c; });
-    registrar(`«${accion}» vuelve a ${NOMBRE[mv.antes]}`, `venía de ${NOMBRE[niveles[accion]]}`);
-    setToast(`«${accion}» vuelve a ${NOMBRE[mv.antes]}: como estaba antes de que lo movieras`);
-  };
-
-  /** El nivel general: rige para lo que no tenga nivel propio. */
-  const cambiarGeneral = (m: Modo) => {
-    if (modo === m) { setToast(`El equipo ya viene trabajando en ${NOMBRE[m]} por defecto`); return; }
-    registrar(`El nivel general del equipo pasa a ${NOMBRE[m]}`, `venía en ${NOMBRE[modo]}`);
-    setModo(m);
-    setGeneralDesde(ahora());
-    setToast(`Nivel general en ${NOMBRE[m]}: ${DESC[m]}`);
-  };
-
-  /** Devuelve las 7 acciones al nivel con el que vienen y deja el historial de la visita. */
-  const resetDial = () => {
-    setNiveles(Object.fromEntries(AUTONOMIA_CREADOR.map(a => [a.accion, a.nivel])));
-    setMovido({});
-    registrar('Las 7 acciones vuelven a su nivel de siempre', 'el que trae el motor para tu perfil');
-    setToast('El dial vuelve a como venía: las 7 acciones con el nivel de siempre');
-  };
-
-  /** «Volver a como venía» del encabezado: las acciones y el nivel general. */
-  const resetTodo = () => {
-    resetDial();
-    if (modo !== 'shared') setModo('shared');
-    setGeneralDesde('');
-    setToast('Autonomía vuelta atrás: el equipo trabaja como venía');
+  /** El rol real del agente que trabaja con un dato de la Ficha. */
+  const agenteTexto = (id: string) => {
+    const a = AGENTES_CREADOR.find(x => x.id === id);
+    return a ? `${a.nombre}: ${a.enCreadores}` : 'El equipo';
   };
 
   // ---------------------------------------------------------------------------------------------
-  // LA FICHA — los datos que alimentan todo lo que el equipo produce.
+  // EL TIPO DE CREADOR — es lo primero porque es lo que hace que la herramienta sirva para todos.
+  // ---------------------------------------------------------------------------------------------
+
+  const cambiarTipo = (key: string) => {
+    if (key === tipoKey) { setToast(`Tu cuenta ya trabaja como «${tipoDe(key).nombre}»`); return; }
+    const t = tipoDe(key);
+    setTipoAntes({ key: tipoKey, hora: ahora() });
+    setTipoKey(key);
+    registrar(`El tipo de creador pasa a «${t.nombre}»`, `venía de «${tipoDe(tipoKey).nombre}»`);
+    setToast(`Listo: ${cambioDeTipo(t)}. Es reversible desde la misma tarjeta.`);
+  };
+
+  /** Vuelve al tipo de antes. Reversible: se puede volver a cambiar. */
+  const volverTipo = () => {
+    if (!tipoAntes) return;
+    const antes = tipoDe(tipoAntes.key);
+    registrar(`El tipo de creador vuelve a «${antes.nombre}»`, `venía de «${tipoActual.nombre}»`);
+    setTipoKey(tipoAntes.key);
+    setTipoAntes(null);
+    setToast(`Volviste a «${antes.nombre}»: ${cambioDeTipo(antes)}`);
+  };
+
+  /** Los 5 tipos, con lo que publica, persigue y cada cuánto: elegir uno rearma el plan. */
+  const abrirTipos = () => detalle({
+    titulo: 'Cambiar mi tipo de creador',
+    sub: `La herramienta sirve para cualquier tipo de creador de contenido: el motor es el mismo —los 6 agentes, el panel de 5, el dial y los ${GUARDRAILS_CREADOR.length} guardrails— y lo que cambia es qué publicás, qué perseguís y cada cuánto. ${TIPO_DE_LA_CUENTA.nota}`,
+    bloques: [
+      { tipo: 'datos', filas: [
+        { k: 'Hoy tu cuenta trabaja como', v: `${tipoActual.icono} ${tipoActual.nombre}`, s: `${tipoActual.quien} · persigue ${tipoActual.persigue.toLowerCase()}` },
+        { k: 'Su ritmo', v: tipoActual.ritmo, s: 'es lo que el plan del mes intenta sostener' },
+      ] },
+      { tipo: 'filas', items: TIPOS_CREADOR.map(t => ({
+        t: `${t.icono} ${t.nombre}`,
+        s: t.key === tipoActual.key
+          ? 'el que está puesto hoy'
+          : `Publica ${t.publica.toLowerCase()}. Persigue ${t.persigue.toLowerCase()} · ${t.ritmo.toLowerCase()}.`,
+        etiqueta: t.key === tipoActual.key ? 'en uso' : 'elegir',
+        tono: (t.key === tipoActual.key ? 'green' : 'muted') as 'green' | 'muted',
+      })) },
+      { tipo: 'texto', texto: 'El motor NO cambia con el tipo: los 6 agentes con su rol, el panel de 5 que verifica cada pieza, el dial acción por acción y los guardrails son los mismos para todos. Lo que cambia es el plan: qué se publica, qué métrica se persigue y con qué ritmo se sostiene.' },
+      { tipo: 'aviso', texto: 'Es reversible: después de elegir, en la misma tarjeta te queda el botón para volver a tu tipo de antes. Nada de lo que el equipo ya produjo se pierde.' },
+    ],
+    fuente: `Sale de los ${TIPOS_CREADOR.length} tipos de creador de contenido y del que esta cuenta tiene puesto hoy.`,
+    acciones: [
+      ...TIPOS_CREADOR.filter(t => t.key !== tipoActual.key).map(t => ({
+        label: `${t.icono} ${t.nombre}`,
+        title: `Deja tu cuenta como «${t.nombre}»: ${cambioDeTipo(t)}. El cambio queda a la vista en tu Cuenta y es reversible.`,
+        onClick: () => cambiarTipo(t.key),
+      })),
+      { label: 'Dejarlo como está', title: 'Cierra el panel sin cambiar de tipo', onClick: () => setToast(`Seguís como «${tipoActual.nombre}»: el plan no cambia`) },
+    ],
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // EL OBJETIVO DEL PERFIL — con qué se mide que la cuenta avanza.
+  // ---------------------------------------------------------------------------------------------
+
+  const cambiarObjetivo = (key: string) => {
+    if (key === objetivoKey) { setToast(`Tu perfil ya persigue «${objetivoDe(key).nombre}»`); return; }
+    const o = objetivoDe(key);
+    setObjetivoAntes({ key: objetivoKey, hora: ahora() });
+    setObjetivoKey(key);
+    registrar(`El objetivo del perfil pasa a «${o.nombre}»`, `venía de «${objetivoDe(objetivoKey).nombre}»`);
+    setToast(`Ahora tu perfil persigue «${o.nombre}»: se mide por ${o.kpi.join(', ').toLowerCase()}`);
+  };
+
+  /** Vuelve al objetivo de antes. Reversible desde la misma tarjeta. */
+  const volverObjetivo = () => {
+    if (!objetivoAntes) return;
+    const antes = objetivoDe(objetivoAntes.key);
+    registrar(`El objetivo del perfil vuelve a «${antes.nombre}»`, `venía de «${objetivoActual.nombre}»`);
+    setObjetivoKey(objetivoAntes.key);
+    setObjetivoAntes(null);
+    setToast(`Tu perfil vuelve a perseguir «${antes.nombre}»`);
+  };
+
+  /** Los 4 objetivos de perfil, con sus KPI: elegir uno cambia qué mira el equipo. */
+  const abrirObjetivos = () => detalle({
+    titulo: 'Cambiar mi objetivo de perfil',
+    sub: 'El objetivo define con qué se mide que tu cuenta avanza: el equipo prioriza contenido según esto.',
+    bloques: [
+      { tipo: 'datos', filas: [
+        { k: 'Hoy perseguís', v: `${objetivoActual.icono} ${objetivoActual.nombre}`, s: objetivoActual.quien },
+        { k: 'Se mide por', v: objetivoActual.kpi.join(' · '), s: 'son las métricas que el equipo mira cada semana' },
+      ] },
+      ...OBJETIVOS_PERFIL.map(o => ({
+        tipo: 'filas' as const,
+        items: [{
+          t: `${o.icono} ${o.nombre}`,
+          s: `${o.quien} ${o.paraQue}`,
+          etiqueta: o.key === objetivoActual.key ? 'en uso' : 'elegir',
+          tono: (o.key === objetivoActual.key ? 'green' : 'muted') as 'green' | 'muted',
+        }],
+      })),
+      { tipo: 'texto', texto: 'Cambiar de objetivo no cambia lo que el equipo puede hacer: cambia qué contenido arma primero y contra qué número te cuenta el resultado del viernes.' },
+      { tipo: 'aviso', texto: 'Es reversible: después de elegir, en la misma tarjeta te queda el botón para volver a lo que perseguías.' },
+    ],
+    fuente: `Sale de los ${OBJETIVOS_PERFIL.length} objetivos de perfil y del que tu cuenta persigue hoy.`,
+    acciones: [
+      ...OBJETIVOS_PERFIL.filter(o => o.key !== objetivoActual.key).map(o => ({
+        label: `${o.icono} ${o.nombre}`,
+        title: `Tu perfil pasa a perseguir «${o.nombre}» y el equipo se mide por ${o.kpi.join(', ').toLowerCase()}. Reversible desde la misma tarjeta.`,
+        onClick: () => cambiarObjetivo(o.key),
+      })),
+      { label: 'Dejarlo como está', title: 'Cierra el panel sin cambiar el objetivo', onClick: () => setToast(`Tu perfil sigue persiguiendo «${objetivoActual.nombre}»`) },
+    ],
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // LA FICHA — los datos que alimentan todo lo que el equipo produce. De acá sale cada pieza.
   // ---------------------------------------------------------------------------------------------
 
   const filas: Fila[] = [
     {
-      key: 'perfil', label: 'Perfil y carril', icono: <I_User size={14} />,
-      valor: `${perfilActual.nombre} · ${carril.nombre}`,
-      porQue: 'Es la bifurcación de todo lo que hace el equipo: si persigue tu audiencia o las marcas, y con qué se mide tu mes.',
-      fuente: 'Lo elegiste al entrar, con la primera pregunta: ¿ganás por tu audiencia o por tu trabajo?',
-      agente: 'Rex',
-      opciones: PERFILES_CREADOR.map(p => ({
-        v: p.nombre,
-        d: `${CARRILES[p.carril].nombre} · ${p.rolSinkroo} · gana por ${p.gana.toLowerCase()} · ${p.senales[0]}`,
-      })),
+      key: 'nicho', label: 'Nicho', icono: <I_Trend size={14} />, agente: 'lux',
+      valor: FICHA_CREADOR.nicho,
+      porQue: 'Es lo que Lux vigila cada 15 minutos: qué trendea en tu tema, qué formato retiene hoy y qué te pide tu audiencia.',
+      fuente: 'Lo declaraste en tus primeros pasos, y el motor lo ajusta con lo que ve en tus piezas.',
     },
     {
-      key: 'nicho', label: 'Nicho', icono: <I_Trend size={14} />,
-      valor: ficha.nicho,
-      porQue: 'Es lo que Lux vigila cada 15 minutos y el rubro de las marcas que te va a acercar.',
-      fuente: 'Tus últimas 3 marcas y el formato de tus piezas: el perfil real coincide con lo declarado.',
-      agente: 'Lux',
-      opciones: [
-        { v: FICHA_CREADOR.nicho, d: 'Tu nicho de siempre: es con el que el equipo ya viene trabajando.' },
-        { v: 'UGC de bienestar y suplementos', d: 'Rubro donde ya tenés 2 piezas en el portafolio.' },
-        { v: 'UGC de cosmética natural', d: 'Rubro de Verde Vivo, que te buscó para probar pauta.' },
-      ],
+      key: 'subtemas', label: 'Subtemas', icono: <I_Star size={14} />, agente: 'rex',
+      valor: FICHA_CREADOR.subtemas.join(' · '),
+      porQue: 'Son los temas que ya son tuyos: con esto el equipo arma las series y evita proponerte algo que no es tu contenido.',
+      fuente: 'Sale de tus piezas con más alcance: son los temas que ya te funcionaron.',
     },
     {
-      key: 'tono', label: 'Tono', icono: <I_Star size={14} />,
-      valor: ficha.tono,
-      porQue: 'Nia escribe los guiones, los hooks y los captions imitando tu voz: esto es lo que copia.',
+      key: 'tono', label: 'Tono', icono: <I_Star size={14} />, agente: 'nia',
+      valor: FICHA_CREADOR.tono,
+      porQue: 'Nia escribe los guiones, los hooks y los captions con este tono: es lo que copia cuando escribe por vos.',
       fuente: 'Sale de tus últimas piezas: así le hablás a cámara.',
-      agente: 'Nia',
-      opciones: [
-        { v: FICHA_CREADOR.tono, d: 'Tu voz de siempre: la que el equipo ya tiene calibrada.' },
-        { v: 'Cálido y explicativo', d: 'Para piezas que enseñan un paso a paso.' },
-        { v: 'Sobrio y profesional', d: 'Para contenido de marca que pide tono institucional.' },
-      ],
     },
     {
-      key: 'tabues', label: 'Tabúes', icono: <I_Lock size={14} />,
-      valor: ficha.tabues,
-      porQue: 'Lo que el equipo nunca dice, nunca muestra y nunca promete en tu nombre, ni en un DM ni en una pieza.',
-      fuente: 'Los pusiste vos en tus primeros pasos: valen para todo lo que el equipo escriba o publique.',
-      agente: 'Rumi',
-      opciones: [
-        { v: FICHA_CREADOR.tabues, d: 'Tus tres límites de siempre.' },
-        { v: 'No muestra su casa, no habla de política.', d: 'Sin el límite de resultados médicos: sirve para piezas no cosméticas.' },
-        { v: 'No habla de política, no promete resultados médicos, no muestra a su familia.', d: 'Más cerrado: deja afuera lo que pase en su casa.' },
-      ],
+      key: 'tabues', label: 'Tabúes', icono: <I_Lock size={14} />, agente: 'nia',
+      valor: FICHA_CREADOR.tabues,
+      porQue: 'Lo que el equipo nunca dice, nunca muestra y nunca promete en tu nombre: vale para cada pieza y para cada respuesta a un comentario.',
+      fuente: 'Los pusiste vos en tus primeros pasos y valen para todo lo que el equipo escriba o publique.',
     },
     {
-      key: 'tiempo', label: 'Tiempo por semana', icono: <I_Clock size={14} />,
-      valor: ficha.tiempo,
-      porQue: 'El plan del mes se arma con las horas que tenés de verdad: si no alcanzan, el equipo prioriza y te lo dice.',
-      fuente: 'Lo declaraste al entrar y el equipo lo ajustó con los tiempos reales de tus entregas.',
-      agente: 'Rex',
-      opciones: [
-        { v: FICHA_CREADOR.tiempoSemana, d: 'Tus horas de siempre: alcanza para 3 piezas y la respuesta de los DMs.' },
-        { v: 'Poco: una hora por semana', d: 'El equipo se limita a una pieza y a los deals abiertos.' },
-        { v: 'Bastante: todos los días un rato', d: 'Entra el calendario completo y las entregas de la semana.' },
-      ],
+      key: 'tiempo', label: 'Tiempo por semana', icono: <I_Clock size={14} />, agente: 'rex',
+      valor: FICHA_CREADOR.tiempoSemana,
+      porQue: 'El plan del mes se arma con las horas que tenés de verdad: si la semana viene corta, el equipo prioriza y te lo dice.',
+      fuente: 'Lo declaraste al entrar y el motor lo ajusta con el tiempo real que tardás en grabar.',
     },
     {
-      key: 'equipamiento', label: 'Equipamiento', icono: <I_Camera size={14} />,
-      valor: ficha.equipamiento,
-      porQue: 'Define qué formato te puede pedir el equipo sin que te falte algo para grabar.',
-      fuente: 'Lo declaraste al entrar: es lo que el equipo mira antes de proponerte una idea.',
-      agente: 'Nia',
-      opciones: [
-        { v: FICHA_CREADOR.equipamiento, d: 'Con esto grabás vertical, cara a cámara, con luz propia.' },
-        { v: 'Celular solo', d: 'Sin aro de luz: las tomas dependen de la luz del lugar.' },
-        { v: 'Celular + cámara y trípode', d: 'Habilita planos fijos y producto en mano sin temblor.' },
-      ],
+      key: 'equipamiento', label: 'Equipamiento', icono: <I_Camera size={14} />, agente: 'nia',
+      valor: FICHA_CREADOR.equipamiento,
+      porQue: 'Define qué formato te puede proponer el equipo sin que te falte algo para grabar.',
+      fuente: 'Lo declaraste al entrar: es lo que el motor mira antes de proponerte una idea.',
     },
     {
-      key: 'redes', label: 'Redes y seguidores', icono: <I_Globe size={14} />,
-      valor: `${FICHA_CREADOR.redes.join(' · ')} · ${FICHA_CREADOR.seguidores}`,
-      porQue: `Es tu media kit: el ${FICHA_CREADOR.interaccion} de interacción es el número que usan las marcas para decidir.`,
-      fuente: 'Sale de las cuentas que conectaste: el motor las lee cada 15 minutos junto con tus métricas.',
-      agente: 'Sol',
-    },
-    {
-      key: 'formato', label: 'Formato dominante', icono: <I_Film size={14} />,
+      key: 'formato', label: 'Formato dominante', icono: <I_Film size={14} />, agente: 'nia',
       valor: ficha.formato,
-      porQue: 'Los guiones y los hooks se escriben para ese formato: es el que tu público ya mira.',
-      fuente: `Es el formato que copa tu feed: ${NICHO.formatosDelFeed[0].f} con ${NICHO.formatosDelFeed[0].pct}%.`,
-      agente: 'Nia',
-      opciones: NICHO.formatosDelFeed.map(f => ({
-        v: f.f,
-        d: `${f.pct}% del feed de tu nicho y de los que miran marcas del rubro.`,
+      porQue: 'Es el molde con el que Nia escribe los guiones y los hooks: apuntarlo al formato que hoy copa tu feed es lo que mantiene el alcance.',
+      fuente: `Es el formato que copa el feed de tu nicho: ${NICHO.formatosDelFeed[0].f} con ${NICHO.formatosDelFeed[0].pct}%.`,
+      opciones: [
+        { v: FICHA_CREADOR.formatoDominante, d: 'Es el que tu Ficha declara: el molde con el que el equipo escribe hoy.' },
+        ...NICHO.formatosDelFeed.map(f => ({ v: f.f, d: `${f.pct}% del feed de tu nicho hoy: es el reparto real, no una recomendación.` })),
+      ],
+    },
+    {
+      key: 'ventana', label: 'Ventana en la que publica Kai', icono: <I_Cal size={14} />, agente: 'kai',
+      valor: ficha.ventana,
+      porQue: `Es la franja en la que Kai programa tus piezas. La mejor de tu audiencia hoy: ${FICHA_CREADOR.mejorVentana.toLowerCase()}.`,
+      fuente: `Sale de tus piezas publicadas: ${VENTANA_EN_USO.rendimiento.toLowerCase()}`,
+      opciones: NICHO.ventanas.map(v => ({
+        v: v.franja,
+        d: `${v.rendimiento}${v.usarla ? ' Es la que Kai usa hoy.' : ''}`,
       })),
     },
     {
-      key: 'lectura', label: 'La lectura del perfil real', icono: <I_Eye size={14} />,
+      key: 'peor', label: 'La peor ventana de tu audiencia', icono: <I_Clock size={14} />, agente: 'kai',
+      valor: FICHA_CREADOR.peorVentana,
+      porQue: 'Es la franja que el equipo evita: publicar ahí cuesta alcance, y el motor no programa nada en ese horario.',
+      fuente: 'Sale de tus piezas publicadas: es la mitad del alcance que te da la mejor ventana.',
+    },
+    {
+      key: 'redes', label: 'Redes y seguidores', icono: <I_Globe size={14} />, agente: 'sol',
+      valor: `${CONECTADAS} de ${FICHA_CREADOR.redes.length} conectadas · ${SEGUIDORES.toLocaleString('es-AR')} seguidores`,
+      porQue: 'Es de donde el motor lee seguidores, alcance e interacción cada 15 minutos: sin la red conectada, esa parte no se mide.',
+      fuente: 'Sale de las cuentas que conectaste, con la interacción de cada una.',
+    },
+    {
+      key: 'lectura', label: 'La lectura del perfil real', icono: <I_Eye size={14} />, agente: 'sol',
       valor: FICHA_CREADOR.lecturaDelPerfil,
-      porQue: 'No sale de lo que declaraste: sale de lo que el motor leyó en tu perfil. Es lo que decide qué marcas te acerca.',
-      fuente: 'Lectura del motor sobre tus últimas piezas, tus marcas y tus métricas.',
-      agente: 'Sol',
+      porQue: 'No sale de lo que declaraste: es lo que el motor leyó en tus piezas. Es lo que decide qué idea te propone primero.',
+      fuente: 'Lectura del motor sobre tus últimas piezas, tus formatos y tus métricas.',
     },
     {
-      key: 'portafolio', label: 'Portafolio', icono: <I_File size={14} />,
-      valor: FICHA_CREADOR.portafolio,
-      porQue: 'Es lo que Rumi manda en cada pitch: sin portafolio, una marca no tiene con qué compararte.',
-      fuente: 'Las piezas que subiste con permiso de uso de la marca.',
-      agente: 'Rumi',
-    },
-    {
-      key: 'marcas', label: 'Marcas trabajadas', icono: <I_Users size={14} />,
-      valor: FICHA_CREADOR.marcasTrabajadas.join(' · '),
-      porQue: 'Una marca que ya te pagó una vez pesa más en el pitch que diez contactos fríos.',
-      fuente: 'Tus deal cerrados y entregados, con la pieza que hizo cada una.',
-      agente: 'Rumi',
-    },
-    {
-      key: 'respuesta', label: 'Tiempo de respuesta', icono: <I_Clock size={14} />,
-      valor: 'Contesta en menos de 24 h',
-      porQue: 'Es lo primero que mira una marca: si tardás, elige a otro. El equipo te avisa cuando un DM lleva medio día sin respuesta.',
-      fuente: 'Sale de tus conversaciones: es el promedio de lo que tardás en contestar un DM de marca.',
-      agente: 'Rumi',
+      key: 'ritmo', label: 'Ritmo actual y ritmo objetivo', icono: <I_Zap size={14} />, agente: 'rex',
+      valor: `${FICHA_CREADOR.ritmoActual} · meta: ${FICHA_CREADOR.ritmoObjetivo}`,
+      porQue: 'Es la distancia que el plan persigue. El equipo produce con el avatar lo que a vos no te da el tiempo.',
+      fuente: `Sale del plan del mes: ${PLAN_DEL_MES.objetivo}`,
     },
   ];
 
   const valorDe = (campo: string) => filas.find(f => f.key === campo)?.valor ?? '';
+  const labelDe = (campo: string) => filas.find(f => f.key === campo)?.label ?? '';
 
   const aplicarFicha = (campo: string, valor: string) => {
     const antes = valorDe(campo);
-    if (antes === valor) { setToast(`«${filas.find(f => f.key === campo)?.label}» ya estaba así`); return; }
+    if (antes === valor) { setToast(`«${labelDe(campo)}» ya estaba así`); return; }
     setFicha(f => ({ ...f, [campo]: valor }));
     setTocado(t => ({ ...t, [campo]: { hora: ahora(), antes } }));
-    setToast(`«${filas.find(f => f.key === campo)?.label}» ahora dice «${valor}»: el equipo trabaja con eso desde la próxima vuelta`);
+    setToast(`«${labelDe(campo)}» ahora dice «${valor}»: el equipo trabaja con eso desde la próxima vuelta`);
   };
 
   /** Vuelve un dato de la Ficha a lo que decía antes. Reversible desde la misma fila. */
@@ -305,15 +351,11 @@ export function ViewCuentaCreador({ setToast, modo, setModo }: {
     if (!t) return;
     setFicha(f => ({ ...f, [campo]: t.antes }));
     setTocado(x => { const c = { ...x }; delete c[campo]; return c; });
-    setToast(`«${filas.find(f => f.key === campo)?.label}» vuelve a «${t.antes}»`);
+    setToast(`«${labelDe(campo)}» vuelve a «${t.antes}»`);
   };
 
   const resetFicha = () => {
-    setFicha({
-      perfil: FICHA_CREADOR.perfil, nicho: FICHA_CREADOR.nicho, tono: FICHA_CREADOR.tono,
-      tabues: FICHA_CREADOR.tabues, tiempo: FICHA_CREADOR.tiempoSemana,
-      equipamiento: FICHA_CREADOR.equipamiento, formato: FICHA_CREADOR.formatoDominante,
-    });
+    setFicha({ formato: FICHA_CREADOR.formatoDominante, ventana: VENTANA_EN_USO.franja });
     setTocado({});
     setToast('Tu Ficha vuelve a como venía: el equipo trabaja otra vez con tus datos originales');
   };
@@ -322,60 +364,9 @@ export function ViewCuentaCreador({ setToast, modo, setModo }: {
   // LOS PANELES DE DETALLE — el dato real de cada cosa, en el mismo lugar para todos los botones.
   // ---------------------------------------------------------------------------------------------
 
-  /** «La vigilancia no se puede bajar»: el por qué, con lo último que encontró en el nicho. */
-  const abrirFija = () => detalle({
-    titulo: 'La vigilancia del nicho no se puede bajar',
-    sub: `${AUTONOMIA_CREADOR[0].nota} Es la única acción del dial que no tiene palanca.`,
-    bloques: [
-      { tipo: 'datos', filas: [
-        { k: 'Cada cuánto mira', v: 'cada 15 minutos', s: RITMO_SEMANA.latidoMotor },
-        { k: 'Qué mira', v: 'Tu nicho, tus métricas y tus conversaciones', s: 'de ahí salen las propuestas de Lux, Rex y Sol' },
-        { k: 'Lo que cuesta', v: 'nada', s: 'no gasta créditos: sólo lee' },
-        { k: 'Lo último que encontró', v: `${NICHO.trends.length} formatos`, s: NICHO.trends.map(t => `${t.t} (${t.num})`).join(' · ') },
-        { k: 'Precio por pieza en tu nivel', v: NICHO.precioPorPieza[1].rango, s: NICHO.precioPorPieza[1].nota },
-      ] },
-      { tipo: 'aviso', texto: 'Si la vigilancia se pudiera apagar, el equipo dejaría de enterarse de qué se mueve en tu nicho y el resto del dial trabajaría a ciegas: sin eso no hay propuesta que valga. Todo lo demás sí lo decidís vos, acción por acción.' },
-    ],
-    fuente: 'Sale del ritmo real del motor y de lo último que encontró en tu nicho.',
-    acciones: [
-      { label: 'Entendido', variante: 'primary', title: 'Cierra este panel: la vigilancia sigue como está', onClick: () => setToast('La vigilancia sigue activa: es lo que mantiene al equipo al día con tu nicho') },
-    ],
-  });
-
-  /** «Ver el historial»: lo que moviste en esta visita, con la hora y con qué nivel quedó cada cosa. */
-  const abrirHistorial = () => {
-    const propios = AUTONOMIA_CREADOR.filter(a => (niveles[a.accion] ?? a.nivel) !== 'auto');
-    const bloques: Bloque[] = [
-      historial.length > 0
-        ? { tipo: 'filas', items: historial.slice().reverse().map(h => ({ t: h.t, s: h.s, etiqueta: h.hora, tono: 'purple' as const })) }
-        : { tipo: 'texto', texto: 'Todavía no moviste nada en esta visita: el equipo viene trabajando como lo dejaste la última vez. En cuanto muevas un nivel o un dato de tu Ficha, el cambio queda acá con la hora.' },
-      { tipo: 'datos', filas: [
-        { k: 'Nivel general del equipo', v: NOMBRE[modo], s: 'rige para lo que no tenga nivel propio' },
-        { k: 'Acciones en Automático', v: `${autos} de ${AUTONOMIA_CREADOR.length}`, s: 'las que el equipo hace y te cuenta en la bitácora' },
-        { k: 'Acciones que te esperan', v: `${AUTONOMIA_CREADOR.length - autos} de ${AUTONOMIA_CREADOR.length}`, s: 'compartidas y manuales: no salen sin tu OK' },
-        { k: 'Acciones sin palanca', v: '1', s: 'la vigilancia del nicho: es la que mantiene al equipo despierto' },
-        { k: 'Frenos que valen siempre', v: String(GUARDRAILS_CREADOR.length), s: 'no dependen del dial: valen también en Automático' },
-      ] },
-      { tipo: 'filas', items: AUTONOMIA_CREADOR.map(a => {
-        const n = niveles[a.accion] ?? a.nivel;
-        return { t: a.accion, s: a.nota, etiqueta: NOMBRE[n], tono: (n === 'auto' ? 'green' : n === 'shared' ? 'purple' : 'amber') as 'green' | 'purple' | 'amber' };
-      }) },
-      { tipo: 'aviso', texto: 'Cambiar un nivel no borra nada de lo que el equipo ya hizo: la bitácora queda completa. Y la vigilancia del nicho sigue prendida: es lo que hace que el equipo nunca esté quieto.' },
-    ];
-    detalle({
-      titulo: 'Historial de autonomía',
-      sub: 'Lo que moviste en esta visita, con la hora, y con qué nivel viene trabajando cada acción.',
-      bloques,
-      fuente: 'Sale de esta misma pantalla: las 7 acciones de tu cuenta y los 7 frenos que tenés hoy. Se actualiza en cuanto cambiás algo.',
-      acciones: propios.length > 0
-        ? [{ label: 'Volver a como venía', variante: 'primary', title: 'Devuelve las 7 acciones al nivel con el que vienen. Reversible: lo volvés a mover cuando quieras.', onClick: resetTodo }]
-        : [{ label: 'Cerrar', title: 'Cierra el panel sin cambiar nada', onClick: () => {} }],
-    });
-  };
-
   /** «Cambiar» de una fila de la Ficha: las opciones, con lo que implica cada una. */
   const abrirCambioFicha = (f: Fila) => detalle({
-    titulo: `Cambiar ${f.label.toLowerCase()}`,
+    titulo: `Cambiar ${f.label.charAt(0).toLowerCase()}${f.label.slice(1)}`,
     sub: `${f.porQue} Elegí con qué trabaja el equipo: el cambio queda escrito en tu Ficha y se puede volver atrás desde la misma fila.`,
     bloques: [
       { tipo: 'datos', filas: [{ k: 'Hoy dice', v: f.valor, s: 'es con lo que el equipo trabaja ahora' }] },
@@ -391,7 +382,8 @@ export function ViewCuentaCreador({ setToast, modo, setModo }: {
     fuente: f.fuente,
     acciones: [
       ...(f.opciones ?? []).filter(o => o.v !== f.valor).map(o => ({
-        label: o.v, title: `Deja «${f.label}» en «${o.v}» y el cambio se ve en tu Ficha al instante. Reversible.`,
+        label: o.v,
+        title: `Deja «${f.label}» en «${o.v}» y el cambio se ve en tu Ficha al instante. Reversible.`,
         onClick: () => aplicarFicha(f.key, o.v),
       })),
       { label: 'Dejarlo como está', title: 'Cierra el panel sin cambiar nada', onClick: () => setToast(`«${f.label}» queda como está`) },
@@ -408,58 +400,175 @@ export function ViewCuentaCreador({ setToast, modo, setModo }: {
         { k: 'Por qué se pide', v: f.porQue },
         { k: 'De dónde sale', v: f.fuente },
         { k: 'Quién lo usa', v: agenteTexto(f.agente) },
-        { k: 'Se puede cambiar', v: 'No: lo sostiene el motor', s: 'sale de lo que el sistema ya vio, no de lo que se declara' },
+        { k: 'Se puede cambiar', v: 'No: lo sostiene el motor', s: 'sale de lo que el sistema ya vio en tus piezas, no de lo que se declara' },
       ] },
-      { tipo: 'aviso', texto: 'Los datos que el equipo deduce solo no se editan: son la lectura de tu perfil real. Lo que sí decidís vos es con qué se queda y cómo trabaja, acción por acción.' },
+      { tipo: 'aviso', texto: 'Los datos que el motor deduce solo no se editan: son la lectura de tu perfil y de tus números. Lo que sí decidís vos es el tipo, el objetivo, el formato con el que se escribe y en qué ventana se publica.' },
     ],
     fuente: f.fuente,
+    acciones: [{ label: 'Cerrar', title: 'Cierra el panel sin cambiar nada', onClick: () => {} }],
+  });
+
+  /** Las redes de la Ficha, una por una: qué se mide en cada una y cuál falta conectar. */
+  const abrirRedes = () => detalle({
+    titulo: 'Tus redes y lo que se mide en cada una',
+    sub: 'El motor las lee cada 15 minutos junto con tus métricas: de acá sale qué pieza retuvo y qué hizo crecer la cuenta.',
+    bloques: [
+      { tipo: 'filas', items: FICHA_CREADOR.redes.map(r => ({
+        t: `${r.red} · ${r.usuario}`,
+        s: `${r.seguidores} seguidores · ${r.interaccion} de interacción`,
+        etiqueta: r.estado,
+        tono: (r.estado === 'conectada' ? 'green' : 'amber') as 'green' | 'amber',
+      })) },
+      { tipo: 'datos', filas: [
+        { k: 'Redes conectadas', v: `${CONECTADAS} de ${FICHA_CREADOR.redes.length}`, s: 'las que todavía no lo están no se publican ni se miden' },
+        { k: 'Seguidores en total', v: SEGUIDORES.toLocaleString('es-AR') },
+        { k: 'Qué mide el motor', v: 'Retención, alcance e interacción', s: 'por pieza y por red' },
+      ] },
+      { tipo: 'aviso', tono: 'amber', texto: 'La red que no está conectada no se mide: mientras siga así, el equipo no puede decirte qué funcionó ahí ni publicar en esa red.' },
+    ],
+    fuente: 'Sale de las redes de tu Ficha, con los seguidores y la interacción de cada una.',
     acciones: [{ label: 'Cerrar', title: 'Cierra el panel sin cambiar nada', onClick: () => {} }],
   });
 
   /** La Ficha entera: qué cambió hoy y con qué está trabajando el equipo ahora. */
   const abrirFicha = () => detalle({
     titulo: 'Tu Ficha de creador',
-    sub: 'Es la cuenta del motor, extendida: todo lo que el equipo produce sale de acá.',
+    sub: 'Es lo que el equipo necesita saber de vos: todo lo que produce sale de acá.',
     bloques: [
       { tipo: 'datos', filas: [
-        { k: 'Perfil', v: perfilActual.nombre, s: carril.nombre },
-        { k: 'Carril', v: carril.nombre, s: carril.promesa },
-        { k: 'Se mide por', v: carril.kpi.join(' · ') },
-        { k: 'Nicho', v: ficha.nicho },
-        { k: 'Formato dominante', v: ficha.formato },
-        { k: 'Redes', v: `${FICHA_CREADOR.redes.join(' · ')}`, s: `${FICHA_CREADOR.seguidores} · ${FICHA_CREADOR.interaccion} de interacción` },
+        { k: 'Tipo de creador', v: `${tipoActual.icono} ${tipoActual.nombre}`, s: `persigue ${tipoActual.persigue.toLowerCase()} · ${tipoActual.ritmo}` },
+        { k: 'Objetivo del perfil', v: `${objetivoActual.icono} ${objetivoActual.nombre}`, s: `se mide por ${objetivoActual.kpi.join(' · ').toLowerCase()}` },
+        { k: 'Nicho', v: FICHA_CREADOR.nicho, s: FICHA_CREADOR.subtemas.join(' · ') },
+        { k: 'Redes', v: `${CONECTADAS} de ${FICHA_CREADOR.redes.length} conectadas`, s: `${SEGUIDORES.toLocaleString('es-AR')} seguidores en total` },
         { k: 'Cambios de hoy', v: String(Object.keys(tocado).length), s: 'cada uno se revierte desde su fila' },
       ] },
       { tipo: 'filas', items: filas.map(f => ({
         t: f.label, s: f.valor, etiqueta: tocado[f.key] ? `cambiado ${tocado[f.key].hora}` : 'como venía',
         tono: (tocado[f.key] ? 'amber' : 'muted') as 'amber' | 'muted',
       })) },
-      { tipo: 'aviso', texto: 'Con la Ficha al día, el equipo no te vuelve a preguntar lo mismo: es lo que hace que las propuestas lleguen listas para aprobar y no a medio escribir.' },
+      { tipo: 'aviso', texto: 'Con la Ficha al día el equipo no te vuelve a preguntar lo mismo: es lo que hace que las ideas lleguen listas para grabar y no a medio escribir.' },
     ],
-    fuente: 'Sale de tu Ficha de creador tal como está ahora, con los cambios que hiciste en esta visita.',
+    fuente: 'Sale de tu Ficha tal como está ahora, con los cambios que hiciste en esta visita.',
     acciones: Object.keys(tocado).length > 0
-      ? [{ label: 'Volver todo a como venía', variante: 'primary', title: 'Devuelve los 7 datos cambiados a lo que decían antes. Reversible: los volvés a cambiar cuando quieras.', onClick: resetFicha }]
+      ? [{ label: 'Volver todo a como venía', variante: 'primary', title: 'Devuelve los datos que cambiaste a lo que decían antes. Reversible: los volvés a cambiar cuando quieras.', onClick: resetFicha }]
       : [{ label: 'Cerrar', title: 'Cierra el panel sin cambiar nada', onClick: () => {} }],
   });
 
-  /** «Cómo te protegen»: los 7 frenos con su valor real y a qué acción del dial tocan. */
+  // ---------------------------------------------------------------------------------------------
+  // EL DIAL, ACCIÓN POR ACCIÓN — mover un nivel es lo que cambia la tarjeta y el encabezado.
+  // ---------------------------------------------------------------------------------------------
+
+  const mover = (accion: string, m: Modo) => {
+    const antes = niveles[accion] ?? 'auto';
+    if (antes === m) { setToast(`«${accion}» ya trabaja en ${NOMBRE[m]}`); return; }
+    setNiveles(n => ({ ...n, [accion]: m }));
+    setMovido(v => ({ ...v, [accion]: { hora: ahora(), antes } }));
+    registrar(`«${accion}» pasa a ${NOMBRE[m]}`, `venía en ${NOMBRE[antes]}`);
+    setToast(`«${accion}» ahora trabaja en ${NOMBRE[m]}: ${DESC[m]}`);
+  };
+
+  /** Devuelve una acción al nivel que tenía antes de moverla en esta visita. Reversible. */
+  const volverAccion = (accion: string) => {
+    const mv = movido[accion];
+    if (!mv) return;
+    setNiveles(n => ({ ...n, [accion]: mv.antes }));
+    setMovido(v => { const c = { ...v }; delete c[accion]; return c; });
+    registrar(`«${accion}» vuelve a ${NOMBRE[mv.antes]}`, `venía de ${NOMBRE[niveles[accion] ?? 'auto']}`);
+    setToast(`«${accion}» vuelve a ${NOMBRE[mv.antes]}: como estaba antes de que lo movieras`);
+  };
+
+  /** El nivel general: rige para lo que el equipo haga por primera vez, sin nivel propio. */
+  const cambiarGeneral = (m: Modo) => {
+    if (modo === m) { setToast(`El equipo ya viene trabajando en ${NOMBRE[m]} por defecto`); return; }
+    registrar(`El nivel general del equipo pasa a ${NOMBRE[m]}`, `venía en ${NOMBRE[modo]}`);
+    setModo(m);
+    setGeneralDesde(ahora());
+    setToast(`Nivel general en ${NOMBRE[m]}: ${DESC[m]}`);
+  };
+
+  /** Devuelve las 8 acciones al nivel con el que vienen. Reversible. */
+  const resetDial = () => {
+    setNiveles(Object.fromEntries(AUTONOMIA_CREADOR.map(a => [a.accion, a.nivel])));
+    setMovido({});
+    registrar('Las 8 acciones vuelven a su nivel de siempre', 'el que trae el motor para tu cuenta');
+    setToast('El dial vuelve a como venía: las 8 acciones con el nivel de siempre');
+  };
+
+  /** «La vigilancia no se puede bajar»: el por qué, con lo último que encontró en el nicho. */
+  const abrirFija = () => detalle({
+    titulo: 'La vigilancia del nicho no se puede bajar',
+    sub: `${VIGILANCIA.nota} Es la única acción del dial que no tiene palanca.`,
+    bloques: [
+      { tipo: 'datos', filas: [
+        { k: 'Cada cuánto mira', v: 'Cada 15 minutos', s: RITMO_SEMANA.latido },
+        { k: 'Qué mira', v: 'Tu nicho, tus métricas y tus comentarios', s: 'de ahí salen las ideas de Lux, el plan de Rex y el resumen de Sol' },
+        { k: 'Lo que cuesta', v: 'Nada', s: 'no gasta créditos: sólo lee' },
+        { k: 'Lo último que encontró', v: `${NICHO.trends.length} formatos`, s: NICHO.trends.map(t => `${t.t} (${t.num})`).join(' · ') },
+        { k: 'Lo que más pide tu audiencia', v: `${NICHO.temasQuePiden[0].consultas} consultas`, s: NICHO.temasQuePiden[0].t },
+      ] },
+      { tipo: 'texto', texto: `Para que el motor no se quede quieto tiene que estar mirando: sin la vigilancia, el equipo no se enteraría de qué se mueve en tu nicho y el resto del dial trabajaría a ciegas. Con lo que encuentra, Lux deja las ideas con su por qué y Rex arma el plan del lunes.` },
+      { tipo: 'aviso', texto: 'Todo lo demás sí lo decidís vos, acción por acción: la vigilancia es lo único que no tiene palanca porque es lo que mantiene despierto al equipo, y no cuesta créditos.' },
+    ],
+    fuente: 'Sale del ritmo real del motor y de lo último que encontró en tu nicho.',
+    acciones: [
+      { label: 'Entendido', variante: 'primary', title: 'Cierra este panel: la vigilancia sigue como está', onClick: () => setToast('La vigilancia sigue activa: es lo que mantiene al equipo al día con tu nicho') },
+    ],
+  });
+
+  /** «Ver el historial»: lo que moviste en esta visita, con la hora y con qué nivel quedó cada cosa. */
+  const abrirHistorial = () => {
+    const bloques: Bloque[] = [
+      historial.length > 0
+        ? { tipo: 'filas', items: historial.slice().reverse().map(h => ({ t: h.t, s: h.s, etiqueta: h.hora, tono: 'purple' as const })) }
+        : { tipo: 'texto', texto: 'Todavía no moviste nada en esta visita: el equipo viene trabajando como lo dejaste la última vez. En cuanto muevas un nivel, tu tipo, tu objetivo o un dato de tu Ficha, el cambio queda acá con la hora.' },
+      { tipo: 'datos', filas: [
+        { k: 'Nivel general del equipo', v: NOMBRE[modo], s: 'rige para lo que el equipo haga por primera vez' },
+        { k: 'Acciones en Automático', v: `${autos} de ${AUTONOMIA_CREADOR.length}`, s: 'las que el equipo hace y te cuenta en la bitácora' },
+        { k: 'Acciones que te esperan', v: `${esperan} de ${AUTONOMIA_CREADOR.length}`, s: 'compartidas y manuales: no salen sin tu OK' },
+        { k: 'Acciones sin palanca', v: '1', s: `la vigilancia del nicho: ${VIGILANCIA.accion.toLowerCase()}` },
+        { k: 'Frenos que valen siempre', v: String(GUARDRAILS_CREADOR.length), s: 'no dependen del dial: valen también en Automático' },
+        { k: 'Tu tipo de creador', v: tipoActual.nombre, s: `${cambioDeTipo(tipoActual)}` },
+        { k: 'Tu objetivo de perfil', v: objetivoActual.nombre, s: `se mide por ${objetivoActual.kpi.join(' · ').toLowerCase()}` },
+      ] },
+      { tipo: 'filas', items: AUTONOMIA_CREADOR.map(a => {
+        const n = niveles[a.accion] ?? a.nivel;
+        return { t: a.accion, s: a.nota, etiqueta: NOMBRE[n], tono: (n === 'auto' ? 'green' : n === 'shared' ? 'purple' : 'amber') as 'green' | 'purple' | 'amber' };
+      }) },
+      { tipo: 'aviso', texto: 'Cambiar un nivel no borra nada de lo que el equipo ya hizo: la bitácora queda completa. Y la vigilancia del nicho sigue prendida: es lo que hace que el equipo nunca esté quieto.' },
+    ];
+    detalle({
+      titulo: 'Historial de autonomía',
+      sub: 'Lo que moviste en esta visita, con la hora, y con qué nivel viene trabajando cada acción.',
+      bloques,
+      fuente: `Sale de esta misma pantalla: las ${AUTONOMIA_CREADOR.length} acciones de tu cuenta y los ${GUARDRAILS_CREADOR.length} frenos que tenés hoy. Se actualiza en cuanto cambiás algo.`,
+      acciones: Object.keys(movido).length > 0
+        ? [{ label: 'Volver a como venía', variante: 'primary', title: 'Devuelve las 8 acciones al nivel con el que vienen. Reversible: las volvés a mover cuando quieras.', onClick: resetDial }]
+        : [{ label: 'Cerrar', title: 'Cierra el panel sin cambiar nada', onClick: () => {} }],
+    });
+  };
+
+  // ---------------------------------------------------------------------------------------------
+  // LOS GUARDRAILS Y EL CANAL — lo que el motor no negocia y por dónde te llegan las decisiones.
+  // ---------------------------------------------------------------------------------------------
+
+  /** «Cómo te protegen»: los 7 frenos con su valor real y con qué protege cada uno. */
   const abrirGuardrails = () => detalle({
-    titulo: 'Los guardrails de tu cuenta',
+    titulo: `Los ${GUARDRAILS_CREADOR.length} guardrails de tu cuenta`,
     sub: 'No los elegís vos: vienen puestos por el motor y valen siempre, también cuando el equipo trabaja solo.',
     bloques: [
       { tipo: 'filas', items: GUARDRAILS_CREADOR.map(g => ({
-        t: g.nombre, s: `${g.porQue} · Hoy: ${g.valor}`, etiqueta: 'activo', tono: 'green' as const,
+        t: g.nombre, s: g.porQue, etiqueta: g.valor, tono: 'green' as const,
       })) },
       { tipo: 'datos', filas: [
-        { k: 'Techo diario de generación', v: GUARDRAILS_CREADOR[0].valor, s: 'una idea cara no se quema los créditos de tu semana' },
-        { k: 'Cobros que te esperan', v: 'Deals o cobros de más de $200', s: 'los rates y los links de cobro son tuyos: ningún cobro sale sin que lo mandes vos' },
-        { k: 'Ventana de silencio', v: GUARDRAILS_CREADOR[5].valor, s: 'una marca no recibe un pitch tuyo a las 3 de la mañana' },
-        { k: 'Publicar', v: GUARDRAILS_CREADOR[4].valor, s: 'sin verificación no se publica ni se pacta a tu nombre' },
+        { k: 'Nada se publica sin verificar', v: FRENO_PANEL.valor, s: FRENO_PANEL.porQue },
+        { k: 'Publicar tu contenido', v: FRENO_KYC.valor, s: FRENO_KYC.porQue },
+        { k: 'Una publicación que ya salió', v: FRENO_PUBLICADA.valor, s: FRENO_PUBLICADA.porQue },
+        { k: 'Lo que se puede gastar por día', v: GUARDRAILS_CREADOR[0].valor, s: GUARDRAILS_CREADOR[0].porQue },
       ] },
-      { tipo: 'texto', texto: 'Un ejemplo con plata: un deal grande no se cierra solo, te espera. Y si el equipo se equivoca en un dígito, el freno lo agarra antes de que se convierta en un cobro. Lo que ya ves en la pantalla está en dólares, con su equivalente al lado.' },
+      { tipo: 'texto', texto: 'Un ejemplo con el motor en Automático: el equipo puede escribir un guion, producir la pieza con tu avatar y programarla, pero no la publica sin que el panel de 5 la apruebe, y no toca una pieza que ya salió con tu nombre. Lo que decide solo es el trabajo; lo que sale publicado y lo que se borra siempre pasa por una regla o por vos.' },
       { tipo: 'aviso', tono: 'amber', texto: 'Estos frenos son los que te dejan tener el dial en Automático sin estar mirando el panel. Si se pudieran apagar, trabajar sin mirar no sería una opción.' },
     ],
-    fuente: 'Sale de los guardrails que el motor aplica a tu cuenta, con su valor de hoy.',
+    fuente: `Sale de los ${GUARDRAILS_CREADOR.length} guardrails que el motor aplica a tu cuenta, con su valor de hoy.`,
     acciones: [
       { label: 'Ver mi dial', variante: 'primary', title: 'Cierra el panel y te deja en el dial, acción por acción', onClick: () => setToast('El dial está arriba: cada acción con su nivel') },
     ],
@@ -468,67 +577,58 @@ export function ViewCuentaCreador({ setToast, modo, setModo }: {
   /** «Tu verificación»: por qué es obligatoria antes de publicar y en qué estado está. */
   const abrirVerificacion = () => detalle({
     titulo: 'Tu verificación (KYC)',
-    sub: 'Es la que habilita publicar y cerrar deals a tu nombre. Sin ella, el equipo prepara todo pero no lo saca.',
+    sub: 'Es la que habilita publicar en tus redes a tu nombre. Sin ella, el equipo prepara y verifica todo, pero no lo saca.',
     bloques: [
       { tipo: 'datos', filas: [
         { k: 'Estado', v: 'Pendiente', s: 'la hacés una sola vez, con la cámara, en el momento', tono: 'amber' },
-        { k: 'Qué desbloquea', v: 'Publicar en tus redes y cerrar deals', s: 'con tu autonomía, publicar y cobrar te esperan igual: la verificación va antes' },
-        { k: 'Por qué es obligatoria', v: GUARDRAILS_CREADOR[4].valor, s: GUARDRAILS_CREADOR[4].porQue },
+        { k: 'Qué desbloquea', v: 'Publicar en tus redes', s: 'mientras esté pendiente, publicar te espera: la verificación va antes' },
+        { k: 'Por qué es obligatoria', v: FRENO_KYC.valor, s: FRENO_KYC.porQue },
         { k: 'Qué se pide', v: '3 pasos con la cámara', s: 'documento, comprobante de domicilio y selfie' },
       ] },
       { tipo: 'pasos', items: [
-        'Sacás las fotos con la cámara, en el momento: no se suben archivos.',
+        'Sacás las fotos con la cámara, en el momento: no se suben archivos guardados.',
         'Se comparan entre sí y con tu selfie.',
-        'Cuando queda aprobada, el equipo puede publicar y cerrar deals en tu nombre.',
+        'Cuando queda aprobada, el equipo puede publicar en tus redes.',
       ] },
-      { tipo: 'aviso', tono: 'amber', texto: 'Mientras esté pendiente, el equipo sigue trabajando en todo lo que no toca publicar ni cobrar: mira tu nicho, escribe los guiones, contesta los DMs y arma los pitches para que los mandes vos.' },
+      { tipo: 'texto', texto: 'Mientras esté pendiente, el equipo sigue con todo lo demás: mira tu nicho, escribe los guiones, produce con tu avatar, verifica cada pieza con el panel y contesta los comentarios de tu audiencia. Lo único que espera es publicar.' },
+      { tipo: 'aviso', tono: 'amber', texto: `Es un freno del motor, no una decisión del equipo: ${FRENO_KYC.nombre.toLowerCase()} · ${FRENO_KYC.valor}. Nada se publica a nombre de alguien sin verificar.` },
     ],
     fuente: 'Sale del estado de tu verificación y del guardrail que la hace obligatoria para publicar.',
-    acciones: [{ label: 'Entendido', title: 'Cierra este panel: tu verificación sigue pendiente', onClick: () => setToast('Tu verificación sigue pendiente: el equipo no publica ni cierra deals hasta que esté aprobada') }],
+    acciones: [{ label: 'Entendido', title: 'Cierra este panel: tu verificación sigue pendiente', onClick: () => setToast('Tu verificación sigue pendiente: el equipo produce y verifica, pero no publica hasta que esté aprobada') }],
   });
 
-  /** «Ver cómo llega una aprobación»: el canal, paso por paso, con un DM real de la bandeja. */
-  const abrirCanal = () => {
-    const dm = MENSAJES_CREADOR[0];
-    detalle({
-      titulo: `Cómo te llega una decisión por ${canal}`,
-      sub: CANAL_AVISO.texto,
-      bloques: [
-        { tipo: 'pasos', items: [
-          `El equipo se topa con algo que necesita tu OK y te escribe a ${canal}.`,
-          'El mensaje llega con la propuesta ya escrita y el motivo: no tenés que abrir nada.',
-          'Respondés desde el chat: lo aprobás, lo ajustás o lo dejás para después.',
-          'Si no respondés cerca del horario ideal, se reprograma y te avisa. Nunca ejecuta sin tu sí.',
-        ] },
-        { tipo: 'datos', filas: [
-          { k: 'Quién escribe', v: dm.de, s: dm.tipo === 'marca' ? 'marca del nicho' : 'seguidor' },
-          { k: 'Qué pide', v: dm.texto },
-          { k: 'Lo que propone Rumi', v: dm.propuesta ?? 'La respuesta, lista para mandar', s: 'vos la podés cambiar antes de que salga' },
-          { k: 'Estado', v: dm.estado, s: 'es lo que ves en el chat y también en Mensajes', tono: 'amber' },
-          { k: 'Por dónde te llega', v: canal, s: 'se cambia desde esta pantalla cuando quieras' },
-        ] },
-        { tipo: 'texto', texto: `Lo que no te llega por ${canal} es nada de una marca entre las 22:00 y las 08:00: ese guardrail vale para todo el equipo, también cuando trabaja solo.` },
-        { tipo: 'aviso', texto: 'El panel es para ver el detalle cuando querés: aprobar no depende de entrar acá. Todo lo que apruebas desde el chat queda después en la bitácora.' },
-      ],
-      fuente: 'Sale del canal que tenés elegido y de un mensaje real de tu bandeja, con la respuesta que Rumi dejó lista.',
-      acciones: [
-        { label: `Marcar ${canal === 'WhatsApp' ? 'Telegram' : 'WhatsApp'}`, title: 'Cambia el canal por el que te llegan las decisiones. Reversible: se cambia de nuevo desde esta pantalla.', onClick: () => cambiarCanal(canal === 'WhatsApp' ? 'Telegram' : 'WhatsApp') },
-      ],
-    });
-  };
+  /** El canal: por dónde te llega cada decisión que espera tu OK, paso por paso. */
+  const abrirCanal = () => detalle({
+    titulo: `Cómo te llega una decisión por ${canal}`,
+    sub: CANAL_AVISO.texto,
+    bloques: [
+      { tipo: 'pasos', items: [
+        `El equipo se topa con algo que necesita tu OK y te escribe a ${canal}.`,
+        'El mensaje llega con la pieza o la respuesta ya escrita y el motivo: no tenés que abrir nada.',
+        'Respondés desde el chat: lo aprobás, lo ajustás o lo dejás para después.',
+        'Si no respondés cerca de la mejor ventana, se reprograma y te avisa. Nunca publica sin tu sí.',
+      ] },
+      { tipo: 'datos', filas: [
+        { k: 'Por dónde te llega', v: canal, s: 'se cambia desde esta pantalla cuando quieras' },
+        { k: 'Decisiones que pueden esperarte', v: `${esperan} de ${AUTONOMIA_CREADOR.length}`, s: 'las acciones en Compartido y en Manual: no salen sin tu OK' },
+        { k: 'Lo que nunca espera tu OK', v: 'Verificar y medir', s: 'el panel puntúa cada pieza y Sol mide el resultado: no cuesta créditos' },
+        { k: 'Lo que sigue andando sin vos', v: `La vigilancia del nicho`, s: RITMO_SEMANA.latido },
+      ] },
+      { tipo: 'texto', texto: 'El panel es para ver el detalle cuando querés: aprobar no depende de entrar acá. Todo lo que apruebas desde el chat queda después en la bitácora.' },
+      { tipo: 'aviso', texto: 'Nada de lo que el equipo decide solo sale publicado: lo que se publica, se contesta o se borra siempre pasa por tu OK, por una regla del motor o por las dos cosas.' },
+    ],
+    fuente: `Sale del canal que tenés elegido y de los niveles que tienen hoy las ${AUTONOMIA_CREADOR.length} acciones del dial.`,
+    acciones: [
+      { label: `Marcar ${canal === 'WhatsApp' ? 'Telegram' : 'WhatsApp'}`, title: `Cambia el canal por el que te llegan las decisiones. Reversible: se cambia de nuevo desde esta pantalla.`, onClick: () => cambiarCanal(canal === 'WhatsApp' ? 'Telegram' : 'WhatsApp') },
+    ],
+  });
 
   const cambiarCanal = (c: 'WhatsApp' | 'Telegram') => {
     if (canal === c) { setToast(`Las decisiones ya te llegan por ${c}`); return; }
     registrar(`Las decisiones pasan a llegarte por ${c}`, `venían por ${canal}`);
     setCanal(c);
     setCanalDesde(ahora());
-    setToast(`Listo: las próximas decisiones que esperan tu OK te llegan por ${c}`);
-  };
-
-  /** El rol real del agente que trabaja con un dato de la Ficha. */
-  const agenteTexto = (nombre: string) => {
-    const a = AGENTES_CREADOR.find(x => x.nombre === nombre);
-    return a ? `${a.nombre}: ${a.enCreadores}` : 'El equipo';
+    setToast(`Listo: las decisiones que esperan tu OK te llegan por ${c}`);
   };
 
   // ---------------------------------------------------------------------------------------------
@@ -537,55 +637,154 @@ export function ViewCuentaCreador({ setToast, modo, setModo }: {
 
   const autos = AUTONOMIA_CREADOR.filter(a => (niveles[a.accion] ?? a.nivel) === 'auto').length;
   const esperan = AUTONOMIA_CREADOR.length - autos;
+  const cambios = Object.keys(tocado).length;
 
   return (
     <div className="dash">
       <ViewHead
         icon={<I_Settings size={19} />}
         titulo="Cuenta y autonomía"
-        sub="El dial por acción, los guardrails y tu Ficha de creador. Se cambia cuando quieras, sin perder nada."
+        sub="Tu tipo de creador, el objetivo de tu perfil, tu Ficha, el dial por acción y los guardrails. Es la misma herramienta para cualquier tipo de creador: el motor no cambia, cambia lo que publicás y lo que perseguís."
         nums={[
-          { v: NOMBRE[modo], l: 'modo de autonomía', c: 'var(--purple3)' },
+          { v: tipoActual.nombre, l: 'tu tipo de creador', c: 'var(--purple3)' },
           { v: `${autos}/${AUTONOMIA_CREADOR.length}`, l: 'acciones automáticas' },
           { v: String(GUARDRAILS_CREADOR.length), l: 'frenos activos', c: 'var(--green)' },
           { v: 'Pendiente', l: 'verificación (KYC)', c: 'var(--amber)' },
         ]}
       />
 
-      {/* ================= TU FICHA DE CREADOR ================= */}
+      {/* ================= TU TIPO DE CREADOR ================= */}
       <div className="csec" style={{ marginTop: 0 }}>
+        <span className="csec-n">🧑‍🎤</span>
+        <span className="csec-t">Tu tipo de creador</span>
+        <span className="csec-s">Para qué tipo de creador trabaja el equipo — se puede cambiar cuando quieras</span>
+      </div>
+      <Card
+        title={<span className="row" style={{ gap: 8 }}><I_Users size={14} style={{ color: 'var(--purple3)' }} /> {tipoActual.icono} {tipoActual.nombre}</span>}
+        action={<Badge tone="purple">el motor es el mismo para todos los tipos</Badge>}
+      >
+        <div className="bs" style={{ marginBottom: 12 }}>
+          {tipoActual.quien} <b>El tipo define qué publica el equipo, qué métrica persigue y con qué ritmo;</b> el
+          motor —los 6 agentes, el panel de 5, el dial y los {GUARDRAILS_CREADOR.length} guardrails— es el mismo
+          para cualquier tipo de creador.
+        </div>
+
+        <div className="guards">
+          <div className="guard">
+            <span style={{ color: 'var(--purple3)', flexShrink: 0 }}><I_Film size={14} /></span>
+            <span className="guard-lb">{tipoActual.publica}<small>Qué publica el equipo</small></span>
+          </div>
+          <div className="guard">
+            <span style={{ color: 'var(--green)', flexShrink: 0 }}><I_Target size={14} /></span>
+            <span className="guard-lb">{tipoActual.persigue}<small>Qué persigue tu cuenta</small></span>
+          </div>
+          <div className="guard">
+            <span style={{ color: 'var(--amber)', flexShrink: 0 }}><I_Cal size={14} /></span>
+            <span className="guard-lb">{tipoActual.ritmo}<small>Cada cuánto, según tu tiempo</small></span>
+          </div>
+          <div className="guard">
+            <span style={{ color: 'var(--purple3)', flexShrink: 0 }}><I_Star size={14} /></span>
+            <span className="guard-lb">{tipoActual.ejemploNicho}<small>Nichos donde este tipo entra, por ejemplo</small></span>
+          </div>
+        </div>
+
+        {tipoAntes && (
+          <div className="tiny row" style={{ gap: 8, color: 'var(--amber)', fontWeight: 700, flexWrap: 'wrap', alignItems: 'center', marginTop: 12 }}>
+            <I_Clock size={13} /> Cambiado hoy {tipoAntes.hora}: venía «{tipoDe(tipoAntes.key).nombre}». Ahora {cambioDeTipo(tipoActual)}.
+            <Button variant="ghost" className="btn-sm"
+              title={`Vuelve a «${tipoDe(tipoAntes.key).nombre}»: ${cambioDeTipo(tipoDe(tipoAntes.key))}. Reversible: lo volvés a cambiar cuando quieras.`}
+              onClick={volverTipo}><I_Refresh size={12} /> Volver a «{tipoDe(tipoAntes.key).nombre}»</Button>
+          </div>
+        )}
+
+        <div className="row" style={{ gap: 9, marginTop: 14, flexWrap: 'wrap' }}>
+          <Button className="btn-sm"
+            title={`Abre los ${TIPOS_CREADOR.length} tipos de creador con lo que publica y persigue cada uno: al elegir uno, el plan se rearma y el cambio queda a la vista en esta tarjeta. Reversible.`}
+            onClick={abrirTipos}><I_Edit size={13} /> Cambiar mi tipo</Button>
+          <Badge tone="muted">{TIPOS_CREADOR.length} tipos disponibles</Badge>
+        </div>
+
+        <div className="acc-why">
+          Esto es lo que hace que la herramienta sirva para cualquiera: <b>no se asume un rubro ni un perfil</b>.
+          Un creador que publica por gusto, uno que hace crecer su audiencia, uno que graba para otros, uno que
+          muestra su oficio y uno que habla de su ciudad usan el mismo motor, con otro norte y otro ritmo.
+        </div>
+      </Card>
+
+      {/* ================= TU OBJETIVO DE PERFIL ================= */}
+      <div className="csec">
+        <span className="csec-n">🎯</span>
+        <span className="csec-t">Tu objetivo de perfil</span>
+        <span className="csec-s">Con qué se mide que tu cuenta avanza</span>
+      </div>
+      <Card
+        title={<span className="row" style={{ gap: 8 }}><I_Target size={14} style={{ color: 'var(--green)' }} /> {objetivoActual.icono} {objetivoActual.nombre}</span>}
+        action={<Badge tone="green">{objetivoActual.kpi.length} métricas</Badge>}
+      >
+        <div className="bs" style={{ marginBottom: 10 }}>{objetivoActual.quien}</div>
+        <div className="como-se-lee"><b>Qué hace el equipo con esto:</b> {objetivoActual.paraQue}</div>
+
+        <div className="row" style={{ gap: 6, flexWrap: 'wrap', margin: '12px 0 4px' }}>
+          {objetivoActual.kpi.map(k => <span key={k} className="badge badge-green" style={{ fontSize: 9.5 }}>{k}</span>)}
+        </div>
+
+        {objetivoAntes && (
+          <div className="tiny row" style={{ gap: 8, color: 'var(--amber)', fontWeight: 700, flexWrap: 'wrap', alignItems: 'center', marginTop: 10 }}>
+            <I_Clock size={13} /> Cambiado hoy {objetivoAntes.hora}: venía «{objetivoDe(objetivoAntes.key).nombre}». Ahora tu perfil persigue «{objetivoActual.nombre}» y el equipo se mide por {objetivoActual.kpi.join(', ').toLowerCase()}.
+            <Button variant="ghost" className="btn-sm"
+              title={`Vuelve a «${objetivoDe(objetivoAntes.key).nombre}»: el equipo se mide otra vez por ${objetivoDe(objetivoAntes.key).kpi.join(', ').toLowerCase()}. Reversible.`}
+              onClick={volverObjetivo}><I_Refresh size={12} /> Volver a «{objetivoDe(objetivoAntes.key).nombre}»</Button>
+          </div>
+        )}
+
+        <div className="row" style={{ gap: 9, marginTop: 14, flexWrap: 'wrap' }}>
+          <Button className="btn-sm"
+            title={`Abre los ${OBJETIVOS_PERFIL.length} objetivos de perfil con sus métricas: al elegir uno, el equipo prioriza otro contenido y el cambio queda a la vista. Reversible.`}
+            onClick={abrirObjetivos}><I_Edit size={13} /> Cambiar mi objetivo</Button>
+          <Badge tone="muted">{OBJETIVOS_PERFIL.length} objetivos disponibles</Badge>
+        </div>
+
+        <div className="acc-why">
+          El objetivo no limita lo que el equipo puede hacer: <b>ordena qué produce primero</b> y contra qué número
+          te cuenta el resultado del viernes. El que persigue autoridad recibe piezas que enseñan; el que busca
+          constancia, el ritmo sostenido con su avatar.
+        </div>
+      </Card>
+
+      {/* ================= TU FICHA ================= */}
+      <div className="csec">
         <span className="csec-n">📋</span>
-        <span className="csec-t">Tu Ficha de creador</span>
-        <span className="csec-s">Lo que el equipo necesita saber de vos: de acá sale todo lo que produce</span>
+        <span className="csec-t">Tu Ficha</span>
+        <span className="csec-s">Lo que el equipo necesita saber de vos: de acá sale cada pieza que produce</span>
       </div>
       <Card
         title={<span className="row" style={{ gap: 8 }}><I_User size={14} style={{ color: 'var(--purple3)' }} /> {FICHA_CREADOR.nombre} · {FICHA_CREADOR.usuario}</span>}
-        action={<Badge tone="purple">{perfilActual.nombre}</Badge>}
+        action={<Badge tone="purple">{FICHA_CREADOR.nicho}</Badge>}
       >
         <div className="row spread" style={{ gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
           <span className="row" style={{ gap: 11 }}>
             <Avatar name={FICHA_CREADOR.nombre} size={42} tone={4} />
             <span>
-              <span className="bt" style={{ display: 'block' }}>{FICHA_CREADOR.pais} · {FICHA_CREADOR.idioma} · {FICHA_CREADOR.registro}</span>
-              <span className="tiny muted">{FICHA_CREADOR.redes.join(' · ')} · {FICHA_CREADOR.seguidores} · {FICHA_CREADOR.interaccion} de interacción</span>
+              <span className="bt" style={{ display: 'block' }}>
+                {FICHA_CREADOR.subtemas.length} subtemas · {FICHA_CREADOR.formatoDominante.toLowerCase()}
+              </span>
+              <span className="tiny muted">
+                {FICHA_CREADOR.redes.map(r => r.red).join(' · ')} · {SEGUIDORES.toLocaleString('es-AR')} seguidores
+              </span>
             </span>
           </span>
           <span className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
-            <Badge tone="green">{carril.nombre}</Badge>
-            <Badge tone="muted">{FICHA_CREADOR.interaccion} de interacción</Badge>
+            <Badge tone="green">{CONECTADAS} de {FICHA_CREADOR.redes.length} redes conectadas</Badge>
+            <Badge tone="muted">{FICHA_CREADOR.ritmoActual} · meta: {FICHA_CREADOR.ritmoObjetivo}</Badge>
           </span>
         </div>
 
         <div className="onb-infiere" style={{ marginTop: 0 }}>
-          <span className="onb-infiere-ic"><I_Zap size={13} /></span>
-          <span><b>{carril.promesa}</b> {carril.queHace}</span>
+          <span className="onb-infiere-ic"><I_Eye size={13} /></span>
+          <span><b>Lo que el motor leyó en tu perfil:</b> {FICHA_CREADOR.lecturaDelPerfil}</span>
         </div>
 
-        <div className="row" style={{ gap: 6, flexWrap: 'wrap', margin: '10px 0 14px' }}>
-          {carril.kpi.map(k => <span key={k} className="badge badge-purple" style={{ fontSize: 9.5 }}>{k}</span>)}
-        </div>
-
-        <div className="exc">
+        <div className="exc" style={{ marginTop: 12 }}>
           {filas.map(f => {
             const t = tocado[f.key];
             return (
@@ -621,22 +820,25 @@ export function ViewCuentaCreador({ setToast, modo, setModo }: {
         </div>
 
         <div className="row" style={{ gap: 9, marginTop: 14, flexWrap: 'wrap' }}>
-          <Button className="btn-sm" title="Abre tu Ficha completa: con qué está trabajando el equipo ahora y qué cambiaste hoy."
+          <Button className="btn-sm" title="Abre tu Ficha completa: con qué está trabajando el equipo ahora, tus redes una por una y qué cambiaste hoy."
             onClick={abrirFicha}><I_Eye size={13} /> Ver mi Ficha completa</Button>
-          {(Object.keys(tocado).length > 0) && (
+          <Button variant="ghost" className="btn-sm" title={`Abre tus redes con los seguidores y la interacción de cada una, y cuál falta conectar. No cambia nada.`}
+            onClick={abrirRedes}><I_Globe size={13} /> Ver mis redes</Button>
+          {cambios > 0 && (
             <Button variant="outline" className="btn-sm"
               title="Devuelve los datos que cambiaste hoy a lo que decían antes. Reversible: los volvés a cambiar cuando quieras."
               onClick={resetFicha}><I_Refresh size={13} /> Volver todo a como venía</Button>
           )}
         </div>
-        {Object.keys(tocado).length > 0 && (
+        {cambios > 0 && (
           <div className="tiny" style={{ marginTop: 11, color: 'var(--amber)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 7 }}>
-            <I_Clock size={13} /> Cambiaste {Object.keys(tocado).length === 1 ? 'un dato' : `${Object.keys(tocado).length} datos`} de tu Ficha hoy: el equipo trabaja con lo nuevo desde la próxima vuelta, y cada cambio se revierte desde su fila.
+            <I_Clock size={13} /> Cambiaste {cambios === 1 ? 'un dato' : `${cambios} datos`} de tu Ficha hoy: el equipo trabaja con lo nuevo desde la próxima vuelta, y cada cambio se revierte desde su fila.
           </div>
         )}
         <div className="acc-why">
-          La Ficha es lo que hace que las propuestas lleguen listas: <b>nicho, carril, tono y tabúes</b> son de dónde
-          sale cada guion, cada pitch y cada respuesta que el equipo te deja para aprobar.
+          La Ficha es lo que hace que las ideas lleguen listas: <b>nicho, subtemas, tono y tabúes</b> son de dónde sale
+          cada guion, cada hook y cada respuesta que el equipo te deja para aprobar. Lo que el motor deduce solo
+          —el ritmo, la lectura del perfil y las ventanas— se puede mirar pero no se edita: sale de tus números.
         </div>
       </Card>
 
@@ -644,7 +846,7 @@ export function ViewCuentaCreador({ setToast, modo, setModo }: {
       <div className="csec">
         <span className="csec-n">★</span>
         <span className="csec-t">El dial, acción por acción</span>
-        <span className="csec-s">Siete acciones, siete niveles: cada una se cambia sola y el cambio se ve al instante</span>
+        <span className="csec-s">Ocho acciones, ocho niveles: cada una se cambia sola y el cambio se ve al instante</span>
       </div>
       <Card
         title={<span className="row" style={{ gap: 8 }}><I_Settings size={14} style={{ color: 'var(--purple3)' }} /> Cuánto decide el equipo en cada cosa</span>}
@@ -652,14 +854,14 @@ export function ViewCuentaCreador({ setToast, modo, setModo }: {
       >
         <div className="row spread" style={{ gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
           <span className="bs" style={{ maxWidth: 430 }}>
-            <b>Nivel general del equipo.</b> Es el que rige cuando una acción no tiene el suyo: las siete de
-            abajo lo tienen puesto, así que hoy vale para lo que el equipo haga por primera vez.
+            <b>Nivel general del equipo.</b> Es el que rige cuando una acción no tiene el suyo: las ocho de abajo
+            lo tienen puesto, así que hoy vale para lo que el equipo haga por primera vez.
           </span>
           <div className="seg-group">
-            {(['auto', 'shared', 'manual'] as Modo[]).map(m => (
-              <span key={m} className={`seg ${modo === m ? 'on' : ''}`}
-                title={`Nivel general en ${NOMBRE[m]}: ${DESC[m]} Reversible: se cambia de nuevo acá.`}
-                onClick={() => cambiarGeneral(m)}>{NOMBRE[m]}</span>
+            {MODOS.map(m => (
+              <span key={m.key} className={`seg ${modo === m.key ? 'on' : ''}`}
+                title={`Nivel general en ${m.nombre}: ${m.desc} Reversible: se cambia de nuevo acá.`}
+                onClick={() => cambiarGeneral(m.key)}>{m.nombre}</span>
             ))}
           </div>
         </div>
@@ -672,7 +874,7 @@ export function ViewCuentaCreador({ setToast, modo, setModo }: {
         <div className="exc">
           {AUTONOMIA_CREADOR.map(a => {
             const n = niveles[a.accion] ?? a.nivel;
-            const fija = a.accion === FIJA;
+            const fija = a.accion === VIGILANCIA.accion;
             const mv = movido[a.accion];
             return (
               <div key={a.accion} className="exc-row">
@@ -683,7 +885,7 @@ export function ViewCuentaCreador({ setToast, modo, setModo }: {
                     {(['auto', 'shared', 'manual'] as Modo[]).map(m => (
                       <span key={m} className={`seg ${n === m ? 'on' : ''} ${fija && m !== 'auto' ? 'locked' : ''}`}
                         title={fija
-                          ? 'La vigilancia del nicho es automática y no se puede bajar: tocá para ver por qué y qué encontró.'
+                          ? 'La vigilancia del nicho es automática y no se puede bajar ni apagar: tocá para ver por qué no tiene palanca y qué encontró en tu nicho.'
                           : `Poner «${a.accion}» en ${NOMBRE[m]}: ${DESC[m]} Reversible: lo cambiás de nuevo acá cuando quieras.`}
                         onClick={() => (fija ? abrirFija() : mover(a.accion, m))}>{NOMBRE[m]}</span>
                     ))}
@@ -710,7 +912,7 @@ export function ViewCuentaCreador({ setToast, modo, setModo }: {
           <Button className="btn-sm" title="Abre lo que moviste en esta visita, con la hora, y con qué nivel viene trabajando cada acción hoy."
             onClick={abrirHistorial}><I_Eye size={13} /> Ver el historial</Button>
           <Button variant="outline" className="btn-sm"
-            title="Devuelve las 7 acciones al nivel con el que vienen. Reversible: las volvés a mover cuando quieras."
+            title={`Devuelve las ${AUTONOMIA_CREADOR.length} acciones al nivel con el que vienen. Reversible: las volvés a mover cuando quieras.`}
             onClick={resetDial}><I_Refresh size={13} /> Volver a como venía</Button>
         </div>
         {historial.length > 0 && (
@@ -719,8 +921,9 @@ export function ViewCuentaCreador({ setToast, modo, setModo }: {
           </div>
         )}
         <div className="acc-why">
-          No es una sola palanca: <b>publicar, responder y cobrar tienen su propio nivel</b>. Frenar algo que se quema
-          va en Automático aunque todo lo demás te pregunte, porque una serie que no rinde no puede esperarte.
+          No es una sola palanca: <b>producir, publicar y contestar tienen su propio nivel</b>. Y hay dos verdades que
+          no dependen del dial: el panel de 5 puntúa cada pieza antes de que salga, y la vigilancia del nicho no se
+          puede bajar —es lo que hace que el equipo nunca esté quieto y no cuesta créditos.
         </div>
       </Card>
 
@@ -735,15 +938,15 @@ export function ViewCuentaCreador({ setToast, modo, setModo }: {
         action={<Badge tone="green">siempre activos</Badge>}
       >
         <div className="bs" style={{ marginBottom: 12 }}>
-          No los elegís vos: el motor los aplica a tu cuenta y valen también cuando el equipo trabaja solo.
-          Protegen tu plata, tu nombre y tus marcas.
+          No los elegís vos: el motor los aplica a tu cuenta y valen también cuando el equipo trabaja solo. Protegen
+          tu cuenta, tu contenido y tu nombre.
         </div>
         <div className="guards">
           {GUARDRAILS_CREADOR.map(g => (
             <div key={g.nombre} className="guard">
               <I_Lock size={14} style={{ color: 'var(--purple3)', flexShrink: 0 }} />
-              <span className="guard-lb"><ConDinero texto={g.nombre} /><small>{g.porQue}</small></span>
-              <span className="guard-val"><ConDinero texto={g.valor} /></span>
+              <span className="guard-lb">{g.nombre}<small>{g.porQue}</small></span>
+              <span className="guard-val">{g.valor}</span>
             </div>
           ))}
         </div>
@@ -751,20 +954,22 @@ export function ViewCuentaCreador({ setToast, modo, setModo }: {
         <div className="datos-row" style={{ marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--border)' }}>
           <div className="dato"><span className="dato-l">Frenos activos</span><span className="dato-v" style={{ color: 'var(--green)' }}>{GUARDRAILS_CREADOR.length}</span></div>
           <div className="dato"><span className="dato-l">Acciones que te esperan</span><span className="dato-v">{esperan} de {AUTONOMIA_CREADOR.length}</span></div>
-          <div className="dato"><span className="dato-l">Cobros de más de</span><span className="dato-v" style={{ color: 'var(--amber)' }}><Dinero monto={200} /></span></div>
+          <div className="dato"><span className="dato-l">Publicar sin verificar</span><span className="dato-v" style={{ color: 'var(--amber)' }}>{FRENO_PANEL.valor}</span></div>
+          <div className="dato"><span className="dato-l">Una publicación que ya salió</span><span className="dato-v" style={{ color: 'var(--purple3)' }}>{FRENO_PUBLICADA.valor}</span></div>
         </div>
 
         <div className="bs" style={{ marginTop: 11 }}>
-          Un cobro de más de <Dinero monto={200} /> pide tu OK: es el freno que hace que un error de un dígito
-          no se convierta en un cobro. Y entre las 22:00 y las 08:00 no le llega nada a una marca, ni un pitch.
+          Dos ejemplos de lo que hacen: <b>{FRENO_PANEL.nombre.toLowerCase()}</b> ({FRENO_PANEL.valor.toLowerCase()}): una
+          pieza que no llega al puntaje no sale, vuelve con la objeción y se vuelve a producir. Y <b>{FRENO_PUBLICADA.nombre.toLowerCase()}</b>:
+          el equipo no edita ni borra una publicación que ya salió con tu nombre.
         </div>
-        <NotaMoneda />
+
         <div className="row" style={{ gap: 9, marginTop: 12, flexWrap: 'wrap' }}>
           <Button variant="outline" className="btn-sm"
-            title="Abre los 7 guardrails con su valor real, por qué están y a qué acción del dial tocan. No cambia nada."
+            title={`Abre los ${GUARDRAILS_CREADOR.length} guardrails con su valor real y por qué protegen: no cambia nada, es para que sepas con qué trabaja tu cuenta.`}
             onClick={abrirGuardrails}><I_Eye size={13} /> Cómo te protegen</Button>
           <Button variant="ghost" className="btn-sm"
-            title="Te muestra en qué estado está tu verificación, por qué es obligatoria antes de publicar y qué queda apagado mientras tanto."
+            title="Te muestra en qué estado está tu verificación, por qué es obligatoria antes de publicar y qué sigue andando mientras tanto."
             onClick={abrirVerificacion}><I_Shield size={13} /> Tu verificación</Button>
         </div>
         <div className="row" style={{ gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
@@ -803,12 +1008,12 @@ export function ViewCuentaCreador({ setToast, modo, setModo }: {
         )}
         <div className="row" style={{ gap: 9, marginTop: 14, flexWrap: 'wrap' }}>
           <Button className="btn-sm"
-            title="Abre un mensaje real de tu bandeja, con la respuesta que Rumi dejó lista, y los 4 pasos de cómo lo aprobás desde el chat."
+            title={`Abre los 4 pasos de cómo te llega una decisión por ${canal}, con lo que el equipo puede preguntarte y por dónde. No cambia nada.`}
             onClick={abrirCanal}><I_Chat size={13} /> Ver cómo llega una aprobación <I_ArrowRight size={13} /></Button>
         </div>
         <div className="acc-why">
-          De 22:00 a 08:00 no te llega nada de marcas: el equipo escribe cuando la marca puede leerlo.
-          <b> Nada de lo que apruebes desde el chat se pierde</b>: queda en la bitácora como cualquier otra acción.
+          <b>Lo que se publica nunca sale de un aviso:</b> llega al chat con la pieza ya escrita y su motivo, y recién
+          sale cuando respondés. Lo que apruebes desde el chat queda en la bitácora como cualquier otra acción.
         </div>
       </Card>
     </div>
