@@ -1,4 +1,7 @@
 // =============================================================================================
+import { OFERTAS_ANTERIORES } from './demo';
+
+// =============================================================================================
 // QUÉ SE PUEDE PUBLICAR — el área completa, curada.
 //
 // Del código inicial se rescataron los 15 tipos de campaña con su estrategia (ver ./campana.ts),
@@ -32,6 +35,10 @@ export interface CampoPublicacion {
   ventanaEnvio?: boolean;
   /** Qué hace cada opción, por opción: se muestra en el globito al pasar el mouse por la pastilla. */
   detalle?: Record<string, string>;
+  /** Muestra el detalle de las opciones elegidas DEBAJO de las pastillas (en el celular no hay globito). */
+  detalleVisible?: boolean;
+  /** Un campo de texto que ADEMÁS acepta imágenes: pantallazos del celular o pegados con Ctrl+V. */
+  conImagenes?: boolean;
 }
 
 export interface Formato {
@@ -99,6 +106,23 @@ const DETALLE_PAGOS: Record<string, string> = {
 };
 
 // ---------------------------------------------------------------------------------------------
+// EL TONO AL CONVERSAR — predefinido y seleccionable: es lo que decide cómo suena cada pieza. El
+// texto libre queda para las palabras propias de la marca (muletillas, palabras que no diría).
+// ---------------------------------------------------------------------------------------------
+const TONOS = [
+  'Cercano y cálido', 'Directo y sin vueltas', 'Divertido y descontracturado',
+  'Profesional y formal', 'Experto y educativo', 'Premium y sobrio',
+];
+const DETALLE_TONOS: Record<string, string> = {
+  'Cercano y cálido': 'Habla como si atendieras en el mostrador: de vos, con ganas de ayudar.',
+  'Directo y sin vueltas': 'Va al beneficio en la primera línea, sin adornos ni rodeos.',
+  'Divertido y descontracturado': 'Usa humor y complicidad. Sirve para marcas jóvenes y redes.',
+  'Profesional y formal': 'Trato de usted y sin chistes: servicios, salud y clientes corporativos.',
+  'Experto y educativo': 'Explica el por qué: ingredientes, modo de uso, comparaciones.',
+  'Premium y sobrio': 'Pocas palabras y tono alto. Para tickets altos y productos exclusivos.',
+};
+
+// ---------------------------------------------------------------------------------------------
 // LAS FORMAS DE PUBLICAR
 // ---------------------------------------------------------------------------------------------
 export const FORMATOS: Formato[] = [
@@ -126,8 +150,15 @@ export const FORMATOS: Formato[] = [
         ayuda: 'Elegí las que ya usás: la pieza va a decir el botón y la aclaración que correspondan.',
         opciones: FORMAS_PAGO, detalle: DETALLE_PAGOS },
       { id: 'ofertas', etiqueta: 'Ofertas vigentes', tipo: 'texto', ayuda: 'Descuentos, 2x1, envío gratis. Con fecha de vencimiento si tienen.' },
-      { id: 'testimonios', etiqueta: 'Reseñas reales de tus clientes', tipo: 'texto', ayuda: 'Copiá mensajes de WhatsApp o comentarios. Es lo que más sube el puntaje del panel.' },
-      { id: 'tono', etiqueta: 'Cómo hablás vos', tipo: 'texto', ayuda: 'Formal o divertida, cercana o directa, palabras que usás siempre y las que no dirías.' },
+      { id: 'ofertas_previas', etiqueta: 'Ofertas que ya usaste', tipo: 'opciones', multi: true, detalleVisible: true,
+        ayuda: 'Elegí las que querés repetir: se suman a lo que escribas arriba. Cada una trae el mes en que corrió y cómo le fue.',
+        opciones: OFERTAS_ANTERIORES.map(o => o.oferta),
+        detalle: Object.fromEntries(OFERTAS_ANTERIORES.map(o => [o.oferta, `${o.cuando} · ${o.comoLeFue}`])) },
+      { id: 'testimonios', etiqueta: 'Reseñas reales de tus clientes', tipo: 'texto', conImagenes: true, ayuda: 'Escribí lo que te dijeron, o subí el pantallazo. Es lo que más sube el puntaje del panel.' },
+      { id: 'tono', etiqueta: 'Cuál es tu tono al conversar', tipo: 'opciones', multi: true, detalleVisible: true,
+        ayuda: 'Elegí los que te representen: con dos alcanza. El motor escribe con ese tono.',
+        opciones: TONOS, detalle: DETALLE_TONOS },
+      { id: 'tono_texto', etiqueta: 'Palabras y frases que usás siempre', tipo: 'texto', ayuda: 'Opcional: las muletillas de tu marca y las palabras que no dirías nunca.' },
       { id: 'competencia', etiqueta: 'Contra quién competís', tipo: 'texto', ayuda: 'Las 2 o 3 tiendas parecidas y en qué te diferenciás.' },
     ],
   },

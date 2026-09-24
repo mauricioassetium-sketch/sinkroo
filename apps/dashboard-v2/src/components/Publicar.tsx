@@ -94,16 +94,51 @@ export function Publicar({ setToast, modo, irAConversaciones, soloIngesta }: {
     return n;
   }, [valores, material, formato]);
 
-  const subir = (campo: CampoPublicacion, files: FileList | null) => {
+  const subir = (campo: CampoPublicacion, files: FileList | File[] | null) => {
     if (!files || !files.length) return;
     const items: Archivo[] = Array.from(files).map(f => ({
-      nombre: f.name,
+      // Lo que se pega desde el portapapeles (Ctrl+V) no trae nombre: se le pone uno legible.
+      nombre: f.name || 'Captura pegada',
       peso: f.size > 1048576 ? (f.size / 1048576).toFixed(1) + ' MB' : Math.round(f.size / 1024) + ' KB',
       url: f.type.startsWith('image/') ? URL.createObjectURL(f) : null,
       esImagen: f.type.startsWith('image/'),
     }));
     setMaterial(m => ({ ...m, [campo.id]: [...(m[campo.id] || []), ...items] }));
-    setToast(`${items.length} archivo${items.length > 1 ? 's' : ''} subido${items.length > 1 ? 's' : ''} a «${campo.etiqueta.replace(/^\S+\s/, '')}»`);
+    setToast(`${items.length} archivo${items.length > 1 ? 's' : ''} subido${items.length > 1 ? 's' : ''} a «${campo.etiqueta.replace(/^[^\p{L}\p{N}]+\s*/u, '')}»`);
+  };
+
+  /** El cargador de archivos de un campo. Vive acá porque se usa en dos lados: en «Tu material real»
+      y adentro de los campos que, además de texto, aceptan pantallazos (las reseñas de clientes). */
+  const cargador = (campo: CampoPublicacion, tipo: 'imagenes' | 'videos' | 'archivos', ayuda: string) => {
+    const archivos = material[campo.id] || [];
+    return (
+      <>
+        <label className="dropzone">
+          <span style={{ color: 'var(--purple3)' }}><IconoCampo tipo={tipo} /></span>
+          <span className="small" style={{ fontWeight: 700 }}>
+            {tipo === 'imagenes' ? 'Subir imágenes' : tipo === 'videos' ? 'Subir videos' : 'Subir archivos'}
+          </span>
+          <span className="tiny muted">{ayuda}</span>
+          <input type="file" multiple
+            accept={tipo === 'imagenes' ? 'image/*' : tipo === 'videos' ? 'video/*' : '*/*'}
+            style={{ display: 'none' }} onChange={e => subir(campo, e.target.files)} />
+        </label>
+        {archivos.length > 0 && (
+          <div className="mat-thumbs">
+            {archivos.map((f, i) => (
+              <div key={i} className="mat-thumb">
+                {f.esImagen && f.url
+                  ? <img src={f.url} alt={f.nombre} />
+                  : <span className="mat-thumb-ico">{f.esImagen ? <I_Image size={18} /> : <I_Film size={18} />}</span>}
+                <span className="mat-thumb-n" title={f.nombre}>{f.nombre}</span>
+                <span className="mat-thumb-p">{f.peso}</span>
+                <button className="mat-thumb-x" title="Quitar" onClick={() => quitar(campo.id, i)}><I_Trash size={12} /></button>
+              </div>
+            ))}
+          </div>
+        )}
+      </>
+    );
   };
 
   const quitar = (id: string, i: number) =>
@@ -123,8 +158,20 @@ export function Publicar({ setToast, modo, irAConversaciones, soloIngesta }: {
       <div key={campo.id} className="mat-campo">
         <label className="label">{campo.etiqueta}</label>
         {campo.tipo === 'texto' ? (
-          <textarea className="input" rows={((v as string) || '').length > 60 ? 3 : 2} placeholder={campo.ayuda}
-            value={(v as string) || ''} onChange={e => set(campo.id, e.target.value)} />
+          <>
+            <textarea className="input" rows={((v as string) || '').length > 60 ? 3 : 2} placeholder={campo.ayuda}
+              value={(v as string) || ''} onChange={e => set(campo.id, e.target.value)}
+              onPaste={campo.conImagenes ? e => {
+                // Pegar un pantallazo con Ctrl+V: se toma la imagen del portapapeles en vez del texto.
+                const imgs = Array.from(e.clipboardData?.files || []).filter(f => f.type.startsWith('image/'));
+                if (imgs.length) { e.preventDefault(); subir(campo, imgs); }
+              } : undefined} />
+            {campo.conImagenes && (
+              <div style={{ marginTop: 10 }}>
+                {cargador(campo, 'imagenes', 'Pantallazos del celular, capturas de WhatsApp o fotos de reseñas. También podés pegarlos con Ctrl+V.')}
+              </div>
+            )}
+          </>
         ) : campo.tipo === 'link' ? (
           <input className="input" placeholder={campo.ayuda} value={(v as string) || ''} onChange={e => set(campo.id, e.target.value)} />
         ) : campo.tipo === 'numero' ? (
@@ -173,6 +220,19 @@ export function Publicar({ setToast, modo, irAConversaciones, soloIngesta }: {
                 </button>
               )}
             </div>
+            {/* Lo elegido, con su historia a la vista: en el celular no hay globito que mostrar. */}
+            {campo.detalleVisible && Array.isArray(v) && v.length > 0 && (
+              <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {v.map(op => (
+                  <div key={op} className="tiny row" style={{ gap: 7, alignItems: 'flex-start' }}>
+                    <I_Check size={12} style={{ color: 'var(--green)', flexShrink: 0, marginTop: 2 }} />
+                    <span style={{ flex: 1, minWidth: 0, color: 'var(--muted2)' }}>
+                      <b style={{ color: 'var(--txt)' }}>{op}</b> — {campo.detalle?.[op]}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
             {campo.diaHora && diaElegido && (
               <>
                 <div className="row" style={{ gap: 9, marginTop: 8, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -305,38 +365,12 @@ export function Publicar({ setToast, modo, irAConversaciones, soloIngesta }: {
             no inventa. Podés subir lo que tengas y después sumar más.
           </div>
           <div className="grow-list">
-          {MATERIAL.map(campo => {
-            const archivos = material[campo.id] || [];
-            return (
-              <div key={campo.id} className="mat-campo">
-                <label className="label">{campo.etiqueta}</label>
-                <label className="dropzone">
-                  <span style={{ color: 'var(--purple3)' }}><IconoCampo tipo={campo.tipo} /></span>
-                  <span className="small" style={{ fontWeight: 700 }}>
-                    {campo.tipo === 'imagenes' ? 'Subir imágenes' : campo.tipo === 'videos' ? 'Subir videos' : 'Subir archivos'}
-                  </span>
-                  <span className="tiny muted">{campo.ayuda}</span>
-                  <input type="file" multiple
-                    accept={campo.tipo === 'imagenes' ? 'image/*' : campo.tipo === 'videos' ? 'video/*' : '*/*'}
-                    style={{ display: 'none' }} onChange={e => subir(campo, e.target.files)} />
-                </label>
-                {archivos.length > 0 && (
-                  <div className="mat-thumbs">
-                    {archivos.map((f, i) => (
-                      <div key={i} className="mat-thumb">
-                        {f.esImagen && f.url
-                          ? <img src={f.url} alt={f.nombre} />
-                          : <span className="mat-thumb-ico">{f.esImagen ? <I_Image size={18} /> : <I_Film size={18} />}</span>}
-                        <span className="mat-thumb-n" title={f.nombre}>{f.nombre}</span>
-                        <span className="mat-thumb-p">{f.peso}</span>
-                        <button className="mat-thumb-x" title="Quitar" onClick={() => quitar(campo.id, i)}><I_Trash size={12} /></button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+          {MATERIAL.map(campo => (
+            <div key={campo.id} className="mat-campo">
+              <label className="label">{campo.etiqueta}</label>
+              {cargador(campo, campo.tipo as 'imagenes' | 'videos' | 'archivos', campo.ayuda)}
+            </div>
+          ))}
           </div>
           <div>
             <div className="bs" style={{ marginBottom: 9 }}>Lo que el motor ya tiene de tu negocio:</div>

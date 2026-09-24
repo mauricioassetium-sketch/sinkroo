@@ -1056,3 +1056,17 @@ export const TAREAS_EXCLUIDAS = [
   'No pedimos que conectes nada que no vayas a usar: cada conexión declara qué habilita.',
   'No hay que aprobar nada dos veces: si una acción es reversible, el motor puede hacerla solo.',
 ];
+
+// ---------------------------------------------------------------------------------------------
+// OFERTAS QUE YA USÓ — el historial del negocio. En el formulario de publicar se ofrecen para
+// repetir: son las que ya corrieron, con el mes y cómo le fue. Lo que se ve en pantalla sale de
+// acá; no se inventa una oferta nueva en cada lugar.
+// ---------------------------------------------------------------------------------------------
+export const OFERTAS_ANTERIORES: { oferta: string; cuando: string; comoLeFue: string }[] = [
+  { oferta: 'Envío gratis desde $50', cuando: 'Agosto 2026', comoLeFue: 'subió el ticket promedio 18%' },
+  { oferta: '2x1 en el serum', cuando: 'Julio 2026', comoLeFue: 'se agotó el stock en 4 días' },
+  { oferta: '15% en la primera compra', cuando: 'Junio 2026', comoLeFue: 'sumó 96 clientes nuevos' },
+  { oferta: 'Regalo en compras desde $80', cuando: 'Mayo 2026', comoLeFue: 'duplicó los pedidos grandes' },
+  { oferta: '30% en Black Friday', cuando: 'Noviembre 2025', comoLeFue: 'fue tu mejor día del año: 3,2x en ventas' },
+  { oferta: 'Cupón de vuelta para clientes dormidos', cuando: 'Marzo 2026', comoLeFue: 'volvió a comprar 1 de cada 5' },
+];
