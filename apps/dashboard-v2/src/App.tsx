@@ -3,6 +3,7 @@ import { Layout, type Vista } from './components/Layout';
 import { DetalleProvider } from './components/Detalle';
 import { useTheme } from './lib/theme';
 import { PerfilProvider } from './lib/perfil';
+import { PlanProvider } from './lib/plan';
 import { ViewHoy } from './views/Hoy';
 import { ViewCampanas } from './views/Campanas';
 import { ViewConversaciones } from './views/Conversaciones';
@@ -26,6 +27,7 @@ export default function App() {
 
   return (
     <PerfilProvider>
+    <PlanProvider>
     <DetalleProvider>
     <Layout vista={vista} setVista={setVista} theme={theme} cicloTema={cycle} toast={toast} modo={modo} avisar={avisar}>
       {vista === 'hoy' && <ViewHoy setToast={avisar} setVista={setVista} modo={modo} />}
@@ -38,6 +40,7 @@ export default function App() {
       {vista === 'kyc' && <ViewKyc setToast={avisar} />}
     </Layout>
     </DetalleProvider>
+    </PlanProvider>
     </PerfilProvider>
   );
 }

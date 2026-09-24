@@ -10,6 +10,7 @@ import { CampanaViva } from '../components/CampanaViva';
 import { I_Megaphone, I_Check, I_Refresh, I_Vote, I_File, I_Zap, I_Trend, I_Eye, I_Robot, I_Play, I_Upload, I_Pause } from '../components/icons';
 import type { Vista } from '../components/Layout';
 import { CAMPANAS, TENANT, type Campana, type Modo } from '../data/demo';
+import { usePlan } from '../lib/plan';
 import { PERFILES, puntaje, ranking, objeciones, TARIFA } from '../data/mirofish';
 import { useDetalle } from '../components/Detalle';
 import { numeroConMiles } from '../lib/perfil';
@@ -32,6 +33,7 @@ type EstadoCamp = Campana['estado'];
 
 export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: string) => void; modo: Modo; setVista: (v: Vista) => void }) {
   const detalle = useDetalle();
+  const { plan } = usePlan();
   const [paso, setPaso] = useState<PasoCampana>(1);
   const [manual, setManual] = useState(false);
   // --- Lo que un botón cambia en la pantalla. Nada de avisos que se van solos: la campaña se muda
@@ -236,7 +238,7 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
         { k: 'Qué cambia Nia', v: 'la objeción, nada más', s: 'mismo formato, mismo producto y mismo público' },
         { k: 'Quién la vuelve a juzgar', v: `${PERFILES.length} jueces + 500 del público`, s: 'al público no se le cobra nunca' },
         { k: 'Lo que cuesta', v: `${TARIFA.crearVariante + TARIFA.evaluarPieza} créditos`, s: `1 variante (${TARIFA.crearVariante}) + volver a juzgarla (${TARIFA.evaluarPieza})` },
-        { k: 'Créditos que tenés', v: String(TENANT.creditos), s: `Plan ${TENANT.plan}` },
+        { k: 'Créditos que tenés', v: String(TENANT.creditos), s: `Plan ${plan.nombre}` },
       ] },
       { tipo: 'aviso', texto: 'La versión de ahora no se pierde: si te gustaba más, volvés a ella cuando quieras.' },
     ],

@@ -20,6 +20,55 @@ export const TENANT = {
 };
 
 // ---------------------------------------------------------------------------------------------
+// LOS PLANES — lo que se contrata por mes. Cada uno dice para quién es y qué incluye, para que
+// cambiar de plan sea una decisión y no una apuesta. El «Pro» es el que la cuenta tiene hoy
+// (TENANT.plan): si el usuario cambia, la pantalla y el menú lo reflejan al instante.
+// ---------------------------------------------------------------------------------------------
+export const PLANES: {
+  key: string; nombre: string; precio: number; creditosMes: number; paraQuien: string;
+  incluye: string[]; falta?: string[];
+}[] = [
+  {
+    key: 'base', nombre: 'Base', precio: 39, creditosMes: 2000,
+    paraQuien: 'Una marca y una campaña a la vez.',
+    incluye: [
+      '2.000 créditos por mes',
+      'Campañas y piezas con el veredicto del panel',
+      'La investigación del mercado, una vez por semana',
+      'Las automatizaciones: carrito, recompra y pedido de reseñas',
+    ],
+    falta: [
+      'El equipo investigando todos los días',
+      'Videos generados por el motor',
+      'Más de una campaña corriendo a la vez',
+    ],
+  },
+  {
+    key: 'pro', nombre: 'Pro', precio: 79, creditosMes: 5000,
+    paraQuien: 'Es el que tenés: varias campañas a la vez.',
+    incluye: [
+      '5.000 créditos por mes',
+      'Varias campañas corriendo a la vez',
+      'El equipo investigando tu mercado todos los días',
+      'Videos generados por el motor',
+      'Automatizaciones y mercado completos',
+    ],
+    falta: ['Varias marcas en la misma cuenta'],
+  },
+  {
+    key: 'estudio', nombre: 'Estudio', precio: 149, creditosMes: 12000,
+    paraQuien: 'Varias marcas o un catálogo grande.',
+    incluye: [
+      '12.000 créditos por mes',
+      'Hasta 5 marcas en la misma cuenta',
+      'Videos y piezas sin tope diario',
+      'Prioridad en la cola del motor',
+      'Un informe de mercado por semana',
+    ],
+  },
+];
+
+// ---------------------------------------------------------------------------------------------
 // EL DIAL — modos, excepciones y frenos
 // ---------------------------------------------------------------------------------------------
 

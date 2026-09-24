@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { Card, Badge, Button, Dinero, NotaMoneda } from '../components/ui';
 import { ViewHead, Gauge } from '../components/viz';
 import { I_Credit, I_Wallet, I_Zap, I_Download, I_Shield, I_Plus, I_ArrowRight } from '../components/icons';
-import { TENANT, CREDITOS_MOV } from '../data/demo';
+import { TENANT, CREDITOS_MOV, PLANES } from '../data/demo';
 import { useDetalle } from '../components/Detalle';
+import { usePlan } from '../lib/plan';
 
 // Paquetes de recarga. El precio por crédito baja cuanto más grande el paquete.
 const PAQUETES = [
@@ -57,14 +58,17 @@ const PORCIONES = (() => {
 
 export function ViewCreditos({ setToast }: { setToast: (t: string) => void }) {
   const detalle = useDetalle();
+  const { plan, cambiarPlan } = usePlan();
+  // El plan recién cambiado: la tarjeta lo deja a la vista con lo que cambió, no en un aviso.
+  const [avisoPlan, setAvisoPlan] = useState<{ de: string; a: string; creditos: number } | null>(null);
   const [saldo, setSaldo] = useState(TENANT.creditos);
   const [autoRecarga, setAutoRecarga] = useState(true);
   const [metodo, setMetodo] = useState('Visa ···· 4242');
   const [movs, setMovs] = useState(CREDITOS_MOV);
   const [facturas, setFacturas] = useState(FACTURAS);
 
-  const pct = Math.min(100, Math.round((saldo / TENANT.creditosMes) * 100));
-  const usados = Math.max(0, TENANT.creditosMes - saldo);
+  const pct = Math.min(100, Math.round((saldo / plan.creditosMes) * 100));
+  const usados = Math.max(0, plan.creditosMes - saldo);
   const dias = Math.max(0, Math.round(saldo / 150));
 
   const recargar = (p: typeof PAQUETES[number]) => {
@@ -101,7 +105,7 @@ export function ViewCreditos({ setToast }: { setToast: (t: string) => void }) {
 
   const verFacturas = () => detalle({
     titulo: 'Facturas emitidas · las 3 últimas',
-    sub: `Cada cobro de tu plan ${TENANT.plan} o de un paquete deja su factura, con el período que cubre, el monto en dólares y su estado. Estas son las tres últimas.`,
+    sub: `Cada cobro de un plan o de un paquete deja su factura, con el período que cubre, el monto en dólares y su estado. Estas son las tres últimas: las de agosto y septiembre son del plan Pro, el que tenías entonces.`,
     bloques: [
       { tipo: 'datos', filas: [
         { k: 'Período que cubren', v: '01 Ago – 15 Sep 2026', s: 'agosto el plan completo; septiembre, el plan y una recarga' },
@@ -162,25 +166,122 @@ export function ViewCreditos({ setToast }: { setToast: (t: string) => void }) {
     ],
   });
 
+  /** Aplica el plan nuevo: el menú y esta pantalla lo reflejan en el acto. */
+  const aplicarPlan = (key: string) => {
+    const antes = cambiarPlan(key);
+    const nuevo = PLANES.find(p => p.key === key);
+    if (nuevo && nuevo.key !== antes.key) {
+      setAvisoPlan({ de: antes.nombre, a: nuevo.nombre, creditos: nuevo.creditosMes });
+      setToast(`Ahora estás en el plan ${nuevo.nombre}: ${nuevo.creditosMes.toLocaleString('es-AR')} créditos por mes`);
+    }
+  };
+
+  /** Elegir plan: los tres, con lo que incluye cada uno, y el cambio aplicado desde acá. */
+  const verPlanes = () => detalle({
+    titulo: 'Elegir plan',
+    sub: 'Los tres planes hacen lo mismo: cambian cuántos créditos entran por mes y cuántas campañas pueden correr a la vez. Se cambia acá y vale desde ahora.',
+    bloques: [
+      ...PLANES.map(p => ({
+        tipo: 'filas' as const,
+        items: [
+          { t: `Plan ${p.nombre} · $${p.precio} por mes`, s: `${p.creditosMes.toLocaleString('es-AR')} créditos · ${p.paraQuien}`,
+            etiqueta: p.key === plan.key ? 'el tuyo' : 'elegilo abajo', tono: p.key === plan.key ? 'purple' as const : 'muted' as const },
+          ...p.incluye.map(i => ({ t: i, etiqueta: 'incluido', tono: 'green' as const })),
+          ...(p.falta || []).map(f => ({ t: f, etiqueta: 'no entra', tono: 'muted' as const })),
+        ],
+      })),
+      { tipo: 'aviso', tono: 'amber', texto: 'Al cambiar, los créditos del mes se recalculan desde hoy y la diferencia entra prorrateada en la próxima factura: a favor si bajás de plan, a cobrar si subís. Reversible: podés volver al plan anterior desde esta misma pantalla.' },
+    ],
+    fuente: 'Precio por mes en dólares, con los créditos que incluye cada plan. El consumo no cambia con el plan: cambia cuánto entra por mes.',
+    acciones: [
+      ...PLANES.filter(p => p.key !== plan.key).map(p => ({
+        label: `Pasar al plan ${p.nombre} · $${p.precio}/mes`,
+        variante: p.precio > plan.precio ? 'primary' as const : 'outline' as const,
+        title: `Cambia tu plan al ${p.nombre}: ${p.creditosMes.toLocaleString('es-AR')} créditos por mes por $${p.precio}. Reversible: podés volver al ${plan.nombre}.`,
+        onClick: () => aplicarPlan(p.key),
+      })),
+      { label: 'Dejarlo como está', title: 'Cierra el panel sin cambiar el plan', onClick: () => {} },
+    ],
+  });
+
+  /** El plan que tiene hoy: qué incluye, qué no, y cuánto le cuesta de verdad. */
+  const verMiPlan = () => detalle({
+    titulo: `Tu plan: ${plan.nombre}`,
+    sub: `${plan.paraQuien} $${plan.precio} por mes con ${plan.creditosMes.toLocaleString('es-AR')} créditos incluidos.`,
+    bloques: [
+      { tipo: 'datos', filas: [
+        { k: 'Precio por mes', v: `$${plan.precio}`, s: 'se cobra el 1º de cada mes y se cancela cuando quieras' },
+        { k: 'Créditos que incluye', v: plan.creditosMes.toLocaleString('es-AR'), s: `unos ${Math.round(plan.creditosMes / 150)} días de motor al consumo de hoy (150 por día)` },
+        { k: 'Saldo que te queda hoy', v: saldo.toLocaleString('es-AR'), s: 'el mismo número de la tarjeta de arriba' },
+        { k: 'Lo que consumió el motor este mes', v: `${usados.toLocaleString('es-AR')} créditos`, s: `equivale a $${(usados * 0.022).toFixed(0)} de trabajo hecho` },
+        { k: 'Próximo cobro', v: '1º de octubre', s: 'con agosto y septiembre ya cobrados' },
+      ] },
+      { tipo: 'filas', items: plan.incluye.map(i => ({ t: i, etiqueta: 'incluido', tono: 'green' as const })) },
+      ...(plan.falta && plan.falta.length
+        ? [{ tipo: 'pasos' as const, items: plan.falta.map(f => `En ${plan.nombre} no entra: ${f}`) }]
+        : []),
+      { tipo: 'aviso', texto: 'El plan no cambia cómo trabaja el motor: cambia cuánto puede hacer por mes. Bajar de plan no frena nada de lo que ya está corriendo.' },
+    ],
+    fuente: 'Cada pieza, análisis o campaña consume créditos: ronda 120, variante 16, imagen 12, video 60 y evaluación 8 por pieza. El plan define cuántos entran por mes.',
+    acciones: [
+      { label: 'Ver los otros planes', title: 'Abre la comparación de los tres planes para cambiar el tuyo', onClick: verPlanes },
+      { label: 'Cerrar', title: 'Cierra el panel sin cambiar nada', onClick: () => {} },
+    ],
+  });
+
   return (
     <div className="dash">
       <ViewHead
         icon={<I_Credit size={19} />}
         titulo="Créditos"
-        sub="Un crédito es una unidad de trabajo del motor: cada análisis, pieza o campaña consume. Acá cargás y ves en qué se va."
+        sub="Un crédito es una unidad de trabajo del motor: cada análisis, pieza o campaña consume. Acá cargás, ves en qué se va y cambiás de plan."
         nums={[
           { v: saldo.toLocaleString('es-AR'), l: 'créditos disponibles' },
-          { v: `Plan ${TENANT.plan}`, l: `${TENANT.creditosMes.toLocaleString('es-AR')} por mes`, c: 'var(--purple3)' },
+          { v: `Plan ${plan.nombre}`, l: `${plan.creditosMes.toLocaleString('es-AR')} por mes`, c: 'var(--purple3)' },
           { v: `${dias} días`, l: 'de autonomía al ritmo de hoy', c: dias < 10 ? 'var(--amber)' : 'var(--green)' },
           { v: <Dinero monto={Number((usados * 0.022).toFixed(0))} />, l: 'consumido este mes' },
         ]}
       />
 
+      {/* ============ TU PLAN: acá se cambia ============
+          El dueño lo pidió porque no había dónde: el plan se veía en la píldora del menú pero no
+          se podía tocar. La tarjeta muestra el plan, lo que cuesta y lo que incluye, y el cambio
+          se aplica al instante: el menú y esta pantalla dicen lo mismo. */}
+      <Card
+        title={<span className="row" style={{ gap: 8 }}><I_Shield size={14} style={{ color: 'var(--purple3)' }} /> Tu plan</span>}
+        action={<Badge tone="purple">Plan {plan.nombre}</Badge>}
+      >
+        <div className="datos-row">
+          <div className="dato"><span className="dato-l">Plan</span><span className="dato-v" style={{ color: 'var(--purple3)' }}>{plan.nombre}</span></div>
+          <div className="dato"><span className="dato-l">Precio por mes</span><span className="dato-v"><Dinero monto={plan.precio} /></span></div>
+          <div className="dato"><span className="dato-l">Créditos por mes</span><span className="dato-v">{plan.creditosMes.toLocaleString('es-AR')}</span></div>
+          <div className="dato"><span className="dato-l">Próximo cobro</span><span className="dato-v">1º de octubre</span></div>
+        </div>
+        <div className="bs" style={{ marginTop: 12 }}>
+          {plan.paraQuien} El plan define <b>cuántos créditos entran por mes</b>: cambiar de plan cambia el techo,
+          no la forma en que trabaja el motor.
+        </div>
+        <div className="row" style={{ gap: 9, marginTop: 12, flexWrap: 'wrap' }}>
+          <Button className="btn-sm" title="Abre los tres planes con lo que incluye cada uno y cambia el tuyo desde ahí. Reversible: podés volver al que tenés."
+            onClick={verPlanes}><I_ArrowRight size={13} /> Cambiar de plan</Button>
+          <Button variant="ghost" className="btn-sm" title="Qué incluye tu plan hoy, qué no entra y cuánto te costó de verdad el trabajo de este mes"
+            onClick={verMiPlan}>Qué incluye el mío</Button>
+        </div>
+        {avisoPlan && (
+          <div className="tiny" style={{ marginTop: 10, color: 'var(--green)', fontWeight: 700 }}>
+            <I_Zap size={12} /> Pasaste del plan {avisoPlan.de} al {avisoPlan.a}: ahora entran {avisoPlan.creditos.toLocaleString('es-AR')} créditos
+            por mes y el menú de la izquierda ya dice {avisoPlan.a}. La diferencia se prorratea en la factura del 1º de octubre.
+            {' '}Reversible: podés volver al {avisoPlan.de} desde acá.
+          </div>
+        )}
+        <NotaMoneda />
+      </Card>
+
       {/* ============ EL SALDO Y CÓMO CARGARLO ============ */}
       <div className="duo">
         <Card
           title={<span className="row" style={{ gap: 8 }}><I_Wallet size={14} style={{ color: 'var(--purple3)' }} /> Tu saldo</span>}
-          action={<Badge tone="purple">Plan {TENANT.plan}</Badge>}
+          action={<Badge tone="purple">Plan {plan.nombre}</Badge>}
         >
           <div>
             <div style={{ fontSize: 38, fontWeight: 900, letterSpacing: -1.4, lineHeight: 1 }}>
@@ -192,7 +293,7 @@ export function ViewCreditos({ setToast }: { setToast: (t: string) => void }) {
           </div>
 
           <div>
-            <Gauge pct={pct} label="Disponible del plan del mes" detalle={`${saldo.toLocaleString('es-AR')} de ${TENANT.creditosMes.toLocaleString('es-AR')}`} />
+            <Gauge pct={pct} label="Disponible del plan del mes" detalle={`${saldo.toLocaleString('es-AR')} de ${plan.creditosMes.toLocaleString('es-AR')}`} />
           </div>
 
           <div className="guard" style={{ borderTop: '1px solid var(--border)', paddingTop: 12 }}>

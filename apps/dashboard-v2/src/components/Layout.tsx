@@ -3,6 +3,7 @@ import { SinkrooMark, I_Home, I_Megaphone, I_Whatsapp, I_Globe, I_Settings, I_Be
 import { TENANT, AGENTES, ALARMAS, DECISIONES, MODOS, type Modo } from '../data/demo';
 import { Progress } from './ui';
 import { usePerfil, inicialesDe } from '../lib/perfil';
+import { usePlan } from '../lib/plan';
 import { PerfilModal } from './PerfilModal';
 import { PersonalizarPanel } from './PersonalizarPanel';
 
@@ -63,8 +64,9 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
   // Si el saldo cambia, el menú y la vista dicen lo mismo; si el número estuviera fijo, se
   // desincronizaría en la primera recarga.
   const dias = Math.max(0, Math.round(TENANT.creditos / 150));
-  const todosLosDias = Math.round(TENANT.creditosMes / 150);
-  const pctCreditos = Math.min(100, Math.round((TENANT.creditos / TENANT.creditosMes) * 100));
+  const { plan } = usePlan();
+  const todosLosDias = Math.round(plan.creditosMes / 150);
+  const pctCreditos = Math.min(100, Math.round((TENANT.creditos / plan.creditosMes) * 100));
   // Ir a una vista del menú y cerrar la bandeja en celular: el mismo gesto para la tarjeta de
   // plan y para los ítems de navegación.
   const irA = (v: Vista) => { setVista(v); setMenuAbierto(false); };
@@ -95,15 +97,15 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
           <div className="sb-plan-top">
             <div className="sb-plan-name" title={`${perfil.marca}: este panel es de tu negocio`}>{perfil.marca}</div>
             <span className="badge badge-purple sb-plan-badge"
-              title={`Plan ${TENANT.plan}: ${TENANT.creditosMes.toLocaleString('es-AR')} créditos por mes, unos ${todosLosDias} días de motor`}>
-              Plan {TENANT.plan}
+              title={`Plan ${plan.nombre}: ${plan.creditosMes.toLocaleString('es-AR')} créditos por mes, unos ${todosLosDias} días de motor. Se cambia desde Créditos.`}>
+              Plan {plan.nombre}
             </span>
           </div>
 
           <div className="sb-plan-block" role="button" tabIndex={0}
             onClick={() => irA('creditos')}
             onKeyDown={e => { if (e.key === 'Enter') irA('creditos'); }}
-            title={`Créditos: te quedan ${TENANT.creditos.toLocaleString('es-AR')} de ${TENANT.creditosMes.toLocaleString('es-AR')} del plan del mes. Tocalo para ver en qué se va cada crédito`}>
+            title={`Créditos: te quedan ${TENANT.creditos.toLocaleString('es-AR')} de ${plan.creditosMes.toLocaleString('es-AR')} del plan del mes. Tocalo para ver en qué se va cada crédito`}>
             <div className="sb-plan-cred">
               <span className="sb-plan-num">{TENANT.creditos.toLocaleString('es-AR')}</span>
               <span className="sb-plan-unit">créditos</span>
