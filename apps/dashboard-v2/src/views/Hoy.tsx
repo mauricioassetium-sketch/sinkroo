@@ -36,7 +36,7 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
             </span>
             <div className="hero-txt">
               <div className="hero-live" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span className="dot-live" /> TU AGENTE ESTÁ ACTIVO
+                <span className="dot-live" /> TU AGENTE DE MARKETING ESTÁ ACTIVO
                 <button className="tour-start-btn" title="Recorré el panel con Sinkroo"
                   onClick={() => setToast('Tour guiado del panel (demo)')}>▶ Iniciar tour</button>
               </div>
@@ -44,7 +44,8 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
                 Hola {nombreDePila(perfil.nombre)}, soy <span className="grad-text">Sinkroo</span> 👋
               </div>
               <div className="hdr-s hero-sub">
-                Te estoy vigilando la tienda <b>24/7</b>. Mirá lo que hice hoy.
+                <b>Tu marketing, en automático.</b><br />
+                Pruebo cada publicación con <b>500 personas que reaccionan como tu audiencia</b>, antes de que gastes.
               </div>
             </div>
           </div>
