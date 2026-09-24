@@ -169,10 +169,9 @@ export const FORMATOS: Formato[] = [
     resumen: 'Que alguien más lo cuente por vos.',
     paraQue: 'La recomendación de una persona de confianza vende más que cualquier anuncio. El motor prepara el brief.',
     campos: [
-      { id: 'con_quien', etiqueta: 'Con quién', tipo: 'texto', ayuda: 'Nombre o perfil del creador, o si querés que el motor busque candidatos de tu rubro.' },
-      { id: 'que_le_pedis', etiqueta: 'Qué le pedís', tipo: 'texto', ayuda: 'Un video usando el producto, una reseña, una historia, una mención.' },
-      { id: 'que_le_ofreces', etiqueta: 'Qué le ofrecés', tipo: 'texto', ayuda: 'Producto, plata, comisión por venta o código de descuento.' },
-      { id: 'cuando_creador', etiqueta: 'Para cuándo', tipo: 'texto', ayuda: 'Fecha de publicación acordada.' },
+      { id: 'que_le_pedis', etiqueta: 'Qué le pedís', tipo: 'texto', ayuda: 'Un video usando el producto, una reseña, una historia, una mención. El buscador de creadores de acá abajo te dice quién puede hacerlo.' },
+      { id: 'que_le_ofreces', etiqueta: 'Qué le ofreces', tipo: 'texto', ayuda: 'Producto, plata, comisión por venta o código de descuento. Los precios de cada creador están en las tarjetas.' },
+      { id: 'cuando_creador', etiqueta: 'Para cuándo', tipo: 'texto', ayuda: 'Fecha de publicación acordada. Si todavía no la sabés, Rumi la cierra en la conversación con el creador.' },
     ],
     avanzados: [
       { id: 'brief', etiqueta: 'Qué no puede decir', tipo: 'texto', ayuda: 'Promesas de resultado, precios que no son, cosas que la marca no dice.' },

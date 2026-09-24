@@ -895,6 +895,98 @@ export const MES = {
   promedio: '$6.713',
 };
 
+// ---------------------------------------------------------------------------------------------
+// EL MERCADO DE CREADORES — quién puede producir contenido para esta tienda
+//
+// Cuando la forma de publicar es «Colaboración con creador», Sinkroo ya buscó gente que presta su
+// servicio de contenido: creadores de CABA y del GBA que hacen UGC, reseñas y videos cortos de
+// belleza, cuidado de la piel y bienestar. Cada fila trae lo que hace falta para decidir sin
+// escribir una sola letra: rubro, distancia, idiomas, formato, audiencia, precio y puntaje.
+//
+// Los rubros, los idiomas y los tipos de contenido son EXACTAMENTE los strings que ofrecen los
+// filtros del buscador (Publicar.tsx): por eso, cuando el usuario toca un chip, la lista se
+// filtra de verdad y no hay dos vocabularios distintos para lo mismo.
+// ---------------------------------------------------------------------------------------------
+
+export interface Creador {
+  id: string;
+  nombre: string;
+  zona: string;            // barrio de CABA o localidad del GBA
+  distancia: number;       // km hasta tu local
+  idiomas: string[];       // habla TODOS los de la lista
+  rubros: string[];        // uno o más de RUBROS_CREADOR
+  nicho: string;           // lo que se ve en la tarjeta, ej. 'UGC de belleza'
+  formato: string;         // el formato en el que trabaja, ej. 'video corto'
+  contenidos: string[];    // uno o más de CONTENIDOS_CREADOR
+  seguidores: number;
+  engagement: string;      // % de la audiencia que reacciona
+  precio: number;          // por pieza, en pesos
+  puntaje: number;         // sobre 5: cómo cumplió las colaboraciones anteriores
+  muestras: string[];      // trabajos que ya hizo y se pueden ver
+}
+
+export const RUBROS_CREADOR = ['Belleza y skincare', 'Bienestar', 'UGC de producto', 'Lifestyle'];
+
+export const CONTENIDOS_CREADOR = ['UGC', 'Reseña', 'Video corto', 'Unboxing', 'Historia', 'Foto de producto'];
+
+// Un idioma de la lista pide que el creador hable TODOS los idiomas de `necesita`.
+export const OPCIONES_IDIOMA: { label: string; necesita: string[] }[] = [
+  { label: 'Español', necesita: ['Español'] },
+  { label: 'Español e inglés', necesita: ['Español', 'Inglés'] },
+  { label: 'Portugués', necesita: ['Portugués'] },
+];
+
+export const CREADORES: Creador[] = [
+  {
+    id: 'c1', nombre: 'Camila Ferreyra', zona: 'Palermo, CABA', distancia: 4,
+    idiomas: ['Español'], rubros: ['Belleza y skincare'], nicho: 'UGC de belleza', formato: 'video corto',
+    contenidos: ['UGC', 'Video corto'], seguidores: 32000, engagement: '4,8%', precio: 18000, puntaje: 4.8,
+    muestras: ['Rutina de noche con serum', 'Textura del serum en la mano', 'Antes y después en 14 días'],
+  },
+  {
+    id: 'c2', nombre: 'Bruno Salinas', zona: 'Belgrano, CABA', distancia: 6,
+    idiomas: ['Español', 'Inglés'], rubros: ['Bienestar'], nicho: 'rutinas de bienestar', formato: 'reseña',
+    contenidos: ['Reseña', 'Foto de producto'], seguidores: 21000, engagement: '3,9%', precio: 22000, puntaje: 4.6,
+    muestras: ['Mi rutina de skincare de los lunes', 'Probé el sérum un mes'],
+  },
+  {
+    id: 'c3', nombre: 'Sofía Bermúdez', zona: 'Villa Crespo, CABA', distancia: 7,
+    idiomas: ['Español'], rubros: ['Belleza y skincare'], nicho: 'UGC de skincare', formato: 'unboxing',
+    contenidos: ['UGC', 'Unboxing'], seguidores: 9400, engagement: '6,2%', precio: 12000, puntaje: 4.7,
+    muestras: ['Unboxing del pedido completo', 'Cómo uso el sérum todos los días'],
+  },
+  {
+    id: 'c4', nombre: 'Valentina Sosa', zona: 'Caballito, CABA', distancia: 8,
+    idiomas: ['Español'], rubros: ['UGC de producto'], nicho: 'UGC de producto', formato: 'historia',
+    contenidos: ['UGC', 'Historia'], seguidores: 4100, engagement: '7,4%', precio: 8000, puntaje: 4.3,
+    muestras: ['Historia con el serum y encuesta', 'Primer video: arranco con skincare'],
+  },
+  {
+    id: 'c5', nombre: 'Agustina Peralta', zona: 'Lanús, GBA', distancia: 14,
+    idiomas: ['Español', 'Portugués'], rubros: ['Belleza y skincare'], nicho: 'reseña de belleza', formato: 'foto de producto',
+    contenidos: ['Reseña', 'Foto de producto'], seguidores: 58000, engagement: '3,4%', precio: 26000, puntaje: 4.5,
+    muestras: ['Probé cremas de tres marcas', 'Fotos del serum en la mesada'],
+  },
+  {
+    id: 'c6', nombre: 'Martina Ocampo', zona: 'San Isidro, GBA', distancia: 22,
+    idiomas: ['Español', 'Inglés'], rubros: ['Lifestyle'], nicho: 'lifestyle de belleza', formato: 'video corto',
+    contenidos: ['Video corto', 'Historia'], seguidores: 76000, engagement: '4,1%', precio: 31000, puntaje: 4.9,
+    muestras: ['Mi mañana de domingo', 'Lo que uso antes de dormir'],
+  },
+  {
+    id: 'c7', nombre: 'Julieta Miranda', zona: 'Tigre, GBA', distancia: 46,
+    idiomas: ['Español', 'Inglés'], rubros: ['Belleza y skincare'], nicho: 'UGC de belleza', formato: 'video corto',
+    contenidos: ['UGC', 'Video corto'], seguidores: 140000, engagement: '2,8%', precio: 45000, puntaje: 5.0,
+    muestras: ['Rutina completa para piel sensible', 'Reel de la línea de cuidado'],
+  },
+  {
+    id: 'c8', nombre: 'Rocío Alvarado', zona: 'Rosario, Santa Fe', distancia: 300,
+    idiomas: ['Español'], rubros: ['Bienestar'], nicho: 'reseña de bienestar', formato: 'unboxing',
+    contenidos: ['Reseña', 'Unboxing'], seguidores: 12500, engagement: '5,1%', precio: 16000, puntaje: 4.2,
+    muestras: ['Unboxing del envío a Rosario', 'Mi experiencia con el sérum'],
+  },
+];
+
 export const TAREAS_EXCLUIDAS = [
   'No pedimos margen de ganancia ni frecuencia de compra: los inferimos de tus ventas y conversaciones.',
   'No te pedimos que subas documentos para que "la IA los lea".',
