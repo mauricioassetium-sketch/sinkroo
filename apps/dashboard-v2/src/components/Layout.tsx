@@ -176,7 +176,6 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
           <button className="sb-datos" title="Tus datos de cuenta: nombre, marca, email, WhatsApp, zona horaria y moneda"
             onClick={e => { e.stopPropagation(); setPerfilAbierto(true); }}><I_User size={14} /></button>
         </div>
-        <PerfilModal abierto={perfilAbierto} cerrar={() => setPerfilAbierto(false)} avisar={avisar} />
       </aside>
 
       {/* En celular el menú se abre encima del contenido */}
@@ -291,6 +290,7 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
       {/* La personalización va colgada de la raíz, NO adentro del sidebar: en celular el sidebar
           tiene `transform` (es la bandeja que entra y sale) y eso convertiría al pop-up en su
           rehén, con lo que quedaría fuera de la pantalla. Acá ocupa la pantalla entera. */}
+        <PerfilModal abierto={perfilAbierto} cerrar={() => setPerfilAbierto(false)} avisar={avisar} />
       <PersonalizarPanel abierto={persAbierto} senal={persSenal} cerrar={() => setPersAbierto(false)} avisar={avisar} />
     </div>
   );
