@@ -977,11 +977,13 @@
 /* Los desplegables: tiempos, condiciones y disparador. Se eligen, no se escriben. */
 .aut-sel { appearance: auto; cursor: pointer; }
 .aut-sel option { background: var(--bg3); color: var(--txt); }
-.aut-sel-delay, .aut-sel-cond { flex: 0 1 auto; width: auto; min-width: 132px; max-width: 56%;
+.aut-sel-delay, .aut-sel-cond { flex: 0 1 auto; width: auto; min-width: 140px; max-width: 56%;
   padding: 6px 8px; font-size: 12.5px; border-radius: 8px; }
 .aut-sel-cond { border-color: rgba(245,158,11,.45); color: var(--amber); }
+/* El disparador lleva la opción más larga de la lista ("Cuando un cliente deja de comprar hace 90
+   días, 287px a 12.5px) y en una tarjeta angosta no entra: por eso el tipo baja con el ancho. */
 .aut-sel-disparo { flex: 1 1 230px; width: auto; min-width: 0; max-width: 100%;
-  padding: 7px 9px; font-size: 12.5px; border-radius: 8px; }
+  padding: 7px 8px; font-size: 12px; border-radius: 8px; }
 
 /* El aviso del borrado pendiente: la tarjeta ya no está, pero se puede devolver. */
 .aut-borrados { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px;
@@ -991,6 +993,9 @@
 
 @media (max-width: 700px) {
   .csec-act { margin-left: 0; }
-  .aut-sel-delay, .aut-sel-cond { min-width: 116px; max-width: 60%; font-size: 12px; }
-  .aut-sel-disparo { flex: 1 1 100%; }
+  .aut-sel-delay, .aut-sel-cond { min-width: 134px; max-width: 60%; font-size: 12px; }
+  .aut-sel-disparo { flex: 1 1 100%; font-size: 11px; padding: 6px 6px; }
+}
+@media (max-width: 1100px) {
+  .aut-sel-disparo { font-size: 11px; padding: 6px 6px; }
 }
