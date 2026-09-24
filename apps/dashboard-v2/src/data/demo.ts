@@ -290,7 +290,7 @@ export const HALLAZGOS: Hallazgo[] = [
 // ---------------------------------------------------------------------------------------------
 // EL FEED EN VIVO — lo que los agentes están haciendo AHORA, línea por línea
 //
-// Estas son las acciones que entran solas en el feed de arriba del bloque (ver MotorEnVivo.tsx):
+// Estas son las acciones que entran solas en el feed de arriba del bloque (ver EquipoInvestigando.tsx):
 // una cada 2-4 segundos, con el nombre del agente, lo que hizo y el artefacto que dejó. Se
 // recorren barajadas, así que el orden nunca es el mismo. REGLA: cada línea tiene algo del negocio
 // del usuario y un resultado concreto, nunca un "analizando…".
@@ -824,12 +824,53 @@ export const CREDITOS_MOV = [
 ];
 
 // ---------------------------------------------------------------------------------------------
-// EL MOTOR, EN VIVO — la investigación del mercado la muestra MotorEnVivo con AGENTES,
-// INVESTIGACION_MERCADO, FRENTES_INVESTIGACION y HALLAZGOS. El viejo "mercado secundario
-// predictivo" (que votaba una propuesta en 6 etapas, con chat de 500 observadores y conteo de
-// votos) se descartó entero: lo que el motor prueba en serio es la pieza, y eso lo hace MiroFish
-// (ver mirofish.ts: los 5 jueces y las 5 opciones).
+// EL MOTOR ANDANDO — mercado secundario predictivo (portado del dashboard original)
+//
+// Son DOS bloques distintos y viven separados:
+//   · ESTE (MotorEnVivo.tsx, el paso «MiroFish» de Campañas): la propuesta se prueba en un mercado
+//     simulado ANTES de gastar un peso. Se ve la etapa, el sentimiento, el score en vivo, los votos
+//     y las reacciones. Es la VERIFICACIÓN de una publicación concreta.
+//   · La INVESTIGACIÓN DEL MERCADO (EquipoInvestigando.tsx, en Hoy): los 6 agentes revisando el
+//     mercado desde el onboarding, con AGENTES, INVESTIGACION_MERCADO, FRENTES_INVESTIGACION,
+//     HALLAZGOS y ACCIONES_FEED. Corre siempre y no evalúa una pieza.
+// Cada bloque usa sus propios datos: los de acá son solo del motor que verifica la pieza.
 // ---------------------------------------------------------------------------------------------
+
+export const ETAPAS_MOTOR = [
+  { t: 'Ingesta', d: 'La propuesta entra al mercado para ser probada.' },
+  { t: 'Reacción', d: 'El mercado reacciona como lo haría tu audiencia real.' },
+  { t: 'Debate', d: 'El público discute pros y contras en el feed de comentarios.' },
+  { t: 'Votación', d: 'Cada bot vota positivo o negativo y suma su score.' },
+  { t: 'Ranking', d: 'La propuesta se ordena contra las demás del lote.' },
+  { t: 'Veredicto', d: 'Se decide publicar o descartar antes de salir live.' },
+];
+
+export const PIEZAS_MOTOR = [
+  { n: 'propuesta_imagen_01', t: 'Imagen', e: '🖼️' },
+  { n: 'propuesta_reel_v2', t: 'Reel', e: '🎬' },
+  { n: 'propuesta_video_a', t: 'Video', e: '📹' },
+  { n: 'propuesta_paleta_v3', t: 'Paleta', e: '🎨' },
+  { n: 'propuesta_publicacion', t: 'Publicación', e: '📝' },
+  { n: 'propuesta_reel_antes_despues', t: 'Reel', e: '🎬' },
+  { n: 'propuesta_video_demo', t: 'Video', e: '📹' },
+];
+
+export const CHAT_MOTOR = [
+  { t: 'positivo', m: 'Los colores de esta pieza conectan con el nicho. +1' },
+  { t: 'positivo', m: 'El ángulo de venta está alineado con la intención real. Me gusta' },
+  { t: 'negativo', m: 'El titular se pierde en móvil. No la veo ganando' },
+  { t: 'analisis', m: 'Estimando retención del primer segundo en 72%…' },
+  { t: 'positivo', m: 'El hook de los primeros 3s engancha. Voto a favor' },
+  { t: 'negativo', m: 'La oferta llega tarde en el reel. Riesgo de caída' },
+  { t: 'analisis', m: 'Comparando esta contra 3 propuestas previas del lote' },
+  { t: 'positivo', m: 'Contraste y legibilidad sólidos en escritorio y móvil' },
+  { t: 'negativo', m: 'La paleta no resuena con la audiencia objetivo. Rechazo' },
+  { t: 'analisis', m: 'Simulando la reacción de 500 agentes del público' },
+  { t: 'positivo', m: 'CPA proyectado cae bajo el umbral. Vale publicar' },
+  { t: 'positivo', m: 'Señal de compra real detectada en los comentarios simulados' },
+];
+
+export const VOTOS_MOTOR = ['Aprueba', 'Rechaza', 'Aprueba con reserva', 'Neutro'];
 
 // ---------------------------------------------------------------------------------------------
 // QUÉ HACE CADA BOTÓN — para que no haya que adivinar

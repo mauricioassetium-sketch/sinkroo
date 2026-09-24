@@ -1,399 +1,249 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, Badge, Button } from './ui';
-import { I_Zap, I_ArrowRight, I_Users, I_Eye } from './icons';
-import {
-  AGENTES, ACCIONES_FEED, INVESTIGACION_MERCADO, FRENTES_INVESTIGACION, HALLAZGOS,
-  type Agente, type AccionFeed, type Hallazgo,
-} from '../data/demo';
+import { I_Zap, I_Check, I_ArrowRight } from './icons';
+import { ETAPAS_MOTOR, PIEZAS_MOTOR, CHAT_MOTOR, VOTOS_MOTOR } from '../data/demo';
 
 // =============================================================================================
-// EL EQUIPO TRABAJANDO — la investigación del mercado, hecha por los 6 agentes
+// EL MOTOR ANDANDO — mercado secundario predictivo (portado del dashboard original)
 //
-// Esto NO es la evaluación de una pieza: eso es MiroFish (los 5 jueces + 500 del público) y entra
-// recién cuando hay una pieza para evaluar. Acá se ve la otra mitad, la que corre SIEMPRE: el
-// motor se puso solo cuando el usuario terminó el onboarding y desde entonces revisa el mercado
-// de su negocio cada 15 minutos. Lux, Rex, Nia, Kai, Sol y Rumi, en una grilla compacta, con lo
-// que están haciendo ahora y el artefacto que dejaron.
-//
-// REGLA DE ORO: cada línea que se muestra tiene (1) algo del negocio del usuario, (2) un resultado
-// concreto y (3) una hora. Y el resultado se abre: no hay estados vacíos tipo "analizando…".
-//
-// ESTO SE MUEVE SOLO. Todo lo que cambia en pantalla sale de un único reloj de 1 segundo (`t`) y
-// de un programador de líneas con setTimeout que se limpia al desmontar:
-//   · el feed: entra una línea nueva cada 2-4 s, con su hora ('hace un instante' → 'hace 20 s')
-//   · la cuenta regresiva a la próxima vuelta al mercado (mm:ss, baja de verdad)
-//   · 'revisado hasta ahora': sube cada 2 s
-//   · el avance de la tarea de cada agente: '47 de 50 anuncios' → 48
-//   · el estado de Lux: 'trabajando' → 'al día' → 'trabajando' (y los contadores del encabezado)
-//   · la hora del último resultado de cada agente ('hace 12 min' → 'hace 13 min')
-// Ninguno de estos timers queda vivo al desmontar: los dos efectos devuelven su limpieza.
-//
-// EL BLOQUE ENTRA EN UNA PANTALLA: a 1440×900 mide ~860 px (encabezado + feed + los 6 agentes +
-// los frentes y hallazgos + el puente a MiroFish). Para eso los agentes van de a 3 por fila, los
-// frentes y los hallazgos son filas de una sola línea, y paddings y tipografías van un punto abajo.
+// Es el vidrio del motor: la propuesta se prueba en un mercado simulado ANTES de gastar un peso.
+// Se ve la etapa, el sentimiento, el score en vivo, los votos y las reacciones.
 // =============================================================================================
 
-/** Cada cuánto el motor vuelve a mirar el mercado: 15 min. */
-const CADENCIA_SEG = INVESTIGACION_MERCADO.cadenciaMin * 60;
-/** La última revisión fue hace 4 min: de ahí sale el arranque de la cuenta regresiva. */
-const EDAD_INICIAL_SEG = 4 * 60;
-/** Segundos que faltan para la próxima vuelta cuando se abre el panel. */
-const FALTAN_INICIAL_SEG = CADENCIA_SEG - EDAD_INICIAL_SEG;
-/** Cómo entran las líneas del feed: una cada 2 a 4 segundos. */
-const MS_LINEA_MIN = 2000;
-const MS_LINEA_MAX = 4000;
-/** Cuántas líneas del feed se ven a la vez (la altura de la lista está atada a esta cifra). */
-const MAX_LINEAS = 6;
-/** Los tiempos de la lista arrancan escalonados: la lista no nace vacía. */
-const EDADES_INICIALES_SEG = [4, 14, 28, 47, 65, 95];
-/** Cada cuánto avanza un punto la tarea de cada agente, y cada cuánto se estira el de al lado. */
-const PASO_TAREA_SEG = 7;
-const DESFASE_TAREA_SEG = 3;
-/** Cada cuántos segundos Lux se toma un respiro: al día 14 s, trabajando 30 s, y vuelve. */
-const CICLO_ESTADO_SEG = 44;
-const DESDE_AFLORA_SEG = 30;
+const COLOR: Record<string, string> = { positivo: '#34d399', negativo: '#f87171', analisis: '#a855f7' };
 
-const ESTADO_LB: Record<Agente['estado'], string> = {
-  trabajando: 'trabajando',
-  esperando_ok: 'esperando tu OK',
-  al_dia: 'al día',
-};
+export function MotorEnVivo({ setToast }: { setToast: (t: string) => void }) {
+  const [pos, setPos] = useState(0);
+  const [paso, setPaso] = useState(4); // arranca en Ranking (etapa 5/6) para que se vea trabajando
+  const [chat, setChat] = useState<{ id: number; t: string; m: string }[]>(
+    CHAT_MOTOR.slice(0, 8).map((c, i) => ({ id: 120 + i * 37, ...c })),
+  );
+  const [score, setScore] = useState(47);
+  const [votos, setVotos] = useState<{ id: number; v: string }[]>([
+    { id: 349, v: 'Aprueba' }, { id: 412, v: 'Aprueba con reserva' },
+    { id: 178, v: 'Rechaza' }, { id: 265, v: 'Aprueba' }, { id: 490, v: 'Neutro' },
+  ]);
+  const [hist, setHist] = useState<number[]>([41, 44, 42, 46, 45, 47]);
+  const [sent, setSent] = useState({ pos: 19, neg: 5, ana: 3 });
 
-const CLASE_ESTADO: Record<Agente['estado'], string> = {
-  trabajando: 'working',
-  esperando_ok: 'waiting',
-  al_dia: 'idle',
-};
-
-/** El agente, por id: el feed guarda a quién pertenece cada acción. */
-const AGENTE_POR_ID: Record<string, Agente> = AGENTES.reduce(
-  (m, a) => { m[a.id] = a; return m; }, {} as Record<string, Agente>,
-);
-
-/** El botón abre el artefacto: lo dice el título, y aclara que no cambia nada. */
-function tituloArtefacto(nombre: string, estado: Agente['estado']) {
-  return estado === 'esperando_ok'
-    ? `Abre «${nombre}». Todavía no gasta: para publicarla tenés que aprobarla vos.`
-    : `Abre «${nombre}». Solo lectura: no cambia nada.`;
-}
-
-/** Una línea del feed: quién, qué hizo, cuándo nació (en segundos del reloj del motor). */
-interface LineaFeed {
-  id: number;
-  agenteId: string;
-  texto: string;
-  artefacto?: string;
-  nace: number;
-}
-
-/** 'hace un instante' → 'hace 20 s' → 'hace 2 min' → 'hace 3 h'. */
-function hace(seg: number): string {
-  if (seg < 6) return 'hace un instante';
-  if (seg < 90) return `hace ${Math.floor(seg / 5) * 5} s`;
-  if (seg < 3600) return `hace ${Math.round(seg / 60)} min`;
-  return `hace ${Math.round(seg / 3600)} h`;
-}
-
-/** Los minutos que declara cada agente ('hace 12 min', 'hace 2 h', 'hace 1 día'). */
-function minutosDe(cuando: string, porDefecto: number): number {
-  const m = cuando.match(/(\d+)\s*(min|h|d)/i);
-  if (!m) return porDefecto;
-  const n = Number(m[1]);
-  const u = m[2].toLowerCase();
-  return u === 'min' ? n : u === 'h' ? n * 60 : n * 1440;
-}
-
-/** Ese mismo tiempo, ya corrido por el reloj: 'hace 12 min' → 'hace 13 min' sin recargar nada. */
-function haceMin(min: number): string {
-  if (min < 60) return `hace ${min} min`;
-  if (min < 1440) return `hace ${Math.floor(min / 60)} h`;
-  const d = Math.floor(min / 1440);
-  return `hace ${d} ${d === 1 ? 'día' : 'días'}`;
-}
-
-/** Baraja una copia: el feed recorre las acciones siempre en un orden distinto. */
-function barajar<T>(xs: T[]): T[] {
-  const a = xs.slice();
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    const t = a[i]; a[i] = a[j]; a[j] = t;
-  }
-  return a;
-}
-
-export function MotorEnVivo({ setToast, irAGaleria }: {
-  setToast: (t: string) => void;
-  /** Lleva a la galería de Campañas, donde viven las piezas que MiroFish ya puntuó. */
-  irAGaleria?: () => void;
-}) {
-  // ---- El reloj del motor: el único timer de 1 segundo. Todo lo demás se deriva de acá. ----
-  const [t, setT] = useState(0);
-  const tRef = useRef(0);
   useEffect(() => {
-    const id = setInterval(() => { tRef.current += 1; setT(tRef.current); }, 1000);
+    let n = 0;
+    const id = setInterval(() => {
+      n++;
+      const cuantos = Math.random() < 0.5 ? 1 : 2;
+      const nuevos: { id: number; t: string; m: string }[] = [];
+      for (let k = 0; k < cuantos; k++) {
+        const c = CHAT_MOTOR[Math.floor(Math.random() * CHAT_MOTOR.length)];
+        nuevos.push({ id: 100 + Math.floor(Math.random() * 400), t: c.t, m: c.m });
+      }
+      setChat(prev => [...nuevos, ...prev].slice(0, 14));
+      setSent(s => {
+        let { pos: p, neg: g, ana: a } = s;
+        nuevos.forEach(c => { if (c.t === 'positivo') p++; else if (c.t === 'negativo') g++; else a++; });
+        return { pos: p, neg: g, ana: a };
+      });
+      if (n % 4 === 0) {
+        setPaso(p => {
+          if (p < 5) return p + 1;
+          setPos(x => (x + 1) % PIEZAS_MOTOR.length);
+          const s2 = 40 + Math.floor(Math.random() * 30);
+          setHist(h => [...h, s2].slice(-20));
+          setScore(s2);
+          setVotos([0, 1, 2, 3, 4].map(() => ({ id: 100 + Math.floor(Math.random() * 400), v: VOTOS_MOTOR[Math.floor(Math.random() * VOTOS_MOTOR.length)] })));
+          return 0;
+        });
+      }
+    }, 1100);
     return () => clearInterval(id);
   }, []);
 
-  // ---- El feed: arranca con la lista puesta y después entra una línea nueva cada 2-4 s. ----
-  const [lineas, setLineas] = useState<LineaFeed[]>([]);
-  const [nuevas, setNuevas] = useState(0);
-  const seqRef = useRef(0);
-  const colaRef = useRef<AccionFeed[]>([]);
-  const ultimaRef = useRef('');
-  useEffect(() => {
-    // Saca la próxima acción; cuando se acaba la vuelta, la baraja de nuevo sin repetir la última.
-    const siguiente = (): AccionFeed => {
-      if (colaRef.current.length === 0) {
-        const cola = barajar(ACCIONES_FEED);
-        if (cola.length > 1 && cola[0].texto === ultimaRef.current) {
-          const t0 = cola[0]; cola[0] = cola[1]; cola[1] = t0;
-        }
-        colaRef.current = cola;
-      }
-      const a = colaRef.current.shift() as AccionFeed;
-      ultimaRef.current = a.texto;
-      return a;
-    };
-    const crear = (a: AccionFeed, nace: number): LineaFeed => ({
-      id: seqRef.current++, agenteId: a.agenteId, texto: a.texto, artefacto: a.artefacto, nace,
-    });
+  const pieza = PIEZAS_MOTOR[pos];
+  const total = sent.pos + sent.neg + sent.ana;
+  const aprueba = score >= 80;
 
-    setLineas(EDADES_INICIALES_SEG.map(e => crear(siguiente(), -e)));
-
-    let id: ReturnType<typeof setTimeout>;
-    const programar = () => {
-      const espera = MS_LINEA_MIN + Math.random() * (MS_LINEA_MAX - MS_LINEA_MIN);
-      id = setTimeout(() => {
-        const a = siguiente();
-        setLineas(prev => [crear(a, tRef.current), ...prev].slice(0, MAX_LINEAS));
-        setNuevas(n => n + 1);
-        programar();
-      }, espera);
-    };
-    programar();
-    return () => clearTimeout(id);
-  }, []);
-
-  // ---- La vuelta al mercado: cuenta regresiva, hora de la última y revisiones acumuladas ----
-  const ciclo = t % CADENCIA_SEG;
-  const faltan = ciclo < FALTAN_INICIAL_SEG
-    ? FALTAN_INICIAL_SEG - ciclo
-    : CADENCIA_SEG - (ciclo - FALTAN_INICIAL_SEG);
-  const edadUltima = ciclo >= FALTAN_INICIAL_SEG ? ciclo - FALTAN_INICIAL_SEG : EDAD_INICIAL_SEG + ciclo;
-  const vueltas = Math.floor(t / CADENCIA_SEG) + (ciclo >= FALTAN_INICIAL_SEG ? 1 : 0);
-  const mmss = `${String(Math.floor(faltan / 60)).padStart(2, '0')}:${String(faltan % 60).padStart(2, '0')}`;
-  /** Sube de a uno cada 2 segundos mientras mirás: la pantalla nunca está quieta. */
-  const revisados = 47 + Math.floor(t / 2);
-
-  // ---- El equipo, con lo que cambia solo: estado, avance de la tarea y hora corrida ----
-  const luxAfloja = (t % CICLO_ESTADO_SEG) >= DESDE_AFLORA_SEG;
-  const equipo = AGENTES.map((a, i) => {
-    const estado: Agente['estado'] = luxAfloja && a.id === 'lux' ? 'al_dia' : a.estado;
-    const rango = a.tarea.total - a.tarea.hecho + 1;
-    const hecho = a.tarea.hecho + (Math.floor((t + i * DESFASE_TAREA_SEG) / PASO_TAREA_SEG) % rango);
-    const min = minutosDe(a.cuando, 5) + Math.floor(t / 60);
-    return { a, estado, hecho, cuando: haceMin(min) };
-  });
-  const trabajando = equipo.filter(e => e.estado === 'trabajando').length;
-  const esperando = equipo.filter(e => e.estado === 'esperando_ok').length;
-  const alDia = equipo.filter(e => e.estado === 'al_dia').length;
-
-  const verGaleria = () => {
-    if (irAGaleria) irAGaleria();
-    else setToast('La galería de Campañas está en el paso «Galería» (demo)');
-  };
+  const cuentaVotos: Record<string, number> = {};
+  votos.forEach(v => { cuentaVotos[v.v] = (cuentaVotos[v.v] || 0) + 1; });
+  const filasVoto: [string, string][] = [['Aprueba', '#34d399'], ['Con reserva', '#a855f7'], ['Neutro', '#9ca3af'], ['Rechaza', '#f87171']];
 
   return (
-    <div className="eq-wrap">
-      {/* ==================== ENCABEZADO: el equipo trabaja desde el onboarding ==================== */}
-      <div className="eq-head">
-        <div className="eq-head-top">
-          <span className="eq-live"><span className="dot-live" /> EN VIVO</span>
-          <span className="eq-head-t">El equipo trabajando: la investigación de tu mercado</span>
-          <Badge tone="green">{trabajando} trabajando ahora</Badge>
-        </div>
-        <div className="eq-arranque">
-          <b>Arrancó solo {INVESTIGACION_MERCADO.desde}</b>, {INVESTIGACION_MERCADO.arranco}.
-          {' '}Desde entonces revisa tu mercado <b>{INVESTIGACION_MERCADO.cadencia}</b> y te avisa si algo cambia.
-        </div>
-        <div className="eq-estado">
-          <span><b>{trabajando}</b> trabajando</span>
-          <span className="eq-sep">·</span>
-          <span><b>{esperando}</b> esperando tu OK</span>
-          <span className="eq-sep">·</span>
-          <span><b>{alDia}</b> al día</span>
-          <span className="eq-sep">·</span>
-          <span title={`La última vez que el motor dejó un resultado en tu panel. Vuelve cada ${INVESTIGACION_MERCADO.cadencia}.`}>
-            última revisión: <b>{hace(edadUltima)}</b></span>
-          <span className="eq-sep">·</span>
-          <span className="eq-prox" title="Cuenta regresiva real a la próxima vuelta al mercado: baja cada segundo.">
-            próxima vuelta en <b>{mmss}</b></span>
-          <span className="eq-sep">·</span>
-          <span title="Anuncios, precios y conversaciones que el equipo viene de revisar. Sube solo.">
-            revisado hasta ahora: <b>{revisados}</b></span>
-          <span className="eq-count">{INVESTIGACION_MERCADO.revisiones + vueltas} revisiones desde que arrancó</span>
-        </div>
+    <Card
+      title={<><I_Zap size={15} style={{ marginRight: 8, color: 'var(--purple4)' }} /> El motor andando: mercado secundario predictivo</>}
+      action={<span className="badge badge-green" style={{ fontSize: 10 }}>en vivo</span>}
+    >
+      <div className="small muted" style={{ marginBottom: 14, lineHeight: 1.5 }}>
+        Tu propuesta se prueba acá antes de salir a internet. Esto es lo que pasa <b>ahora mismo</b>:
       </div>
 
-      {/* ============ EL FEED EN VIVO: lo que están haciendo ahora, entrando línea por línea ============ */}
-      <div className="eq-feed">
-        <div className="eq-feed-head">
-          <span className="eq-live"><span className="dot-live" /> EN VIVO</span>
-          <span className="eq-feed-t">Lo que están haciendo ahora, agente por agente</span>
-          <span className="eq-feed-n" title="Líneas que entraron al feed desde que abriste el panel.">
-            <b>{nuevas}</b> {nuevas === 1 ? 'nueva' : 'nuevas'} desde que abriste
-          </span>
-        </div>
-        {/* Altura fija: entra una línea y el resto de la pantalla NO se mueve ni un pixel. */}
-        <div className="eq-feed-lista">
-          {lineas.map(l => {
-            const ag = AGENTE_POR_ID[l.agenteId];
-            return (
-              <div className="eq-feed-l" key={l.id}>
-                <span className="eq-av" style={{ background: ag.color }}>{ag.nombre[0]}</span>
-                <span className="eq-feed-nm">{ag.nombre}</span>
-                <span className="eq-feed-tx" title={l.texto}>{l.texto}</span>
-                <span className="eq-feed-when">{hace(t - l.nace)}</span>
-                {l.artefacto && (
-                  <Button variant="ghost" className="btn-sm eq-feed-btn"
-                    title={`Abre «${l.artefacto}». Solo lectura: no cambia nada.`}
-                    onClick={() => setToast(`${l.artefacto} (demo)`)}>
-                    <I_ArrowRight size={12} />
-                    <span className="eq-feed-btn-t">{l.artefacto}</span>
-                  </Button>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ==================== LAS DOS TARJETAS: quién es quién y qué está mirando ==================== */}
-      <div className="duo">
-        <Card className="eq-card"
-          title={<span className="row" style={{ gap: 8 }}><I_Users size={14} style={{ color: 'var(--purple3)' }} /> El equipo, agente por agente</span>}
-          action={<Badge tone="muted">{AGENTES.length} agentes</Badge>}
-        >
-          {/* De a 3 por fila: los 6 entran en dos filas y el bloque respira sin scrollear. */}
-          <div className="eq-agentes">
-            {equipo.map(e => <FichaAgente key={e.a.id} a={e.a} estado={e.estado} hecho={e.hecho} cuando={e.cuando} setToast={setToast} />)}
+      <div className="motor-split">
+        {/* ============ IZQUIERDA: el proceso ============ */}
+        <div>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 14, padding: '10px 14px', borderRadius: 12, border: '1px solid rgba(168,85,247,.35)', background: 'rgba(124,58,237,.08)' }}>
+            <span style={{ fontSize: 22 }}>{pieza.e}</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="small" style={{ fontWeight: 700 }}>En el filtro: {pieza.n}</div>
+              <div className="tiny muted">{pieza.t}</div>
+            </div>
+            <Badge tone="purple">Etapa {paso + 1}/6</Badge>
           </div>
-          <div className="acc-why">
-            Cada agente dice <b>qué miró de tu negocio</b>, <b>qué resultó</b> y <b>cuándo</b>.
-            Lo que produjo se abre con un clic: no hay resultados sin comprobar.
-          </div>
-        </Card>
 
-        <Card className="eq-card"
-          title={<span className="row" style={{ gap: 8 }}><I_Eye size={14} style={{ color: '#22d3ee' }} /> Qué está investigando del mercado ahora</span>}
-          action={<Badge tone="purple">{INVESTIGACION_MERCADO.zona}</Badge>}
-        >
-          <div className="eq-inv">
-            <div className="eq-zona">
-              <span style={{ fontSize: 15, flexShrink: 0 }}>📍</span>
-              <div style={{ minWidth: 0, flex: '1 1 220px' }}>
-                <div className="eq-zona-t">Lux está mirando tu zona: {INVESTIGACION_MERCADO.zona}</div>
-                <div className="eq-zona-d" title={INVESTIGACION_MERCADO.zonaDetalle}>{INVESTIGACION_MERCADO.zonaDetalle}</div>
+          <div className="motor-kpis">
+            {/* sentimiento */}
+            <div style={{ padding: 10, borderRadius: 10, border: '1px solid var(--border2)', background: 'var(--bg2)' }}>
+              <div className="tiny muted" style={{ fontWeight: 700, marginBottom: 6 }}>Sentimiento del mercado</div>
+              <div style={{ display: 'flex', height: 44, borderRadius: 6, overflow: 'hidden' }}>
+                <div style={{ width: (sent.pos / total) * 100 + '%', background: 'linear-gradient(180deg,#34d399,#059669)', transition: 'width .5s ease' }} />
+                <div style={{ width: (sent.neg / total) * 100 + '%', background: 'linear-gradient(180deg,#f87171,#dc2626)', transition: 'width .5s ease' }} />
+                <div style={{ width: (sent.ana / total) * 100 + '%', background: 'linear-gradient(180deg,#a855f7,#7c3aed)', transition: 'width .5s ease' }} />
               </div>
-              <span className="eq-tag">revisado {hace(edadUltima)}</span>
+              <div style={{ display: 'flex', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
+                <span className="tiny" style={{ color: '#34d399' }}>▲ {sent.pos}</span>
+                <span className="tiny" style={{ color: '#f87171' }}>▼ {sent.neg}</span>
+                <span className="tiny" style={{ color: '#a855f7' }}>● {sent.ana}</span>
+              </div>
             </div>
 
-            <div className="eq-frentes">
-              {FRENTES_INVESTIGACION.map(f => (
-                <div key={f.id} className="eq-frente" style={{ borderLeftColor: f.color }}
-                  title={`${f.ancla} · ${f.resultado}`}>
-                  <span className="eq-frente-t">{f.t}</span>
-                  <span className="eq-frente-v" style={{ color: f.color }}>{f.dato}</span>
-                  <span className="eq-frente-r">{f.resultado}</span>
-                  <span className="eq-frente-a">{f.cuando}</span>
+            {/* score en vivo */}
+            <div style={{ padding: 10, borderRadius: 10, border: '1px solid var(--border2)', background: 'var(--bg2)' }}>
+              <div className="tiny muted" style={{ fontWeight: 700, marginBottom: 6 }}>Score en vivo</div>
+              <svg width="100%" height="44" viewBox="0 0 100 40" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="v2spark" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#a855f7" stopOpacity="0.5" />
+                    <stop offset="100%" stopColor="#a855f7" stopOpacity="0" />
+                  </linearGradient>
+                </defs>
+                {(() => {
+                  const datos = hist;
+                  const min = 30, max = 75;
+                  const pts = datos.map((v, i) => [8 + (i / Math.max(1, datos.length - 1)) * 84, 36 - ((v - min) / (max - min)) * 32]);
+                  const line = pts.map((p, i) => (i === 0 ? 'M' : 'L') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ');
+                  const area = line + ' L ' + pts[pts.length - 1][0].toFixed(1) + ' 38 L ' + pts[0][0].toFixed(1) + ' 38 Z';
+                  const last = pts[pts.length - 1];
+                  return (<g>
+                    <path d={area} fill="url(#v2spark)" />
+                    <path d={line} fill="none" stroke="#a855f7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    <circle cx={last[0]} cy={last[1]} r="3" fill="#a855f7" />
+                  </g>);
+                })()}
+              </svg>
+              <div className="tiny" style={{ color: '#a855f7', fontWeight: 800, marginTop: 2 }}>{score}/100</div>
+            </div>
+
+            {/* distribución de votos */}
+            <div style={{ padding: 10, borderRadius: 10, border: '1px solid var(--border2)', background: 'var(--bg2)' }}>
+              <div className="tiny muted" style={{ fontWeight: 700, marginBottom: 6 }}>Distribución de votos</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                {filasVoto.map(([lab, col]) => {
+                  const n = cuentaVotos[lab] || 0;
+                  return (
+                    <div key={lab} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span className="tiny" style={{ width: 58, color: col, flexShrink: 0, fontSize: 10 }}>{lab}</span>
+                      <div style={{ flex: 1, height: 6, borderRadius: 3, background: 'var(--bg3)', overflow: 'hidden' }}>
+                        <div style={{ width: (n / (votos.length || 1)) * 100 + '%', height: '100%', background: col, transition: 'width .5s ease' }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* las 6 etapas */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {ETAPAS_MOTOR.map((f, i) => {
+              const fase = paso > i ? 'hecho' : paso === i ? 'activo' : 'pendiente';
+              return (
+                <div key={i} style={{
+                  display: 'flex', gap: 10, alignItems: 'center', padding: '9px 12px', borderRadius: 10, transition: 'all .3s ease',
+                  border: '1px solid ' + (fase === 'activo' ? '#a855f7' : fase === 'hecho' ? 'rgba(52,211,153,.4)' : 'var(--border2)'),
+                  background: fase === 'activo' ? 'rgba(124,58,237,.10)' : fase === 'hecho' ? 'rgba(52,211,153,.06)' : 'var(--bg2)',
+                }}>
+                  <div style={{
+                    width: 26, height: 26, borderRadius: 999, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 13, fontWeight: 800, flexShrink: 0, color: '#fff',
+                    background: fase === 'pendiente' ? 'var(--bg3)' : fase === 'activo' ? 'linear-gradient(90deg,#7c3aed,#a855f7)' : '#34d399',
+                    boxShadow: fase === 'activo' ? '0 0 14px rgba(168,85,247,.55)' : 'none',
+                  }}>
+                    {fase === 'hecho' ? <I_Check size={15} /> : i + 1}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="small" style={{ fontWeight: 700, color: fase === 'activo' ? '#a855f7' : 'inherit' }}>{f.t}</div>
+                    {fase === 'activo' && <div className="tiny muted" style={{ marginTop: 1 }}>{f.d}</div>}
+                  </div>
+                  {fase === 'activo' && <span className="tiny" style={{ color: '#a855f7', fontWeight: 700 }}>● ahora</span>}
                 </div>
+              );
+            })}
+          </div>
+
+          <div style={{ marginTop: 14, display: 'flex', gap: 10, alignItems: 'center', padding: '12px 14px', borderRadius: 12, background: 'rgba(124,58,237,.10)', border: '1px solid rgba(124,58,237,.25)' }}>
+            <div style={{ fontSize: 26 }}>🧠</div>
+            <div style={{ flex: 1 }}>
+              <div className="small" style={{ fontWeight: 700 }}>Score: {score}/100</div>
+              <div className="tiny muted">{aprueba ? 'El mercado sugiere PUBLICAR esta propuesta.' : 'El mercado aún debate si vale publicarla.'}</div>
+            </div>
+            <Badge tone={aprueba ? 'green' : 'amber'}>{aprueba ? 'Aprobada' : 'En debate'}</Badge>
+          </div>
+        </div>
+
+        {/* ============ DERECHA: el mercado reaccionando ============ */}
+        <div style={{ border: '1px solid var(--border2)', borderRadius: 12, background: 'var(--bg2)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', padding: '10px 12px', borderBottom: '1px solid var(--border2)', background: 'var(--bg3)' }}>
+            <span style={{ width: 8, height: 8, borderRadius: 999, background: '#ef4444', boxShadow: '0 0 0 3px rgba(239,68,68,.25)', animation: 'livepulse 1.5s infinite' }} />
+            <span className="small" style={{ fontWeight: 700 }}>El público, reacción en vivo</span>
+            <span className="tiny muted" style={{ marginLeft: 'auto' }}>500 agentes del público</span>
+          </div>
+          <div style={{ flex: 1, maxHeight: 380, overflowY: 'auto', padding: '10px 8px', display: 'flex', flexDirection: 'column', gap: 7 }}>
+            {chat.map((m, i) => (
+              <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'flex-start', fontSize: 11.5, lineHeight: 1.35 }}>
+                <span style={{ fontWeight: 800, color: COLOR[m.t], flexShrink: 0 }}>#{m.id}</span>
+                <span style={{ color: 'var(--txt)', overflowWrap: 'anywhere' }}>{m.m}</span>
+              </div>
+            ))}
+          </div>
+          <div style={{ borderTop: '1px solid var(--border2)', padding: '8px 10px', background: 'var(--bg3)' }}>
+            <div className="tiny" style={{ fontWeight: 700, marginBottom: 4 }}>Lo que está reaccionando ahora</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+              {votos.map((v, i) => (
+                <span key={i} className="tiny" style={{
+                  padding: '2px 8px', borderRadius: 999,
+                  background: v.v === 'Aprueba' ? 'rgba(52,211,153,.16)' : v.v === 'Rechaza' ? 'rgba(248,113,113,.16)' : 'rgba(168,85,247,.16)',
+                  color: v.v === 'Aprueba' ? '#34d399' : v.v === 'Rechaza' ? '#f87171' : '#a855f7',
+                }}>
+                  #{v.id} · {v.v}
+                </span>
               ))}
             </div>
-
-            <div className="bs" style={{ marginBottom: 1 }}>Los últimos hallazgos, con la hora en que los encontró:</div>
-            <div className="eq-hallazgos">
-              {HALLAZGOS.map(h => <FilaHallazgo key={h.id} h={h} setToast={setToast} />)}
-            </div>
           </div>
-        </Card>
+        </div>
       </div>
 
-      {/* ==================== EL PUENTE A MIROFISH ==================== */}
-      <div className="eq-puente">
-        <span className="eq-puente-t">
-          Esto es la <b>investigación del mercado</b>: corre desde el onboarding y no gasta presupuesto.
-          Cuando hay una <b>pieza para evaluar</b> (un aviso, un video, una imagen), entra <b>MiroFish</b>:
-          los 5 jueces y 500 del público la votan antes de que salga a internet.
-        </span>
+      {/* ============ CIERRE: el filtro + qué hace cada botón ============ */}
+      <div style={{ marginTop: 14, padding: '10px 14px', borderRadius: 12, background: 'rgba(34,211,238,.08)', border: '1px solid rgba(34,211,238,.25)' }}>
+        <div className="tiny muted"><b style={{ color: '#22d3ee' }}>🔒 El filtro antes de salir live:</b> solo lo que convence acá se publica; lo que no, se descarta y enseña al sistema.</div>
+      </div>
+
+      <div className="row" style={{ gap: 9, marginTop: 12, flexWrap: 'wrap' }}>
+        <Button variant={aprueba ? 'primary' : 'outline'} className="btn-sm"
+          title="Saca la pieza del filtro y la deja lista para publicar"
+          onClick={() => setToast(aprueba ? `"${pieza.n}" aprobada y lista para publicar (demo)` : 'El score no llega a 80: no se publica y el motor aprende de esto (demo)')}>
+          <I_Check size={13} /> {aprueba ? 'Sacar del filtro y publicar' : 'Pedir otra ronda al motor'}
+        </Button>
         <Button variant="ghost" className="btn-sm"
-          title="Te lleva a la galería de Campañas, donde están las piezas que MiroFish ya puntuó. No publica nada."
-          onClick={verGaleria}>
-          <I_Zap size={13} /> Ver la galería de MiroFish <I_ArrowRight size={13} />
+          title="Abre el detalle de cómo votó cada observador"
+          onClick={() => setToast('Detalle de la votación, observador por observador (demo)')}>
+          <I_ArrowRight size={13} /> Ver por qué votaron así
+        </Button>
+        <Button variant="ghost" className="btn-sm"
+          title="Nia reescribe la pieza con las objeciones del mercado y la vuelve a probar"
+          onClick={() => setToast('Nia reescribe con las objeciones y la vuelve a meter al filtro (demo)')}>
+          Corregir lo que objetaron
         </Button>
       </div>
-    </div>
-  );
-}
-
-// =============================================================================================
-// La ficha de un agente: nombre, función llana, estado, qué está haciendo, el resultado, el
-// avance de su tarea (que se mueve solo) y el artefacto que dejó.
-function FichaAgente({ a, estado, hecho, cuando, setToast }: {
-  a: Agente;
-  /** El estado de ahora: puede haber cambiado solo desde que abriste el panel. */
-  estado: Agente['estado'];
-  /** Cuánto lleva hecho de su tarea: avanza solo. */
-  hecho: number;
-  /** Su hora, ya corrida por el reloj. */
-  cuando: string;
-  setToast: (t: string) => void;
-}) {
-  const clase = CLASE_ESTADO[estado];
-  const pct = Math.round((hecho / a.tarea.total) * 100);
-  const espera = estado === 'esperando_ok';
-  return (
-    <div className={`eq-ag ${clase}`}>
-      <div className="eq-ag-top">
-        <span className="eq-av" style={{ background: a.color }}>{a.nombre[0]}</span>
-        <span className="eq-nm">{a.nombre}</span>
-        <span className={`eq-est ${clase}`}>{ESTADO_LB[estado]}</span>
+      <div className="acc-why">
+        <b>Publicar</b> es lo único que gasta dinero y necesita tu OK si estás en modo Compartido.{' '}
+        <b>Ver por qué votaron así</b> no cambia nada, solo abre el detalle. <b>Corregir</b> crea una pieza nueva: la actual queda intacta.
       </div>
-      <div className="eq-rol" title={a.rol}>{a.rol}</div>
-      <div className="eq-fn" title={a.funcion}>{a.funcion}</div>
-      <div className="eq-ahora" title={`${a.accion} · ${cuando}`}>
-        <b>Ahora: </b>{a.accion} <span className="eq-cz">· {cuando}</span>
-      </div>
-      <div className="eq-ancla" title={a.ancla}>{a.ancla}</div>
-      <div className="eq-res" title={a.resultado}><b>→ </b>{a.resultado}</div>
-      {/* El avance de la tarea: la barra se llena sola mientras mirás la pantalla. */}
-      <div className="eq-prog" title={`${a.nombre}: ${hecho} de ${a.tarea.total} ${a.tarea.etiqueta}. Avanza solo.`}>
-        <span className="eq-prog-t">{hecho} de {a.tarea.total} {a.tarea.etiqueta}</span>
-        <span className="eq-prog-b"><i style={{ width: `${pct}%`, background: a.color }} /></span>
-      </div>
-      <Button variant="ghost" className="btn-sm eq-ag-btn"
-        title={espera ? tituloArtefacto(a.artefactoNombre, estado) : tituloArtefacto(a.artefactoNombre, estado)}
-        onClick={() => setToast(`Abrimos «${a.artefactoNombre}» (demo)`)}>
-        <I_ArrowRight size={12} /> <span className="eq-ag-btn-t">{a.artefactoNombre}</span>
-      </Button>
-    </div>
-  );
-}
-
-// =============================================================================================
-// El hallazgo: una sola línea, con la hora, quién lo encontró, qué encontró y el artefacto.
-// El detalle completo (por qué le importa al negocio) viaja en el title: no se pierde nada.
-function FilaHallazgo({ h, setToast }: { h: Hallazgo; setToast: (t: string) => void }) {
-  return (
-    <div className="eq-hall" title={`${h.agente} · ${h.texto} — ${h.detalle}`}>
-      <span className="eq-hall-when">{h.cuando}</span>
-      <div className="eq-hall-b">
-        <b style={{ color: h.color }}>{h.agente}</b> · {h.texto}
-      </div>
-      <Button variant="ghost" className="btn-sm eq-hall-btn"
-        title={`Abre «${h.artefacto}». Solo lectura: no cambia nada.`}
-        onClick={() => setToast(`${h.artefacto} (demo)`)}>
-        <I_ArrowRight size={12} /> {h.artefacto}
-      </Button>
-    </div>
+    </Card>
   );
 }

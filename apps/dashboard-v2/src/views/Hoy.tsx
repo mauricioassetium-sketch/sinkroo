@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Card, Badge, Button } from '../components/ui';
-import { MotorEnVivo } from '../components/MotorEnVivo';
+import { EquipoInvestigando } from '../components/EquipoInvestigando';
 import { Bars, Ring, BarRow, MetricaAnillo } from '../components/viz';
 import { usePerfil, nombreDePila } from '../lib/perfil';
 import { SinkrooMark, I_Check, I_ArrowRight, I_Wallet, I_Eye, I_Vote, I_Star, I_Sun, I_Zap, I_Trend, I_Clock } from '../components/icons';
@@ -68,9 +68,9 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
         </div>
       </div>
 
-      {/* ====================== EL MOTOR ANDANDO ====================== */}
+      {/* ============== LA INVESTIGACIÓN DEL MERCADO (los 6 agentes, en vivo) ============== */}
       <div id="motor">
-        <MotorEnVivo setToast={setToast}
+        <EquipoInvestigando setToast={setToast}
           irAGaleria={() => {
             setVista('campanas');
             setToast('En Campañas, entrá al paso «Galería»: ahí están las piezas que MiroFish ya puntuó');

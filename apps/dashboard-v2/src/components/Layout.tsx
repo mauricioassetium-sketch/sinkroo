@@ -178,7 +178,7 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
               <span className="badge badge-purple" style={{ fontSize: 10 }}>
                 Modo {nombreModo}
               </span>
-              <button className="btn btn-ghost btn-sm" onClick={() => { setNotif(false); bajarAlMotor(setVista); }}>Ver el motor</button>
+              <button className="btn btn-ghost btn-sm" title="Te lleva al bloque del motor: ahí ves qué están investigando tus 6 agentes ahora mismo" onClick={() => { setNotif(false); bajarAlMotor(setVista); }}>Ver el motor</button>
             </span>
           </div>
         </header>
