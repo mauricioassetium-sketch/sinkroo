@@ -1381,3 +1381,228 @@
 @media (max-width: 1100px) {
   .vhead .cifras:has(> .cifra:nth-child(5)) > .cifra:nth-child(5) { grid-column: 1 / -1; }
 }
+
+/* =============================================================================================
+   FLUJO MIROFISH · EL COSTO DE LA RONDA Y EL PANEL DE «OTRA RONDA»
+
+   Las dos cosas nuevas van DENTRO de la tarjeta del encabezado del flujo (no es un modal: no tapa
+   la pantalla ni el resto del flujo):
+     1. `.flujo-costo` — la línea visible con el precio de la ronda, su desglose (160 = 120 crear +
+        40 evaluar · 72 = 48 + 24) y el acumulado cuando ya hubo más de una ronda (2 rondas: 320).
+     2. `.ronda-panel` — lo que pregunta «Otra ronda» antes de arrancar: chips que se tocan (con la
+        objeción real del panel adentro), una línea opcional de texto libre, y lo que dejó la ronda
+        anterior, para que la ronda nueva no arranque de cero.
+   Sin `1fr` a secas (siempre minmax(0, 1fr) cuando hay grilla), sin botón sin `title` y sin tocar
+   las reglas de .duo: si esto cae en una fila .duo, las dos tarjetas siguen midiendo lo mismo.
+   ============================================================================================= */
+
+/* --- La línea del costo: el desglose adentro y el acumulado al costado, sin esconder nada --- */
+.flujo-costo { display: flex; align-items: center; gap: 9px 12px; flex-wrap: wrap; margin-top: 12px;
+  padding: 9px 12px; border-radius: 11px; border: 1px solid rgba(168,85,247,.32);
+  background: rgba(168,85,247,.08); }
+.flujo-costo-ico { display: inline-flex; color: var(--purple3); flex-shrink: 0; }
+.flujo-costo-tx { flex: 1 1 320px; min-width: 0; font-size: 12px; line-height: 1.5; color: var(--txt);
+  overflow-wrap: anywhere; }
+.flujo-costo-tx b { color: var(--purple3); font-weight: 800; }
+.flujo-costo-acum { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; font-size: 11px;
+  font-weight: 800; color: var(--txt); padding: 4px 10px; border-radius: 99px; white-space: nowrap;
+  border: 1px solid var(--border2); background: var(--bg2); font-variant-numeric: tabular-nums; }
+.flujo-costo-acum svg { color: var(--amber); }
+
+/* --- El panel de la ronda nueva: chico, adentro del encabezado, con todo lo que hace falta ver --- */
+.ronda-panel { display: flex; flex-direction: column; gap: 10px; min-width: 0; margin-top: 12px;
+  padding: 12px 13px; border-radius: 12px; border: 1px solid var(--border); background: var(--bg2); }
+.ronda-panel-h { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+.ronda-panel-t { flex: 1 1 240px; min-width: 0; display: inline-flex; align-items: center; gap: 7px;
+  font-size: 12.5px; font-weight: 800; letter-spacing: -.1px; }
+.ronda-panel-t svg { color: var(--purple3); flex-shrink: 0; }
+
+/* Lo que dejó la ronda anterior: la mejor pieza y su objeción, en datos, no en promesas. */
+.ronda-dejo { font-size: 11.5px; line-height: 1.55; color: var(--muted2); padding: 9px 11px;
+  border-radius: 10px; border: 1px dashed var(--border2); background: var(--bg3); overflow-wrap: anywhere; }
+.ronda-dejo b { color: var(--txt); font-weight: 700; }
+
+/* Los chips: se tocan, nunca hay un campo obligatorio. El costo de la ronda de mejora va en el chip. */
+.ronda-chips { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.ronda-chip { border: 1px solid var(--border); background: var(--bg3); border-radius: 11px; min-width: 0; }
+.ronda-chip.sel { border-color: rgba(168,85,247,.5); background: rgba(168,85,247,.12); }
+.ronda-chip-btn { display: block; width: 100%; min-width: 0; text-align: left; cursor: pointer;
+  background: none; border: 0; padding: 9px 11px; font-family: inherit; font-size: 12px; color: var(--muted); }
+.ronda-chip-btn:hover { color: var(--txt); }
+.ronda-chip.sel .ronda-chip-btn { color: var(--txt); }
+.ronda-chip-t { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; font-weight: 700; min-width: 0; }
+.ronda-chip-ico { display: inline-flex; color: var(--purple3); flex-shrink: 0; }
+.ronda-chip-cr { font-size: 10.5px; font-weight: 800; padding: 2px 8px; border-radius: 99px; white-space: nowrap;
+  color: var(--green); border: 1px solid rgba(34,197,94,.34); background: rgba(34,197,94,.10);
+  font-variant-numeric: tabular-nums; }
+.ronda-chip-cr.off { color: var(--muted2); border-color: var(--border2); background: var(--bg2); }
+.ronda-chip-d { display: block; margin-top: 3px; font-size: 11px; font-weight: 400; line-height: 1.5;
+  color: var(--muted2); overflow-wrap: anywhere; }
+.ronda-chip.sel .ronda-chip-d { color: var(--muted); }
+
+/* La objeción real del panel, chip por chip: la del juez que votó más bajo viene elegida. */
+.ronda-sub { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; padding: 0 11px 10px; }
+.ronda-sub-chip { max-width: 100%; font-family: inherit; font-size: 10.5px; font-weight: 600; text-align: left;
+  cursor: pointer; padding: 5px 9px; border-radius: 9px; border: 1px solid var(--border);
+  background: var(--bg2); color: var(--muted2); overflow-wrap: anywhere; }
+.ronda-sub-chip svg { vertical-align: -2px; margin-right: 4px; color: var(--amber); }
+.ronda-sub-chip.on { color: var(--txt); border-color: rgba(245,158,11,.42); background: rgba(245,158,11,.10); }
+
+/* La línea opcional de «Otra cosa»: existe, se puede escribir, y no es obligatoria. */
+.ronda-input { display: block; width: calc(100% - 22px); margin: 0 11px 11px; font-family: inherit;
+  font-size: 11.5px; padding: 8px 10px; border-radius: 9px; border: 1px solid var(--border2);
+  background: var(--bg); color: var(--txt); }
+.ronda-input::placeholder { color: var(--muted2); }
+
+/* El pie: el costo de la ronda de mejora con su desglose y el botón, nunca un hueco vacío. */
+.ronda-foot { display: flex; align-items: center; gap: 10px 12px; flex-wrap: wrap; padding-top: 10px;
+  border-top: 1px solid var(--border); }
+.ronda-costo { flex: 1 1 300px; min-width: 0; font-size: 11.5px; line-height: 1.55; color: var(--muted2);
+  overflow-wrap: anywhere; }
+.ronda-costo b { color: var(--purple3); font-weight: 800; }
+.ronda-costo small { display: block; margin-top: 4px; font-size: 10.5px; line-height: 1.45; color: var(--muted); }
+.ronda-hint { flex: 1 1 240px; min-width: 0; font-size: 11.5px; line-height: 1.5; color: var(--muted); }
+.ronda-foot .btn { flex: 0 0 auto; }
+@media (max-width: 620px) {
+  .ronda-foot .btn { width: 100%; justify-content: center; }
+  .flujo-costo-acum { width: 100%; justify-content: center; }
+}
+
+/* =============================================================================================
+   MARCA DEL CLIENTE — su logo y sus colores (lo pidió el dueño del negocio)
+   ---------------------------------------------------------------------------------------------
+   `src/lib/perfil.tsx` deja la paleta en las variables CSS de la raíz (`--grad`, `--acento`,
+   `--acento-2`, `--brillo`, `--acento-txt`) y agrega la clase `marca-cliente` en <html>. Así el
+   panel entero se repinta sin tocar componente por componente.
+
+   LAS CUATRO COSAS QUE SE PINTAN CON LA PALETA:
+     1. `--grad`  → el degradado de los botones principales (y el gauge, y el acento del menú).
+     2. `--brillo` → el brillo del hero: el halo del búho/logo, la tarjeta de arranque y el fondo.
+     3. `--acento-txt` → la sección activa del menú.
+     4. `--acento-txt` → la serie principal del gráfico grande (las barras).
+
+   LO QUE NUNCA SE PINTA: los semáforos. Verde (`--green`), ámbar (`--amber`), rojo (`--red`) y
+   gris neutro (`--muted`) siguen valiendo lo mismo con cualquier paleta. Si el color del cliente
+   se parece a un semáforo, gana el semáforo.
+
+   `--acento-txt` es el color del cliente con el brillo justo para leerse sobre el fondo del tema
+   actual (lo calcula el perfil para claro y para oscuro); `--acento` es su color tal cual y se
+   usa en las capas translúcidas.
+   ============================================================================================= */
+
+:root {
+  --acento: #a855f7;
+  --acento-2: #c084fc;
+  --acento-rgb: 168,85,247;
+  --acento2-rgb: 192,132,252;
+  --brillo: 168,85,247;
+  --brillo2: 192,132,252;
+  --acento-txt: #a78bfa;
+  --acento-txt-rgb: 167,139,250;
+  --acento2-txt: #c084fc;
+  --acento2-txt-rgb: 192,132,252;
+  --grad-texto: var(--grad);
+  --sobre-grad: #ffffff;
+}
+html.light { --acento-txt: #7c3aed; --acento-txt-rgb: 124,58,237; }
+
+/* ---------- 1 y 3: el texto de arriba de los botones con degradado ---------- */
+html.marca-cliente .btn-grad, html.marca-cliente .hero-ad-btn, html.marca-cliente .seg.on { color: var(--sobre-grad); }
+/* El nombre de la marca y las iniciales, también con su degradado. */
+html.marca-cliente .grad-text { background: var(--grad-texto); -webkit-background-clip: text; background-clip: text; }
+
+/* ---------- 2: el brillo del hero ---------- */
+/* El halo del logo (el del cliente o el búho), la tarjeta de arranque y una luz de fondo suave. */
+.hero-logo { filter: drop-shadow(0 10px 26px rgba(var(--brillo), .34)); }
+.dash .hero.card { background-image: radial-gradient(circle at 12% -20%, rgba(var(--brillo), .16), transparent 58%); }
+.hero-start { border-color: rgba(var(--brillo), .5);
+  background:
+    radial-gradient(circle at 88% 10%, rgba(var(--brillo), .30), transparent 58%),
+    linear-gradient(160deg, rgba(var(--brillo), .14), rgba(var(--brillo), .03) 62%, transparent); }
+html.marca-cliente .hero .hero-sub b { color: var(--acento-txt); }
+html.marca-cliente .hero-ad-tag { color: var(--acento-txt); }
+
+/* ---------- 3: el acento de la sección activa del menú ---------- */
+html.marca-cliente .nav-item.active { background: rgba(var(--acento-txt-rgb), .14);
+  box-shadow: inset 0 0 0 1px rgba(var(--acento-txt-rgb), .28); }
+html.marca-cliente .nav-item.active .nav-label { color: var(--acento-txt); }
+
+/* ---------- 4: la serie principal del gráfico grande (las barras del mes) ---------- */
+html.marca-cliente .bars-bar { background: var(--acento-txt) !important; }
+html.marca-cliente .bars-val { color: var(--acento-txt) !important; }
+
+/* ---------- El logo del cliente en el hero, con el nombre de su negocio abajo ---------- */
+.hero-logo { display: block; }
+.hero-logo .marca-logo { width: 136px; height: 136px; object-fit: contain; border-radius: 18px; display: block; }
+.hero-logo-lb { display: block; margin: 7px auto 0; max-width: 136px; text-align: center;
+  font-size: 10px; font-weight: 800; letter-spacing: .9px; text-transform: uppercase; color: var(--muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 1080px) { .hero-logo-lb { max-width: 104px; } }
+@media (max-width: 480px) { .hero-logo-lb { max-width: 70px; font-size: 9px; letter-spacing: .5px; } }
+
+/* ---------- El logo chiquito de la barra de arriba, a la izquierda del título ---------- */
+.tb-logo { flex-shrink: 0; width: 30px; height: 30px; border-radius: 9px; display: inline-flex;
+  align-items: center; justify-content: center; overflow: hidden; }
+.tb-logo img { width: 26px; height: 26px; object-fit: contain; border-radius: 7px; display: block; }
+.tb-logo.propio { border: 1px solid var(--border2); background: var(--bg3); }
+.tb-logo.propio img { width: 22px; height: 22px; }
+@media (max-width: 480px) { .tb-logo { width: 26px; height: 26px; } .tb-logo img { width: 22px; height: 22px; }
+  .tb-logo.propio img { width: 19px; height: 19px; } }
+
+/* =============================================================================================
+   EL MODAL DEL PERFIL — cargar el logo, elegir los 2 colores y ver la vista previa
+   ============================================================================================= */
+.marca-sep { border-top: 1px solid var(--border); margin: 16px 0 14px; }
+.marca-h { display: flex; align-items: center; gap: 8px; font-size: 13.5px; margin-bottom: 6px; }
+.marca-h svg { color: var(--purple2); flex-shrink: 0; }
+
+/* El logo: vista previa cuadrada + los botones de subir y quitar */
+.marca-logo-row { display: flex; align-items: center; gap: 14px; }
+.marca-logo-prev { width: 64px; height: 64px; flex-shrink: 0; border-radius: 12px; border: 1px solid var(--border2);
+  background: var(--bg3); display: grid; place-items: center; overflow: hidden; }
+.marca-logo-prev img { max-width: 100%; max-height: 100%; object-fit: contain; display: block; }
+.marca-subir { cursor: pointer; margin: 0; }
+
+/* Los 2 colores, uno al lado del otro (miden lo mismo) y en una sola columna en celular */
+.marca-col2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 620px) { .marca-col2 { grid-template-columns: minmax(0, 1fr); } }
+.marca-col-bloque { min-width: 0; border: 1px solid var(--border); border-radius: 12px; padding: 12px; background: var(--bg2); }
+.marca-picker { position: relative; width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--border2);
+  cursor: pointer; overflow: hidden; flex-shrink: 0; }
+.marca-picker input[type="color"] { position: absolute; inset: -8px; width: 220%; height: 220%; padding: 0;
+  border: none; background: none; cursor: pointer; opacity: 0; }
+.marca-hex { font-size: 11px; color: var(--muted); overflow-wrap: anywhere; }
+.marca-x { width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--border2); color: var(--muted);
+  font-size: 11px; line-height: 1; display: grid; place-items: center; flex-shrink: 0; }
+.marca-x:hover { color: var(--txt); border-color: var(--txt); }
+
+/* Las paletas armadas: pastilla con el degradado + el nombre del color */
+.marca-paletas { display: flex; flex-wrap: wrap; gap: 8px; }
+.marca-paleta { display: flex; align-items: center; gap: 8px; padding: 6px 11px 6px 6px; border-radius: 99px;
+  border: 1px solid var(--border); background: var(--bg2); color: var(--muted);
+  font-size: 11.5px; font-weight: 700; font-family: inherit; text-align: left; }
+.marca-paleta:hover { border-color: var(--border2); color: var(--txt); }
+.marca-paleta.sel { border-color: var(--purple2); color: var(--txt); background: rgba(168,85,247,.10); }
+.marca-paleta-pt { width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
+.marca-paleta-tx small { display: block; font-size: 9.5px; font-weight: 600; color: var(--muted); }
+
+/* La vista previa: el menú, el saludo con el logo, el botón principal y el gráfico */
+.marca-prev { margin-top: 14px; border: 1px solid var(--border2); border-radius: 12px; padding: 12px;
+  background: var(--bg2); display: flex; flex-direction: column; gap: 10px; }
+.marca-prev-lb { font-size: 10px; font-weight: 800; letter-spacing: 1.1px; text-transform: uppercase; color: var(--muted); }
+.marca-prev-nav { display: flex; align-items: center; gap: 9px; padding: 8px 11px; border-radius: 10px;
+  background: rgba(var(--prev-acento-rgb), .16); box-shadow: inset 0 0 0 1px rgba(var(--prev-acento-rgb), .30);
+  font-size: 12.5px; font-weight: 700; }
+.marca-prev-nav .mp-lb { color: var(--prev-acento); }
+.marca-prev-nav .mp-pt { margin-left: auto; width: 3px; height: 18px; border-radius: 2px; background: var(--prev-grad); }
+.marca-prev-hero { display: flex; align-items: center; gap: 10px; font-size: 13px; min-width: 0; }
+.marca-prev-hero .mp-logo { width: 40px; height: 40px; flex-shrink: 0; border-radius: 10px; background: var(--bg3);
+  display: grid; place-items: center; overflow: hidden; }
+.marca-prev-hero .mp-logo img { max-width: 34px; max-height: 34px; object-fit: contain; display: block; }
+.marca-prev-hero .mp-hero-tx { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.marca-prev-hero .mp-hero-tx b { color: var(--prev-acento); }
+.marca-prev-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.marca-prev-btn { padding: 8px 14px; border-radius: 9px; font-size: 12.5px; font-weight: 700; border: none;
+  background: var(--prev-grad); color: var(--prev-sobre); }
+.marca-prev-bars { display: flex; align-items: flex-end; gap: 6px; height: 52px; }
+.marca-prev-bars .mp-bar { flex: 1; min-width: 0; border-radius: 5px 5px 3px 3px; background: var(--prev-acento); }

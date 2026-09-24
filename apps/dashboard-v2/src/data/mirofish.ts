@@ -55,6 +55,10 @@ export interface Opcion {
   votos: Record<string, number>;
   /** Una línea por juez: es lo que se lee en el veredicto de la pieza, voto por voto. */
   opiniones: Record<string, string>;
+  /** Solo en las variantes de una ronda de mejora: de qué pieza sale. */
+  basedOn?: string;
+  /** Solo en las variantes: qué se le cambió a la pieza que ganó. */
+  queCambia?: string;
 }
 
 export const OPCIONES: Opcion[] = [
@@ -147,8 +151,163 @@ export function puntaje(o: Opcion) {
 }
 
 /** Las opciones ordenadas del 1 al 5 por puntaje. */
-export function ranking() {
-  return [...OPCIONES].sort((a, b) => puntaje(b) - puntaje(a));
+export function rankingDe(lote: Opcion[] = OPCIONES) {
+  return [...lote].sort((a, b) => puntaje(b) - puntaje(a));
 }
 
+export const ranking = () => rankingDe(OPCIONES);
+
 export const CUANTAS_PASAN = 3;
+
+// =============================================================================================
+// LA TARIFA — los números vigentes del proyecto, tal como están en `docs/plan/05-modelo-mirofish.md`
+// §8.2 y en la vista Créditos («Piezas y videos · 16 por pieza»). No hay otros precios: estos son
+// los que cierran y los que se muestran antes de gastar.
+//   · crear una ronda de 5 opciones ...... 120  (incluye investigar el mercado y escribir los prompts)
+//   · crear una variante de una pieza ..... 16
+//   · evaluar una pieza en MiroFish ........ 8  → una ronda de 5 = 40
+//   · el público (los 500) ................. 0  nunca se cobra
+// =============================================================================================
+// Tarifas en créditos. Una pieza nueva cuesta lo mismo que una variante: es el mismo trabajo de
+// creacion. Asi el numero cierra con la vista de Creditos ('16 por pieza') y con el doc del modelo
+// ('ronda 120'): 5 piezas x 16 = 80 para crear + 5 x 8 = 40 para evaluar = 120 la ronda.
+export const TARIFA = {
+  piezasRonda: 5,
+  crearPieza: 16,
+  crearVariante: 16,
+  evaluarPieza: 8,
+  publico: 0,
+};
+
+export interface CostoRonda {
+  piezas: number;
+  crear: number;
+  evaluar: number;
+  total: number;
+}
+
+/** Una ronda completa: 5 opciones nuevas. 120 + 40 = 160 créditos. */
+export const COSTO_RONDA: CostoRonda = {
+  piezas: TARIFA.piezasRonda,
+  crear: TARIFA.piezasRonda * TARIFA.crearPieza,
+  evaluar: TARIFA.piezasRonda * TARIFA.evaluarPieza,
+  total: TARIFA.piezasRonda * (TARIFA.crearPieza + TARIFA.evaluarPieza),
+};
+
+/** Cuántas variantes hace una ronda de mejora: 3, no 5. */
+export const CUANTAS_VARIANTES = 3;
+
+/** Una ronda de mejora: `cuantas` variantes de la que ganó. Con 3 → 48 crear + 24 evaluar = 72. */
+export function costoMejora(cuantas: number = CUANTAS_VARIANTES): CostoRonda {
+  const crear = cuantas * TARIFA.crearVariante;
+  const evaluar = cuantas * TARIFA.evaluarPieza;
+  return { piezas: cuantas, crear, evaluar, total: crear + evaluar };
+}
+
+// ---------------------------------------------------------------------------------------------
+// LAS OBJECIONES DE UNA PIEZA — lo que dejó el panel, juez por juez, de la más dura a la más
+// blanda. Es el dato con el que arranca la ronda nueva: la primera es la que manda.
+// ---------------------------------------------------------------------------------------------
+export interface Objecion { k: string; juez: string; voto: number; texto: string; }
+
+export function objeciones(o: Opcion): Objecion[] {
+  const todas = PERFILES
+    .map(p => ({ k: p.k, juez: p.nombre, voto: o.votos[p.k], texto: o.opiniones[p.k] }))
+    .sort((a, b) => a.voto - b.voto);
+  const reprueban = todas.filter(x => x.voto < 80);
+  return reprueban.length > 0 ? reprueban : todas.slice(0, 1);
+}
+
+/** La objeción que manda: la del juez que votó más bajo. */
+export const objecion = (o: Opcion) => objeciones(o)[0];
+
+// ---------------------------------------------------------------------------------------------
+// LA RONDA DE MEJORA — las 3 variantes que salen de la pieza que ganó la ronda anterior.
+//
+// La clave del negocio: no arranca de cero. Agarra la 1ª del ranking y le cambia UNA cosa por
+// variante (la objeción del juez más duro, prueba social, el ángulo). Por eso sale 72 créditos y
+// no 160: son 3 variantes de 16 + su evaluación de 8. La pieza original no se toca.
+// ---------------------------------------------------------------------------------------------
+interface CambioMejora {
+  id: string;
+  sufijo: string;
+  queCambia: string;
+  /** Cuánto sube o baja cada juez respecto de la pieza que ya ganó. */
+  delta: Record<string, number>;
+  /** Lo que se le agrega al prompt original: la variante es la misma pieza, con este cambio. */
+  promptExtra: string;
+  copy: string;
+  cta: string;
+  opiniones: Record<string, string>;
+}
+
+const CAMBIOS: CambioMejora[] = [
+  {
+    id: 'a', sufijo: 'con los 3 ingredientes a la vista',
+    queCambia: 'contesta la objeción del juez más duro: muestra los 3 ingredientes con nombre y porcentaje',
+    delta: { impulsivo: 1, compara: 1, desconfiado: 14, experto: 1, nuevo: 1 },
+    promptExtra: 'Sobre el cierre, antes del precio, entra una placa de 2 s con los 3 ingredientes, cada uno con su nombre y su porcentaje, en crema (#F5EFE6) sobre el verde salvia. Sin locución: se lee.',
+    copy: 'Ese ardor no es normal: es tu piel pidiendo otra cosa. 3 ingredientes, con nombre y porcentaje. Nada más.',
+    cta: 'Ver el serum',
+    opiniones: {
+      impulsivo: 'El arranque y el producto a los 2 segundos no cambiaron: sigue entendiéndose en el primer segundo.',
+      compara: 'Ahora tengo el precio y la lista: con eso lo comparo contra el resto sin adivinar.',
+      desconfiado: 'Los 3 ingredientes tienen nombre y porcentaje: era lo que le faltaba para no sonar a promesa más del rubro.',
+      experto: 'La placa de los ingredientes entra bien y no rompe el ritmo: suma información que no da nadie del rubro.',
+      nuevo: 'Sigo entendiendo qué vende y para quién, con un dato más a favor.',
+    },
+  },
+  {
+    id: 'b', sufijo: 'que cierra con una clienta real',
+    queCambia: 'suma prueba social: el mismo arranque, pero cierra con una clienta real y la captura del mensaje',
+    delta: { impulsivo: -2, compara: 6, desconfiado: 12, experto: 3, nuevo: 8 },
+    promptExtra: 'A los 11 s entra un corte de 3 s con una clienta real mostrando el frasco, con la frase subrayada en crema y el texto en ámbar: «128 reseñas, esta es la que más se repite». Cierra con la captura del mensaje con el número tapado.',
+    copy: 'Ese ardor no es normal: es tu piel pidiendo otra cosa. Y 128 clientas ya lo dijeron antes que yo.',
+    cta: 'Leer las reseñas',
+    opiniones: {
+      impulsivo: 'El cierre con la clienta estira el video y a mí con el primer segundo me alcanzaba: no me suma.',
+      compara: 'Muestra las reseñas y la captura: puedo comparar la prueba social contra la de la competencia.',
+      desconfiado: 'Una clienta real con el frasco en la mano y la captura del mensaje: eso no se puede inventar.',
+      experto: 'La captura real en el cierre sostiene mejor la prueba social que la lista de ingredientes.',
+      nuevo: 'Con la reseña entiendo que mucha gente lo usó, aunque sigo sin saber si es para mí.',
+    },
+  },
+  {
+    id: 'c', sufijo: 'con el ángulo del precio',
+    queCambia: 'cambia el ángulo: arranca por el precio en vez del problema, mismo formato y mismo producto',
+    delta: { impulsivo: 6, compara: 2, desconfiado: 2, experto: -2, nuevo: 2 },
+    promptExtra: 'Se da vuelta el orden: el precio en ámbar (#E8A33D) entra a los 3 s y queda fijo en la esquina, y el problema aparece después. El producto se sigue viendo en los primeros 2 s.',
+    copy: '$34, con envío gratis desde $15.000. Y si tu piel se te pone roja con todo, esto te va a interesar.',
+    cta: 'Ver el serum',
+    opiniones: {
+      impulsivo: 'El precio a los 3 segundos y fijo: no tengo que esperar al final para saber cuánto sale.',
+      compara: 'Da el precio primero y el problema después: así es más simple compararlo contra el resto.',
+      desconfiado: 'Arrancar por el precio me hace pensar que algo esconde: no dice qué trae ni en cuánto llega.',
+      experto: 'Empezar por el precio es el ángulo más difícil del rubro: se sostiene solo si el producto se ve igual de claro.',
+      nuevo: 'Sé cuánto sale, pero todavía me cuesta entender para qué sirve.',
+    },
+  },
+];
+
+/** Las 3 variantes de una pieza que ya ganó: la misma pieza, con un cambio por variante. */
+export function variantesDe(base: Opcion): Opcion[] {
+  return CAMBIOS.map(c => {
+    const votos: Record<string, number> = {};
+    for (const p of PERFILES) {
+      votos[p.k] = Math.max(0, Math.min(100, base.votos[p.k] + (c.delta[p.k] ?? 0)));
+    }
+    return {
+      ...base,
+      id: `${base.id}-${c.id}`,
+      titulo: `${base.titulo} · ${c.sufijo}`,
+      gancho: base.gancho,
+      prompt: `${base.prompt} — CAMBIO: ${c.promptExtra}`,
+      copy: c.copy,
+      cta: c.cta,
+      votos,
+      opiniones: c.opiniones,
+      basedOn: base.id,
+      queCambia: c.queCambia,
+    };
+  });
+}
