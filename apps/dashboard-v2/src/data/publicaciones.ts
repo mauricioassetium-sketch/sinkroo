@@ -50,6 +50,8 @@ export interface Formato {
   paraQue: string;
   conObjetivo?: boolean;
   campos: CampoPublicacion[];
+  /** Lo que hay que explicar del modelo de esta forma de publicar, pegado a sus campos. */
+  nota?: string;
   avanzados?: CampoPublicacion[];
 }
 
@@ -251,13 +253,22 @@ export const FORMATOS: Formato[] = [
     nombre: 'Colaboración con creador',
     icono: '🤝',
     color: '#8b5cf6',
-    resumen: 'Que alguien más lo cuente por vos.',
-    paraQue: 'La recomendación de una persona de confianza vende más que cualquier anuncio. El motor prepara el brief.',
+    resumen: 'La pieza que ya grabó alguien con quien arreglaste por fuera.',
+    paraQue: 'Sinkroo no busca colaboradores: el acuerdo lo cerrás vos por fuera y acá subís el link y el video. El motor monta esa pieza con lo suyo y todo va a la misma evaluación.',
     campos: [
-      { id: 'que_le_pedis', etiqueta: 'Qué le pedís', tipo: 'texto', ayuda: 'Un video usando el producto, una reseña, una historia, una mención. El buscador de creadores de acá abajo te dice quién puede hacerlo.' },
-      { id: 'que_le_ofreces', etiqueta: 'Qué le ofreces', tipo: 'texto', ayuda: 'Producto, plata, comisión por venta o código de descuento. Los precios de cada creador están en las tarjetas.' },
-      { id: 'cuando_creador', etiqueta: 'Para cuándo', tipo: 'texto', ayuda: 'Fecha de publicación acordada. Si todavía no la sabés, Rumi la cierra en la conversación con el creador.' },
+      { id: 'link_colab', etiqueta: 'El link del colaborador', tipo: 'link', ayuda: 'Su perfil o la publicación donde se ve. El motor entra, ve quién es y con quién habla.' },
+      { id: 'acuerdo_colab', etiqueta: 'Lo que arreglaron por fuera', tipo: 'texto', ayuda: 'Qué le pedís, qué le das a cambio y para cuándo. El acuerdo es entre ustedes: Sinkroo no lo cobra ni lo intermedia.' },
+      { id: 'video_colab', etiqueta: 'El video del colaborador', tipo: 'videos', ayuda: 'El archivo tal como te lo entregó. Podés subir varios: se suman a los que produce el motor para esta campaña.' },
+      { id: 'cuando_colab', etiqueta: 'Cuándo sale', tipo: 'opciones', diaHora: true, opcionDiaHora: 'Elegí el día y la hora', opciones: ['Que lo recomiende el motor'], ayuda: 'Dos caminos: elegís el día y la hora, o el motor recomienda la mejor franja.' },
+      { id: 'filtro_colab', etiqueta: 'Su contenido y el filtro de MiroFish', tipo: 'opciones',
+        ayuda: 'El contenido de un colaborador no pasa por el filtro de MiroFish, porque no lo produjo el motor. Si no elegís nada, se publica sin pasar.',
+        opciones: ['Se publica sin pasar por el filtro', 'Probarlo también en MiroFish'],
+        detalle: {
+          'Se publica sin pasar por el filtro': 'Es el camino normal: su pieza entra tal como la entregó, sin que nada la frene.',
+          'Probarlo también en MiroFish': 'Lo miran los 5 jueces y los 500 del público. El resultado no cambia qué se publica: es para ver cómo reacciona.',
+        } },
     ],
+    nota: 'La pieza que se publica es su video más lo que agrega el motor: guion, subtítulos, música, marca y copy. Se suma a los videos que produce el motor para esta campaña y todo junto pasa por la misma evaluación del público.',
     avanzados: [
       { id: 'brief', etiqueta: 'Qué no puede decir', tipo: 'texto', ayuda: 'Promesas de resultado, precios que no son, cosas que la marca no dice.' },
     ],
