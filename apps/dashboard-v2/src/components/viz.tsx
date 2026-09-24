@@ -35,10 +35,12 @@ export function Ring({ valor, max = 100, label, sub, color, size = 104 }: {
   const pct = Math.max(0, Math.min(100, (valor / max) * 100));
   const c = color ?? (pct >= 80 ? 'var(--green)' : pct >= 60 ? 'var(--amber)' : 'var(--red)');
   return (
-    <div className="ring" style={{ width: size, height: size, ['--p' as any]: pct, ['--c' as any]: c }}>
-      <div className="ring-in">
-        <div className="ring-v" style={{ color: c }}>{valor}</div>
-        {label && <div className="ring-l">{label}</div>}
+    <div className="ring-wrap">
+      <div className="ring" style={{ width: size, height: size, ['--p' as any]: pct, ['--c' as any]: c }}>
+        <div className="ring-in">
+          <div className="ring-v" style={{ color: c }}>{valor}</div>
+          {label && <div className="ring-l">{label}</div>}
+        </div>
       </div>
       {sub && <div className="ring-sub">{sub}</div>}
     </div>

@@ -267,40 +267,9 @@ export const DECISIONES: Decision[] = [
 
 // ---------------------------------------------------------------------------------------------
 // EL PANEL — el enjambre como focus group (doc 03, §3.2)
+// El detalle voto por voto de las piezas vive en mirofish.ts (PERFILES + OPCIONES): es la única
+// fuente de los 5 jueces y de las 5 piezas, así las dos pantallas no cuentan cosas distintas.
 // ---------------------------------------------------------------------------------------------
-
-export interface Votante {
-  nombre: string;
-  persona: string;
-  score: number;
-  peso: string;
-  rationale: string;
-}
-
-export const PANEL_ULTIMO: {
-  pieza: string;
-  score: number;
-  veredicto: 'go' | 'review' | 'stop';
-  criterio: string;
-  votantes: Votante[];
-} = {
-  pieza: 'Antes y Después — Serum Vitamina C (video 15s)',
-  score: 84,
-  veredicto: 'go',
-  criterio: 'Aprobado para lanzar (mínimo 80)',
-  votantes: [
-    { nombre: 'Comprador impulsivo', persona: 'compra por impulso', score: 89, peso: 'alto',
-      rationale: 'El hook frena el scroll en el primer segundo: el antes/después se entiende sin leer.' },
-    { nombre: 'CM escéptico', persona: 'desconfía de toda promesa', score: 72, peso: 'alto',
-      rationale: 'Le falta prueba social: no hay un solo testimonio ni número verificable en pantalla.' },
-    { nombre: 'Analista de performance', persona: 'mide todo', score: 80, peso: 'medio',
-      rationale: 'CTR estimado 3,4%, por encima de tu promedio de 2,9%. El cierre es claro.' },
-    { nombre: 'Guardián de marca', persona: 'protege el tono', score: 86, peso: 'medio',
-      rationale: 'Tono coherente con tu línea de "ingredientes limpios". No hay promesas médicas.' },
-    { nombre: 'Copywriter senior', persona: 'juzga el texto', score: 91, peso: 'alto',
-      rationale: 'El ángulo de resultado está bien elegido y el CTA es concreto.' },
-  ],
-};
 
 export const PANEL_PIEZAS: { titulo: string; tipo: string; score: number; veredicto: 'go'|'review'|'stop'; emoji: string }[] = [
   { titulo: 'Antes y Después — Serum Vitamina C', tipo: 'Video 15s', score: 84, veredicto: 'go', emoji: '✨' },

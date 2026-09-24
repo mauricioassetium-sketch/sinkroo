@@ -53,6 +53,8 @@ export interface Opcion {
   color: string;
   usaCompetidor: string;
   votos: Record<string, number>;
+  /** Una línea por juez: es lo que se lee en el veredicto de la pieza, voto por voto. */
+  opiniones: Record<string, string>;
 }
 
 export const OPCIONES: Opcion[] = [
@@ -64,6 +66,13 @@ export const OPCIONES: Opcion[] = [
     cta: 'Ver el serum',
     color: '#4A7C59', usaCompetidor: 'los 3 colores que mejor rinden',
     votos: { impulsivo: 92, compara: 78, desconfiado: 74, experto: 88, nuevo: 84 },
+    opiniones: {
+      impulsivo: 'En el primer segundo ya se entiende que es para piel que se irrita: no necesito leer nada más.',
+      compara: 'Dice que son 3 ingredientes, pero el precio recién aparece al final y yo lo quiero ver antes de comparar.',
+      desconfiado: 'Habla de tres ingredientes y no dice cuáles: sin la lista a la vista, parece una promesa más del rubro.',
+      experto: 'El verde salvia con texto crema se lee en el celular al sol, y el ardor como problema está bien elegido.',
+      nuevo: 'Nunca vi la marca y aun así entendí qué vende y para quién es.',
+    },
   },
   {
     id: 'op2', formato: 'Carrusel', medida: '5 placas · 4:5', titulo: 'Antes y después real',
@@ -73,6 +82,13 @@ export const OPCIONES: Opcion[] = [
     cta: 'Ver los resultados',
     color: '#F5EFE6', usaCompetidor: 'la paleta crema y verde',
     votos: { impulsivo: 74, compara: 88, desconfiado: 86, experto: 79, nuevo: 71 },
+    opiniones: {
+      impulsivo: 'El antes/después ya lo vi mil veces y la primera placa no muestra el frasco: tengo que pasar de placa para saber qué venden.',
+      compara: 'Dice que son 30 días reales y fecha cada foto: con eso puedo comparar contra lo que promete el resto.',
+      desconfiado: 'Son las fotos que subieron las clientas, no de banco de imágenes: eso no se puede inventar.',
+      experto: 'Los 3 ingredientes al final suman, pero la letra de la última placa no se lee en el celular.',
+      nuevo: 'Arranca con un antes/después sin decir de qué producto es: tardé dos placas en entender qué vendían.',
+    },
   },
   {
     id: 'op3', formato: 'Video vertical', medida: '12 s · 9:16', titulo: 'El precio sin vueltas',
@@ -82,6 +98,13 @@ export const OPCIONES: Opcion[] = [
     cta: 'Comprar ahora',
     color: '#E8A33D', usaCompetidor: 'el ámbar para el precio',
     votos: { impulsivo: 88, compara: 91, desconfiado: 69, experto: 72, nuevo: 66 },
+    opiniones: {
+      impulsivo: 'El precio aparece a los 6 segundos y queda fijo: no tengo que esperar al final para saber cuánto sale.',
+      compara: 'Da el precio, el envío gratis y desde cuánto: no me deja ninguna duda para compararlo.',
+      desconfiado: 'No dice en cuánto llega ni qué queda afuera del envío gratis: siempre hay una letra chica.',
+      experto: 'Un solo plano sin cortes es riesgoso: sin edición, el ritmo depende de quien graba.',
+      nuevo: 'Arranca con el precio y no me dice para qué sirve: no sé si es para mí.',
+    },
   },
   {
     id: 'op4', formato: 'Imagen', medida: '1080x1350', titulo: 'El testimonio solo',
@@ -91,6 +114,13 @@ export const OPCIONES: Opcion[] = [
     cta: 'Leer las reseñas',
     color: '#4A7C59', usaCompetidor: 'el verde salvia de fondo',
     votos: { impulsivo: 66, compara: 74, desconfiado: 92, experto: 81, nuevo: 78 },
+    opiniones: {
+      impulsivo: 'Es una captura de WhatsApp en el centro: no hay producto grande ni precio, y yo decido en 3 segundos.',
+      compara: 'Dice que hay 128 reseñas, pero no muestra el precio ni con qué se compara el serum.',
+      desconfiado: 'Es la captura real, con el número tapado y la frase subrayada: es lo más creíble que se puede mostrar.',
+      experto: 'La tipografía de sistema hace que parezca una captura y no un diseño: eso sostiene la prueba social.',
+      nuevo: 'Se entiende que mucha gente lo usó, aunque no queda claro para qué sirve el producto.',
+    },
   },
   {
     id: 'op5', formato: 'Reel', medida: '18 s · 9:16', titulo: 'La rutina de 3 pasos',
@@ -100,6 +130,13 @@ export const OPCIONES: Opcion[] = [
     cta: 'Ver la rutina',
     color: '#F5EFE6', usaCompetidor: 'el crema para el texto largo',
     votos: { impulsivo: 61, compara: 72, desconfiado: 68, experto: 84, nuevo: 88 },
+    opiniones: {
+      impulsivo: 'Son tres pasos y hasta el final no se ve el producto completo: en el medio ya me fui.',
+      compara: 'Explica el orden y los tiempos, pero no dice el precio ni qué rinde el pack completo.',
+      desconfiado: 'Dice que el orden importa sin explicar por qué: así suena a excusa para vender tres frascos.',
+      experto: 'El cronómetro con el tiempo de espera entre pasos es información real que no da nadie del rubro.',
+      nuevo: 'No sabía que había un orden para usarlos y ahora entiendo para qué sirve cada uno.',
+    },
   },
 ];
 

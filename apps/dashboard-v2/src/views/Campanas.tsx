@@ -1,15 +1,16 @@
 import { useState } from 'react';
 import { Card, Badge, Button } from '../components/ui';
-import { ViewHead, Bars, Ring, BarRow, Gauge } from '../components/viz';
+import { ViewHead, Bars, Ring, Gauge } from '../components/viz';
 import { Publicar } from '../components/Publicar';
 import { FlujoMiroFish } from '../components/FlujoMiroFish';
 import { Stepper, IngestaManual, Galeria, PASOS_CAMPANA, type PasoCampana } from '../components/CampanaPasos';
 import { MotorEnVivo } from '../components/MotorEnVivo';
 import { EnLinea } from '../components/EnLinea';
 import { CampanaViva } from '../components/CampanaViva';
-import { I_Megaphone, I_Palette, I_Check, I_Vote, I_File, I_Zap, I_Trend, I_Eye, I_Robot, I_Play, I_Upload, I_Pause } from '../components/icons';
+import { I_Megaphone, I_Check, I_Refresh, I_Vote, I_File, I_Zap, I_Trend, I_Eye, I_Robot, I_Play, I_Upload, I_Pause } from '../components/icons';
 import type { Vista } from '../components/Layout';
-import { CAMPANAS, PANEL_ULTIMO, PANEL_PIEZAS, type Modo } from '../data/demo';
+import { CAMPANAS, type Modo } from '../data/demo';
+import { PERFILES, puntaje, ranking } from '../data/mirofish';
 
 const GASTO = [40, 30, 12, 18, 9];
 const GASTO_LB = CAMPANAS.map(c => c.nombre.split(' ')[0]);
@@ -18,10 +19,27 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
   const [paso, setPaso] = useState<PasoCampana>(1);
   const [manual, setManual] = useState(false);
   const listos = PASOS_CAMPANA.filter(p => p.n < paso).map(p => p.n) as PasoCampana[];
-  const [abierto, setAbierto] = useState(true);
-  const p = PANEL_ULTIMO;
+  // --- Última fila del paso 5: LISTA + DETALLE con una sola fuente de datos.
+  // Las piezas y los jueces salen de mirofish.ts: las mismas 5 opciones de la galería del paso 3
+  // y los mismos 5 perfiles que las votaron. El puntaje es el promedio de esos 5 votos.
+  const piezasJuzgadas = ranking();                       // las 5, de mayor a menor puntaje
+  const [elegida, setElegida] = useState<string>(() => piezasJuzgadas[0].id);
+  const pieza = piezasJuzgadas.find(o => o.id === elegida) ?? piezasJuzgadas[0];
+  const scorePieza = puntaje(pieza);
+  const pasaPieza = scorePieza >= 80;
+  const votosPieza = PERFILES.map(per => ({
+    k: per.k, nombre: per.nombre, mira: per.mira,
+    score: pieza.votos[per.k], opinion: pieza.opiniones[per.k],
+  }));
+  const votoMasBajo = votosPieza.reduce((a, b) => (b.score < a.score ? b : a));
   const colorScore = (s: number) => (s >= 80 ? 'var(--green)' : s >= 60 ? 'var(--amber)' : 'var(--red)');
-  const veredicto = (v: string) => (v === 'go' ? { t: 'Listo', tone: 'green' as const } : v === 'review' ? { t: 'Revisar', tone: 'amber' as const } : { t: 'No lanzar', tone: 'red' as const });
+  const palabraVeredicto = (s: number) => (s >= 80 ? 'Lista' : s >= 60 ? 'Revisar' : 'No lanzar');
+  const tonoVeredicto = (s: number): 'green' | 'amber' | 'red' => (s >= 80 ? 'green' : s >= 60 ? 'amber' : 'red');
+  const criterioPieza = (s: number) => s >= 80
+    ? `Pasa: arriba de 80 se publica. El promedio de los ${PERFILES.length} jueces dio ${s}.`
+    : s >= 60
+      ? `Vuelve con la objeción: entre 60 y 80 no gasta un peso hasta corregir eso. El promedio dio ${s}.`
+      : `No se lanza: abajo de 60 no se gasta. El promedio de los ${PERFILES.length} jueces dio ${s}.`;
   const artefactos = CAMPANAS.reduce((s, c) => s + c.artefactos, 0);
   const diario = GASTO.reduce((s, v) => s + v, 0);
   const vivas = CAMPANAS.filter(c => c.estado === 'Activa');
@@ -258,85 +276,120 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
         </div>
       </Card>
 
-      {/* ============ 4. EL VEREDICTO DE LA ÚLTIMA PIEZA Y LAS PIEZAS — los datos históricos ============ */}
+      {/* ============ 4. LA LISTA DE PIEZAS Y EL VEREDICTO DE LA ELEGIDA — lista + detalle, con los mismos 5 jueces ============ */}
       <div className="csec">
         <span className="csec-n">4</span>
         <span className="csec-t">El veredicto y tus piezas</span>
-        <span className="csec-c purple">5 jueces</span>
-        <span className="csec-s">Lo último que votó el panel: los 5 jueces dan el veredicto y 500 agentes del público marcan el porcentaje</span>
+        <span className="csec-c purple">{PERFILES.length} jueces · {piezasJuzgadas.length} piezas</span>
+        <span className="csec-s">Elegí una pieza de la lista y al lado ves, voto por voto, cómo la juzgaron los 5 jueces y qué hay que corregirle</span>
       </div>
       <div className="duo">
         <Card
-          title={<span className="row" style={{ gap: 8 }}><I_Vote size={14} style={{ color: 'var(--purple3)' }} /> Veredicto de la última pieza</span>}
-          action={<Badge tone="green">{p.veredicto === 'go' ? 'aprobada' : p.veredicto === 'review' ? 'revisar' : 'rechazada'}</Badge>}
+          title={<span className="row" style={{ gap: 8 }}><I_File size={14} style={{ color: 'var(--purple3)' }} /> Tus piezas, juzgadas</span>}
+          action={<Badge tone="muted">{piezasJuzgadas.length} en el lote</Badge>}
         >
-          <div className="row" style={{ gap: 20, marginBottom: 14 }}>
-            <Ring valor={p.score} label="SCORE" color="var(--green)" sub="mínimo 80 para publicar" />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div className="bt">{p.pieza}</div>
-              <div className="bs" style={{ marginTop: 5 }}>{p.criterio} · revisada por los 5 jueces en 8 segundos.</div>
-              <div className="row" style={{ gap: 7, marginTop: 11, flexWrap: 'wrap' }}>
-                <Badge tone="purple">5 jueces</Badge>
-                <Badge tone="amber">1 objeción</Badge>
-              </div>
+          <div className="datos-row">
+            <div className="dato" title="Todas las piezas que pasaron por los jueces este mes, no solo las de este lote">
+              <span className="dato-l">Juzgadas este mes</span>
+              <span className="dato-v">31</span>
+            </div>
+            <div className="dato" title="Las que pasaron el mínimo de 80 y salieron a tus redes">
+              <span className="dato-l">Pasaron</span>
+              <span className="dato-v" style={{ color: 'var(--green)' }}>18</span>
+            </div>
+            <div className="dato" title="Las que volvieron con la objeción antes de gastar un peso">
+              <span className="dato-l">Frenadas a tiempo</span>
+              <span className="dato-v" style={{ color: 'var(--amber)' }}>13</span>
             </div>
           </div>
 
-          {abierto && p.votantes.map(v => (
-            <div key={v.nombre} style={{ padding: '10px 0', borderTop: '1px solid var(--border)' }}>
-              <div className="row spread" style={{ marginBottom: 6 }}>
-                <span className="bt">{v.nombre} <span className="tiny muted">· {v.persona}</span></span>
-                <span style={{ fontWeight: 900, fontSize: 15, color: colorScore(v.score) }}>{v.score}</span>
-              </div>
-              <BarRow valor={v.score} max={100} color={colorScore(v.score)} />
-              <div className="bs" style={{ marginTop: 5 }}>«{v.rationale}»</div>
-            </div>
-          ))}
-
-          <div className="alarm atencion" style={{ marginTop: 14 }}>
-            <div className="alarm-head"><span className="alarm-sev atencion">LO QUE HAY QUE ARREGLAR</span></div>
-            <div className="alarm-sug"><b>Instrucción directa: </b>agregar un testimonio con nombre y número verificable. Es la única objeción y es lo que separa esta pieza de un 90.</div>
+          <div className="pz-filas">
+            {piezasJuzgadas.map(o => {
+              const s = puntaje(o);
+              return (
+                <button key={o.id} className={`pz-fila ${o.id === pieza.id ? 'on' : ''}`}
+                  title={`Muestra en la tarjeta de al lado cómo la votaron los ${PERFILES.length} jueces, uno por uno. No publica nada: acá no se gasta un peso.`}
+                  onClick={() => setElegida(o.id)}>
+                  <span className="pz-fila-n" style={{ color: colorScore(s) }}>{s}</span>
+                  <span className="pz-fila-txt">
+                    <span className="pz-fila-t">{o.titulo}</span>
+                    <span className="pz-fila-m">{o.formato} · {o.medida}</span>
+                    <span className="pz-fila-v">Los {PERFILES.length} votos: {PERFILES.map(per => o.votos[per.k]).join(' · ')}</span>
+                  </span>
+                  <Badge tone={tonoVeredicto(s)}>{palabraVeredicto(s)}</Badge>
+                </button>
+              );
+            })}
           </div>
-          <div className="row" style={{ gap: 9, marginTop: 12, flexWrap: 'wrap' }}>
-            <Button className="btn-sm" title="Nia reescribe la pieza y el panel la vuelve a puntuar"
-              onClick={() => setToast('Nia agrega testimonio y re-evalúa (demo)')}><I_Palette size={13} /> Que Nia lo arregle</Button>
-            <Button variant="ghost" className="btn-sm" title="Muestra el detalle del voto, perfil por perfil"
-              onClick={() => setAbierto(!abierto)}>{abierto ? 'Ocultar el detalle' : 'Ver el detalle'}</Button>
-            <Button variant="ghost" className="btn-sm" title="Publica la pieza en Meta Ads"
-              onClick={() => setToast('Publicando en Meta Ads… (demo)')}><I_Check size={13} /> Publicar</Button>
+
+          <div className="bs">
+            El panel puntúa <b>cada pieza antes de publicarse</b>: arriba de 80 sale, entre 60 y 80 vuelve con la
+            objeción del juez que votó más bajo, y abajo de 60 no se gasta un peso.
+          </div>
+          <div className="acc-why">
+            <b>Las {piezasJuzgadas.length} de arriba son las últimas que votó el panel</b> y son las mismas de la galería
+            del paso 3. El mes entero son 31: 18 salieron y 13 volvieron con la objeción antes de gastar.
           </div>
         </Card>
 
         <Card
-          title={<span className="row" style={{ gap: 8 }}><I_File size={14} style={{ color: 'var(--purple3)' }} /> Tus piezas</span>}
-          action={<Badge tone="muted">{PANEL_PIEZAS.length} en el lote</Badge>}
+          title={<span className="row" style={{ gap: 8 }}><I_Vote size={14} style={{ color: 'var(--purple3)' }} /> El veredicto de la pieza elegida</span>}
+          action={<Badge tone={tonoVeredicto(scorePieza)}>{palabraVeredicto(scorePieza).toLowerCase()}</Badge>}
         >
-          {PANEL_PIEZAS.map(pz => {
-            const v = veredicto(pz.veredicto);
-            return (
-              <div key={pz.titulo} style={{ padding: '11px 0', borderBottom: '1px solid var(--border)' }}>
-                <div className="row spread" style={{ marginBottom: 7 }}>
-                  <span className="bt">{pz.emoji} {pz.titulo} <span className="tiny muted">· {pz.tipo}</span></span>
-                  <span className="row" style={{ gap: 9 }}>
-                    <Badge tone={v.tone}>{v.t}</Badge>
-                    <span style={{ fontWeight: 900, fontSize: 15, color: colorScore(pz.score) }}>{pz.score}</span>
-                  </span>
-                </div>
-                <BarRow valor={pz.score} max={100} color={colorScore(pz.score)} />
+          <div className="row" style={{ gap: 20, marginBottom: 22, flexWrap: 'wrap' }}>
+            <Ring valor={scorePieza} label="SCORE" sub="mínimo 80 para publicar" />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="bt">{pieza.titulo}</div>
+              <div className="bs" style={{ marginTop: 5 }}>
+                {pieza.formato} · {pieza.medida} · los {PERFILES.length} jueces la miraron 8 segundos.
               </div>
-            );
-          })}
-          <div className="bs" style={{ marginTop: 12 }}>
-            El panel puntúa <b>cada pieza antes de publicarse</b>: arriba de 80 sale, entre 60 y 80 vuelve con la
-            objeción más votada, y abajo de 60 no se gasta un peso.
+              <div className="bs" style={{ marginTop: 8 }}><b>{criterioPieza(scorePieza)}</b></div>
+            </div>
           </div>
-          <div className="datos-row" style={{ marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--border)' }}>
-            <div className="dato"><span className="dato-l">Piezas puntuadas este mes</span><span className="dato-v">31</span></div>
-            <div className="dato"><span className="dato-l">Aprobadas</span><span className="dato-v" style={{ color: 'var(--green)' }}>18</span></div>
-            <div className="dato"><span className="dato-l">Frenadas a tiempo</span><span className="dato-v" style={{ color: 'var(--amber)' }}>13</span></div>
+
+          <div className="guards">
+            {votosPieza.map(v => (
+              <div key={v.k} className="guard">
+                <span style={{ width: 34, flexShrink: 0, textAlign: 'center', fontSize: 17, fontWeight: 900, fontVariantNumeric: 'tabular-nums', color: colorScore(v.score) }}>{v.score}</span>
+                <span className="guard-lb">
+                  {v.nombre} <span className="tiny muted">· {v.mira}</span>
+                  <small>«{v.opinion}»</small>
+                </span>
+              </div>
+            ))}
           </div>
+
+          <div className="alarm atencion">
+            <div className="alarm-head">
+              <span className="alarm-sev atencion">{pasaPieza ? 'EL VOTO MÁS BAJO' : 'LO QUE HAY QUE ARREGLAR'}</span>
+              <span className="alarm-title">{votoMasBajo.nombre} fue el más duro: le puso {votoMasBajo.score} de 100.</span>
+            </div>
+            <div className="alarm-sug">
+              «{votoMasBajo.opinion}» <b>{pasaPieza
+                ? `No frena la publicación: es lo que hay que resolver si querés subirla de ${scorePieza}.`
+                : 'Es la objeción a corregir antes de gastar un peso.'}</b>
+            </div>
+          </div>
+
+          <div className="row" style={{ gap: 9, flexWrap: 'wrap' }}>
+            {pasaPieza ? (
+              <Button className="btn-sm"
+                title="Publica esta pieza en tus redes con el texto que ya aprobaron los 5 jueces. Es reversible: la pausás cuando quieras y no pierde el historial."
+                onClick={() => setToast(`«${pieza.titulo}» sale a tus redes (demo)`)}>
+                <I_Check size={13} /> Publicar esta
+              </Button>
+            ) : (
+              <Button className="btn-sm"
+                title="Nia corrige la pieza con esa objeción y los 5 jueces la vuelven a juzgar. Es reversible: si te gustaba más la versión de ahora, se vuelve a ella."
+                onClick={() => setToast(`Nia corrige «${pieza.titulo}» y el panel la vuelve a juzgar (demo)`)}>
+                <I_Refresh size={13} /> Corregir eso y volver a juzgarla
+              </Button>
+            )}
+          </div>
+
           <div className="acc-why">
-            <b>Una pieza que no pasa a los jueces nunca se publica.</b> El orden importa: primero convencen a los 5 jueces y reacciona el público, después gasta tu dinero.
+            <b>Ninguna pieza se publica sin pasar el mínimo.</b> Cuando corregís una, los 5 jueces la vuelven a votar
+            y el voto nuevo queda al lado del anterior: así se ve si la objeción se resolvió.
           </div>
         </Card>
       </div>
