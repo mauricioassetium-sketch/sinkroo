@@ -22,6 +22,8 @@ export interface CampoPublicacion {
   ayuda: string;
   opciones?: string[];
   multi?: boolean;
+  /** Deja elegir la HORA EXACTA (00:00 a 23:30, formato de 24 h) además de las opciones de la lista. */
+  horaLibre?: boolean;
 }
 
 export interface Formato {
@@ -90,7 +92,7 @@ export const FORMATOS: Formato[] = [
       { id: 'idea', etiqueta: 'Qué querés mostrar o contar', tipo: 'texto', ayuda: 'Una idea suelta alcanza. Ej. mostrar el proceso de armado del pack.' },
       { id: 'formato_post', etiqueta: 'Formato', tipo: 'opciones', ayuda: 'El motor cambia el guion según el formato.', opciones: ['Reel', 'Carrusel', 'Imagen', 'Video largo'] },
       { id: 'red_feed', etiqueta: 'En qué red', tipo: 'opciones', ayuda: 'Podés elegir más de una.', opciones: ['Instagram', 'Facebook', 'TikTok'], multi: true },
-      { id: 'cuando_feed', etiqueta: 'Cuándo publicarlo', tipo: 'opciones', ayuda: 'Si no sabés, el motor elige la franja donde más te ven.', opciones: ['Que lo elija el motor', 'Hoy', 'Mañana', 'Esta semana'] },
+      { id: 'cuando_feed', etiqueta: 'Cuándo publicarlo', tipo: 'opciones', ayuda: 'Si no sabés, el motor elige la franja donde más te ven. O elegí la hora exacta.', horaLibre: true, opciones: ['Que lo elija el motor', 'Hoy', 'Mañana', 'Esta semana'] },
       { id: 'texto_post', etiqueta: 'Algo que quieras que diga', tipo: 'texto', ayuda: 'Una frase tuya, un mensaje que no puede faltar. Opcional.' },
     ],
     avanzados: [
@@ -108,7 +110,7 @@ export const FORMATOS: Formato[] = [
     campos: [
       { id: 'idea_hist', etiqueta: 'Qué mostrás', tipo: 'texto', ayuda: 'Ej. llegó stock nuevo, o el envío gratis termina hoy.' },
       { id: 'interaccion', etiqueta: 'Qué querés que hagan', tipo: 'opciones', ayuda: 'La interacción sube el alcance de todas tus historias.' , opciones: ['Que respondan', 'Que voten en una encuesta', 'Que deslicen al link', 'Solo mirar'] },
-      { id: 'cuando_hist', etiqueta: 'Cuándo sale', tipo: 'opciones', ayuda: 'Se puede programar.', opciones: ['Ahora', 'En 2 horas', 'Mañana temprano', 'Que lo elija el motor'] },
+      { id: 'cuando_hist', etiqueta: 'Cuándo sale', tipo: 'opciones', ayuda: 'Se puede programar, o elegir la hora exacta.', horaLibre: true, opciones: ['Ahora', 'En 2 horas', 'Mañana temprano', 'Que lo elija el motor'] },
       { id: 'link_hist', etiqueta: 'A dónde lleva', tipo: 'link', ayuda: 'Producto, tienda o WhatsApp. Opcional pero suma mucho.' },
     ],
   },
@@ -124,7 +126,7 @@ export const FORMATOS: Formato[] = [
       { id: 'que_decir', etiqueta: 'Qué les querés decir', tipo: 'texto', ayuda: 'La idea. Ej. volvió el serum que se había agotado.' },
       { id: 'incentivo_msg', etiqueta: 'Con qué incentivo', tipo: 'texto', ayuda: 'Cupón, envío gratis, regalo. Si no querés poner nada, dejalo vacío.' },
       { id: 'canal', etiqueta: 'Por dónde', tipo: 'opciones', ayuda: 'WhatsApp vende más; el email molesta menos.', opciones: ['WhatsApp', 'Email'], multi: true },
-      { id: 'cuando_msg', etiqueta: 'Cuándo', tipo: 'opciones', ayuda: 'El motor solo escribe entre 8:00 y 22:00: es un freno que no se puede desactivar.', opciones: ['Hoy', 'Mañana 10:00', 'A la tarde', 'Que lo elija el motor'] },
+      { id: 'cuando_msg', etiqueta: 'Cuándo', tipo: 'opciones', ayuda: 'Elegí la hora exacta, de 00:00 a 23:30. Si lo decide el motor, escribe dentro de su ventana de 8:00 a 22:00.', horaLibre: true, opciones: ['Hoy', 'Mañana 10:00', 'A la tarde', 'Que lo elija el motor'] },
     ],
     avanzados: [
       { id: 'faq', etiqueta: 'Preguntas que siempre te hacen', tipo: 'texto', ayuda: 'Precio, envío, garantía y tus respuestas. El agente las usa para contestar solo.' },

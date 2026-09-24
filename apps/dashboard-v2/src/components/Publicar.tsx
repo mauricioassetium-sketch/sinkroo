@@ -3,6 +3,7 @@ import { Card, Badge, Button, Avatar } from './ui';
 import {
   I_Megaphone, I_Upload, I_Image, I_Film, I_File, I_Link, I_Check, I_ArrowRight, I_Trash,
   I_ChevDn, I_ChevUp, I_Users, I_Chat, I_Search, I_Filter, I_Robot, I_Star, I_Globe, I_Refresh, I_User,
+  I_Cal,
 } from './icons';
 import { FlujoMiroFish } from './FlujoMiroFish';
 import { TIPOS_CAMPANA, type ObjetivoCampana } from '../data/campana';
@@ -11,6 +12,21 @@ import { CREADORES, RUBROS_CREADOR, CONTENIDOS_CREADOR, OPCIONES_IDIOMA, TENANT,
 
 type Archivo = { nombre: string; peso: string; url: string | null; esImagen: boolean };
 type Valor = string | string[];
+
+// LA HORA EXACTA DEL MENSAJE: 48 medias horas en formato de 24 h (00:00 … 23:30). Lo que se guarda
+// en el campo es el texto 'A las 15:30', así la hora que elige el usuario y las opciones de la
+// lista ('Hoy', 'A la tarde', 'Que lo elija el motor') son UN SOLO dato: nunca pueden contradecirse
+// ni quedar dos horarios activos a la vez.
+const HORAS_24 = Array.from({ length: 48 }, (_, i) =>
+  `${String(Math.floor(i / 2)).padStart(2, '0')}:${i % 2 ? '30' : '00'}`);
+const HORA_PREFIJO = 'A las ';
+const HORA_POR_DEFECTO = '10:00';
+/** ¿La hora elegida cae fuera de la ventana en la que el motor escribe solo (8:00 a 22:00)? */
+const fueraDeVentana = (hhmm: string) => {
+  const [h, m] = hhmm.split(':').map(Number);
+  const min = h * 60 + m;
+  return min < 8 * 60 || min > 22 * 60;
+};
 
 function IconoCampo({ tipo }: { tipo: CampoPublicacion['tipo'] }) {
   if (tipo === 'imagenes') return <I_Image size={17} />;
@@ -66,6 +82,9 @@ export function Publicar({ setToast, modo, irAConversaciones, soloIngesta }: {
 
   const camposFormato = (campos: CampoPublicacion[]) => campos.map(campo => {
     const v = valores[campo.id];
+    // La hora exacta sólo cuenta si el campo la habilita y lo guardado es una hora elegida.
+    const horaElegida = campo.horaLibre && typeof v === 'string' && v.startsWith(HORA_PREFIJO)
+      ? v.slice(HORA_PREFIJO.length) : '';
     return (
       <div key={campo.id} className="mat-campo">
         <label className="label">{campo.etiqueta}</label>
@@ -88,7 +107,38 @@ export function Publicar({ setToast, modo, irAConversaciones, soloIngesta }: {
                   </button>
                 );
               })}
+              {/* LA HORA LA ELIGE EL USUARIO: una opción más de la misma lista. Al elegirla se abre
+                  el selector de 24 h y el valor del campo pasa a ser 'A las 15:30', así se apaga
+                  sola cualquier opción anterior de la lista. */}
+              {campo.horaLibre && (
+                <button type="button" className={`tipo-chip ${horaElegida ? 'sel' : ''}`}
+                  title={horaElegida
+                    ? `Sale a las ${horaElegida}. Tocá para elegir otra hora.`
+                    : 'Elegís vos la hora exacta a la que sale, en formato de 24 horas (00:00 a 23:30).'}
+                  onClick={() => set(campo.id, horaElegida ? '' : HORA_PREFIJO + HORA_POR_DEFECTO)}>
+                  🕒 {horaElegida || 'Elegí la hora'}
+                </button>
+              )}
             </div>
+            {campo.horaLibre && horaElegida && (
+              <div className="row" style={{ gap: 9, marginTop: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <select className="input" style={{ maxWidth: 132 }} value={horaElegida}
+                  title="Hora exacta a la que sale, en formato de 24 horas."
+                  onChange={e => set(campo.id, HORA_PREFIJO + e.target.value)}>
+                  {HORAS_24.map(h => <option key={h} value={h}>{h}</option>)}
+                </select>
+                <span className="tiny muted">Hora exacta, en formato de 24 horas (00:00 a 23:30).</span>
+              </div>
+            )}
+            {campo.horaLibre && horaElegida && fueraDeVentana(horaElegida) && (
+              <div className="tiny row" style={{ gap: 7, marginTop: 8, alignItems: 'flex-start', color: 'var(--amber)' }}>
+                <I_Cal size={14} />
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  Las <b>{horaElegida}</b> quedan fuera de la ventana de 8:00 a 22:00 que usa el motor
+                  cuando elige él. Como la elegiste vos, sale a esa hora.
+                </span>
+              </div>
+            )}
             <div className="tiny muted" style={{ marginTop: 6 }}>{campo.ayuda}</div>
           </>
         )}
