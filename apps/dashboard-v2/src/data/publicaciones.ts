@@ -253,6 +253,7 @@ export const FORMATOS: Formato[] = [
     nombre: 'Colaboración con creador',
     icono: '🤝',
     color: '#8b5cf6',
+    conObjetivo: true,
     resumen: 'La pieza que ya grabó alguien con quien arreglaste por fuera.',
     paraQue: 'Sinkroo no busca colaboradores: el acuerdo lo cerrás vos por fuera y acá subís el link y el video. El motor monta esa pieza con lo suyo y todo va a la misma evaluación.',
     campos: [
