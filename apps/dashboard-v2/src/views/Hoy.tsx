@@ -52,7 +52,7 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
         <div className="hero-metrics">
           <div className="hero-metric"><div className="metric" style={{ color: 'var(--green)' }}>47</div><div className="m-label">Ventas</div><div className="m-desc">concretadas hoy</div></div>
           <div className="hero-metric"><div className="metric" style={{ color: 'var(--green)' }}>3.8x</div><div className="m-label">ROAS</div><div className="m-desc">retorno por cada $1 invertido</div></div>
-          <div className="hero-metric"><div className="metric grad-text">84</div><div className="m-label">Score</div><div className="m-desc">calidad del creativo aprobado</div></div>
+          <div className="hero-metric"><div className="metric grad-text">83</div><div className="m-label">Score</div><div className="m-desc">calidad del creativo aprobado</div></div>
         </div>
         <div className="hero-start">
           <div className="hero-ad-tag">EMPEZÁ ACÁ</div>
@@ -220,7 +220,7 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
           action={<Badge tone="green">sobre 100</Badge>}
         >
           <div className="row" style={{ gap: 20, marginBottom: 16 }}>
-            <Ring valor={84} label="SCORE" color="var(--green)" sub="la pieza aprobada" />
+            <Ring valor={83} label="SCORE" color="var(--green)" sub="la pieza aprobada" />
             <div className="dato" style={{ flex: 1 }}>
               <span className="dato-l">Qué significa</span>
               <span className="bs">

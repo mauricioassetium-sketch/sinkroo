@@ -209,7 +209,7 @@ export function ViewMercado({ setToast }: { setToast: (t: string) => void }) {
             <div className="guard">
               <I_Check size={15} style={{ color: 'var(--green)', flexShrink: 0 }} />
               <span className="guard-lb">Sumar prueba social
-                <small>Es la única objeción de los jueces sobre tu pieza aprobada. Un testimonio con nombre la lleva de 84 a ~90.</small>
+                <small>Es la única objeción de los jueces sobre tu pieza aprobada. Un testimonio con nombre la lleva de 83 a ~90.</small>
               </span>
             </div>
             <div className="guard">
