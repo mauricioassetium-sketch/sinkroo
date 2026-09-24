@@ -306,7 +306,7 @@ export function ViewNichoCreador({ setToast, setVista }: { setToast: (t: string)
             <b>Cómo se lee:</b> de cada 100 piezas que se publican en tu nicho, cuántas usan ese formato.
             Es el reparto real del feed, no una recomendación: donde está tu formato, ahí está tu audiencia.
           </div>
-          <div style={{ marginTop: 8 }}>
+          <div className="grow-list">
             {NICHO.formatosDelFeed.map(f => {
               const gana = f.f === formatoTop.f;
               return (

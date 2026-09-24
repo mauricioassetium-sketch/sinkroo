@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '../components/ui';
 import {
   I_X, I_Check, I_ArrowRight, I_ArrowLeft, I_Rocket, I_Zap, I_Users, I_Clock,
@@ -27,11 +27,14 @@ export function Asistente({ sesion, setVista }: { sesion: Sesion; setVista: (v: 
   const { plan } = usePlan();
   const [autoHecho, setAutoHecho] = useState(false);
 
-  // Se abre una sola vez, cuando hay sesión y todavía no se abrió.
-  if (sesion && !autoHecho) {
-    setAutoHecho(true);
-    onb.abrirAsistente(0);
-  }
+  // Se abre una sola vez, cuando hay sesión y todavía no se abrió. Va en un efecto y no en el
+  // cuerpo del render: abrir el asistente cambia el estado del proveedor, y hacerlo mientras se
+  // renderiza este componente hace que React descarte la actualización (y el asistente no abre).
+  const abrir = onb.abrirAsistente;
+  useEffect(() => {
+    if (sesion && !autoHecho) { setAutoHecho(true); abrir(0); }
+  }, [sesion, autoHecho, abrir]);
+
   if (!onb.asistente.abierto) return null;
 
   const fase = onb.asistente.fase;
