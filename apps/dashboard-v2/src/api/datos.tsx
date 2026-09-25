@@ -52,19 +52,33 @@ export type Backtest = {
   detalle: { predicho: number; real: number; error: number; con_metrica_real: boolean; metrica: string; cuando: string }[];
 };
 
-/** El estado de la integración con Meta (Instagram): si la app está configurada en el servidor, si hay
- *  cuenta conectada (el token nunca se devuelve, sólo se dice si hay uno guardado) y cuándo se sincronizó. */
-export type IntegracionMeta = {
+/** Una red conectable, tal como la devuelve el back: su nombre y su rol, si está configurada en el
+ *  servidor y qué falta, la cuenta conectada (el token nunca se devuelve, sólo se dice si hay uno
+ *  guardado) y cuándo se sincronizó por última vez. */
+export type IntegracionRed = {
+  red: string;
+  nombre: string;
+  rol: string;
+  tipo?: 'oauth' | 'token';
+  categoria: string;
+  /** ¿La app de esa red está configurada en el servidor? Si no, `falta` dice qué variables faltan. */
   configurado: boolean;
-  /** Las variables de entorno que faltan para que la app de Meta esté configurada (sus nombres). */
   falta: string[];
   cuenta: {
     red: string; external_id: string | null; nombre: string | null; estado: string;
-    token_expira: string | null; created_at: string; tiene_token: boolean;
+    token_expira: string | null; permisos: string[] | null; created_at: string; tiene_token: boolean;
   } | null;
   ultima_sincronizacion: { que: string; ok: boolean; detalle: string; created_at: string } | null;
-  /** Qué hace la integración con los datos que trae, en palabras del back. */
+  /** Qué le aporta esa red al motor, en palabras del back. */
+  que_aporta: string;
+  /** Cómo funciona la integración y con qué datos lee, en palabras del back. */
   como_funciona: string;
+};
+
+/** Todas las redes conectables y el total que se muestra en el badge de la tarjeta. */
+export type Integraciones = {
+  redes: IntegracionRed[];
+  resumen: { conectadas: number; total: number };
 };
 
 export type Datos = {
@@ -87,9 +101,10 @@ export type Datos = {
   calibracion: Calibracion | null;
   /** El backtest del back: qué tan cerca le pega el modelo a la realidad. null = sin back. */
   backtest: Backtest | null;
-  /** La integración con Meta (Instagram): si la app está configurada, si hay cuenta conectada y cuándo
-   *  se sincronizó. null = sin back, o el servidor no respondió a la consulta. */
-  integraciones: IntegracionMeta | null;
+  /** Las redes conectables con el back encendido: cuáles están configuradas, cuáles tienen cuenta
+   *  conectada y cuándo se sincronizaron, más el resumen (`conectadas` de `total`). null = sin back, o
+   *  el servidor no respondió a la consulta. */
+  integraciones: Integraciones | null;
   desvioPct: number;
   refrescar: () => Promise<void>;
   /** Guarda el onboarding en el back (mezcla los campos) y refresca. */
@@ -137,7 +152,7 @@ export function ProveedorDatos({ children }: { children: ReactNode }) {
       traer<{ saldo: number; movimientos: Movimiento[] }>('/api/creditos', { saldo: 0, movimientos: [] }),
       traer<Calibracion | null>('/api/publico/calibracion', null),
       traer<Backtest | null>('/api/mirofish/backtest', null),
-      traer<IntegracionMeta | null>('/api/integraciones/meta/estado', null),
+      traer<Integraciones | null>('/api/integraciones', null),
     ]);
     setEstado({
       real: true, cargando: false, error: neg ? '' : 'no se pudo leer el negocio del servidor',

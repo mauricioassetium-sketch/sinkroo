@@ -154,8 +154,14 @@ export async function leerInsightsInstagram(token: string, igUserId: string) {
   };
 }
 
-/** El token guardado del negocio, o vacío. Nunca se devuelve al cliente: sólo se usa del lado del servidor. */
+/**
+ * La cuenta guardada del negocio, o vacío. Nunca se devuelve al cliente: sólo se usa del lado del servidor.
+ * Trae también el token de renovación (Google y TikTok lo necesitan: sus tokens de acceso vencen) y los
+ * permisos concedidos, porque cada red decide con eso si puede leer. Nada de esto sale en una respuesta.
+ */
 export async function tokenDe(db: Pool, businessId: string, red = 'instagram') {
-  const r = await db.query('SELECT token, external_id, estado FROM cuentas_conectadas WHERE business_id = $1 AND red = $2', [businessId, red]);
+  const r = await db.query(
+    'SELECT token, refresh_token, external_id, nombre, estado, permisos, extra FROM cuentas_conectadas WHERE business_id = $1 AND red = $2',
+    [businessId, red]);
   return r.rows[0] ?? null;
 }

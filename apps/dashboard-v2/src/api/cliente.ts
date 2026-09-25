@@ -97,23 +97,32 @@ export const arrancarMotor = () => pedir<{ ok: boolean }>('/api/onboarding/arran
 // ---------------- Integraciones ----------------
 
 /**
- * El paso de vuelta de Meta: cuando el negocio autoriza, el navegador vuelve a META_REDIRECT_URI con
+ * El paso de vuelta: cuando el negocio autoriza en el proveedor, el navegador vuelve al redirect_uri con
  * `?code=...&state=...`. Esto canjea ese código por el token (del lado del servidor) y deja la cuenta
- * guardada. Sin este paso, autorizar no conectaba nada.
+ * guardada. Sin este paso, autorizar no conectaba nada. La ruta es por red, así el mismo flujo sirve
+ * para cualquiera: la red se recuerda al salir y, si no hay nada anotado, se asume Instagram (lo que
+ * ya funcionaba sigue funcionando igual).
  */
-export const volverDeMeta = (codigo: string, state: string, external_id?: string, nombre?: string) =>
-  pedir<{ ok: boolean }>('/api/integraciones/meta/volver', {
+export const volverDeMeta = (codigo: string, state: string, red = 'instagram', external_id?: string, nombre?: string) =>
+  pedir<{ ok: boolean }>(`/api/integraciones/${encodeURIComponent(red)}/volver`, {
     metodo: 'POST',
     cuerpo: { codigo, state, external_id, nombre },
   });
 
-/** Los parámetros que deja Meta al volver. */
-export function codigoDeMeta(): { codigo: string; state: string } | null {
+const CLAVE_RED = 'sinkroo-red-conectando';
+/** La red a la que hay que volver: la que el panel anotó cuando abrió la autorización del proveedor. */
+export const recordarRed = (red: string) => { try { window.localStorage.setItem(CLAVE_RED, red); } catch { /* sin almacén */ } };
+const redAnotada = () => { try { return window.localStorage.getItem(CLAVE_RED) || ''; } catch { return ''; } };
+/** El canje ya volvió: se olvida la red para que una recarga no vuelva a usarla. */
+export const olvidarRed = () => { try { window.localStorage.removeItem(CLAVE_RED); } catch { /* sin almacén */ } };
+
+/** Los parámetros que deja el proveedor al volver, con la red a la que corresponden. */
+export function codigoDeMeta(): { codigo: string; state: string; red: string } | null {
   try {
     const q = new URLSearchParams(window.location.search);
     const codigo = q.get('code') || '';
     const state = q.get('state') || '';
     if (!codigo) return null;
-    return { codigo, state };
+    return { codigo, state, red: q.get('red') || redAnotada() || 'instagram' };
   } catch { return null; }
 }

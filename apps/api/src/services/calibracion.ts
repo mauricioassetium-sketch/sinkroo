@@ -1,4 +1,5 @@
 import type { Pool } from 'pg';
+import type { MetricaReal } from '../integrations/redes.js';
 import { azar, semillaDe } from './agentes.js';
 
 // =============================================================================================
@@ -104,6 +105,52 @@ export async function leerCalibracion(db: Pool, businessId: string) {
       ? (Number(ult.rows[0].agentes) >= 500 ? 'calibrado con datos del negocio' : 'calibrado con pocos datos: banda ancha')
       : 'sin calibrar: reparto parejo (el panel no está cerca de su público real)',
   };
+}
+
+/**
+ * Guarda las métricas reales que devolvió una plataforma (ventas, vistas, clics, gasto, conversiones).
+ * Es lo que hace medible el backtest: sin esto, el modelo sólo se compara con su propia estimación.
+ * Se guardan con su fuente y, si la plataforma la da, con la fecha en que pasaron. Un solo INSERT para
+ * todas: con 200 métricas no se pueden hacer 200 viajes a la base.
+ */
+export async function guardarMetricas(db: Pool, businessId: string, red: string, metricas: MetricaReal[]) {
+  const limpias = metricas
+    .map(m => {
+      const fecha = m.cuando ? new Date(m.cuando) : null;
+      return {
+        pieza: String(m.pieza || '').slice(0, 160),
+        metrica: String(m.metrica || '').slice(0, 60),
+        // Un valor absurdo no se guarda: se corta en un tope razonable para que un error de la
+        // plataforma no ensucie el backtest.
+        valor: Number.isFinite(Number(m.valor)) ? Math.max(-1e9, Math.min(1e9, Number(m.valor))) : 0,
+        fuente: String(m.fuente || red).slice(0, 60),
+        cuando: fecha && !Number.isNaN(fecha.getTime()) ? fecha : null,
+      };
+    })
+    .filter(m => m.metrica && m.metrica !== 'undefined');
+  if (!limpias.length) return 0;
+
+  const filas = limpias.slice(0, 500);
+  const valores: string[] = [];
+  const args: unknown[] = [businessId, red];
+  for (const m of filas) {
+    const p = args.length;
+    valores.push(`($1, $2, $${p + 1}, $${p + 2}, $${p + 3}, $${p + 4}, $${p + 5})`);
+    args.push(m.pieza, m.metrica, m.valor, m.fuente, m.cuando);
+  }
+  await db.query(
+    `INSERT INTO metricas_reales (business_id, red, pieza, metrica, valor, fuente, cuando) VALUES ${valores.join(',')}`,
+    args,
+  );
+  return filas.length;
+}
+
+/** Las últimas métricas reales del negocio, para que el panel pueda mostrar contra qué se midió. */
+export async function leerMetricas(db: Pool, businessId: string, limite = 100) {
+  const r = await db.query(
+    `SELECT red, pieza, metrica, valor, fuente, cuando, created_at FROM metricas_reales
+      WHERE business_id = $1 ORDER BY created_at DESC LIMIT $2`, [businessId, Math.max(1, Math.min(500, limite))]);
+  return r.rows;
 }
 
 /**

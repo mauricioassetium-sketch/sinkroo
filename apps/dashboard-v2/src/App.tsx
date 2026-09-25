@@ -7,7 +7,7 @@ import { PlanProvider } from './lib/plan';
 import { OnboardingProvider } from './lib/onboarding';
 import { ViewOnboarding } from './views/Onboarding';
 import { PantallaLogin, type Sesion } from './views/Login';
-import { codigoDeMeta, hayApi, quienSoy, token, volverDeMeta } from './api/cliente';
+import { codigoDeMeta, hayApi, olvidarRed, quienSoy, token, volverDeMeta } from './api/cliente';
 import { ProveedorDatos } from './api/datos';
 import { Asistente } from './components/Asistente';
 import { ViewHoy } from './views/Hoy';
@@ -19,6 +19,12 @@ import { ViewCreditos } from './views/Creditos';
 import { ViewReferidos } from './views/Referidos';
 import { ViewKyc } from './views/Kyc';
 import { TENANT, type Modo } from './data/demo';
+
+/** El nombre de una red para los avisos, sin depender del catálogo del back: `instagram` → «Instagram». */
+const redBonita = (red: string) => {
+  const dicho = red.replace(/_/g, ' ');
+  return dicho.charAt(0).toUpperCase() + dicho.slice(1);
+};
 
 export default function App() {
   // La sesión arranca vacía: el panel no existe hasta que alguien entra.
@@ -35,18 +41,21 @@ export default function App() {
     return () => { vivo = false; };
   }, []);
 
-  // La vuelta de Meta: si la dirección trae el código de autorización, se canjea acá y se limpia la
-  // dirección (para que recargar no vuelva a mandarlo). Es lo que termina de conectar la cuenta.
+  // La vuelta de la autorización —Meta, o la red que sea: la ruta es por red, así el mismo flujo sirve
+  // para todas—: si la dirección trae el código, se canjea acá y se limpia la dirección (para que
+  // recargar no vuelva a mandarlo). Es lo que termina de conectar la cuenta.
   useEffect(() => {
     const v = codigoDeMeta();
     if (!v || !hayApi() || !token()) return;
-    void volverDeMeta(v.codigo, v.state)
-      .then(() => { avisar('Instagram conectado: el motor ya puede leer su audiencia real'); })
-      .catch((e: Error) => { avisar(`No se pudo conectar Instagram: ${e.message}`); })
+    const nombre = redBonita(v.red);
+    void volverDeMeta(v.codigo, v.state, v.red)
+      .then(() => { avisar(`${nombre} conectado: el motor ya puede leer sus datos reales`); })
+      .catch((e: Error) => { avisar(`No se pudo conectar ${nombre}: ${e.message}`); })
       .finally(() => {
+        olvidarRed();
         try {
           const url = new URL(window.location.href);
-          url.searchParams.delete('code'); url.searchParams.delete('state');
+          url.searchParams.delete('code'); url.searchParams.delete('state'); url.searchParams.delete('red');
           window.history.replaceState({}, '', url.toString());
         } catch { /* sin navegador */ }
       });

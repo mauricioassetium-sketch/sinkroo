@@ -277,6 +277,34 @@ export async function migrate(db: Pool): Promise<void> {
 
     CREATE INDEX IF NOT EXISTS idx_sincro_business ON sincronizaciones(business_id, created_at DESC);
 
+    -- ---------------------------------- LAS REDES: lo que hacen falta para varias plataformas ----------------------------------
+    -- Google y TikTok renuevan el token de acceso con un refresh_token (el de Google vence cada hora);
+    -- y algunas redes guardan un dato extra que no es un secreto (el tipo de tienda, el id del canal).
+    -- Van con ADD COLUMN IF NOT EXISTS para que la migración corra igual sobre una base que ya existe.
+    -- Ninguna de estas columnas sale nunca en una respuesta: son del servidor.
+    ALTER TABLE cuentas_conectadas ADD COLUMN IF NOT EXISTS refresh_token TEXT NOT NULL DEFAULT '';
+    ALTER TABLE cuentas_conectadas ADD COLUMN IF NOT EXISTS extra JSONB NOT NULL DEFAULT '{}'::jsonb;
+    ALTER TABLE cuentas_conectadas ADD COLUMN IF NOT EXISTS actualizado TIMESTAMPTZ NOT NULL DEFAULT now();
+
+    -- LAS MÉTRICAS REALES: lo que de verdad pasó en las plataformas —ventas de la tienda, vistas de los
+    -- videos, clics y gasto de la pauta, conversiones del sitio—. Es la materia prima del backtest: sin
+    -- esto, el modelo se compara consigo mismo. Cada fila lleva su fuente y, si la plataforma la da, la
+    -- fecha en que pasó, porque una métrica sin fuente no se puede defender.
+    CREATE TABLE IF NOT EXISTS metricas_reales (
+      id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+      red         TEXT NOT NULL,
+      pieza       TEXT NOT NULL DEFAULT '',
+      metrica     TEXT NOT NULL,
+      valor       NUMERIC(16,2) NOT NULL DEFAULT 0,
+      fuente      TEXT NOT NULL DEFAULT '',
+      cuando      TIMESTAMPTZ,
+      datos       JSONB NOT NULL DEFAULT '{}'::jsonb,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_metricas_business ON metricas_reales(business_id, created_at DESC);
+
     -- Cada calibración queda guardada: qué distribuciones se cargaron, de dónde salieron y cuándo. Es la
     -- trazabilidad del panel: si mañana cambia, se sabe con qué dato se armó el de hoy.
     CREATE TABLE IF NOT EXISTS calibraciones (
