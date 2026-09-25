@@ -2119,3 +2119,42 @@ html.marca-cliente .pers-flotante { color: var(--sobre-grad); }
 .vacio-ic { font-size: 22px; color: var(--purple3); opacity: .85; }
 .vacio-t { font-size: 14.5px; font-weight: 800; color: var(--txt); }
 .vacio-s { font-size: 12.5px; line-height: 1.6; color: var(--muted); max-width: 46ch; }
+
+/* =============================================================================================
+   MIROFISH REAL — la ronda de verdad: los 5 jueces, las 500 reacciones y la predicción corregida.
+   ============================================================================================= */
+.mf-r { display: flex; flex-direction: column; gap: 14px; }
+.mf-r-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.mf-r-t { display: inline-flex; align-items: center; gap: 8px; font-size: 15.5px; font-weight: 800; }
+.mf-r-saldo { font-size: 11.5px; color: var(--muted); }
+.mf-r-form { display: flex; flex-direction: column; gap: 12px; }
+.mf-r-campo { display: flex; flex-direction: column; gap: 6px; }
+.mf-r-error { font-size: 12px; line-height: 1.5; color: #92400e; background: #fef6e7; border: 1px solid #f6e0af;
+  border-radius: 10px; padding: 9px 11px; }
+.mf-r-res { display: flex; flex-direction: column; gap: 14px; }
+.mf-r-puntaje { display: flex; align-items: baseline; gap: 10px; }
+.mf-r-puntaje-n { font-size: 34px; font-weight: 900; letter-spacing: -1.4px; color: var(--purple3); }
+.mf-r-puntaje-l { font-size: 12.5px; color: var(--muted); }
+.mf-r-jueces { display: flex; flex-direction: column; gap: 7px; }
+.mf-r-juez { display: grid; grid-template-columns: 96px minmax(0,1fr) 38px; gap: 10px; align-items: center; font-size: 12.5px; }
+.mf-r-juez-n { font-weight: 800; }
+.mf-r-juez-barra { height: 7px; border-radius: 99px; background: var(--bg3); overflow: hidden; }
+.mf-r-juez-barra > span { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, #a855f7, #6366f1); }
+.mf-r-juez-v { font-weight: 800; text-align: right; font-variant-numeric: tabular-nums; }
+.mf-r-juez-o { grid-column: 2 / -1; font-size: 11.5px; color: var(--muted); margin-top: -4px; }
+.mf-r-publico { display: flex; flex-direction: column; gap: 9px; }
+.mf-r-publico-t { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 800; color: var(--green); }
+.mf-r-reacciones { display: flex; gap: 7px; flex-wrap: wrap; }
+.mf-r-reaccion { font-size: 11.5px; font-weight: 700; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border2); background: var(--bg3); }
+.mf-r-reaccion.compra { color: #15803d; border-color: #bbf7d0; background: #f0fdf4; }
+.mf-r-reaccion.guarda { color: #6d28d9; border-color: #ddd6fe; background: #f5f3ff; }
+.mf-r-reaccion.indiferente { color: var(--muted); }
+.mf-r-reaccion.pasa { color: #b45309; border-color: #fde68a; background: #fffbeb; }
+.mf-r-dichos { display: flex; flex-direction: column; gap: 5px; }
+.mf-r-dicho { font-size: 12px; color: var(--txt); border-left: 3px solid var(--border2); padding-left: 9px; }
+.mf-r-dicho small { color: var(--muted2); }
+.mf-r-pred { border: 1px solid var(--border2); border-radius: 12px; padding: 11px 13px;
+  background: linear-gradient(135deg, rgba(168,85,247,.08), rgba(99,102,241,.05)); display: flex; flex-direction: column; gap: 4px; }
+.mf-r-pred-t { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; font-weight: 800; color: var(--purple3); }
+.mf-r-pred-d { font-size: 13px; }
+.mf-r-pred-s { font-size: 11.5px; color: var(--muted); }
