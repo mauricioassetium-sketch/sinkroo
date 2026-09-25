@@ -36,7 +36,7 @@ type Ctx = {
   marcar: (n: number) => void;
   /** Deja el paso como pendiente pero guardado: es lo que hace «Seguir después». */
   desmarcar: (n: number) => void;
-  /** El motor ya arrancó: desde aquí, el panel muestra el plan de la semana. */
+  /** El motor ya arrancó: desde aquí, el panel muestra lo que el motor hizo, paso por paso. */
   arrancado: boolean;
   arrancar: () => void;
   /** Aviso del panel: lo usan los controles compartidos, que viven fuera de las vistas. */

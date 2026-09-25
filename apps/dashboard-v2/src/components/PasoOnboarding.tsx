@@ -6,7 +6,7 @@ import {
 import { useOnboarding } from '../lib/onboarding';
 import { usePlan } from '../lib/plan';
 import {
-  CONEXIONES_ONB, PRIMERA_SEMANA, COSTO_PRIMERA_SEMANA, TIPOS_ARCHIVO, ARCHIVOS_ACEPTADOS,
+  CONEXIONES_ONB, PRIMERA_SEMANA, COSTO_ARRANQUE, TIPOS_ARCHIVO, ARCHIVOS_ACEPTADOS,
   type CampoOnb, type PasoOnb,
 } from '../data/onboarding';
 
@@ -280,7 +280,7 @@ export function BloqueConexiones() {
   );
 }
 
-/** El arranque: el botón, la línea de estado y el plan de la primera semana. */
+/** El arranque: el botón, la línea de estado y lo que hace el motor, paso por paso. */
 export function BloqueArranque({ enAsistente, alCerrar }: { enAsistente?: boolean; alCerrar?: () => void }) {
   const onb = useOnboarding();
   const { plan } = usePlan();
@@ -289,21 +289,21 @@ export function BloqueArranque({ enAsistente, alCerrar }: { enAsistente?: boolea
       <>
         <div className="onb-arrancado">
           <I_Rocket size={15} />
-          <span><b>El motor está trabajando.</b> Arrancó por el mercado: en unas horas va a ver el primer informe
-            y las piezas de la semana. Nada de esto gasta dinero hasta que la pieza pasa el panel.</span>
+          <span><b>El motor está trabajando.</b> Arrancó por el mercado: en unas horas va a tener el primer
+            informe y las primeras piezas listas. Nada de esto gasta dinero hasta que la pieza pasa el panel.</span>
         </div>
         <div className="onb-semana">
           {PRIMERA_SEMANA.map(d => (
-            <div key={d.dia} className="onb-dia">
-              <span className="onb-dia-n">{d.dia}</span>
-              <span className="onb-dia-quien">{d.quien}</span>
-              <span className="onb-dia-que">{d.que}</span>
-              <span className="onb-dia-cr">{d.creditos}</span>
+            <div key={d.paso} className="onb-etapa">
+              <span className="onb-etapa-n">{d.paso}</span>
+              <span className="onb-etapa-quien">{d.quien}</span>
+              <span className="onb-etapa-que">{d.que}</span>
+              <span className="onb-etapa-cr">{d.creditos}</span>
             </div>
           ))}
-          <div className="onb-dia-total">
-            <span>Total de la primera semana</span>
-            <span><b>{COSTO_PRIMERA_SEMANA} créditos</b> de los {plan.creditosMes.toLocaleString('es-CO')} del plan {plan.nombre} · publicar es aparte</span>
+          <div className="onb-etapa-total">
+            <span>Total del arranque</span>
+            <span><b>{COSTO_ARRANQUE} créditos</b> de los {plan.creditosMes.toLocaleString('es-CO')} del plan {plan.nombre} · publicar es aparte</span>
           </div>
         </div>
         {enAsistente && (
@@ -319,7 +319,7 @@ export function BloqueArranque({ enAsistente, alCerrar }: { enAsistente?: boolea
   return (
     <div className="row" style={{ gap: 9, marginTop: 14, flexWrap: 'wrap' }}>
       <Button className="btn-sm"
-        title={`Arranca el motor ahora: investiga su mercado y prepara las piezas de la semana. Cuesta ${COSTO_PRIMERA_SEMANA} créditos y no gasta dinero hasta que las piezas pasan el panel.`}
+        title={`Arranca el motor ahora: investiga su mercado y prepara las piezas de la semana. Cuesta ${COSTO_ARRANQUE} créditos y no gasta dinero hasta que las piezas pasan el panel.`}
         onClick={() => { onb.arrancar(); onb.marcar(5); onb.avisar('El motor arrancó: empieza por el mercado, no gasta nada hasta publicar'); }}>
         <I_Rocket size={13} /> Arrancar el motor
       </Button>

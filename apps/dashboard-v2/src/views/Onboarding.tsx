@@ -7,7 +7,7 @@ import type { Vista } from '../components/Layout';
 import { usePlan } from '../lib/plan';
 import { useOnboarding } from '../lib/onboarding';
 import { CamposPaso, BloqueConexiones, BloqueArranque, AvisoVerificacion } from '../components/PasoOnboarding';
-import { COSTO_PRIMERA_SEMANA } from '../data/onboarding';
+import { COSTO_ARRANQUE } from '../data/onboarding';
 
 // =============================================================================================
 // PRIMEROS PASOS — los cinco pasos del negocio, dentro del panel.
@@ -47,7 +47,7 @@ export function ViewOnboarding({ setToast, setVista }: { setToast: (t: string) =
           { v: `${onb.listos.length} de ${onb.pasos.length}`, l: 'pasos hechos', c: onb.listos.length === onb.pasos.length ? 'var(--green)' : 'var(--purple3)' },
           { v: onb.arrancado ? 'En marcha' : 'Sin arrancar', l: 'el motor', c: onb.arrancado ? 'var(--green)' : 'var(--amber)' },
           { v: `Plan ${plan.nombre}`, l: `${plan.creditosMes.toLocaleString('es-CO')} créditos por mes` },
-          { v: String(COSTO_PRIMERA_SEMANA), l: 'créditos de la primera semana' },
+          { v: String(COSTO_ARRANQUE), l: 'créditos del arranque' },
         ]}
       />
 

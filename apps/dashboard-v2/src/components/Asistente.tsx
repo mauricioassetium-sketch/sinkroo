@@ -199,7 +199,7 @@ export function Asistente({ sesion, setVista }: { sesion: Sesion; setVista: (v: 
 
         {/* Lo que va a pasar al terminar: en la bienvenida, que tiene lugar. En los pasos, no. */}
         <div className="asist-pie-2" style={fase > 0 ? { display: 'none' } : undefined}>
-          <I_Rocket size={12} /> Al terminar, el motor arma la primera semana con los {plan.creditosMes.toLocaleString('es-CO')} créditos del plan {plan.nombre}.
+          <I_Rocket size={12} /> Al terminar, el motor arranca con los {plan.creditosMes.toLocaleString('es-CO')} créditos del plan {plan.nombre}.
         </div>
       </div>
     </div>
