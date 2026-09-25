@@ -7,7 +7,7 @@ import { PlanProvider } from './lib/plan';
 import { OnboardingProvider } from './lib/onboarding';
 import { ViewOnboarding } from './views/Onboarding';
 import { PantallaLogin, type Sesion } from './views/Login';
-import { hayApi, quienSoy, token } from './api/cliente';
+import { codigoDeMeta, hayApi, quienSoy, token, volverDeMeta } from './api/cliente';
 import { ProveedorDatos } from './api/datos';
 import { Asistente } from './components/Asistente';
 import { ViewHoy } from './views/Hoy';
@@ -33,6 +33,23 @@ export default function App() {
       if (vivo && u) setSesion({ nombre: u.nombre, email: u.email, via: 'email' });
     });
     return () => { vivo = false; };
+  }, []);
+
+  // La vuelta de Meta: si la dirección trae el código de autorización, se canjea acá y se limpia la
+  // dirección (para que recargar no vuelva a mandarlo). Es lo que termina de conectar la cuenta.
+  useEffect(() => {
+    const v = codigoDeMeta();
+    if (!v || !hayApi() || !token()) return;
+    void volverDeMeta(v.codigo, v.state)
+      .then(() => { avisar('Instagram conectado: el motor ya puede leer su audiencia real'); })
+      .catch((e: Error) => { avisar(`No se pudo conectar Instagram: ${e.message}`); })
+      .finally(() => {
+        try {
+          const url = new URL(window.location.href);
+          url.searchParams.delete('code'); url.searchParams.delete('state');
+          window.history.replaceState({}, '', url.toString());
+        } catch { /* sin navegador */ }
+      });
   }, []);
   const [vista, setVista] = useState<Vista>('hoy');
   const [toast, setToast] = useState('');

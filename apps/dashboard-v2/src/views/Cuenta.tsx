@@ -1,13 +1,16 @@
 import { useState } from 'react';
 import { Card, Badge, Button, Dinero, NotaMoneda } from '../components/ui';
 import { ViewHead, Gauge, BarRow } from '../components/viz';
-import { I_Settings, I_Check, I_Shield, I_Lock, I_Plus, I_Zap, I_Credit, I_Link, I_Clock, I_Sun, I_X } from '../components/icons';
+import { I_Settings, I_Check, I_Shield, I_Lock, I_Plus, I_Zap, I_Credit, I_Link, I_Clock, I_Sun, I_X, I_Refresh } from '../components/icons';
 import { MODOS, EXCEPCIONES, FRENOS, CONEXIONES, CREDITOS_MOV, TENANT, INVESTIGACION_MERCADO, PLANES, type Modo, type Conexion } from '../data/demo';
 import { useDetalle, type Bloque } from '../components/Detalle';
 // La capa de datos del panel: con el back encendido (`datos.real`), esta pantalla muestra el negocio
 // real, el estado del onboarding y el libro de créditos del back. Lo que es del negocio de ejemplo
 // (el historial de autonomía, los frenos y las conexiones de la demo) se muestra sólo sin back.
 import { useDatos } from '../api/datos';
+// Las acciones de la conexión con Instagram (conectar, sincronizar, desconectar) van al back con el
+// token de la sesión: es el mismo cliente que usa la capa de datos, no una puerta nueva.
+import { baseApi, token } from '../api/cliente';
 import { EstadoVacio } from '../components/EstadoVacio';
 import { PASOS_ONB } from '../data/onboarding';
 
@@ -68,6 +71,9 @@ function ViewCuentaNegocio({ setToast, modo, setModo }: { setToast: (t: string) 
   const [paraReemplazar, setParaReemplazar] = useState<string[]>([]);
   /** Conexiones que el dueño agendó para conectar hoy. Todavía NO están conectadas. */
   const [paraConectar, setParaConectar] = useState<string[]>([]);
+  /** La acción de Instagram que está en curso (conectar, sincronizar, desconectar): mientras corre,
+   *  el botón lo dice y no se puede volver a apretar. Vacío = no hay nada corriendo. */
+  const [igTrabajando, setIgTrabajando] = useState('');
 
   const registrar = (t: string, s: string) => setHistorial(h => [...h, { hora: ahora(), t, s }]);
 
@@ -199,6 +205,78 @@ function ViewCuentaNegocio({ setToast, modo, setModo }: { setToast: (t: string) 
       { label: 'Cancelar', onClick: () => setToast(`${c.nombre} sigue con el token actual: sin cambios`) },
     ],
   });
+
+  // ---------------------------------------------------------------------------------------------
+  // LA CONEXIÓN CON INSTAGRAM (META), CON EL BACK ENCENDIDO — el estado real y sus tres acciones.
+  // El token vive en el servidor: esta pantalla no lo pide ni lo muestra, sólo dice si hay uno
+  // guardado. Las tres acciones llaman a las rutas del back y, salvo la de conectar (que se lleva
+  // al navegador a Meta), releen el estado para que la fila muestre lo que quedó en el servidor.
+  // ---------------------------------------------------------------------------------------------
+  const ig = datos.integraciones;
+  const igCuenta = ig?.cuenta ?? null;
+  const igUltima = ig?.ultima_sincronizacion ?? null;
+  /** Lo que el back dice que falta para que la app de Meta esté configurada (los nombres). */
+  const igFalta = ig?.falta?.length ? ig.falta : [];
+
+  /** Una llamada al back con el token de la sesión, siempre la misma forma de leer el error. */
+  const accionMeta = async (accion: 'empezar' | 'sincronizar' | 'desconectar') => {
+    const r = await fetch(baseApi() + `/api/integraciones/meta/${accion}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token() },
+    });
+    const cuerpo = await r.json().catch(() => ({})) as {
+      url?: string; error?: string; detalle?: string; codigo?: string;
+      calibracion?: { agentes?: number; segmentos?: unknown[] };
+    };
+    return { ok: r.ok, cuerpo };
+  };
+
+  /** Conectar Instagram: el back devuelve la dirección de Meta y el navegador se va para allá. */
+  const conectarInstagram = async () => {
+    setIgTrabajando('conectar');
+    try {
+      const { ok, cuerpo } = await accionMeta('empezar');
+      if (ok && cuerpo.url) {
+        setToast('Meta le va a pedir el permiso: cuando autorice, su cuenta queda conectada');
+        window.location.href = cuerpo.url;
+      } else {
+        setToast(cuerpo.error || 'No se pudo empezar la conexión con Meta: el servidor respondió con un error');
+      }
+    } catch { setToast('No se pudo hablar con el servidor: la conexión con Meta no arrancó'); }
+    setIgTrabajando('');
+  };
+
+  /** Sincronizar ahora: el back lee los insights y calibra el público solo. Después se relee todo. */
+  const sincronizarInstagram = async () => {
+    setIgTrabajando('sincronizar');
+    try {
+      const { ok, cuerpo } = await accionMeta('sincronizar');
+      if (ok) {
+        const n = cuerpo.calibracion?.segmentos?.length ?? 0;
+        const agentes = cuerpo.calibracion?.agentes ?? 0;
+        setToast(n > 0
+          ? `Instagram sincronizado: ${n === 1 ? 'un segmento' : `${n} segmentos`} de su público quedaron calibrados${agentes ? ` y los ${agentes} agentes repartidos con ese peso` : ''}`
+          : 'Instagram sincronizó: el back leyó sus insights');
+      } else {
+        setToast(cuerpo.error || 'Instagram no se pudo sincronizar: Meta no devolvió datos');
+      }
+    } catch { setToast('No se pudo sincronizar: el servidor no respondió'); }
+    await datos.refrescar();
+    setIgTrabajando('');
+  };
+
+  /** Desconectar: el back borra el token guardado. Volver a conectar es el mismo paso de Meta. */
+  const desconectarInstagram = async () => {
+    setIgTrabajando('desconectar');
+    try {
+      const { ok, cuerpo } = await accionMeta('desconectar');
+      setToast(ok
+        ? 'Instagram quedó desconectado: el token se borró del servidor y no se frena nada de lo que ya corre'
+        : (cuerpo.error || 'No se pudo desconectar Instagram: el servidor respondió con un error'));
+    } catch { setToast('No se pudo desconectar: el servidor no respondió'); }
+    await datos.refrescar();
+    setIgTrabajando('');
+  };
 
   // ---------------------------------------------------------------------------------------------
   // DE DÓNDE SALEN LOS CRÉDITOS, EL PLAN Y LOS DÍAS — con el back encendido son los del negocio
@@ -464,8 +542,8 @@ function ViewCuentaNegocio({ setToast, modo, setModo }: { setToast: (t: string) 
 
       {/* ============ CONEXIONES Y CRÉDITOS ============ */}
       <div className="duo" style={{ marginTop: 16 }}>
-        {/* Las conexiones que se ven acá son las del negocio de ejemplo: con el back encendido no se
-            muestran, porque el back todavía no administra las conexiones de la cuenta. */}
+        {/* Las conexiones de la demo son las del negocio de ejemplo: con el back encendido no se
+            muestran. En su lugar va la tarjeta de abajo, con la integración real de Meta. */}
         {!datos.real && (
         <Card
           title={<span className="row" style={{ gap: 8 }}><I_Link size={14} style={{ color: 'var(--green)' }} /> Conexiones</span>}
@@ -560,6 +638,138 @@ function ViewCuentaNegocio({ setToast, modo, setModo }: { setToast: (t: string) 
             Las capacidades son lo que el negocio pide (<b>"enviar mensaje", "leer anuncios"</b>), no un proveedor concreto.
             Si mañana cambia de herramienta, el motor sigue funcionando sin tocar una línea.
           </div>
+        </Card>
+        )}
+
+        {/* ============ LAS CONEXIONES REALES (sólo con el back encendido) ============
+            La misma fila de la demo —ícono, nombre, estado y botones—, con el estado real de la
+            integración con Meta: si la app está configurada en el servidor, si hay cuenta conectada y
+            cuándo se sincronizó. El token vive en el servidor: acá no se pide ni se muestra, sólo se
+            dice si hay uno guardado. El resto de las conexiones del negocio las administra el back
+            todavía por fuera de esta tarjeta: lo que no tiene dato real no se dibuja. */}
+        {datos.real && (
+        <Card
+          title={<span className="row" style={{ gap: 8 }}><I_Link size={14} style={{ color: 'var(--green)' }} /> Conexiones</span>}
+          action={<Badge tone={!ig ? 'muted' : igCuenta ? 'green' : 'amber'}>
+            {!ig ? (datos.cargando ? 'leyendo' : 'sin leer') : igCuenta ? '1 de 1' : '0 de 1'}
+          </Badge>}
+        >
+          <div className="bs" style={{ marginBottom: 12 }}>
+            Todo lo externo es suyo: conecta su propia cuenta, no la nuestra. Lo que se ve acá es el estado
+            que tiene hoy en el servidor, no una copia de esta visita.
+          </div>
+
+          {!ig ? (
+            /* El back no respondió: se dice eso, no que no haya nada. Mientras lee, dice que está leyendo. */
+            <EstadoVacio
+              {...(datos.cargando
+                ? { titulo: 'Leyendo las conexiones del back…', texto: 'El panel está leyendo el estado de su conexión con Instagram en el servidor. Mientras lee no afirma nada: si no hay nada, lo dice enseguida.' }
+                : { titulo: 'No se pudo leer el estado de Instagram', texto: 'Esta fila muestra si la app de Meta está configurada, si hay una cuenta conectada y cuándo se sincronizó por última vez. El servidor no respondió; vuelva a leerlo y aparece tal como está.' })}
+              {...(datos.cargando ? {} : { accion: 'Volver a leer', onAccion: () => void datos.refrescar() })} />
+          ) : (
+          <div style={{ padding: '11px 0', borderBottom: '1px solid var(--border)' }}>
+            <div className="row spread" style={{ marginBottom: 6 }}>
+              <span className="row" style={{ gap: 9 }}>
+                <span style={{ fontSize: 17 }}>📸</span>
+                <span>
+                  <span className="bt">Instagram</span>
+                  <span className="tiny muted" style={{ display: 'block' }}>
+                    Contenido orgánico{igCuenta ? ` · ${igCuenta.nombre || igCuenta.external_id || 'cuenta sin nombre'}` : ' · su cuenta'}
+                  </span>
+                </span>
+              </span>
+              <span className="row" style={{ gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                <Badge tone={igCuenta ? 'green' : ig.configurado ? 'amber' : 'red'}>
+                  {igCuenta ? 'conectada' : ig.configurado ? 'por conectar' : 'falta configurar'}
+                </Badge>
+              </span>
+            </div>
+
+            {/* SIN CONFIGURAR: se nombra lo que falta y NO se ofrece un botón que no puede funcionar. */}
+            {!ig.configurado ? (
+              <>
+                <div className="bs">
+                  La app de Meta todavía no está configurada en el servidor{igFalta.length ? `: falta cargar ${igFalta.length === 1 ? 'esta variable' : 'estas variables'} de entorno` : ''}.
+                  Mientras falte, el panel no le puede ofrecer conectar Instagram: sin eso el permiso no se
+                  puede pedir ni el token se puede guardar.
+                </div>
+                {igFalta.length > 0 && (
+                  <div className="row" style={{ gap: 7, marginTop: 9, flexWrap: 'wrap' }}>
+                    {igFalta.map(v => <span key={v} className="badge badge-muted" style={{ fontSize: 9.5 }}>{v}</span>)}
+                  </div>
+                )}
+                <div className="tiny" style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 8, color: 'var(--amber)', fontWeight: 700 }}>
+                  <I_Lock size={13} /> Sin la app de Meta configurada no hay botón de conectar: esta fila no ofrece lo que todavía no puede hacer.
+                </div>
+              </>
+            ) : !igCuenta ? (
+              /* CONFIGURADO Y SIN CUENTA: el paso de autorización de Meta, de verdad. */
+              <div className="bs">
+                Su cuenta todavía no está conectada. Al conectar, el permiso se le pide a Meta y el token
+                queda guardado del lado del servidor: el panel nunca lo pide ni lo muestra.
+              </div>
+            ) : (
+              /* CONECTADA: la cuenta, desde cuándo, cuándo se sincronizó y cómo salió esa sincronización. */
+              <>
+                <div className="bs">
+                  Su cuenta está conectada y el token vive en el servidor. Sincronizar lee sus insights y
+                  calibra su público solo: no hay que cargar proporciones a mano.
+                </div>
+                <div className="datos-row" style={{ marginTop: 12 }}>
+                  <div className="dato"><span className="dato-l">Cuenta</span><span className="dato-v">{igCuenta.nombre || 'sin nombre'}</span></div>
+                  <div className="dato"><span className="dato-l">Identificador</span><span className="dato-v">{igCuenta.external_id || 'sin id'}</span></div>
+                  <div className="dato"><span className="dato-l">Estado</span><span className="dato-v" style={{ color: 'var(--green)' }}>{igCuenta.estado || 'conectada'}</span></div>
+                  <div className="dato"><span className="dato-l">Token</span><span className="dato-v">{igCuenta.tiene_token ? 'en el servidor' : 'sin guardar'}</span></div>
+                  {igCuenta.token_expira && (
+                    <div className="dato"><span className="dato-l">El token vence</span><span className="dato-v">{diaDe(igCuenta.token_expira)}</span></div>
+                  )}
+                  <div className="dato"><span className="dato-l">Conectada el</span><span className="dato-v">{diaDe(igCuenta.created_at) || 'sin fecha'}</span></div>
+                </div>
+                {igUltima ? (
+                  <div className="tiny" style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 10, color: igUltima.ok ? 'var(--green)' : 'var(--amber)', fontWeight: 700 }}>
+                    {igUltima.ok ? <I_Check size={13} /> : <I_Clock size={13} />}
+                    Última sincronización ({igUltima.que || 'insights'}): {igUltima.ok ? 'salió bien' : 'no salió'} · {igUltima.detalle || 'sin detalle'} · {fechaHoraDe(igUltima.created_at) || 'sin fecha'}
+                  </div>
+                ) : (
+                  <div className="tiny" style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 10, color: 'var(--muted2)', fontWeight: 700 }}>
+                    <I_Clock size={13} /> Todavía no se sincronizó ninguna vez: su público sigue repartido parejo hasta la primera sincronización.
+                  </div>
+                )}
+              </>
+            )}
+
+            <div className="row" style={{ gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+              {ig.configurado && !igCuenta && (
+                <Button className="btn-sm" disabled={igTrabajando !== ''}
+                  title="Lo lleva a Meta para que autorice su cuenta de Instagram (POST /api/integraciones/meta/empezar). El permiso se pide allá y el token queda guardado en el servidor: esta pantalla nunca lo ve."
+                  onClick={() => void conectarInstagram()}>
+                  <I_Link size={13} /> {igTrabajando === 'conectar' ? 'Abriendo Meta…' : 'Conectar Instagram'}
+                </Button>
+              )}
+              {igCuenta && (
+                <>
+                  <Button className="btn-sm" disabled={igTrabajando !== ''}
+                    title="Lee sus insights en Meta y calibra su público solo, con las proporciones reales de quienes interactúan con su cuenta (POST /api/integraciones/meta/sincronizar). Al terminar dice cuántos segmentos se calibraron."
+                    onClick={() => void sincronizarInstagram()}>
+                    <I_Refresh size={13} /> {igTrabajando === 'sincronizar' ? 'Sincronizando…' : 'Sincronizar ahora'}
+                  </Button>
+                  <Button variant="ghost" className="btn-sm" disabled={igTrabajando !== ''}
+                    title="Borra el token guardado en el servidor (POST /api/integraciones/meta/desconectar). No se frena nada de lo que ya corre y se puede volver a conectar con el mismo paso de Meta."
+                    onClick={() => void desconectarInstagram()}>
+                    <I_X size={13} /> {igTrabajando === 'desconectar' ? 'Desconectando…' : 'Desconectar'}
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+          )}
+
+          {ig && (
+            <div className="acc-why">
+              <b>El token nunca se muestra:</b> vive en el servidor, no viaja al navegador, y esta fila sólo
+              dice si hay uno guardado. {ig.como_funciona}
+            </div>
+          )}
         </Card>
         )}
 

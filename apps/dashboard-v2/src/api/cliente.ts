@@ -93,3 +93,27 @@ export const guardarOnboarding = (cuerpo: { datos?: Record<string, unknown>; hec
   pedir<OnboardingRemoto>('/api/onboarding', { metodo: 'PUT', cuerpo });
 
 export const arrancarMotor = () => pedir<{ ok: boolean }>('/api/onboarding/arrancar', { metodo: 'POST' });
+
+// ---------------- Integraciones ----------------
+
+/**
+ * El paso de vuelta de Meta: cuando el negocio autoriza, el navegador vuelve a META_REDIRECT_URI con
+ * `?code=...&state=...`. Esto canjea ese código por el token (del lado del servidor) y deja la cuenta
+ * guardada. Sin este paso, autorizar no conectaba nada.
+ */
+export const volverDeMeta = (codigo: string, state: string, external_id?: string, nombre?: string) =>
+  pedir<{ ok: boolean }>('/api/integraciones/meta/volver', {
+    metodo: 'POST',
+    cuerpo: { codigo, state, external_id, nombre },
+  });
+
+/** Los parámetros que deja Meta al volver. */
+export function codigoDeMeta(): { codigo: string; state: string } | null {
+  try {
+    const q = new URLSearchParams(window.location.search);
+    const codigo = q.get('code') || '';
+    const state = q.get('state') || '';
+    if (!codigo) return null;
+    return { codigo, state };
+  } catch { return null; }
+}

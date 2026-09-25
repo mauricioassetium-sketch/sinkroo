@@ -52,6 +52,21 @@ export type Backtest = {
   detalle: { predicho: number; real: number; error: number; con_metrica_real: boolean; metrica: string; cuando: string }[];
 };
 
+/** El estado de la integración con Meta (Instagram): si la app está configurada en el servidor, si hay
+ *  cuenta conectada (el token nunca se devuelve, sólo se dice si hay uno guardado) y cuándo se sincronizó. */
+export type IntegracionMeta = {
+  configurado: boolean;
+  /** Las variables de entorno que faltan para que la app de Meta esté configurada (sus nombres). */
+  falta: string[];
+  cuenta: {
+    red: string; external_id: string | null; nombre: string | null; estado: string;
+    token_expira: string | null; created_at: string; tiene_token: boolean;
+  } | null;
+  ultima_sincronizacion: { que: string; ok: boolean; detalle: string; created_at: string } | null;
+  /** Qué hace la integración con los datos que trae, en palabras del back. */
+  como_funciona: string;
+};
+
 export type Datos = {
   /** true cuando los datos son del back. Si es false, el panel está en modo demostración. */
   real: boolean;
@@ -72,6 +87,9 @@ export type Datos = {
   calibracion: Calibracion | null;
   /** El backtest del back: qué tan cerca le pega el modelo a la realidad. null = sin back. */
   backtest: Backtest | null;
+  /** La integración con Meta (Instagram): si la app está configurada, si hay cuenta conectada y cuándo
+   *  se sincronizó. null = sin back, o el servidor no respondió a la consulta. */
+  integraciones: IntegracionMeta | null;
   desvioPct: number;
   refrescar: () => Promise<void>;
   /** Guarda el onboarding en el back (mezcla los campos) y refresca. */
@@ -83,7 +101,7 @@ const VACIO: Datos = {
   real: false, cargando: false, error: '',
   negocio: null, resumen: null, onboarding: null,
   campanas: [], piezas: [], evaluaciones: [], hallazgos: [], corridas: [],
-  publico: null, conversaciones: [], creditos: null, calibracion: null, backtest: null, desvioPct: 0,
+  publico: null, conversaciones: [], creditos: null, calibracion: null, backtest: null, integraciones: null, desvioPct: 0,
   refrescar: async () => {}, guardar: async () => {}, arrancar: async () => {},
 };
 
@@ -106,7 +124,7 @@ export function ProveedorDatos({ children }: { children: ReactNode }) {
   const refrescar = useCallback(async () => {
     if (!hayApi() || !token()) { setEstado(VACIO); return; }
     setEstado(e => ({ ...e, real: true, cargando: true, error: '' }));
-    const [neg, onb, camp, piez, eval_, hall, corr, publ, conv, cred, calib, back] = await Promise.all([
+    const [neg, onb, camp, piez, eval_, hall, corr, publ, conv, cred, calib, back, integ] = await Promise.all([
       traer<{ negocio: Negocio; resumen: Resumen; onboarding: { hechos: number[]; arrancado: boolean } } | null>('/api/negocio', null),
       traer<{ datos: Record<string, unknown>; hechos: number[]; arrancado: boolean }>('/api/onboarding', { datos: {}, hechos: [], arrancado: false }),
       traer<{ campanas: Campana[] }>('/api/campanas', { campanas: [] }),
@@ -119,6 +137,7 @@ export function ProveedorDatos({ children }: { children: ReactNode }) {
       traer<{ saldo: number; movimientos: Movimiento[] }>('/api/creditos', { saldo: 0, movimientos: [] }),
       traer<Calibracion | null>('/api/publico/calibracion', null),
       traer<Backtest | null>('/api/mirofish/backtest', null),
+      traer<IntegracionMeta | null>('/api/integraciones/meta/estado', null),
     ]);
     setEstado({
       real: true, cargando: false, error: neg ? '' : 'no se pudo leer el negocio del servidor',
@@ -135,6 +154,7 @@ export function ProveedorDatos({ children }: { children: ReactNode }) {
       creditos: cred,
       calibracion: calib,
       backtest: back,
+      integraciones: integ,
       desvioPct: hall.desvio_actual_pct || 0,
       refrescar: async () => {},
       guardar: async () => {},

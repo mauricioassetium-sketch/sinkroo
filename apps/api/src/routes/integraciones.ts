@@ -29,7 +29,7 @@ export async function integracionRoutes(app: FastifyInstance, db: Pool) {
   app.get('/api/integraciones/meta/estado', async (req, reply) => {
     const u = await exigirSesion(req, reply); if (!u || !u.business_id) return;
     const cuenta = await db.query(
-      `SELECT red, external_id, nombre, estado, token_expira, created_at FROM cuentas_conectadas
+      `SELECT red, external_id, nombre, estado, token_expira, permisos, created_at FROM cuentas_conectadas
         WHERE business_id = $1 AND red = $2`, [u.business_id, RED]);
     const ult = await db.query(
       `SELECT que, ok, detalle, created_at FROM sincronizaciones
