@@ -83,7 +83,6 @@ export function Asistente({ sesion, setVista }: { sesion: Sesion; setVista: (v: 
               tres cosas que empiezan a pasar y dice lo fácil que es empezar. Nada más. */}
           {fase === 0 && (
             <>
-              <div className="asist-hola">Hola{sesion.nombre ? `, ${sesion.nombre.split(' ')[0]}` : ''} 👋</div>
               <div className="asist-titular">{BIENVENIDA.titular}</div>
               <div className="asist-sub">{BIENVENIDA.sub}</div>
               <div className="asist-que">
@@ -102,6 +101,11 @@ export function Asistente({ sesion, setVista }: { sesion: Sesion; setVista: (v: 
               </div>
               <div className="asist-facil">
                 <I_Zap size={12} /> {BIENVENIDA.facil}
+              </div>
+              <div className="asist-cta">
+                <Button className="btn-lg" title="Empieza a llenar los datos del negocio: cinco preguntas cortas que el motor usa para arrancar."
+                  onClick={siguiente}>Continuar <I_ArrowRight size={14} /></Button>
+                <span className="tiny muted"><I_Clock size={11} /> 4 minutos · se puede saltar y hacerlo después</span>
               </div>
             </>
           )}
@@ -160,22 +164,17 @@ export function Asistente({ sesion, setVista }: { sesion: Sesion; setVista: (v: 
 
         {/* Pie: navegación y la salida clara, sin letra chica. */}
         <div className="asist-pie">
-          <div className="row" style={{ gap: 9, flexWrap: 'wrap' }}>
-            <Button variant="ghost" className="btn-sm" disabled={fase === 0} title="Vuelva a la pantalla anterior"
-              onClick={atras}><I_ArrowLeft size={13} /> Atrás</Button>
-            {fase === 0 && (
-              <Button className="btn-sm" title="Arranca: cinco preguntas cortas y el motor queda trabajando. Se puede saltar en cualquier momento."
-                onClick={siguiente}>Empezar ahora <I_ArrowRight size={13} /></Button>
-            )}
-          </div>
+          {fase > 0 && (
+            <div className="row" style={{ gap: 9, flexWrap: 'wrap' }}>
+              <Button variant="ghost" className="btn-sm" title="Vuelva a la pantalla anterior"
+                onClick={atras}><I_ArrowLeft size={13} /> Atrás</Button>
+            </div>
+          )}
           <div className="row" style={{ gap: 10, flexWrap: 'wrap' }}>
-            <span className="tiny muted">
-              <I_Clock size={11} /> 4 minutos · se puede saltar y hacerlo después
-            </span>
             <Button variant="ghost" className="btn-sm"
-              title="Salta el asistente entero y le deja en el panel. Todo queda en Primeros pasos para completarlo cuando quieras."
-              onClick={() => { cerrar('Asistente salteado: el panel ya está listo y lo que falta espera en Primeros pasos'); setVista('hoy'); }}>
-              Empezar después
+              title="Cierra la bienvenida y le deja en el panel. Los datos quedan esperando en Primeros pasos para completarlos cuando quiera."
+              onClick={() => { cerrar('Bienvenida cerrada: el panel ya está listo y los datos esperan en Primeros pasos'); setVista('hoy'); }}>
+              Hacerlo después
             </Button>
           </div>
         </div>
