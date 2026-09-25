@@ -56,7 +56,7 @@ export function Asistente({ sesion, setVista }: { sesion: Sesion; setVista: (v: 
                 {fase === 0 ? BIENVENIDA.titulo : paso?.titular}
               </div>
               <div className="tiny muted">
-                {fase === 0 ? 'Antes de empezar: qué va a hacer el motor con tu negocio'
+                {fase === 0 ? 'Antes de empezar: qué va a hacer el motor con su negocio'
                   : `Paso ${paso?.n} de ${onb.pasos.length} · ${onb.listos.length} hechos`}
               </div>
             </div>
@@ -64,7 +64,7 @@ export function Asistente({ sesion, setVista }: { sesion: Sesion; setVista: (v: 
           <div className="row" style={{ gap: 8, alignItems: 'center' }}>
             <span className="tiny muted">se completa después en Primeros pasos</span>
             <button className="icon-btn" title="Salir del asistente. El panel ya está listo y lo que falta queda en Primeros pasos."
-              onClick={() => cerrar('Asistente cerrado: seguís desde Primeros pasos cuando quieras')}><I_X size={15} /></button>
+              onClick={() => cerrar('Asistente cerrado: sigue desde Primeros pasos cuando quiera')}><I_X size={15} /></button>
           </div>
         </div>
 
@@ -99,7 +99,7 @@ export function Asistente({ sesion, setVista }: { sesion: Sesion; setVista: (v: 
               </div>
               <div className="acc-why">
                 El asistente que sigue tiene <b>cinco pasos cortos</b>. Se puede saltar entero: el motor
-                arranca igual y vos completás lo que falte cuando quieras.
+                arranca igual y usted completa lo que falte cuando quiera.
               </div>
             </>
           )}
@@ -107,7 +107,7 @@ export function Asistente({ sesion, setVista }: { sesion: Sesion; setVista: (v: 
           {/* ---------------- LOS CINCO PASOS ---------------- */}
           {paso && (
             <>
-              <div className="bs"><b style={{ color: 'var(--txt)' }}>Para qué te lo pido: </b>{paso.paraQue}</div>
+              <div className="bs"><b style={{ color: 'var(--txt)' }}>Para qué se lo pido: </b>{paso.paraQue}</div>
               {paso.infiere && (
                 <div className="onb-infiere">
                   <span className="onb-infiere-ic"><I_Zap size={13} /></span>
@@ -130,13 +130,13 @@ export function Asistente({ sesion, setVista }: { sesion: Sesion; setVista: (v: 
 
               <div className="row asist-acciones">
                 <Button className="btn-sm"
-                  title="Queda anotado y pasás al paso siguiente"
+                  title="Queda anotado y pasa al paso siguiente"
                   onClick={() => { onb.marcar(paso.n); ultimo ? onb.arrancar() : siguiente(); }}>
                   {ultimo ? <><I_Rocket size={13} /> Terminar y arrancar</> : <>{onb.completo(paso.n) ? 'Continuar' : 'Seguir después'} <I_ArrowRight size={13} /></>}
                 </Button>
-                <Button variant="ghost" className="btn-sm" title="Pasás al paso siguiente sin marcarlo: queda pendiente y el motor usa lo que haya"
+                <Button variant="ghost" className="btn-sm" title="Pasa al paso siguiente sin marcarlo: queda pendiente y el motor usa lo que haya"
                   onClick={siguiente}>Saltar este paso</Button>
-                <Button variant="ghost" className="btn-sm" title="Te muestra qué hace el motor con lo de este paso y de dónde saca el resto"
+                <Button variant="ghost" className="btn-sm" title="Le muestra qué hace el motor con lo de este paso y de dónde saca el resto"
                   onClick={() => detalle({
                     titulo: `${paso.t}: qué hace el motor con esto`,
                     sub: paso.paraQue,
@@ -147,9 +147,9 @@ export function Asistente({ sesion, setVista }: { sesion: Sesion; setVista: (v: 
                         tono: String(onb.datos[c.id] || '').length || (Array.isArray(onb.datos[c.id]) && (onb.datos[c.id] as string[]).length) ? 'green' as const : 'muted' as const,
                       })) },
                       ...(paso.infiere ? [{ tipo: 'texto' as const, texto: `Lo que el motor saca solo: ${paso.infiere}` }] : []),
-                      { tipo: 'aviso' as const, texto: 'Este paso no bloquea nada: el motor trabaja igual y va corrigiendo con lo que aprende de tus conversaciones y de tu cuenta.' },
+                      { tipo: 'aviso' as const, texto: 'Este paso no bloquea nada: el motor trabaja igual y va corrigiendo con lo que aprende de sus conversaciones y de su cuenta.' },
                     ],
-                    fuente: 'Primeros pasos · el asistente no frena el trabajo del motor, sólo le da el punto de partida.',
+                    fuente: 'Primeros pasos · el asistente no frena el trabajo del motor, solo le da el punto de partida.',
                   })}>Qué hace con esto</Button>
               </div>
             </>
@@ -159,7 +159,7 @@ export function Asistente({ sesion, setVista }: { sesion: Sesion; setVista: (v: 
         {/* Pie: navegación y la salida clara, sin letra chica. */}
         <div className="asist-pie">
           <div className="row" style={{ gap: 9, flexWrap: 'wrap' }}>
-            <Button variant="ghost" className="btn-sm" disabled={fase === 0} title="Volvé a la pantalla anterior"
+            <Button variant="ghost" className="btn-sm" disabled={fase === 0} title="Vuelva a la pantalla anterior"
               onClick={atras}><I_ArrowLeft size={13} /> Atrás</Button>
             {fase === 0 && (
               <Button className="btn-sm" title="Arranca el asistente: cinco pasos cortos y el motor queda trabajando"
@@ -168,10 +168,10 @@ export function Asistente({ sesion, setVista }: { sesion: Sesion; setVista: (v: 
           </div>
           <div className="row" style={{ gap: 10, flexWrap: 'wrap' }}>
             <span className="tiny muted">
-              <I_Clock size={11} /> 4 minutos · el motor arranca igual si lo saltás
+              <I_Clock size={11} /> 4 minutos · el motor arranca igual si lo salta
             </span>
             <Button variant="ghost" className="btn-sm"
-              title="Salta el asistente entero y te deja en el panel. Todo queda en Primeros pasos para completarlo cuando quieras."
+              title="Salta el asistente entero y le deja en el panel. Todo queda en Primeros pasos para completarlo cuando quieras."
               onClick={() => { cerrar('Asistente salteado: el panel ya está listo y lo que falta espera en Primeros pasos'); setVista('hoy'); }}>
               Saltar todo
             </Button>
@@ -180,7 +180,7 @@ export function Asistente({ sesion, setVista }: { sesion: Sesion; setVista: (v: 
 
         {/* Lo que va a pasar al terminar. */}
         <div className="asist-pie-2">
-          <I_Rocket size={12} /> Al terminar, el motor arranca por el mercado y arma la primera semana: {plan.creditosMes.toLocaleString('es-AR')} créditos del plan {plan.nombre}, y publicar es aparte.
+          <I_Rocket size={12} /> Al terminar, el motor arranca por el mercado y arma la primera semana: {plan.creditosMes.toLocaleString('es-CO')} créditos del plan {plan.nombre}, y publicar es aparte.
         </div>
       </div>
     </div>

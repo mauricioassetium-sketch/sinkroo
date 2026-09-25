@@ -36,8 +36,8 @@ const MARGEN_TECHO = TECHO_DIA - GASTO_DIA;
 /** Las metas que se pueden pedir: el cierre proyectado, la de hoy y una más exigente. */
 const METAS = [CIERRE_AL_RITMO, META_MES, 7000];
 
-/** Todo importe que se escribe en un texto sale de acá: los miles se muestran como en el resto del panel ($6.000). */
-const money = (n: number) => '$' + n.toLocaleString('es-AR');
+/** Todo importe que se escribe en un texto sale de aquí: los miles se muestran como en el resto del panel ($6.000). */
+const money = (n: number) => '$' + n.toLocaleString('es-CO');
 const faltaPara = (meta: number) => Math.max(0, meta - VENTAS_MES);
 const porDiaPara = (meta: number) => Math.round(faltaPara(meta) / DIAS_RESTANTES);
 /** El plan: el hueco que queda al ritmo de hoy, lo que hay que vender por día y el gasto que insume. */
@@ -50,12 +50,12 @@ const planPara = (meta: number) => {
 type Plan = { meta: number; hueco: number; ventaDia: number; gastoDia: number; alcanza: boolean };
 
 /** El día en que vuelve una alarma silenciada: se calcula, no se escribe a mano. */
-const enUnaSemana = () => new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('es-AR', { day: 'numeric', month: 'long' });
+const enUnaSemana = () => new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('es-CO', { day: 'numeric', month: 'long' });
 
 // =============================================================================================
 // LO QUE HAY DETRÁS DE CADA BOTÓN
 //
-// Las alarmas y la bitácora traen el dato y el nombre del artefacto: acá está el contenido de ese
+// Las alarmas y la bitácora traen el dato y el nombre del artefacto: aquí está el contenido de ese
 // artefacto, con los números que dejó la acción. Nada nuevo: lo que el motor ya calculó.
 // =============================================================================================
 
@@ -64,7 +64,7 @@ const ALARMA_DETALLE: Record<string, Bloque[]> = {
   a1: [
     { tipo: 'datos', filas: [
       { k: 'CPA de «Lanzamiento D2C»', v: '$28', tono: 'red', s: 'era $20: $8 más por cada venta' },
-      { k: 'Si no lo tocás esta semana', v: '$240', tono: 'amber', s: 'es lo que cuesta dejarlo así' },
+      { k: 'Si no lo toca esta semana', v: '$240', tono: 'amber', s: 'es lo que cuesta dejarlo así' },
       { k: 'Gasto del día', v: '$88 de $120', s: 'el techo diario está puesto y todavía hay margen' },
       { k: 'El conjunto que se pausa', v: '«lookalike frío»', s: 'gasta sin convertir' },
       { k: 'Cuánto se mueve', v: '$40/día', s: 'pasa al conjunto que sí convierte' },
@@ -72,19 +72,19 @@ const ALARMA_DETALLE: Record<string, Bloque[]> = {
     { tipo: 'aviso', tono: 'green', texto: 'Pausar es reversible 24 h: si el conjunto vuelve a rendir, se reactiva con el mismo presupuesto desde la bitácora.' },
   ],
   a2: [
-    { tipo: 'texto', texto: 'Valeria G. escribió por WhatsApp y quedó esperando: preguntó si hacés envíos a CABA. Rumi tiene la respuesta armada desde hace 4 h.' },
+    { tipo: 'texto', texto: 'Valeria G. escribió por WhatsApp y quedó esperando: preguntó si hace envíos a Bogotá. Rumi tiene la respuesta armada desde hace 4 h.' },
     { tipo: 'datos', filas: [
-      { k: 'Esperando desde', v: '4 h', tono: 'red', s: 'te escribió a las 10:24' },
-      { k: 'Si queda sin respuesta', v: '40% no vuelve', tono: 'amber', s: 'es un lead caliente que se enfría' },
-      { k: 'La respuesta lista', v: '2 a 4 días hábiles', s: 'envío a CABA, sin cargo' },
+      { k: 'Esperando desde', v: '4 h', tono: 'red', s: 'le escribió a las 10:24' },
+      { k: 'Si queda sin respuesta', v: '40% no vuelve', tono: 'amber', s: 'es un cliente interesado que se enfría' },
+      { k: 'La respuesta lista', v: '2 a 4 días hábiles', s: 'envío a Bogotá, sin cargo' },
       { k: 'Qué miró Rumi antes', v: 'Su conversación', s: 'quiere piel mixta y el serum le sirve' },
     ] },
   ],
   a3: [
     { tipo: 'datos', filas: [
-      { k: 'Precio de Tienda Norte', v: '$29', tono: 'amber', s: 'bajó 15%: vos estás en $34' },
-      { k: 'Anuncios que tiene corriendo', v: '14', s: 'contra 6 tuyos' },
-      { k: 'Lo que no hay que hacer', v: 'Bajar el precio', tono: 'red', s: 'te deja sin margen y puede volver a bajar' },
+      { k: 'Precio de Tienda Norte', v: '$29', tono: 'amber', s: 'bajó 15%: usted está en $34' },
+      { k: 'Anuncios que tiene corriendo', v: '14', s: 'contra 6 suyos' },
+      { k: 'Lo que no hay que hacer', v: 'Bajar el precio', tono: 'red', s: 'le deja sin margen y puede volver a bajar' },
       { k: 'Con qué se responde', v: 'Ingredientes limpios', s: 'Nia ya escribió 6 variantes con ese ángulo' },
     ] },
     { tipo: 'aviso', tono: 'amber', texto: 'Las 6 variantes ya están escritas y el panel ya las puntuó: se abren en Mercado sin gastar nada.' },
@@ -93,16 +93,16 @@ const ALARMA_DETALLE: Record<string, Bloque[]> = {
     { tipo: 'datos', filas: [
       { k: 'Créditos disponibles', v: '1.760', s: 'plan Pro: 5.000 por mes' },
       { k: 'Días de autonomía', v: '12', tono: 'amber', s: 'a este ritmo el motor se detiene el 5 de octubre' },
-      { k: 'Auto-recarga', v: 'Al bajar de 500', s: 'ya la tenés configurada en el plan Pro' },
+      { k: 'Auto-recarga', v: 'Al bajar de 500', s: 'ya la tiene configurada en el plan Pro' },
       { k: 'Qué se frena si se corta', v: 'La vigilancia', s: 'cada 15 minutos, y no gasta IA' },
     ] },
   ],
   a5: [
     { tipo: 'datos', filas: [
-      { k: 'Búsquedas de «serum vitamina C»', v: '+32%', tono: 'green', s: 'últimos 30 días en tu zona' },
+      { k: 'Búsquedas de «serum vitamina C»', v: '+32%', tono: 'green', s: 'últimos 30 días en su zona' },
       { k: 'Formato que más crece', v: 'Before/after', s: 'genera 3,1x más clics' },
-      { k: 'Quién lo está usando', v: '21 de 47 anuncios', s: 'de los 6 competidores que vigilás' },
-      { k: 'Tus piezas con ese formato', v: '2', s: 'el serum (84) y el protector solar (88)' },
+      { k: 'Quién lo está usando', v: '21 de 47 anuncios', s: 'de los 6 competidores que vigila' },
+      { k: 'Sus piezas con ese formato', v: '2', s: 'el serum (84) y el protector solar (88)' },
     ] },
   ],
   a6: [
@@ -117,8 +117,8 @@ const ALARMA_DETALLE: Record<string, Bloque[]> = {
 /** Lo que pasa cuando la alarma se resuelve: la línea que queda a la vista en la tarjeta. */
 const HACER_TXT: Record<string, string> = {
   'Aplicar sugerencia': 'el conjunto «lookalike frío» quedó pausado y sus $40/día pasaron al que sí convierte. Reversible 24 h desde la bitácora.',
-  'Dejar que Rumi responda': 'Rumi le contestó a Valeria G. por tu WhatsApp: envío a CABA en 2 a 4 días hábiles. La conversación queda en tu bandeja.',
-  'Activar auto-recarga': 'auto-recarga activa: el próximo paquete de créditos se paga solo cuando bajás de 500. La podés apagar cuando quieras.',
+  'Dejar que Rumi responda': 'Rumi le contestó a Valeria G. por su WhatsApp: envío a Bogotá en 2 a 4 días hábiles. La conversación queda en su bandeja.',
+  'Activar auto-recarga': 'auto-recarga activa: el próximo paquete de créditos se paga solo cuando baja de 500. La puede apagar cuando quiera.',
   'Crear campaña': 'borrador creado con el formato que sube (before/after: +41%): está en Campañas y todavía no gastó nada.',
   'Deshacer': '«lookalike frío» vuelve a estar activo, con el mismo presupuesto que tenía a las 03:12.',
 };
@@ -152,13 +152,13 @@ const BITACORA_ARTEFECTO: Record<string, Bloque[]> = {
     { tipo: 'datos', filas: [
       { k: 'CPA cuando lo pausó', v: '$28', tono: 'red', s: 'había subido 40%: arrancó en $20' },
       { k: 'Gasto sin retorno que evitó', v: '$180', tono: 'green', s: 'lo que iba a quemar durante la noche' },
-      { k: 'Cuándo lo hizo', v: '11:18', s: 'sin preguntarte: es un freno que no puede esperar' },
+      { k: 'Cuándo lo hizo', v: '11:18', s: 'sin preguntarle: es un freno que no puede esperar' },
       { k: 'Reversible', v: '24 h', s: 'desde la bitácora, con el mismo presupuesto' },
     ] },
   ],
   b3: [
     { tipo: 'datos', filas: [
-      { k: 'Anuncios leídos', v: '47', s: 'de los 6 competidores de tu zona' },
+      { k: 'Anuncios leídos', v: '47', s: 'de los 6 competidores de su zona' },
       { k: 'El que más corre', v: 'Tienda Norte · 14', s: 'bajó el precio a $29' },
       { k: 'Formato que se impone', v: 'Before/after', s: 'lo usan 21 de esos 47' },
       { k: 'Cada cuánto mira', v: INVESTIGACION_MERCADO.cadencia, s: `la última lectura fue ${INVESTIGACION_MERCADO.ultimaRevision}` },
@@ -166,33 +166,33 @@ const BITACORA_ARTEFECTO: Record<string, Bloque[]> = {
   ],
   b5: [
     { tipo: 'datos', filas: [
-      { k: 'Ventas cerradas por WhatsApp', v: '2', s: 'en la mañana, sin que intervinieras' },
+      { k: 'Ventas cerradas por WhatsApp', v: '2', s: 'en la mañana, sin que usted interviniera' },
       { k: 'Mensajes de hoy', v: '128', s: '94% los contestó la IA' },
       { k: 'Conversaciones atendidas', v: '12 de 15', s: 'de las que entraron hoy' },
     ] },
-    { tipo: 'texto', texto: 'La que quedó esperando es Valeria G.: preguntó si hacés envíos a CABA y su respuesta está lista en «Tu decisión», acá arriba.' },
+    { tipo: 'texto', texto: 'La que quedó esperando es Valeria G.: preguntó si hace envíos a Bogotá y su respuesta está lista en «Su decisión», aquí arriba.' },
   ],
   b6: [
     { tipo: 'datos', filas: [
       { k: 'Lo que predijo', v: '84', s: 'antes de que la campaña saliera' },
       { k: 'Lo que pasó', v: '79', tono: 'amber', s: '5 puntos abajo: el modelo venía optimista' },
-      { k: 'La corrección', v: '6% menos', tono: 'green', s: 'la próxima estimación se queda corta un 6% menos' },
+      { k: 'La corrección', v: '6% menos', tono: 'green', s: 'la próxima estimación se corrige 6% hacia abajo' },
     ] },
   ],
 };
 
-/** El recorrido de Tu día: cada parada apunta a una parte de la pantalla y la explica. */
+/** El recorrido de Su día: cada parada apunta a una parte de la pantalla y la explica. */
 const PASOS_TOUR: { sel: string; t: string; d: string }[] = [
-  { sel: '[data-tour="hero"]', t: 'Tu día, en una línea',
-    d: 'Lo de arriba es de hoy: 47 ventas concretadas, 3,8x de retorno por cada dólar invertido y 83 de calidad en la pieza aprobada. Todo sale de tus conexiones: Meta Ads, tu WhatsApp y tu tienda.' },
-  { sel: '#motor', t: 'Tu equipo, trabajando ahora',
-    d: `Los 6 agentes revisan tu mercado ${INVESTIGACION_MERCADO.cadencia} y no paran: ${INVESTIGACION_MERCADO.revisiones} revisiones desde que terminaste el onboarding, la última ${INVESTIGACION_MERCADO.ultimaRevision}. Miran ${INVESTIGACION_MERCADO.zona}.` },
-  { sel: '[data-tour="alarmas"]', t: 'Lo que necesita tu atención',
-    d: 'Cada alarma dice qué pasó, cuánto te cuesta si no actuás y qué sugiere el motor. Los botones trabajan sobre tu campaña de verdad y podés deshacer 24 h: por eso al lado está «Tu decisión», con lo que espera tu OK.' },
-  { sel: '[data-tour="decisiones"]', t: 'Lo que espera tu OK',
-    d: 'En modo Compartido el motor no publica ni gasta sin vos. Cada tarjeta trae el veredicto de los 5 jueces: tocá «Ver el veredicto» y te dice cuántos aprobaron y qué objetó el más duro.' },
-  { sel: '[data-tour="metas"]', t: 'Cómo vas contra tus metas',
-    d: `El mes va en $4.280 de $6.000: faltan $1.720 en 8 días, $215 por día. Con «Pedir un plan para llegar» el motor te dice cómo cerrar esa diferencia sin subir el gasto, y con «Ajustar la meta» la cambiás vos.` },
+  { sel: '[data-tour="hero"]', t: 'Su día, en una línea',
+    d: 'Lo de arriba es de hoy: 47 ventas concretadas, 3,8x de retorno por cada dólar invertido y 83 de calidad en la pieza aprobada. Todo sale de sus conexiones: Meta Ads, su WhatsApp y su tienda.' },
+  { sel: '#motor', t: 'Su equipo, trabajando ahora',
+    d: `Los 6 agentes revisan su mercado ${INVESTIGACION_MERCADO.cadencia} y no paran: ${INVESTIGACION_MERCADO.revisiones} revisiones desde que terminó los primeros pasos, la última ${INVESTIGACION_MERCADO.ultimaRevision}. Miran ${INVESTIGACION_MERCADO.zona}.` },
+  { sel: '[data-tour="alarmas"]', t: 'Lo que necesita su atención',
+    d: 'Cada alarma dice qué pasó, cuánto le cuesta si no actúa y qué sugiere el motor. Los botones trabajan sobre su campaña de verdad y puede deshacer 24 h: por eso al lado está «Su decisión», con lo que espera su OK.' },
+  { sel: '[data-tour="decisiones"]', t: 'Lo que espera su OK',
+    d: 'En modo Compartido el motor no publica ni gasta sin usted. Cada tarjeta trae el veredicto de los 5 jueces: toque «Ver el veredicto» y le dice cuántos aprobaron y qué objetó el más duro.' },
+  { sel: '[data-tour="metas"]', t: 'Cómo va contra sus metas',
+    d: `El mes va en $4.280 de $6.000: faltan $1.720 en 8 días, $215 por día. Con «Pedir un plan para llegar» el motor le dice cómo cerrar esa diferencia sin subir el gasto, y con «Ajustar la meta» la cambia usted.` },
 ];
 
 export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) => void; setVista: (v: Vista) => void; modo: Modo }) {
@@ -208,7 +208,7 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
   const [atendidas, setAtendidas] = useState<Record<string, string>>({});
   /** Alarmas que el dueño escondió: vuelven solas a los 7 días. */
   const [silenciadas, setSilenciadas] = useState<string[]>([]);
-  /** Lo que ya decidió hoy: la lista que queda al pie de «Tu decisión». */
+  /** Lo que ya decidió hoy: la lista que queda al pie de «Su decisión». */
   const [resueltas, setResueltas] = useState<{ id: string; agente: string; color: string; titulo: string; accion: string }[]>([]);
   /** Líneas de la bitácora que se reactivaron (volver atrás una pausa). */
   const [reactivadas, setReactivadas] = useState<string[]>([]);
@@ -216,7 +216,7 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
   const [metaVentas, setMetaVentas] = useState(META_MES);
   const [editandoMeta, setEditandoMeta] = useState(false);
   const [planActivo, setPlanActivo] = useState<Plan | null>(null);
-  // --- El tour guiado: overlay con foco sobre cada parte de Tu día.
+  // --- El tour guiado: overlay con foco sobre cada parte de Su día.
   const [paso, setPaso] = useState<number | null>(null);
   const [tourVisto, setTourVisto] = useState(false);
 
@@ -227,7 +227,7 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
   // Las críticas bajan a medida que se resuelven: el número del encabezado es el que queda vivo.
   const criticas = visibles.filter(a => a.severidad === 'critico' && !atendidas[a.id]).length;
 
-  // --- La meta: todo lo que se muestra sale de acá.
+  // --- La meta: todo lo que se muestra sale de aquí.
   const P = planPara(metaVentas);
   const faltaVentas = faltaPara(metaVentas);
   const porDiaVentas = porDiaPara(metaVentas);
@@ -247,9 +247,9 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
     setToast(`«${a.titulo}» queda silenciada 7 días`);
   };
   const titleAlarma = (a: Alarma, ac: string) => {
-    if (ac.startsWith('Silenciar')) return `Esconde esta alarma de la lista 7 días: vuelve sola el ${enUnaSemana()}. Reversible: la podés volver a mostrar cuando quieras.`;
+    if (ac.startsWith('Silenciar')) return `Esconda esta alarma de la lista 7 días: vuelve sola el ${enUnaSemana()}. Reversible: la puede volver a mostrar cuando quiera.`;
     if (HACER_TXT[ac]) return `${CONSECUENCIA[a.id] ?? ac} Queda a la vista en la tarjeta.`;
-    return 'Abre lo que el motor miró para ponerte esta alarma: los números, lo que cuesta y el paso que sigue. No cambia nada hasta que lo confirmes.';
+    return 'Abra lo que el motor miró para ponerle esta alarma: los números, lo que cuesta y el paso que sigue. No cambia nada hasta que lo confirme.';
   };
   const verAlarma = (a: Alarma, ac: string) => {
     const pie = ALARMA_FOOTER[a.id] ?? [];
@@ -312,8 +312,8 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
     const p = planPara(meta);
     const falta = faltaPara(meta);
     detalle({
-      titulo: activo ? `Tu plan para llegar a ${money(meta)}` : 'El plan para llegar a la meta del mes',
-      sub: `La meta está en ${money(meta)} y el mes va en ${money(VENTAS_MES)}: faltan ${money(falta)} en ${DIAS_RESTANTES} días. El motor no gasta más para llegar: reasigna lo que ya tenés.`,
+      titulo: activo ? `Su plan para llegar a ${money(meta)}` : 'El plan para llegar a la meta del mes',
+      sub: `La meta está en ${money(meta)} y el mes va en ${money(VENTAS_MES)}: faltan ${money(falta)} en ${DIAS_RESTANTES} días. El motor no gasta más para llegar: reasigna lo que ya tiene.`,
       bloques: [
         { tipo: 'datos', filas: [
           { k: 'Acumulado del mes', v: `${money(VENTAS_MES)}`, s: `sobre una meta de ${money(meta)} (${pctVentas}%)` },
@@ -329,10 +329,10 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
           'Revisar cada 3 días y avisarte si la meta deja de ser alcanzable con el presupuesto actual.',
         ] },
         { tipo: 'aviso', tono: p.alcanza ? 'green' : 'amber', texto: p.alcanza
-          ? `Entra en tus frenos: el cambio de presupuesto es de ±20% por acción y el gasto del día (${money(GASTO_DIA)}) queda por debajo del techo de ${money(TECHO_DIA)}.`
-          : `Con el techo de ${money(TECHO_DIA)}/día no alcanza: hacen falta ${money(p.gastoDia)}/día de gasto extra y sólo quedan ${money(MARGEN_TECHO)} antes del techo. O bajás la meta, o subís el techo.` },
+          ? `Entra en sus frenos: el cambio de presupuesto es de ±20% por acción y el gasto del día (${money(GASTO_DIA)}) queda por debajo del techo de ${money(TECHO_DIA)}.`
+          : `Con el techo de ${money(TECHO_DIA)}/día no alcanza: hacen falta ${money(p.gastoDia)}/día de gasto extra y sólo quedan ${money(MARGEN_TECHO)} antes del techo. O baja la meta, o sube el techo.` },
       ],
-      fuente: 'Sale de tus números del mes y del movimiento que ya hizo Kai: $40/día de TikTok a Meta, con el clic a $4,20 y a $2,10.',
+      fuente: 'Sale de sus números del mes y del movimiento que ya hizo Kai: $40/día de TikTok a Meta, con el clic a $4,20 y a $2,10.',
       acciones: activo
         ? [
           { label: 'Quitarlo', variante: 'primary', onClick: () => { setPlanActivo(null); setToast('Plan quitado: la meta del mes queda como estaba'); } },
@@ -354,11 +354,11 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
         <div className="hero-side">
           <div className="hero-greet">
             {/* El logo del cliente manda en el hero: es SU panel. El búho de Sinkroo queda como
-                marca del producto en el sidebar y también acá mientras no haya logo propio. */}
+                marca del producto en el sidebar y también aquí mientras no haya logo propio. */}
             <span className={`hero-logo ${perfil.logo ? 'propio' : ''}`}
               title={perfil.logo
-                ? `El logo de ${perfil.marca}: así se ve tu marca en tu panel`
-                : 'Sinkroo. Cargá el logo de tu marca en «Hacé tuyo este panel» y aparece acá'}>
+                ? `El logo de ${perfil.marca}: así se ve su marca en su panel`
+                : 'Sinkroo. Cargue el logo de su marca en «Haga suyo este panel» y aparece aquí'}>
               {perfil.logo
                 ? <img className="marca-logo" src={perfil.logo} alt={`Logo de ${perfil.marca}`} />
                 : <SinkrooMark size={136} />}
@@ -366,11 +366,11 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
             </span>
             <div className="hero-txt">
               <div className="hero-live" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span className="dot-live" /> TU AGENTE DE MARKETING ESTÁ ACTIVO
+                <span className="dot-live" /> Su AGENTE DE MARKETING ESTÁ ACTIVO
                 <button className="tour-start-btn"
                   title={tourVisto
-                    ? 'Volvés a recorrer Tu día desde la primera parada, con los números de hoy. Se cierra con Escape o tocando afuera.'
-                    : 'Recorrido de 5 paradas por Tu día: qué mirar, en qué orden y con qué números. Se cierra con Escape o tocando afuera.'}
+                    ? 'Vuelva a recorrer Su día desde la primera parada, con los números de hoy. Se cierra con Escape o tocando afuera.'
+                    : 'Recorrido de 5 paradas por Su día: qué mirar, en qué orden y con qué números. Se cierra con Escape o tocando afuera.'}
                   onClick={() => { setPaso(0); setTourVisto(true); }}>
                   {tourVisto ? '↻ Repetir el tour' : '▶ Iniciar tour'}
                 </button>
@@ -379,8 +379,8 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
                 Hola {nombreDePila(perfil.nombre)}, soy <span className="grad-text">Sinkroo</span> 👋
               </div>
               <div className="hdr-s hero-sub">
-                <b>Tu marketing, en automático.</b><br />
-                Pruebo cada publicación con <b>500 personas como tu audiencia</b>. Antes de que gastes.
+                <b>Su marketing, en automático.</b><br />
+                Pruebo cada publicación con <b>500 personas como su audiencia</b>. Antes de que gaste.
               </div>
             </div>
           </div>
@@ -391,14 +391,14 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
           <div className="hero-metric"><div className="metric grad-text">83</div><div className="m-label">Score</div><div className="m-desc">calidad del creativo aprobado</div></div>
         </div>
         <div className="hero-start">
-          <div className="hero-ad-tag">EMPEZÁ ACÁ</div>
-          <div className="hero-ad-title">Tu primera campaña</div>
+          <div className="hero-ad-tag">Empiece Aquí</div>
+          <div className="hero-ad-title">Su primera campaña</div>
           <div className="hero-ad-sub">
-            Decís qué querés publicar y subís tu material: el motor la crea, el panel la aprueba
-            y recién ahí sale a tus redes. <b>No gasta un peso antes.</b>
+            Diga qué quiere publicar y suba su material: el motor la crea, el panel la aprueba
+            y sólo entonces sale a sus redes. <b>No gasta un peso antes.</b>
           </div>
-          <button className="hero-ad-btn" title="Te lleva a «Qué querés publicar», el primer paso: ahí arranca el modelo"
-            onClick={() => { setVista('campanas'); setToast('Arrancá por acá: decí qué querés publicar'); }}>
+          <button className="hero-ad-btn" title="Abra «Qué quiere publicar», el primer paso: ahí empieza el trabajo del motor"
+            onClick={() => { setVista('campanas'); setToast('Empiece por aquí: diga qué quiere publicar'); }}>
             Crear la primera →
           </button>
         </div>
@@ -417,8 +417,8 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
         >
           <div className="bs">
             {onb.arrancado
-              ? <>Arrancó con lo que le pusiste y sigue por el mercado. Podés completar los pasos que faltan cuando quieras: el motor los toma en la próxima vuelta.</>
-              : <>Son <b>cinco pantallas cortas</b> y el motor queda trabajando. Nada es obligatorio: lo que no pongas, lo deduce de tu cuenta y de tus conversaciones.</>}
+              ? <>Arrancó con lo que le puso y sigue por el mercado. Puede completar los pasos que faltan cuando quiera: el motor los toma en la próxima vuelta.</>
+              : <>Son <b>cinco pantallas cortas</b> y el motor queda trabajando. Nada es obligatorio: lo que no ponga, lo deduce de su cuenta y de sus conversaciones.</>}
           </div>
           <div className="onb-datos">
             {PASOS_ONB.map(p => (
@@ -432,23 +432,23 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
           </div>
           <div className="row" style={{ gap: 9, marginTop: 14, flexWrap: 'wrap' }}>
             <Button className="btn-sm"
-              title={`Abre el paso ${onb.siguiente}: ${PASOS_ONB.find(p => p.n === onb.siguiente)?.t}. Todo lo que pongas lo usa el motor en la próxima vuelta.`}
+              title={`Abra el paso ${onb.siguiente}: ${PASOS_ONB.find(p => p.n === onb.siguiente)?.t}. Todo lo que ponga lo usa el motor en la próxima vuelta.`}
               onClick={() => { setVista('onboarding'); setToast(`Seguimos por el paso ${onb.siguiente}: ${PASOS_ONB.find(p => p.n === onb.siguiente)?.t}`); }}>
               <I_ArrowRight size={13} /> {onb.listos.length === 0 ? 'Empezar por el paso 1' : `Seguir por el paso ${onb.siguiente}: ${PASOS_ONB.find(p => p.n === onb.siguiente)?.t}`}
             </Button>
-            <Button variant="ghost" className="btn-sm" title="Te muestra qué hace el motor con cada dato y de dónde saca el resto"
+            <Button variant="ghost" className="btn-sm" title="Muestre qué hace el motor con cada dato y de dónde saca el resto"
               onClick={() => detalle({
                 titulo: 'Qué hace el motor con cada paso',
-                sub: 'El onboarding no es un formulario para el motor: es la corrección de lo que ya sabe. Cada dato cambia algo concreto de lo que produce.',
+                sub: 'Estos pasos no son un formulario para el motor: son la corrección de lo que ya sabe. Cada dato cambia algo concreto de lo que produce.',
                 bloques: [
                   { tipo: 'filas', items: PASOS_ONB.map(p => ({
-                    t: `${p.n}. ${p.t}`, s: p.infiere ? `Lo que saca solo: ${p.infiere}` : 'Esto sólo lo sabés vos.',
+                    t: `${p.n}. ${p.t}`, s: p.infiere ? `Lo que saca solo: ${p.infiere}` : 'Esto sólo lo sabe usted.',
                     etiqueta: onb.listos.includes(p.n) ? 'hecho' : 'falta', tono: onb.listos.includes(p.n) ? 'green' as const : 'muted' as const,
                   })) },
-                  { tipo: 'aviso', texto: 'Nada de esto frena al motor: trabaja igual con dos datos y va corrigiendo con lo que aprende de tus conversaciones y de tu cuenta.' },
+                  { tipo: 'aviso', texto: 'Nada de esto frena al motor: trabaja igual con dos datos y va corrigiendo con lo que aprende de sus conversaciones y de su cuenta.' },
                 ],
                 fuente: 'Primeros pasos: los cinco pasos y lo que deduce cada uno.',
-                acciones: [{ label: 'Ir a Primeros pasos', variante: 'primary', title: 'Abre el primer paso pendiente', onClick: () => setVista('onboarding') }],
+                acciones: [{ label: 'Ir a Primeros pasos', variante: 'primary', title: 'Abra el primer paso pendiente', onClick: () => setVista('onboarding') }],
               })}>Qué hace con cada cosa</Button>
           </div>
         </Card>
@@ -459,16 +459,16 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
         <EquipoInvestigando setToast={setToast}
           irAGaleria={() => {
             setVista('campanas');
-            setToast('En Campañas, entrá al paso «Galería»: ahí están las piezas que MiroFish ya puntuó');
+            setToast('En Campañas, entre al paso «Galería»: ahí están las piezas que MiroFish ya puntuó');
           }} />
       </div>
 
       {/* ====================== FILA 1: ACCIÓN ====================== */}
       <div className="csec">
         <span className="csec-n">1</span>
-        <span className="csec-t">Lo que necesita tu atención</span>
+        <span className="csec-t">Lo que necesita su atención</span>
         <span className="csec-c">{criticas}</span>
-        <span className="csec-s">Cada botón dice qué hace antes de que lo toques</span>
+        <span className="csec-s">Cada botón dice qué hace antes de que lo toque</span>
       </div>
       <div className="duo">
         <Card tour="alarmas"
@@ -508,7 +508,7 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
               </div>
             ))}
             {!alarmasExtra && visibles.length > 3 && (
-              <Button variant="ghost" className="btn-sm" title={`Muestra las ${visibles.length - 3} alarmas restantes, incluidas las oportunidades`}
+              <Button variant="ghost" className="btn-sm" title={`Muestre las ${visibles.length - 3} alarmas restantes, incluidas las oportunidades`}
                 onClick={() => setAlarmasExtra(true)}>
                 Ver {visibles.length - 3} alarmas más <I_ArrowRight size={13} />
               </Button>
@@ -518,7 +518,7 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
                 <span className="tiny muted">
                   {silenciadas.length === 1 ? '1 alarma silenciada' : `${silenciadas.length} alarmas silenciadas`} hasta el {enUnaSemana()}: no cuentan como pendientes.
                 </span>
-                <Button variant="ghost" className="btn-sm" title="Vuelven ahora las alarmas que escondiste, sin esperar los 7 días"
+                <Button variant="ghost" className="btn-sm" title="Muestre de nuevo las alarmas que escondió, sin esperar los 7 días"
                   onClick={() => { setSilenciadas([]); setToast('Las alarmas silenciadas vuelven a estar a la vista'); }}>
                   <I_Eye size={13} /> Volver a mostrarlas
                 </Button>
@@ -526,22 +526,22 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
             )}
             <div className="datos-row" style={{ marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--border)' }}>
               <div className="dato"><span className="dato-l">Revisiones de hoy</span><span className="dato-v">14</span></div>
-              <div className="dato"><span className="dato-l">En riesgo si no actuás</span><span className="dato-v" style={{ color: 'var(--amber)' }}><Dinero monto={180} /></span></div>
+              <div className="dato"><span className="dato-l">En riesgo si no actúa</span><span className="dato-v" style={{ color: 'var(--amber)' }}><Dinero monto={180} /></span></div>
               <div className="dato"><span className="dato-l">Resueltas solas</span><span className="dato-v" style={{ color: 'var(--green)' }}>6</span></div>
             </div>
             <div className="acc-why">
-              La vigilancia corre <b>cada 15 minutos</b> y no gasta IA: compara tus números contra los de ayer.
+              La vigilancia corre <b>cada 15 minutos</b> y no gasta IA: compara sus números contra los de ayer.
               Solo cuando algo se sale de lo normal entra un agente a mirarlo.
             </div>
           </div>
         </Card>
 
         <Card tour="decisiones"
-          title={<span className="row" style={{ gap: 8 }}><I_Vote size={14} style={{ color: 'var(--amber)' }} /> Tu decisión</span>}
+          title={<span className="row" style={{ gap: 8 }}><I_Vote size={14} style={{ color: 'var(--amber)' }} /> Su decisión</span>}
           action={pendientes.length > 0 ? <Badge tone="amber">{pendientes.length} esperan</Badge> : <Badge tone="green">al día</Badge>}
         >
           {pendientes.length === 0 ? (
-            <div className="col-empty"><I_Check size={15} /> Nada te espera. El motor siguió trabajando solo.</div>
+            <div className="col-empty"><I_Check size={15} /> Nada le espera. El motor siguió trabajando solo.</div>
           ) : (
             <div className="col-stack">
               {pendientes.map(d => <Decision key={d.id} d={d} onResolver={resolver} />)}
@@ -549,7 +549,7 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
           )}
           {resueltas.length > 0 && (
             <div style={{ marginTop: 13, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
-              <div className="bs" style={{ marginBottom: 8 }}>Lo que ya decidiste hoy:</div>
+              <div className="bs" style={{ marginBottom: 8 }}>Lo que ya decidió hoy:</div>
               {resueltas.map(r => (
                 <div key={r.id} className="tiny" style={{ display: 'flex', alignItems: 'flex-start', gap: 7, fontWeight: 700, marginBottom: 6, lineHeight: 1.5 }}>
                   <I_Check size={13} style={{ color: 'var(--green)', flexShrink: 0, marginTop: 2 }} />
@@ -557,7 +557,7 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
                 </div>
               ))}
               <div className="tiny muted">
-                Lo aprobado salió a tus cuentas y lo descartado queda registrado en la bitácora, con la hora y quién lo decidió.
+                Lo aprobado salió a sus cuentas y lo descartado queda registrado en la bitácora, con la hora y quién lo decidió.
               </div>
             </div>
           )}
@@ -594,14 +594,14 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
             <BarRow label="Autonomía" valor={9} max={22} sufijo=" días" color="var(--amber)" formato="-9" />
           </div>
           <div className="acc-why">
-            Todos salen de tus conexiones reales: Meta Ads, tu WhatsApp y tu tienda.{' '}
-            <b>Días de autonomía</b> es cuánto puede seguir trabajando el motor con los créditos que tenés.
+            Todos salen de sus conexiones reales: Meta Ads, su WhatsApp y su tienda.{' '}
+            <b>Días de autonomía</b> es cuánto puede seguir trabajando el motor con los créditos que tiene.
           </div>
           <NotaMoneda />
         </Card>
 
         <Card
-          title={<span className="row" style={{ gap: 8 }}><I_Star size={14} style={{ color: 'var(--purple3)' }} /> La calidad de tus piezas</span>}
+          title={<span className="row" style={{ gap: 8 }}><I_Star size={14} style={{ color: 'var(--purple3)' }} /> La calidad de sus piezas</span>}
           action={<Badge tone="green">sobre 100</Badge>}
         >
           <div className="row" style={{ gap: 20, marginBottom: 16 }}>
@@ -636,7 +636,7 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
       <div className="csec">
         <span className="csec-n">3</span>
         <span className="csec-t">Cómo viene el mes y qué hizo solo</span>
-        <span className="csec-s">El crecimiento y las acciones que tomó sin vos</span>
+        <span className="csec-s">El crecimiento y las acciones que tomó sin usted</span>
       </div>
       <div className="duo">
         <Card
@@ -649,11 +649,11 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
             <div className="dato"><span className="dato-l">Último mes</span><span className="dato-v" style={{ color: 'var(--green)' }}><Dinero monto={4280} /></span></div>
             <div className="dato"><span className="dato-l">Crecimiento</span><span className="dato-v" style={{ color: 'var(--green)' }}>+28%</span></div>
           </div>
-          <div className="acc-why">Cada barra es un mes cerrado. <b>El crecimiento es real</b>: sale de las ventas que entraron por tus conexiones.</div>
+          <div className="acc-why">Cada barra es un mes cerrado. <b>El crecimiento es real</b>: sale de las ventas que entraron por sus conexiones.</div>
         </Card>
 
         <Card
-          title={<span className="row" style={{ gap: 8 }}><I_Sun size={14} style={{ color: 'var(--green)' }} /> Mientras no estabas</span>}
+          title={<span className="row" style={{ gap: 8 }}><I_Sun size={14} style={{ color: 'var(--green)' }} /> Mientras no estaba</span>}
           action={<Badge tone="green">modo {modoNombre}</Badge>}
         >
           <MientrasNoEstabas modo={modo} />
@@ -664,13 +664,13 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
       <div className="csec">
         <span className="csec-n">4</span>
         <span className="csec-t">Memoria y cierre</span>
-        <span className="csec-s">Todo lo que hizo el motor y cómo vas contra tus metas</span>
+        <span className="csec-s">Todo lo que hizo el motor y cómo va contra sus metas</span>
       </div>
       <div className="duo">
         <Card
           title={<span className="row" style={{ gap: 8 }}><I_Clock size={14} style={{ color: 'var(--purple3)' }} /> La bitácora</span>}
           action={
-            <Button variant="ghost" className="btn-sm" title={`Muestra todo lo que hizo el motor en la semana (${BITACORA.length} líneas). No cambia nada.`}
+            <Button variant="ghost" className="btn-sm" title={`Muestre todo lo que hizo el motor en la semana (${BITACORA.length} líneas). No cambia nada.`}
               onClick={() => setBitacoraCompleta(!bitacoraCompleta)}>
               {bitacoraCompleta ? 'Ver menos' : 'Ver la semana'}
             </Button>
@@ -688,13 +688,13 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
                     {b.artefacto && (b.artefacto === 'Deshacer'
                       ? <span className="tl-undo"
                         title={reactivadas.includes(b.id)
-                          ? `Vuelve a pausar «${b.ancla}», tal como estaba a las 03:12`
-                          : `Reactiva «${b.ancla}» con su presupuesto original ($40/día). Reversible las 24 h.`}
+                          ? `Vuelva a pausar «${b.ancla}», tal como estaba a las 03:12`
+                          : `Vuelva a activar «${b.ancla}» con su presupuesto original ($40/día). Reversible las 24 h.`}
                         onClick={() => toggleReactivar(b)}>
                         {reactivadas.includes(b.id) ? 'Volver a pausar' : b.artefacto}
                       </span>
                       : <span className="tl-undo"
-                        title={`Abre lo que dejó ${b.agente}: los números y de dónde salen. No cambia nada.`}
+                        title={`Abra lo que dejó ${b.agente}: los números y de dónde salen. No cambia nada.`}
                         onClick={() => verArtefacto(b)}>{b.artefacto}</span>)}
                     {b.autonomia === 'auto' && <span className="tiny muted">decidido solo</span>}
                   </div>
@@ -716,7 +716,7 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
         </Card>
 
         <Card tour="metas"
-          title={<span className="row" style={{ gap: 8 }}><I_Star size={14} style={{ color: 'var(--green)' }} /> Tus metas del mes</span>}
+          title={<span className="row" style={{ gap: 8 }}><I_Star size={14} style={{ color: 'var(--green)' }} /> Sus metas del mes</span>}
           action={<Badge tone={P.alcanza ? 'green' : 'amber'}>{metasOk} de 3 en camino</Badge>}
         >
           <div>
@@ -749,12 +749,12 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
             <div className="dato"><span className="dato-l">Para llegar faltan</span><span className="dato-v" style={{ color: 'var(--amber)' }}><Dinero monto={`$${porDiaVentas}/día`} /></span></div>
           </div>
 
-          {/* Ajustar la meta: se elige acá y toda la tarjeta se recalcula con lo que elige. */}
+          {/* Ajustar la meta: se elige aquí y toda la tarjeta se recalcula con lo que elige. */}
           {editandoMeta && (
             <div style={{ marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--border)' }}>
               <div className="bs" style={{ marginBottom: 10 }}>
                 Meta de ventas del mes. Cambiarla <b>no toca el presupuesto ni lo que ya se gastó</b>: sólo cambia el
-                objetivo contra el que se mide el mes. El motor te avisa si deja de ser alcanzable.
+                objetivo contra el que se mide el mes. El motor le avisa si deja de ser alcanzable.
               </div>
               {METAS.map(m => {
                 const f = faltaPara(m);
@@ -764,16 +764,16 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
                     <Button variant={m === metaVentas ? 'primary' : 'outline'} className="btn-sm"
                       title={m === metaVentas
                         ? `La meta de ventas del mes ya está en ${money(m)}`
-                        : `Pone la meta de ventas del mes en ${money(m)}. No cambia el presupuesto ni lo que ya se gastó: volvés a la de ${money(META_MES)} cuando quieras.`}
+                        : `Ponga la meta de ventas del mes en ${money(m)}. No cambia el presupuesto ni lo que ya se gastó: vuelve a la de ${money(META_MES)} cuando quiera.`}
                       onClick={() => {
                         const antes = metaVentas;
                         setMetaVentas(m);
                         setToast(antes === m ? `La meta de ventas ya estaba en ${money(m)}` : `Meta de ventas del mes: ${money(m)}, antes ${money(antes)}`);
                       }}>
-                      <Dinero monto={m} equivalente={false} />{m === META_MES ? ' · la de hoy' : m === CIERRE_AL_RITMO ? ' · tu cierre proyectado' : ' · más exigente'}
+                      <Dinero monto={m} equivalente={false} />{m === META_MES ? ' · la de hoy' : m === CIERRE_AL_RITMO ? ' · su cierre proyectado' : ' · más exigente'}
                     </Button>
                     <span className="tiny muted" style={{ flex: 1, minWidth: 190 }}>
-                      {f === 0 ? 'Ya está alcanzada con lo que vendiste.' : `Faltan ${money(f)} en ${DIAS_RESTANTES} días: ${money(porDiaPara(m))}/día.`}
+                      {f === 0 ? 'Ya está alcanzada con lo que vendió.' : `Faltan ${money(f)} en ${DIAS_RESTANTES} días: ${money(porDiaPara(m))}/día.`}
                       {pm.alcanza
                         ? ' Entra en el presupuesto de hoy.'
                         : ` Con el presupuesto de hoy no alcanza: necesita ${money(pm.gastoDia)}/día de gasto extra y bajo el techo de ${money(TECHO_DIA)}/día quedan ${money(MARGEN_TECHO)}.`}
@@ -781,8 +781,8 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
                   </div>
                 );
               })}
-              <Button variant="ghost" className="btn-sm" title="Cierra el ajuste y deja a la vista los botones de siempre. No cambia la meta."
-                onClick={() => setEditandoMeta(false)}>Listo, dejarlo así</Button>
+              <Button variant="ghost" className="btn-sm" title="Cierre el ajuste y deje a la vista los botones de siempre. No cambia la meta."
+                onClick={() => setEditandoMeta(false)}>Dejar la meta como está</Button>
             </div>
           )}
 
@@ -801,17 +801,17 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
               </div>
               <div className="tiny muted" style={{ marginBottom: 9 }}>
                 Son {money(planActivo.ventaDia)}/día de venta ≈ {money(planActivo.gastoDia)}/día de gasto, contra el techo de {money(TECHO_DIA)}/día.
-                Kai lo revisa cada 3 días y te avisa acá si deja de ser alcanzable.
+                Kai lo revisa cada 3 días y le avisa aquí si deja de ser alcanzable.
               </div>
               {planActivo.meta !== metaVentas && (
                 <div className="tiny" style={{ color: 'var(--amber)', fontWeight: 700, marginBottom: 9, lineHeight: 1.5 }}>
-                  La meta del mes cambió a {money(metaVentas)}: este plan es para la de {money(planActivo.meta)}. Pedí uno nuevo o quitá este.
+                  La meta del mes cambió a {money(metaVentas)}: este plan es para la de {money(planActivo.meta)}. Pida uno nuevo o quite este.
                 </div>
               )}
               <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-                <Button variant="outline" className="btn-sm" title="Abre el plan activo con sus números y sus pasos. No cambia nada."
+                <Button variant="outline" className="btn-sm" title="Abra el plan activo con sus números y sus pasos. No cambia nada."
                   onClick={() => panelPlan(planActivo.meta, true)}>Ver el plan activo</Button>
-                <Button variant="ghost" className="btn-sm" title="Quita el plan: la meta del mes queda como estaba y el presupuesto no se toca"
+                <Button variant="ghost" className="btn-sm" title="Quite el plan: la meta del mes queda como estaba y el presupuesto no se toca"
                   onClick={() => { setPlanActivo(null); setToast('Plan quitado: la meta del mes queda como estaba'); }}>Quitarlo</Button>
               </div>
             </div>
@@ -819,21 +819,21 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
 
           <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
             <Button className="btn-sm"
-              title={`Le pide a Kai el plan para cerrar los ${money(faltaVentas)} que faltan sin subir el gasto. Te lo muestra antes de aplicarlo: nada cambia hasta que lo actives.`}
+              title={`Pídale a Kai el plan para cerrar los ${money(faltaVentas)} que faltan sin subir el gasto. Se lo muestra antes de aplicarlo: nada cambia hasta que lo active.`}
               onClick={() => panelPlan(metaVentas, false)}>
               <I_ArrowRight size={13} /> Pedir un plan para llegar
             </Button>
             <Button variant="ghost" className="btn-sm"
               title={editandoMeta
-                ? 'Cierra el ajuste de la meta y deja la tarjeta como estaba'
-                : 'Abre el ajuste de la meta de ventas del mes. No cambia el presupuesto ni lo que ya se gastó, y podés volver atrás cuando quieras.'}
+                ? 'Cierre el ajuste de la meta y deje la tarjeta como estaba'
+                : 'Abra el ajuste de la meta de ventas del mes. No cambia el presupuesto ni lo que ya se gastó, y puede volver atrás cuando quiera.'}
               onClick={() => setEditandoMeta(!editandoMeta)}>
               {editandoMeta ? 'Cerrar el ajuste' : 'Ajustar la meta'}
             </Button>
           </div>
           <div className="acc-why">
-            La meta la ponés vos. <b>El motor no gasta más para llegar</b>: reasigna lo que ya tenés
-            y te avisa cuando el objetivo deja de ser alcanzable con el presupuesto actual.
+            La meta la pone usted. <b>El motor no gasta más para llegar</b>: reasigna lo que ya tiene
+            y le avisa cuando el objetivo deja de ser alcanzable con el presupuesto actual.
           </div>
         </Card>
       </div>
@@ -845,7 +845,7 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
 }
 
 // =============================================================================================
-// EL TOUR GUIADO — recorre Tu día con foco sobre cada bloque, con los números de hoy.
+// EL TOUR GUIADO — recorre Su día con foco sobre cada bloque, con los números de hoy.
 // =============================================================================================
 function Tour({ paso, onPaso, onCerrar }: { paso: number; onPaso: (n: number) => void; onCerrar: () => void }) {
   const [caja, setCaja] = useState<{ t: number; l: number; w: number; h: number } | null>(null);
@@ -905,11 +905,11 @@ function Tour({ paso, onPaso, onCerrar }: { paso: number; onPaso: (n: number) =>
               onClick={() => onPaso(paso - 1)}>Atrás</button>
           )}
           <button className="tour-btn-grad" style={{ border: 'none', cursor: 'pointer' }}
-            title={ultimo ? 'Cerrar el tour: no cambia nada de tu panel' : 'Ir a la siguiente parada del tour'}
+            title={ultimo ? 'Cerrar el tour: no cambia nada de su panel' : 'Ir a la siguiente parada del tour'}
             onClick={() => ultimo ? onCerrar() : onPaso(paso + 1)}>
             {ultimo ? 'Terminar' : 'Siguiente'}
           </button>
-          <button className="tour-btn-skip" style={{ border: 'none', cursor: 'pointer' }} title="Salir del tour ahora. Reversible: lo podés repetir cuando quieras." onClick={onCerrar}>Saltear</button>
+          <button className="tour-btn-skip" style={{ border: 'none', cursor: 'pointer' }} title="Salir del tour ahora. Reversible: lo puede repetir cuando quiera." onClick={onCerrar}>Saltear</button>
         </div>
       </div>
     </>
@@ -924,19 +924,19 @@ function Decision({ d, onResolver }: { d: Decision; onResolver: (d: Decision, ac
       <div className="dec-head">
         <span className="dec-av" style={{ background: d.agenteColor }}>{d.agente[0]}</span>
         <span className="dec-agent" style={{ color: d.agenteColor }}>{d.agente}</span>
-        <Button variant="ghost" className="btn-sm" title="Muestra cómo votaron los 5 jueces sobre esta acción, con la objeción del más duro"
+        <Button variant="ghost" className="btn-sm" title="Muestre cómo votaron los 5 jueces sobre esta acción, con la objeción del más duro"
           onClick={() => setAbierto(!abierto)}>
           <I_Eye size={13} /> {abierto ? 'Ocultar el veredicto' : 'Ver el veredicto'}
         </Button>
       </div>
       <div className="dec-title">{d.titulo}</div>
       <div className="dec-det">{d.detalle}</div>
-      <div className="dec-impact"><b style={{ color: 'var(--green)' }}>Si lo aprobás: </b>{d.impacto}</div>
+      <div className="dec-impact"><b style={{ color: 'var(--green)' }}>Si lo aprueba: </b>{d.impacto}</div>
       {abierto && (
         <div className="dec-panel">
           <div className="dec-panel-top">
             <I_Vote size={14} style={{ color: 'var(--purple3)' }} />
-            <b>Los 5 jueces revisaron esta acción antes de proponértela</b>
+            <b>Los 5 jueces revisaron esta acción antes de proponérsela</b>
             <Badge tone={d.panel.dudaron === 0 ? 'green' : 'amber'}>{d.panel.aprobaron} de {d.panel.total} a favor</Badge>
           </div>
           <div className="dec-obj">
@@ -965,7 +965,7 @@ function MientrasNoEstabas({ modo }: { modo: Modo }) {
     <>
       <div className="mwb-top">
         {modo === 'auto'
-          ? <><I_Check size={15} style={{ color: 'var(--green)' }} /><b style={{ fontSize: 13.5 }}>Trabajó solo y te lo cuenta</b></>
+          ? <><I_Check size={15} style={{ color: 'var(--green)' }} /><b style={{ fontSize: 13.5 }}>Trabajó solo y se lo cuenta</b></>
           : <><I_Zap size={15} style={{ color: 'var(--amber)' }} /><b style={{ fontSize: 13.5 }}>Esto hizo solo desde {m.desde}</b></>}
       </div>
       <div className="mwb-grid">
@@ -985,10 +985,10 @@ function MientrasNoEstabas({ modo }: { modo: Modo }) {
       </div>
       <div className="acc-why">
         {modo === 'auto'
-          ? <>Estás en <b>Automático</b>: el motor decide y ejecuta sin preguntarte. Todas las acciones de acá son reversibles 24 h.</>
+          ? <>Está en <b>Automático</b>: el motor decide y ejecuta sin preguntarle. Todas las acciones de aquí son reversibles 24 h.</>
           : modo === 'shared'
-            ? <>Estás en <b>Compartido</b>: el motor decide, pero <b>te pide OK</b> antes de publicar o gastar.</>
-            : <>Estás en <b>Manual</b>: el motor solo te <b>sugiere</b>. Publicás y gastás vos.</>}
+            ? <>Está en <b>Compartido</b>: el motor decide, pero <b>le pide OK</b> antes de publicar o gastar.</>
+            : <>Está en <b>Manual</b>: el motor solo le <b>sugiere</b>. Publicar y gastar queda en sus manos.</>}
       </div>
     </>
   );

@@ -4,7 +4,7 @@ import { usePerfil } from '../lib/perfil';
 import { importe, notaMoneda, ayudaMoneda } from '../lib/moneda';
 
 // =============================================================================================
-// EL DINERO — SIEMPRE EN DÓLARES (la regla de formato vive en lib/moneda.ts, no acá).
+// EL DINERO — SIEMPRE EN DÓLARES (la regla de formato vive en lib/moneda.ts, no aquí).
 //
 // `<Dinero monto={4280} />` pinta los dos textos del importe: el principal en dólares y, al lado
 // y más chico, el equivalente en la moneda del país elegido en el perfil. Con el dólar elegido el
@@ -20,8 +20,8 @@ import { importe, notaMoneda, ayudaMoneda } from '../lib/moneda';
 // equivalente. Va en las tarjetas donde hay dinero, al lado de la nota que ya explica los botones.
 //
 // OJO CON DE DÓNDE SALE LA MONEDA: las dos leen el perfil GUARDADO (`perfil`), no `perfilVisible`.
-// La vista previa de «Hacé tuyo este panel» sólo edita el logo y los colores, así que si alguien
-// cambia la moneda en «Tus datos de cuenta» con ese pop-up abierto, el cambio tiene que verse igual:
+// La vista previa de «Haga suyo este panel» sólo edita el logo y los colores, así que si alguien
+// cambia la moneda en «Sus datos de cuenta» con ese pop-up abierto, el cambio tiene que verse igual:
 // guardar es guardar. Leyendo `perfilVisible`, la foto vieja de la vista previa tapaba el cambio
 // (se veía en pesos hasta cerrar el pop-up).
 // =============================================================================================

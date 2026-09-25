@@ -12,7 +12,7 @@ import { useDetalle, type Detalle } from './Detalle';
 // EL EQUIPO TRABAJANDO — la investigación del mercado, hecha por los 6 agentes
 //
 // Esto NO es la evaluación de una pieza: eso es MiroFish (los 5 jueces + 500 del público) y entra
-// recién cuando hay una pieza para evaluar. Acá se ve la otra mitad, la que corre SIEMPRE: el
+// recién cuando hay una pieza para evaluar. Aquí se ve la otra mitad, la que corre SIEMPRE: el
 // motor se puso solo cuando el usuario terminó el onboarding y desde entonces revisa el mercado
 // de su negocio cada 15 minutos. Lux, Rex, Nia, Kai, Sol y Rumi, en una grilla compacta, con lo
 // que están haciendo ahora y el artefacto que dejaron.
@@ -57,7 +57,7 @@ const DESDE_AFLORA_SEG = 30;
 
 const ESTADO_LB: Record<Agente['estado'], string> = {
   trabajando: 'trabajando',
-  esperando_ok: 'esperando tu OK',
+  esperando_ok: 'esperando su OK',
   al_dia: 'al día',
 };
 
@@ -75,8 +75,8 @@ const AGENTE_POR_ID: Record<string, Agente> = AGENTES.reduce(
 /** El botón abre el artefacto: lo dice el título, y aclara qué se puede hacer con él. */
 function tituloArtefacto(nombre: string, estado: Agente['estado']) {
   return estado === 'esperando_ok'
-    ? `Abre «${nombre}»: el detalle con sus números y qué significa. Todavía no gasta: para publicarla tenés que aprobarla vos.`
-    : `Abre «${nombre}»: el detalle con sus números y qué significa para tu negocio. Solo lectura.`;
+    ? `Abre «${nombre}»: el detalle con sus números y qué significa. Todavía no gasta: para publicarla tiene que aprobarla usted.`
+    : `Abre «${nombre}»: el detalle con sus números y qué significa para su negocio. Solo lectura.`;
 }
 
 /** Una línea del feed: quién, qué hizo, cuándo nació (en segundos del reloj del motor). */
@@ -133,7 +133,7 @@ function barajar<T>(xs: T[]): T[] {
 //
 // Los números salen de la misma biblioteca que el resto del panel (src/data/demo.ts): los 6
 // agentes, los frentes de investigación, los competidores, los ángulos y las tendencias. No hay
-// ningún dato inventado acá adentro.
+// ningún dato inventado aquí adentro.
 // =============================================================================================
 
 type TonoFila = 'purple' | 'green' | 'amber' | 'red' | 'muted';
@@ -143,13 +143,13 @@ const tonoGasto = (gasto: string): TonoFila => (gasto === 'alto' ? 'red' : gasto
 
 /** Los 5 competidores en filas: el mismo desglose lo usan el informe de Lux y el hallazgo de Tienda Norte. */
 const filasCompetencia = () => COMPETIDORES.map(c => ({
-  t: `${c.nombre}${c.propio ? ' (vos)' : ''}`,
+  t: `${c.nombre}${c.propio ? ' (usted)' : ''}`,
   s: `${c.anuncios} anuncios activos · ${c.leads} leads por mes estimados · precio $${c.precio}`,
   etiqueta: `gasto ${c.gasto}`,
   tono: tonoGasto(c.gasto),
 }));
 
-/** Los ángulos del rubro, con el % de anuncios que usa cada uno y qué significa para vos. */
+/** Los ángulos del rubro, con el % de anuncios que usa cada uno y qué significa para usted. */
 const filasAngulos = () => ANGULOS.map((a, i) => ({
   t: a.nombre,
   s: a.lectura,
@@ -183,43 +183,43 @@ function detalleDeAgente(
   switch (a.id) {
     case 'lux': return {
       titulo: `Lux · ${a.artefactoNombre}`,
-      sub: `Lux lee los anuncios de tu competencia, los precios y la demanda de tu zona todos los días. Lo que encontró: ${a.resultado}.`,
+      sub: `Lux lee los anuncios de su competencia, los precios y la demanda de su zona todos los días. Lo que encontró: ${a.resultado}.`,
       bloques: [
         { tipo: 'texto', texto: ultima },
         { tipo: 'datos', filas: [
-          { k: 'Anuncios activos leídos', v: '47', s: 'de 6 competidores a menos de 8 km de tu tienda' },
-          { k: 'Competidores en tu zona', v: '6', s: INVESTIGACION_MERCADO.zonaDetalle },
-          { k: 'El precio que cambió', v: 'Tienda Norte: $34 → $29', tono: 'amber', s: 'bajó 15%. Vos estás en $34' },
-          { k: 'Tu zona', v: INVESTIGACION_MERCADO.zona, s: `revisada ${INVESTIGACION_MERCADO.ultimaRevision}, ${INVESTIGACION_MERCADO.cadencia}` },
+          { k: 'Anuncios activos leídos', v: '47', s: 'de 6 competidores a menos de 8 km de su tienda' },
+          { k: 'Competidores en su zona', v: '6', s: INVESTIGACION_MERCADO.zonaDetalle },
+          { k: 'El precio que cambió', v: 'Tienda Norte: $34 → $29', tono: 'amber', s: 'bajó 15%. Usted está en $34' },
+          { k: 'Su zona', v: INVESTIGACION_MERCADO.zona, s: `revisada ${INVESTIGACION_MERCADO.ultimaRevision}, ${INVESTIGACION_MERCADO.cadencia}` },
           filaAvance(a, hecho, cuando),
         ] },
         { tipo: 'filas', items: FRENTES_INVESTIGACION.map(f => ({
           t: f.t, s: f.resultado, etiqueta: f.dato, tono: 'purple' as TonoFila,
         })) },
         { tipo: 'filas', items: filasCompetencia() },
-        { tipo: 'texto', texto: `El ángulo que más se usa en tu rubro es «${ANGULOS[0].nombre}» (${ANGULOS[0].pct}% de los anuncios). ${ANGULOS[0].lectura}` },
-        { tipo: 'aviso', tono: 'amber', texto: 'No conviene tocar el precio: bajar $5 te deja sin margen y Tienda Norte puede bajar otra vez. La diferencia se juega en el ángulo.' },
+        { tipo: 'texto', texto: `El ángulo que más se usa en su rubro es «${ANGULOS[0].nombre}» (${ANGULOS[0].pct}% de los anuncios). ${ANGULOS[0].lectura}` },
+        { tipo: 'aviso', tono: 'amber', texto: 'No conviene tocar el precio: bajar $5 le deja sin margen y Tienda Norte puede bajar otra vez. La diferencia se juega en el ángulo.' },
       ],
-      fuente: 'Biblioteca pública de anuncios de Meta, leída todos los días a las 06:00, más las búsquedas de tu zona.',
+      fuente: 'Biblioteca pública de anuncios de Meta, leída todos los días a las 06:00, más las búsquedas de su zona.',
     };
 
     case 'rex': return {
       titulo: `Rex · ${a.artefactoNombre}`,
-      sub: `El plan del mes define el ángulo, la audiencia y dónde va la plata. El movimiento de hoy: ${a.resultado}.`,
+      sub: `El plan del mes define el ángulo, la audiencia y dónde va el dinero. El movimiento de hoy: ${a.resultado}.`,
       bloques: [
         { tipo: 'texto', texto: ultima },
         { tipo: 'datos', filas: [
           { k: 'Movimiento de hoy', v: '$40/día de TikTok a Meta', s: 'la misma audiencia, a la mitad del costo por clic' },
           { k: 'Costo por clic en TikTok', v: '$4,20', tono: 'red' },
           { k: 'Costo por clic en Meta', v: '$2,10', tono: 'green' },
-          { k: 'Audiencia', v: 'Lookalike 3%', s: 'sacó «intereses amplios»: gastaba sin convertir' },
+          { k: 'Audiencia', v: 'Lookalike 3%', s: 'quitó «intereses amplios»: gastaba sin convertir' },
           filaAvance(a, hecho, cuando),
         ] },
         { tipo: 'filas', items: filasAngulos() },
         { tipo: 'texto', texto: `El ángulo del mes es «${ANGULOS[0].nombre}» y el precio entra solo como comparación. ${ANGULOS[3].lectura}` },
         { tipo: 'aviso', tono: 'amber', texto: 'Mover el presupuesto no gasta de más: sigue dentro del techo diario de $120.' },
       ],
-      fuente: 'Tus cuentas de TikTok y Meta, con el gasto y el costo por clic de los últimos 14 días.',
+      fuente: 'Sus cuentas de TikTok y Meta, con el gasto y el costo por clic de los últimos 14 días.',
     };
 
     case 'nia': return {
@@ -228,22 +228,22 @@ function detalleDeAgente(
       bloques: [
         { tipo: 'texto', texto: ultima },
         { tipo: 'datos', filas: [
-          { k: 'Variantes escritas', v: '6', s: 'para el Serum Vitamina C, tu producto que más se busca' },
+          { k: 'Variantes escritas', v: '6', s: 'para el Serum Vitamina C, su producto que más se busca' },
           { k: 'Ángulo que ganó', v: `${ANGULOS[0].nombre} · ${ANGULOS[0].pct}%`, s: 'puntuó 12% mejor que «precio» en el panel' },
-          { k: 'Formato que crece', v: 'before/after +41%', tono: 'green', s: 'lo usa 1 de cada 5 anuncios nuevos y tus piezas todavía no' },
+          { k: 'Formato que crece', v: 'before/after +41%', tono: 'green', s: 'lo usa 1 de cada 5 anuncios nuevos y sus piezas todavía no' },
           { k: 'Dónde se prueban', v: 'MiroFish', s: '5 jueces + 500 del público antes de que salga nada' },
           filaAvance(a, hecho, cuando),
         ] },
         { tipo: 'filas', items: filasAngulos() },
         { tipo: 'texto', texto: `Ejemplo de cómo arranca una con ese ángulo: ${ANGULOS[0].ej}` },
-        { tipo: 'aviso', tono: 'green', texto: 'Un borrador no publica nada: las variantes se puntúan antes de salir y ninguna gasta un peso hasta que las apruebes.' },
+        { tipo: 'aviso', tono: 'green', texto: 'Un borrador no publica nada: las variantes se puntúan antes de salir y ninguna gasta un peso hasta que las apruebe.' },
       ],
       fuente: 'El reparto de ángulos de los 47 anuncios activos del rubro, más las 6 variantes que escribió Nia.',
     };
 
     case 'kai': return {
       titulo: `Kai · ${a.artefactoNombre}`,
-      sub: `Kai maneja el presupuesto, las plataformas y las pujas. Dejó esta campaña lista y espera tu OK: ${a.resultado}.`,
+      sub: `Kai maneja el presupuesto, las plataformas y las pujas. Dejó esta campaña lista y espera su OK: ${a.resultado}.`,
       bloques: [
         { tipo: 'texto', texto: ultima },
         { tipo: 'datos', filas: [
@@ -254,10 +254,10 @@ function detalleDeAgente(
           filaAvance(a, hecho, cuando),
         ] },
         { tipo: 'filas', items: filasFeed('kai') },
-        { tipo: 'texto', texto: 'Retargeting Carrito le habla al que ya dejó el carrito: es la venta más barata que tenés, porque el cliente ya te eligió y no hay que convencerlo de nuevo.' },
-        { tipo: 'aviso', tono: 'amber', texto: 'Nada sale hasta tu OK. Si aprobás, empieza a gastar $30/día y la podés pausar cuando quieras; si no, queda guardada donde está.' },
+        { tipo: 'texto', texto: 'Retargeting Carrito le habla al que ya dejó el carrito: es la venta más barata que tiene, porque el cliente ya eligió y no hay que convencerlo de nuevo.' },
+        { tipo: 'aviso', tono: 'amber', texto: 'Nada sale hasta su OK. Si aprueba, empieza a gastar $30/día y la puede pausar cuando quiera; si no, queda guardada donde está.' },
       ],
-      fuente: 'Tus cuentas de Meta Ads, con el gasto, las pujas y el costo por venta de hoy.',
+      fuente: 'Sus cuentas de Meta Ads, con el gasto, las pujas y el costo por venta de hoy.',
       acciones: opts.onAprobar ? [
         { label: 'Aprobar y que salga', variante: 'primary' as const, onClick: opts.onAprobar },
         { label: 'Todavía no', onClick: () => {} },
@@ -280,26 +280,26 @@ function detalleDeAgente(
         { tipo: 'texto', texto: 'Esto es lo que hace confiable al número: el panel dice cuánto se equivocó y lo corrige, en vez de mostrar solo lo que acertó.' },
         { tipo: 'aviso', tono: 'green', texto: 'Con cada semana el score se vuelve más exacto: es el que decide si una pieza sale o no.' },
       ],
-      fuente: 'Resultados reales de tus campañas cruzados con la predicción que el panel dejó antes de publicarlas.',
+      fuente: 'Resultados reales de sus campañas cruzados con la predicción que el panel dejó antes de publicarlas.',
     };
 
     case 'rumi': return {
       titulo: `Rumi · ${a.artefactoNombre}`,
-      sub: `Rumi atiende y cierra las conversaciones con tus clientes: ${a.resultado}.`,
+      sub: `Rumi atiende y cierra las conversaciones con sus clientes: ${a.resultado}.`,
       bloques: [
         { tipo: 'texto', texto: ultima },
         { tipo: 'datos', filas: [
-          { k: 'Cliente', v: 'Valeria G.', s: 'pidió envío a CABA y quedó esperando' },
+          { k: 'Cliente', v: 'Valeria G.', s: 'pidió envío a Envigado y quedó esperando' },
           { k: 'Lo que respondió Rumi', v: 'Envío en 2 a 4 días', s: 'no pudo confirmar la cobertura de la zona' },
           { k: 'Ventas cerradas hoy', v: '2', tono: 'green', s: 'y 1 conversación escalada a una persona' },
           { k: 'Carrito recuperado', v: '$59', tono: 'green', s: 'de un carrito que había quedado abandonado' },
           filaAvance(a, hecho, cuando),
         ] },
         { tipo: 'filas', items: filasFeed('rumi') },
-        { tipo: 'texto', texto: 'Escalar no es fallar: cuando la respuesta compromete plata o depende de una zona que la IA no puede confirmar, la conversación pasa a una persona en vez de arriesgar una respuesta equivocada.' },
-        { tipo: 'aviso', tono: 'amber', texto: 'Es la única conversación de hoy que espera una persona. Si no la contestás, el 40% de estos clientes no vuelve a escribir.' },
+        { tipo: 'texto', texto: 'Escalar no es fallar: cuando la respuesta compromete dinero o depende de una zona que la IA no puede confirmar, la conversación pasa a una persona en vez de arriesgar una respuesta equivocada.' },
+        { tipo: 'aviso', tono: 'amber', texto: 'Es la única conversación de hoy que espera una persona. Si no la contesta, el 40% de estos clientes no vuelve a escribir.' },
       ],
-      fuente: 'Tu WhatsApp Business · conversaciones de las últimas 24 horas.',
+      fuente: 'Su WhatsApp Business · conversaciones de las últimas 24 horas.',
     };
 
     default: return {
@@ -327,14 +327,14 @@ function detalleDeHallazgo(h: Hallazgo): Detalle {
       sub: `${h.texto}. ${h.detalle}`,
       bloques: [
         { tipo: 'datos', filas: [
-          { k: 'Anuncios activos', v: '14', tono: 'amber', s: 'es el que más corre de tus 5 competidores: 1 de cada 3 de los 47 del rubro' },
-          { k: 'Su precio', v: '$34 → $29', tono: 'red', s: 'bajó 15% · vos estás en $34' },
+          { k: 'Anuncios activos', v: '14', tono: 'amber', s: 'es el que más corre de sus 5 competidores: 1 de cada 3 de los 47 del rubro' },
+          { k: 'Su precio', v: '$34 → $29', tono: 'red', s: 'bajó 15% · usted está en $34' },
           { k: 'Qué está empujando', v: 'Video corto', s: 'duplicó el gasto en video' },
-          { k: 'Leads por mes estimados', v: '82', s: 'el más alto de tu zona; vos: 48' },
+          { k: 'Leads por mes estimados', v: '82', s: 'el más alto de su zona; usted: 48' },
         ] },
         { tipo: 'filas', items: filasCompetencia() },
         { tipo: 'texto', texto: TENDENCIAS[3].lectura },
-        { tipo: 'aviso', tono: 'amber', texto: 'Igualar el precio no es la salida: te deja sin margen y él puede bajar otra vez. Se compite con el ángulo y con la prueba social.' },
+        { tipo: 'aviso', tono: 'amber', texto: 'Igualar el precio no es la salida: le deja sin margen y él puede bajar otra vez. Se compite con el ángulo y con la prueba social.' },
       ],
       fuente: 'Biblioteca pública de anuncios de Meta, leída hoy, más el conteo de leads estimados por competidor.',
     };
@@ -344,17 +344,17 @@ function detalleDeHallazgo(h: Hallazgo): Detalle {
       sub: `${h.texto}. ${h.detalle}`,
       bloques: [
         { tipo: 'datos', filas: [
-          { k: 'Crecimiento', v: '+32%', tono: 'green', s: 'contra el mes pasado, en tu zona' },
+          { k: 'Crecimiento', v: '+32%', tono: 'green', s: 'contra el mes pasado, en su zona' },
           { k: 'Índice del rubro', v: '78 de 100', s: 'contra el máximo de los últimos 30 días' },
           { k: 'Dónde se mide', v: INVESTIGACION_MERCADO.zona, s: INVESTIGACION_MERCADO.zonaDetalle },
-          { k: 'Tu producto', v: 'Serum Vitamina C', s: 'la demanda ya está esperando: es el momento de pautar' },
+          { k: 'Su producto', v: 'Serum Vitamina C', s: 'la demanda ya está esperando: es el momento de pautar' },
         ] },
         { tipo: 'filas', items: TENDENCIAS.map(t => ({
           t: t.label, s: t.lectura, etiqueta: t.num, tono: (t.up ? 'green' : 'amber') as TonoFila,
         })) },
-        { tipo: 'texto', texto: 'La demanda del mercado no es tu desempeño: si sube y tus ventas no, el problema no es el mercado, es tu anuncio.' },
+        { tipo: 'texto', texto: 'La demanda del mercado no es su desempeño: si sube y sus ventas no, el problema no es el mercado, es su anuncio.' },
       ],
-      fuente: 'Búsquedas de tu zona (Buenos Aires y GBA), últimos 30 días.',
+      fuente: 'Búsquedas de su zona (Medellín y el Valle de Aburrá), últimos 30 días.',
     };
 
     case 'h3': return {
@@ -363,7 +363,7 @@ function detalleDeHallazgo(h: Hallazgo): Detalle {
       bloques: [
         { tipo: 'datos', filas: [
           { k: 'Crecimiento del formato', v: '+41%', tono: 'green', s: 'en los anuncios nuevos del rubro' },
-          { k: 'Quién lo usa', v: '21 de 47 anuncios', s: 'Tienda Norte y los nuevos; vos todavía no' },
+          { k: 'Quién lo usa', v: '21 de 47 anuncios', s: 'Tienda Norte y los nuevos; usted todavía no' },
           { k: 'Variantes escritas', v: '6', s: `con el ángulo «${ANGULOS[0].nombre}», 12% mejor que «precio»` },
           { k: 'Dónde se prueban', v: 'MiroFish', s: '5 jueces + 500 del público antes de publicar' },
         ] },
@@ -412,7 +412,7 @@ function detalleDeGaleria(): Detalle {
         { k: 'Quién le pone el número', v: '5 jueces + 500 del público', s: 'dan el veredicto antes de que la pieza se publique' },
         { k: 'Quién investiga el mercado', v: 'Los 6 agentes', s: 'Lux, Rex, Nia, Kai, Sol y Rumi: trabajan y no votan' },
       ] },
-      { tipo: 'texto', texto: 'Son dos cosas distintas: acá los 6 agentes investigan tu mercado y corre siempre; MiroFish entra recién cuando hay una pieza concreta que verificar.' },
+      { tipo: 'texto', texto: 'Son dos cosas distintas: aquí los 6 agentes investigan su mercado y corren siempre; MiroFish entra solo cuando hay una pieza concreta que verificar.' },
     ],
     fuente: `Las ${INVESTIGACION_MERCADO.revisiones} revisiones de arriba son de mercado; el puntaje de las piezas sale del panel de MiroFish.`,
     acciones: [{ label: 'Cerrar', onClick: () => {} }],
@@ -424,7 +424,7 @@ export function EquipoInvestigando({ setToast, irAGaleria }: {
   /** Lleva a la galería de Campañas, donde viven las piezas que MiroFish ya puntuó. */
   irAGaleria?: () => void;
 }) {
-  // El panel de detalle: cada botón de acá abre el artefacto real del agente, no un aviso.
+  // El panel de detalle: cada botón de aquí abre el artefacto real del agente, no un aviso.
   const detalle = useDetalle();
   // La campaña que Kai dejó esperando: aprobarla es una decisión que queda a la vista en la ficha.
   const [okKai, setOkKai] = useState(false);
@@ -434,7 +434,7 @@ export function EquipoInvestigando({ setToast, irAGaleria }: {
     setToast('Retargeting Carrito aprobada: sale en la próxima vuelta al mercado');
   };
 
-  // ---- El reloj del motor: el único timer de 1 segundo. Todo lo demás se deriva de acá. ----
+  // ---- El reloj del motor: el único timer de 1 segundo. Todo lo demás se deriva de aquí. ----
   // El tiempo que se muestra sale del RELOJ REAL (Date.now), no de la cantidad de veces que
   // disparó el intervalo: si el navegador lo frena porque la pestaña quedó de fondo, la cuenta
   // regresiva y las horas no se atrasan. El intervalo sólo hace que la pantalla se vuelva a
@@ -498,7 +498,7 @@ export function EquipoInvestigando({ setToast, irAGaleria }: {
   const edadUltima = ciclo >= FALTAN_INICIAL_SEG ? ciclo - FALTAN_INICIAL_SEG : EDAD_INICIAL_SEG + ciclo;
   const vueltas = Math.floor(t / CADENCIA_SEG) + (ciclo >= FALTAN_INICIAL_SEG ? 1 : 0);
   const mmss = `${String(Math.floor(faltan / 60)).padStart(2, '0')}:${String(faltan % 60).padStart(2, '0')}`;
-  /** Sube de a uno cada 2 segundos mientras mirás: la pantalla nunca está quieta. */
+  /** Sube de a uno cada 2 segundos mientras mira: la pantalla nunca está quieta. */
   const revisados = 47 + Math.floor(t / 2);
 
   // ---- El equipo, con lo que cambia solo: estado, avance de la tarea y hora corrida ----
@@ -527,21 +527,21 @@ export function EquipoInvestigando({ setToast, irAGaleria }: {
       <div className="eq-head">
         <div className="eq-head-top">
           <span className="eq-live"><span className="dot-live" /> EN VIVO</span>
-          <span className="eq-head-t">El equipo trabajando: la investigación de tu mercado</span>
+          <span className="eq-head-t">El equipo trabajando: la investigación de su mercado</span>
           <Badge tone="green">{trabajando} trabajando ahora</Badge>
         </div>
         <div className="eq-arranque">
           <b>Arrancó solo {INVESTIGACION_MERCADO.desde}</b>, {INVESTIGACION_MERCADO.arranco}.
-          {' '}Desde entonces revisa tu mercado <b>{INVESTIGACION_MERCADO.cadencia}</b> y te avisa si algo cambia.
+          {' '}Desde entonces revisa su mercado <b>{INVESTIGACION_MERCADO.cadencia}</b> y le avisa si algo cambia.
         </div>
         <div className="eq-estado">
           <span><b>{trabajando}</b> trabajando</span>
           <span className="eq-sep">·</span>
-          <span><b>{esperando}</b> esperando tu OK</span>
+          <span><b>{esperando}</b> esperando su OK</span>
           <span className="eq-sep">·</span>
           <span><b>{alDia}</b> al día</span>
           <span className="eq-sep">·</span>
-          <span title={`La última vez que el motor dejó un resultado en tu panel. Vuelve cada ${INVESTIGACION_MERCADO.cadencia}.`}>
+          <span title={`La última vez que el motor dejó un resultado en su panel. Vuelve cada ${INVESTIGACION_MERCADO.cadencia}.`}>
             última revisión: <b>{hace(edadUltima)}</b></span>
           <span className="eq-sep">·</span>
           <span className="eq-prox" title="Cuenta regresiva real a la próxima vuelta al mercado: baja cada segundo.">
@@ -558,8 +558,8 @@ export function EquipoInvestigando({ setToast, irAGaleria }: {
         <div className="eq-feed-head">
           <span className="eq-live"><span className="dot-live" /> EN VIVO</span>
           <span className="eq-feed-t">Lo que están haciendo ahora, agente por agente</span>
-          <span className="eq-feed-n" title="Líneas que entraron al feed desde que abriste el panel.">
-            <b>{nuevas}</b> {nuevas === 1 ? 'nueva' : 'nuevas'} desde que abriste
+          <span className="eq-feed-n" title="Líneas que entraron al feed desde que abrió el panel.">
+            <b>{nuevas}</b> {nuevas === 1 ? 'nueva' : 'nuevas'} desde que abrió
           </span>
         </div>
         {/* Altura fija: entra una línea y el resto de la pantalla NO se mueve ni un pixel. */}
@@ -574,7 +574,7 @@ export function EquipoInvestigando({ setToast, irAGaleria }: {
                 <span className="eq-feed-when">{hace((ahora - l.nace) / 1000)}</span>
                 {l.artefacto && (
                   <Button variant="ghost" className="btn-sm eq-feed-btn"
-                    title={`Abre «${l.artefacto}» de ${ag.nombre}: el artefacto con sus números y qué significa para tu negocio. Solo lectura.`}
+                    title={`Abre «${l.artefacto}» de ${ag.nombre}: el artefacto con sus números y qué significa para su negocio. Solo lectura.`}
                     onClick={() => {
                       const e = equipo.find(x => x.a.id === l.agenteId);
                       detalle(detalleDeAgente(e?.a ?? ag, e?.hecho ?? ag.tarea.hecho, e?.cuando ?? ag.cuando, { accion: l.texto }));
@@ -604,7 +604,7 @@ export function EquipoInvestigando({ setToast, irAGaleria }: {
             ))}
           </div>
           <div className="acc-why">
-            Cada agente dice <b>qué miró de tu negocio</b>, <b>qué resultó</b> y <b>cuándo</b>.
+            Cada agente dice <b>qué miró de su negocio</b>, <b>qué resultó</b> y <b>cuándo</b>.
             Lo que produjo se abre con un clic: no hay resultados sin comprobar.
           </div>
         </Card>
@@ -617,7 +617,7 @@ export function EquipoInvestigando({ setToast, irAGaleria }: {
             <div className="eq-zona">
               <span style={{ fontSize: 15, flexShrink: 0 }}>📍</span>
               <div style={{ minWidth: 0, flex: '1 1 220px' }}>
-                <div className="eq-zona-t">Lux está mirando tu zona: {INVESTIGACION_MERCADO.zona}</div>
+                <div className="eq-zona-t">Lux está mirando su zona: {INVESTIGACION_MERCADO.zona}</div>
                 <div className="eq-zona-d" title={INVESTIGACION_MERCADO.zonaDetalle}>{INVESTIGACION_MERCADO.zonaDetalle}</div>
               </div>
               <span className="eq-tag">revisado {hace(edadUltima)}</span>
@@ -651,7 +651,7 @@ export function EquipoInvestigando({ setToast, irAGaleria }: {
           los 5 jueces y 500 del público la votan antes de que salga a internet.
         </span>
         <Button variant="ghost" className="btn-sm"
-          title="Te lleva a la galería de Campañas, donde están las piezas que MiroFish ya puntuó. No publica nada."
+          title="Le lleva a la galería de Campañas, donde están las piezas que MiroFish ya puntuó. No publica nada."
           onClick={verGaleria}>
           <I_Zap size={13} /> Ver la galería de MiroFish <I_ArrowRight size={13} />
         </Button>
@@ -666,15 +666,15 @@ export function EquipoInvestigando({ setToast, irAGaleria }: {
 // el panel de detalle, con sus números y su lectura para el negocio.
 function FichaAgente({ a, estado, hecho, cuando, aprobado, onAprobar }: {
   a: Agente;
-  /** El estado de ahora: puede haber cambiado solo desde que abriste el panel. */
+  /** El estado de ahora: puede haber cambiado solo desde que abrió el panel. */
   estado: Agente['estado'];
   /** Cuánto lleva hecho de su tarea: avanza solo. */
   hecho: number;
   /** Su hora, ya corrida por el reloj. */
   cuando: string;
-  /** Kai ya tiene tu OK: la ficha lo dice y no queda como si nada hubiera pasado. */
+  /** Kai ya tiene su OK: la ficha lo dice y no queda como si nada hubiera pasado. */
   aprobado?: boolean;
-  /** La acción que aprueba de verdad la campaña que espera tu OK. */
+  /** La acción que aprueba de verdad la campaña que espera su OK. */
   onAprobar?: () => void;
 }) {
   const detalle = useDetalle();
@@ -694,15 +694,15 @@ function FichaAgente({ a, estado, hecho, cuando, aprobado, onAprobar }: {
       </div>
       <div className="eq-ancla" title={a.ancla}>{a.ancla}</div>
       <div className="eq-res" title={a.resultado}><b>→ </b>{a.resultado}</div>
-      {/* El avance de la tarea: la barra se llena sola mientras mirás la pantalla. */}
+      {/* El avance de la tarea: la barra se llena sola mientras mira la pantalla. */}
       <div className="eq-prog" title={`${a.nombre}: ${hecho} de ${a.tarea.total} ${a.tarea.etiqueta}. Avanza solo.`}>
         <span className="eq-prog-t">{hecho} de {a.tarea.total} {a.tarea.etiqueta}</span>
         <span className="eq-prog-b"><i style={{ width: `${pct}%`, background: a.color }} /></span>
       </div>
       {aprobado && (
         <div className="eq-cz" style={{ color: 'var(--green)', fontWeight: 700, marginBottom: 6 }}
-          title="La aprobaste vos desde el artefacto: sale en la próxima vuelta al mercado.">
-          ✓ Aprobada por vos: sale en la próxima vuelta al mercado
+          title="La aprobaste usted desde el artefacto: sale en la próxima vuelta al mercado.">
+          ✓ Aprobada por usted: sale en la próxima vuelta al mercado
         </div>
       )}
       <Button variant="ghost" className="btn-sm eq-ag-btn"
@@ -727,7 +727,7 @@ function FilaHallazgo({ h }: { h: Hallazgo }) {
         <b style={{ color: h.color }}>{h.agente}</b> · {h.texto}
       </div>
       <Button variant="ghost" className="btn-sm eq-hall-btn"
-        title={`Abre «${h.artefacto}»: el detalle del hallazgo con sus números y qué significa para tu negocio.`}
+        title={`Abre «${h.artefacto}»: el detalle del hallazgo con sus números y qué significa para su negocio.`}
         onClick={() => detalle(detalleDeHallazgo(h))}>
         <I_ArrowRight size={12} /> {h.artefacto}
       </Button>

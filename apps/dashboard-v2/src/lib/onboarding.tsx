@@ -6,8 +6,8 @@ import { PASOS_ONB, siguientePaso, CONEXIONES_ONB } from '../data/onboarding';
 //
 // El onboarding es lo único del panel que puede quedar a medias: el cliente entra, hace dos pasos,
 // se va a mirar otra cosa y vuelve. Por eso su estado no puede vivir adentro de la pantalla (se
-// perdería al cambiar de vista) y vive acá: así el menú muestra cuánto falta y Hoy puede decir qué
-// sigue. Lo que se completa también queda acá: el material elegido y los datos escritos.
+// perdería al cambiar de vista) y vive aquí: así el menú muestra cuánto falta y Hoy puede decir qué
+// sigue. Lo que se completa también queda aquí: el material elegido y los datos escritos.
 // =============================================================================================
 
 export type ValorOnb = string | string[];
@@ -36,7 +36,7 @@ type Ctx = {
   marcar: (n: number) => void;
   /** Deja el paso como pendiente pero guardado: es lo que hace «Seguir después». */
   desmarcar: (n: number) => void;
-  /** El motor ya arrancó: desde acá, el panel muestra el plan de la semana. */
+  /** El motor ya arrancó: desde aquí, el panel muestra el plan de la semana. */
   arrancado: boolean;
   arrancar: () => void;
   /** Aviso del panel: lo usan los controles compartidos, que viven fuera de las vistas. */
@@ -63,7 +63,7 @@ const tieneValor = (v: ValorOnb | undefined) =>
 export function OnboardingProvider({ children, avisar }: { children: ReactNode; avisar: (t: string) => void }) {
   const [datos, setDatos] = useState<DatosOnb>({
     // Las cuentas que la cuenta YA tenía conectadas arrancan puestas: el paso 5 muestra el estado
-    // real del negocio, no una lista vacía. Lo que se destilda acá no se desconecta solo: se marca.
+    // real del negocio, no una lista vacía. Lo que se destilda aquí no se desconecta solo: se marca.
     conectadas: CONEXIONES_ONB.filter(c => c.habilitadoHoy).map(c => c.key),
   });
   const [archivos, setArchivos] = useState<ArchivoIngesta[]>([]);

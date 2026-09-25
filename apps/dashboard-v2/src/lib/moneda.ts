@@ -1,5 +1,5 @@
 // =============================================================================================
-// EL DINERO DEL PANEL, SIEMPRE EN DÓLARES — la regla de formato vive acá y sólo acá.
+// EL DINERO DEL PANEL, SIEMPRE EN DÓLARES — la regla de formato vive aquí y sólo aquí.
 //
 // Lo que decidió el dueño: los importes del panel se muestran SIEMPRE en dólares, y el dólar es
 // la base contra la que se compara la moneda del país elegido en el perfil. Al lado del monto en
@@ -11,12 +11,12 @@
 // plan ya estaban escritos así: no se reescriben. Lo único que cambia es CÓMO SE MUESTRAN (con su
 // «USD» bien visible), así que este archivo no inventa valores ni los convierte.
 //
-// NADIE ARMA EL TEXTO DEL DINERO POR SU CUENTA: las vistas piden acá los dos textos y los pintan
+// NADIE ARMA EL TEXTO DEL DINERO POR SU CUENTA: las vistas piden aquí los dos textos y los pintan
 // con `<Dinero>` (components/ui.tsx). Por eso el mismo monto se ve igual en todas las pantallas.
 //
 // EL TIPO DE CAMBIO ES DE MUESTRA, NO ES UN DATO EN VIVO. Sale de `CAMBIOS` (lib/perfil.tsx) y
 // lleva la fecha del día y el banco que lo publica. En producción estos números NO se escriben en
-// el código: se piden todos los días a la API del banco central del país —BCRA (Argentina),
+// el código: se piden todos los días a la API del banco central del país —Banco de la República (Colombia),
 // Banco Central de Chile, Banco de la República (Colombia), Banxico (México), Banco Central do
 // Brasil, Banco Central Europeo— y se guardan con la fecha del día. El dólar sigue siendo la base.
 // =============================================================================================
@@ -27,7 +27,7 @@ import { cambioDe, conversionDelDia, monedaDe, numeroConMiles } from './perfil';
 export interface Importe {
   /** El monto en dólares, con su sufijo: `$4.280 USD`. Es lo que se ve siempre. */
   principal: string;
-  /** El equivalente en la moneda del perfil: `≈ $6.364.360 ARS`. Null si la moneda elegida ya es el dólar. */
+  /** El equivalente en la moneda del perfil: `≈ $136.000 COP`. Null si la moneda elegida ya es el dólar. */
   equivalente: string | null;
 }
 

@@ -37,9 +37,9 @@ export const PERFIL_INICIAL: Perfil = {
   nombre: 'María Paula',
   marca: 'Skincare Natural',
   email: 'hola@skincarenatural.com',
-  telefono: '+54 9 11 5555-2341',
-  zona: 'Buenos Aires · GMT-3',
-  moneda: 'Peso argentino',
+  telefono: '+57 300 555 2341',
+  zona: 'Medellín · GMT-5',
+  moneda: 'Peso colombiano',
   color: '#a855f7',
   logo: '',
   col1: '',
@@ -70,10 +70,9 @@ export interface Lugar {
   bandera: string;
 }
 
-/** Los lugares que el buscador conoce. La lista vive acá: esta maqueta no tiene backend. */
+/** Los lugares que el buscador conoce. La lista vive aquí: esta maqueta no tiene backend. */
 export const LUGARES: Lugar[] = [
-  { nombre: 'Buenos Aires', pais: 'Argentina', zona: 'Buenos Aires · GMT-3', moneda: 'Peso argentino', bandera: '🇦🇷' },
-  { nombre: 'Córdoba', pais: 'Argentina', zona: 'Buenos Aires · GMT-3', moneda: 'Peso argentino', bandera: '🇦🇷' },
+  { nombre: 'Medellín', pais: 'Colombia', zona: 'Medellín · GMT-5', moneda: 'Peso colombiano', bandera: '🇨🇴' },
   { nombre: 'Santiago', pais: 'Chile', zona: 'Santiago · GMT-3', moneda: 'Peso chileno', bandera: '🇨🇱' },
   { nombre: 'São Paulo', pais: 'Brasil', zona: 'São Paulo · GMT-3', moneda: 'Real brasileño', bandera: '🇧🇷' },
   { nombre: 'Bogotá', pais: 'Colombia', zona: 'Bogotá · GMT-5', moneda: 'Peso colombiano', bandera: '🇨🇴' },
@@ -101,9 +100,8 @@ export interface Moneda {
  * base contra la que se compara todo, así que nunca puede faltar de la lista.
  */
 export const MONEDAS: Moneda[] = [
-  { nombre: 'Peso argentino', codigo: 'ARS', simbolo: '$' },
-  { nombre: 'Peso chileno', codigo: 'CLP', simbolo: '$' },
   { nombre: 'Peso colombiano', codigo: 'COP', simbolo: '$' },
+  { nombre: 'Peso chileno', codigo: 'CLP', simbolo: '$' },
   { nombre: 'Peso mexicano', codigo: 'MXN', simbolo: '$' },
   { nombre: 'Real brasileño', codigo: 'BRL', simbolo: 'R$' },
   { nombre: 'Euro', codigo: 'EUR', simbolo: '€' },
@@ -113,7 +111,7 @@ export const MONEDAS: Moneda[] = [
 /** La moneda por su nombre. Si el nombre guardado ya no existe, cae en la primera (nunca queda vacío). */
 export const monedaDe = (nombre: string): Moneda => MONEDAS.find(m => m.nombre === nombre) ?? MONEDAS[0];
 
-/** Saca las tildes y las mayúsculas: para buscar «cordoba» y encontrar «Córdoba». */
+/** Saca las tildes y las mayúsculas: para buscar «medellin» y encontrar «Medellín». */
 const sinTildes = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
 
 /** Los lugares que coinciden con lo que el cliente escribió (por ciudad, país o moneda). */
@@ -128,8 +126,8 @@ export function buscarLugares(consulta: string): Lugar[] {
 //
 // Esta maqueta no tiene backend ni internet: los números de abajo están escritos a mano para que la
 // pantalla se vea como se va a ver. En producción NO se escriben en el código: se piden todos los
-// días a la API del banco central del país —BCRA (Argentina), Banco Central de Chile, Banco de la
-// República (Colombia), Banxico (México), Banco Central do Brasil, Banco Central Europeo— y se
+// días a la API del banco central del país —Banco de la República (Colombia), Banco Central de
+// Chile, Banxico (México), Banco Central do Brasil, Banco Central Europeo— y se
 // guardan con la fecha del día. El dólar es la BASE: todo se muestra contra 1 USD.
 // =============================================================================================
 
@@ -141,9 +139,8 @@ export interface Cambio {
 }
 
 export const CAMBIOS: Record<string, Cambio> = {
-  ARS: { porUsd: 1487, banco: 'Banco Central de la República Argentina' },
   CLP: { porUsd: 946, banco: 'Banco Central de Chile' },
-  COP: { porUsd: 3982, banco: 'Banco de la República (Colombia)' },
+  COP: { porUsd: 4000, banco: 'Banco de la República (Colombia)' },
   MXN: { porUsd: 18.42, banco: 'Banco de México' },
   BRL: { porUsd: 5.42, banco: 'Banco Central do Brasil' },
   EUR: { porUsd: 0.92, banco: 'Banco Central Europeo' },
@@ -160,14 +157,14 @@ export function fechaDeCambio(d: Date = new Date()): string {
   return `${dd}/${mm}/${d.getFullYear()}`;
 }
 
-/** Un número a la argentina: separador de miles con punto y sin decimales de más. */
+/** Un número como se escribe en Colombia: separador de miles con punto y sin decimales de más. */
 export function numeroConMiles(n: number): string {
-  return n.toLocaleString('es-AR', { maximumFractionDigits: n >= 100 ? 0 : 2 });
+  return n.toLocaleString('es-CO', { maximumFractionDigits: n >= 100 ? 0 : 2 });
 }
 
 /**
  * Lo que se muestra en el bloque de la conversión del día, ya armado: el título con el número
- * (`1 USD = $1.487 ARS`), la fecha y el banco que lo publica. Con el dólar elegido no hay
+ * (`1 USD = $4.000 COP`), la fecha y el banco que lo publica. Con el dólar elegido no hay
  * conversión: es la base.
  */
 export function conversionDelDia(nombreMoneda: string): { titulo: string; detalle: string; fecha: string; banco: string; esBase: boolean } {
@@ -299,7 +296,7 @@ export function textoDeGradiente(col1: string, col2: string): string {
 
 export const SEMAFOROS = [
   { nombre: 'verde de «está bien / aprobado»', hex: '#22c55e' },
-  { nombre: 'ámbar de «ojo, revisá»', hex: '#f59e0b' },
+  { nombre: 'ámbar de «ojo, revise»', hex: '#f59e0b' },
   { nombre: 'rojo de «crítico / rechazado»', hex: '#ef4444' },
   { nombre: 'gris de lo neutro', hex: '#9a8fad' },
 ];
@@ -377,10 +374,10 @@ export function aplicarMarca(p: Perfil) {
   document.head.appendChild(est);
 }
 
-/** Dos iniciales a partir del nombre, para el avatar. Si no hay nombre, cae en "TU". */
+/** Dos iniciales a partir del nombre, para el avatar. Si no hay nombre, cae en "Su". */
 export function inicialesDe(nombre: string) {
   const partes = nombre.trim().split(/\s+/).filter(Boolean);
-  if (!partes.length) return 'TU';
+  if (!partes.length) return 'Su';
   const a = partes[0][0] ?? '';
   const b = partes.length > 1 ? partes[1][0] ?? '' : (partes[0][1] ?? '');
   return (a + b).toUpperCase();
@@ -403,7 +400,7 @@ export function leerLogo(archivo: File, lado = 320): Promise<string> {
       return;
     }
     if (archivo.size > 6 * 1024 * 1024) {
-      rechazar(new Error('La imagen pesa más de 6 MB. Probá con una más chica.'));
+      rechazar(new Error('La imagen pesa más de 6 MB. Pruebe con una más chica.'));
       return;
     }
     const lector = new FileReader();
@@ -444,7 +441,7 @@ type ContextoPerfil = {
   perfilVisible: Perfil;
   /** Guarda y devuelve false si el navegador no dejó guardar (modo privado, o el logo es muy grande). */
   guardar: (p: Perfil) => boolean;
-  /** Muestra un perfil sin guardarlo: es la vista previa en vivo de «Hacé tuyo este panel» (logo y colores). */
+  /** Muestra un perfil sin guardarlo: es la vista previa en vivo de «Haga suyo este panel» (logo y colores). */
   previsualizar: (p: Perfil) => void;
   /** Corta la vista previa y vuelve a lo guardado. */
   terminarPrevia: () => void;
@@ -468,16 +465,16 @@ function leerGuardado(): Perfil {
 }
 
 export function PerfilProvider({ children }: { children: ReactNode }) {
-  // Se guarda en el navegador: lo que editás sobrevive a recargar la página.
+  // Se guarda en el navegador: lo que usted edita sobrevive a recargar la página.
   const [perfil, setPerfil] = useState<Perfil>(leerGuardado);
-  // Mientras el pop-up de personalización está abierto, acá vive el borrador: así el logo y los
+  // Mientras el pop-up de personalización está abierto, aquí vive el borrador: así el logo y los
   // colores se ven en su lugar (el hero, la barra de arriba y el menú) antes de guardar.
   const [previa, setPrevia] = useState<Perfil | null>(null);
 
   // La marca del cliente vive en las variables CSS de la raíz. Se repinta con lo que se está
   // VIENDO: si hay una vista previa abierta manda la vista previa, si no el perfil guardado.
   // (Antes miraba sólo el guardado: al guardar los datos de cuenta con el pop-up abierto, los
-  // colores que estabas eligiendo volvían atrás en la pantalla aunque el pop-up siguiera
+  // colores que usted estaba eligiendo volvían atrás en la pantalla aunque el pop-up siguiera
   // mostrándolos elegidos.)
   useEffect(() => { aplicarMarca(previa ?? perfil); }, [perfil, previa]);
 

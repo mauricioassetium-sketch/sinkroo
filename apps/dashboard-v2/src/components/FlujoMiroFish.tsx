@@ -17,7 +17,7 @@ import type { Modo } from '../data/demo';
 //   1. Sinkroo investiga el mercado y detecta los colores del competidor que mejor convierte.
 //   2. Con eso crea el material: 5 opciones, cada una con su prompt de imagen o video.
 //   3. MiroFish las vota y quedan ordenadas del 1 al 5.
-//   4. Las 3 primeras pasan a producción: se publican o esperan tu aprobación, según el modo.
+//   4. Las 3 primeras pasan a producción: se publican o esperan su aprobación, según el modo.
 //
 // Y encima de eso, las dos cosas que el dueño pidió ver:
 //   · EL COSTO DE LA RONDA, en el encabezado y con su desglose (160 = 120 crear + 40 evaluar), más
@@ -75,7 +75,7 @@ export function FlujoMiroFish({ modo, setToast, esAnuncio }: {
   const pasan = orden.slice(0, CUANTAS_PASAN);
   const quedan = orden.slice(CUANTAS_PASAN);
 
-  const mejor = orden[0];                              // la 1ª del ranking: de acá sale la mejora
+  const mejor = orden[0];                              // la 1ª del ranking: de aquí sale la mejora
   const ojs = objeciones(mejor);                       // lo que dejó el panel, de la más dura a la más blanda
   const oj = ojs[0];
   const rondaMejora = costoMejora(CUANTAS_VARIANTES);   // 48 + 24 = 72
@@ -101,7 +101,7 @@ export function FlujoMiroFish({ modo, setToast, esAnuncio }: {
     ];
   };
 
-  // Al llegar acá el trabajo ya arrancó solo: en el paso 1 el usuario apretó Iniciar.
+  // Al llegar aquí el trabajo ya arrancó solo: en el paso 1 el usuario apretó Iniciar.
   // No hay botón para empezar en esta pantalla: eso era lo que confundía.
   useEffect(() => {
     correr([
@@ -129,7 +129,7 @@ export function FlujoMiroFish({ modo, setToast, esAnuncio }: {
     { k: 'angulo', t: 'Cambiar el ángulo', d: 'Mismo producto y mismo formato, otro gancho: la variante arranca por otra razón y se vota contra las otras dos.' },
     { k: 'formato', t: 'Cambiar el formato', d: 'Más video o más imagen: cambia cómo se ve la pieza, no lo que dice.' },
     { k: 'prueba', t: 'Sumar prueba social', d: 'Que entren reseñas y clientes reales: es lo que sube el voto del desconfiado.' },
-    { k: 'otra', t: 'Otra cosa', d: 'La contás vos en una línea y el motor la suma como instrucción. Es opcional: podés dejarla vacía.' },
+    { k: 'otra', t: 'Otra cosa', d: 'La cuenta usted en una línea y el motor la suma como instrucción. Es opcional: puede dejarla vacía.' },
   ];
 
   const pedidosTxt = [
@@ -151,8 +151,8 @@ export function FlujoMiroFish({ modo, setToast, esAnuncio }: {
 
   const titleChip = (c: ChipMejora, sel: boolean) =>
     `${c.t}: ${c.d} ${sel
-      ? 'Ya está elegida: tocala de nuevo para sacarla y no cambia nada.'
-      : 'Tocala para sumarla a la ronda nueva.'} No se gasta nada hasta que aprietes «Crear la ronda nueva», y la ronda anterior queda guardada y sin tocar.`;
+      ? 'Ya está elegida: tóquela de nuevo para sacarla y no cambia nada.'
+      : 'Toquela para sumarla a la ronda nueva.'} No se gasta nada hasta que presione «Crear la ronda nueva», y la ronda anterior queda guardada y sin tocar.`;
 
   // La ronda nueva: 3 variantes de la que ganó. Reusa la corrida completa, mostrando su costo.
   const crearRonda = () => {
@@ -171,8 +171,8 @@ export function FlujoMiroFish({ modo, setToast, esAnuncio }: {
     setOjElegidas([]);
     setOtra('');
     correr([
-      `Sinkroo reusa la investigación y agarra «${pieza.titulo}» (${puntaje(pieza)})…`,
-      `Ahora escribe las ${nueva.piezas} variantes y sus prompts, con lo que pediste…`,
+      `Sinkroo reutiliza la investigación y retoma «${pieza.titulo}» (${puntaje(pieza)})…`,
+      `Ahora escribe las ${nueva.piezas} variantes y sus prompts, con lo que pidió…`,
       `Las ${nueva.piezas} variantes entraron a MiroFish: los agentes están votando…`,
       `Listo: las ${nueva.piezas} variantes quedaron ordenadas y la ronda salió ${nueva.total} créditos`,
     ]);
@@ -181,8 +181,8 @@ export function FlujoMiroFish({ modo, setToast, esAnuncio }: {
   const accionDice = modo === 'auto'
     ? 'Se publican solas y quedan en la bitácora, reversibles 24 h'
     : modo === 'shared'
-      ? 'Kai te va a pedir el OK antes de publicarlas'
-      : 'Quedan listas para que las publiques vos';
+      ? 'Kai le va a pedir el OK antes de publicarlas'
+      : 'Quedan listas para que las publique usted';
 
   const espera = (n: number, icono: React.ReactNode, t: string, d: string) => (
     <div className="flujo-espera">
@@ -216,12 +216,12 @@ export function FlujoMiroFish({ modo, setToast, esAnuncio }: {
           <div className="row" style={{ gap: 11, flex: 1, minWidth: 240 }}>
             <span style={{ color: 'var(--purple3)', flexShrink: 0, marginTop: 2 }}><I_Robot size={20} /></span>
             <div style={{ minWidth: 0 }}>
-              <div className="bt">Un solo gatillo: <b>Iniciar</b>, en el paso 1</div>
+              <div className="bt">Todo arranca con un solo botón: <b>Iniciar</b>, en el paso 1</div>
               <div className="bs">
-                Subís la info y apretás <b>Iniciar</b>. Ahí no hay nada que tocar: Sinkroo investiga
+                Suba la información y presione <b>Iniciar</b>. Ahí no hay nada que tocar: Sinkroo investiga
                 quién trae más leads y <b>con qué colores</b>, escribe los prompts de cada imagen y video,
                 arma <b>5 opciones</b> y MiroFish las vota y las ordena <b>del 1 al 5</b>.
-                Vos decidís después, en la galería.
+                Usted decide después, en la galería.
               </div>
             </div>
           </div>
@@ -230,7 +230,7 @@ export function FlujoMiroFish({ modo, setToast, esAnuncio }: {
               ? <Button variant={panel ? 'ghost' : 'outline'} className="btn-sm"
                   title={panel
                     ? 'Cierra el panel sin crear ninguna ronda: no se gasta un crédito y queda todo como está'
-                    : 'Abre el panel para decir qué mejorar o sumar de la ronda anterior. No arranca nada ni gasta nada hasta que aprietes «Crear la ronda nueva»'}
+                    : 'Abre el panel para decir qué mejorar o sumar de la ronda anterior. No arranca nada ni gasta nada hasta que presione «Crear la ronda nueva»'}
                   onClick={() => setPanel(p => !p)}>
                   {panel ? <><I_X size={13} /> Cancelar</> : <><I_Refresh size={13} /> Otra ronda</>}
                 </Button>
@@ -269,14 +269,14 @@ export function FlujoMiroFish({ modo, setToast, esAnuncio }: {
         {panel && (
           <div className="ronda-panel">
             <div className="ronda-panel-h">
-              <span className="ronda-panel-t"><I_Sparkle size={14} /> ¿Qué querés mejorar o sumar de la ronda anterior?</span>
+              <span className="ronda-panel-t"><I_Sparkle size={14} /> ¿Qué quiere mejorar o sumar de la ronda anterior?</span>
               <button className="icon-btn" title="Cierra el panel sin crear ninguna ronda: no se gasta nada"
                 onClick={() => setPanel(false)}><I_X size={15} /></button>
             </div>
 
             <div className="ronda-dejo">
               La ronda anterior dejó <b>«{mejor.titulo}»</b> como la mejor ({puntaje(mejor)}) y una objeción
-              de {oj.juez} ({oj.voto}): «{oj.texto}» Por eso la ronda nueva no arranca de cero: sale de acá.
+              de {oj.juez} ({oj.voto}): «{oj.texto}» Por eso la ronda nueva no arranca de cero: sale de aquí.
             </div>
 
             <div className="ronda-chips">
@@ -303,7 +303,7 @@ export function FlujoMiroFish({ modo, setToast, esAnuncio }: {
                           const on = ojElegidas.includes(o.k);
                           return (
                             <button key={o.k} className={`ronda-sub-chip ${on ? 'on' : ''}`}
-                              title={`Objeción de ${o.juez}, que le puso ${o.voto}: «${o.texto}» ${on ? 'Ya está adentro de la ronda: tocala para sacarla.' : 'Tocala para que la variante la conteste.'}`}
+                              title={`Objeción de ${o.juez}, que le puso ${o.voto}: «${o.texto}» ${on ? 'Ya está adentro de la ronda: tóquela para sacarla.' : 'Toquela para que la variante la conteste.'}`}
                               onClick={() => toggleObjecion(o.k)}>
                               <I_Target size={12} /> {o.juez} · {o.voto}: «{o.texto}»
                             </button>
@@ -314,8 +314,8 @@ export function FlujoMiroFish({ modo, setToast, esAnuncio }: {
 
                     {c.k === 'otra' && sel && (
                       <input className="ronda-input" value={otra}
-                        placeholder="Opcional: en una línea, qué querés cambiar o sumar…"
-                        title="Es opcional: si la dejás vacía no pasa nada, la ronda igual se crea con lo demás que elegiste"
+                        placeholder="Opcional: en una línea, qué quiere cambiar o sumar…"
+                        title="Es opcional: si la deja vacía no pasa nada, la ronda igual se crea con lo demás que eligió"
                         onChange={e => setOtra(e.target.value)} />
                     )}
                   </div>
@@ -332,15 +332,15 @@ export function FlujoMiroFish({ modo, setToast, esAnuncio }: {
               </span>
               {listoParaCrear ? (
                 <Button className="btn-sm"
-                  title={`Crea la ronda de mejora por ${rondaMejora.total} créditos: ${rondaMejora.piezas} variantes de «${mejor.titulo}» (${rondaMejora.crear} de creación + ${rondaMejora.evaluar} de evaluación). Se gasta una sola vez y la ronda anterior queda guardada sin tocar: podés volver a mirarla cuando quieras.`}
+                  title={`Crea la ronda de mejora por ${rondaMejora.total} créditos: ${rondaMejora.piezas} variantes de «${mejor.titulo}» (${rondaMejora.crear} de creación + ${rondaMejora.evaluar} de evaluación). Se gasta una sola vez y la ronda anterior queda guardada sin tocar: puede volver a mirarla cuando quiera.`}
                   onClick={crearRonda}>
                   <I_Refresh size={13} /> Crear la ronda nueva · {rondaMejora.total} créditos
                 </Button>
               ) : (
                 <span className="ronda-hint">
                   {soloOtra
-                    ? 'Escribí en una línea qué querés cambiar, o destildá «Otra cosa»: no se gasta nada por tocar las opciones.'
-                    : 'Elegí una opción para armar la ronda nueva. No se gasta nada hasta que aprietes el botón.'}
+                    ? 'Escriba en una línea qué quiere cambiar, o desmarque «Otra cosa»: no se gasta nada por tocar las opciones.'
+                    : 'Elija una opción para armar la ronda nueva. No se gasta nada hasta que presione el botón.'}
                 </span>
               )}
             </div>
@@ -355,10 +355,10 @@ export function FlujoMiroFish({ modo, setToast, esAnuncio }: {
           action={nivel >= 1 ? <Badge tone="purple">{INVESTIGACION.colores.length} colores detectados</Badge> : <Badge tone="muted">sin empezar</Badge>}
         >
           {nivel < 1
-            ? espera(1, <I_Search size={22} />, 'Acá aparece la investigación', 'Quién trae más leads, con qué colores y por qué. Tocá «Que Sinkroo lo haga».')
+            ? espera(1, <I_Search size={22} />, 'Aquí aparece la investigación', 'Quién trae más leads, con qué colores y por qué. Toque «Que Sinkroo lo haga».')
             : (
               <>
-                {trabajando(1, 'Leyendo la biblioteca de anuncios de tus competidores')}
+                {trabajando(1, 'Leyendo la biblioteca de anuncios de sus competidores')}
                 <div>
                   <div className="paleta">
                     {INVESTIGACION.colores.map(c => (
@@ -400,7 +400,7 @@ export function FlujoMiroFish({ modo, setToast, esAnuncio }: {
             : <Badge tone="muted">sin crear</Badge>}
         >
           {nivel < 2
-            ? espera(2, <I_Sparkle size={22} />, mejoraRonda ? `Acá aparecen las ${costo.piezas} variantes` : 'Acá aparecen las 5 opciones',
+            ? espera(2, <I_Sparkle size={22} />, mejoraRonda ? `Aquí aparecen las ${costo.piezas} variantes` : 'Aquí aparecen las 5 opciones',
                 'Cada una con su prompt de imagen o video, escrito por el motor, usando los colores que mejor convierten.')
             : (
               <>
@@ -408,14 +408,14 @@ export function FlujoMiroFish({ modo, setToast, esAnuncio }: {
                 {mejoraRonda ? (
                   <div className="bs">
                     <b>{lote.length} variantes de «{base}», no {TARIFA.piezasRonda} opciones nuevas:</b> cada una
-                    cambia una sola cosa de la que ganó y se vota contra las otras, así ves si la mejora valió
-                    la pena. No se vuelve a investigar el mercado: se reusa lo que ya sabés del competidor.
-                    {pedidos.length > 0 && <> Lo que pediste: <b>{pedidos.join(' · ')}</b>.</>}
+                    cambia una sola cosa de la que ganó y se vota contra las otras, así ve si la mejora valió
+                    la pena. No se vuelve a investigar el mercado: se reusa lo que ya sabe del competidor.
+                    {pedidos.length > 0 && <> Lo que pidió: <b>{pedidos.join(' · ')}</b>.</>}
                   </div>
                 ) : (
                   <div className="bs">
                     <b>5 opciones distintas, no 5 versiones de lo mismo:</b> cambia el formato y el ángulo.
-                    Tocá cualquiera para ver el prompt que escribió el motor.
+                    Toque cualquiera para ver el prompt que escribió el motor.
                   </div>
                 )}
                 <div className="ops">
@@ -457,8 +457,8 @@ export function FlujoMiroFish({ modo, setToast, esAnuncio }: {
                     ? <>Cada variante sale <b>{TARIFA.crearVariante} créditos</b> y su evaluación <b>{TARIFA.evaluarPieza}</b>:
                       {' '}esta ronda costó {costo.total} en total, contra {COSTO_RONDA.total} de empezar de cero.
                       La ronda anterior <b>no se toca</b>: queda guardada con sus votos.</>
-                    : <>El motor <b>no inventa de cero</b>: parte de tus fotos reales y de lo que encontró en el mercado.
-                      Cada opción tiene su prompt guardado, así que podés pedir que la rehaga o que cambie solo el color.</>}
+                    : <>El motor <b>no inventa de cero</b>: parte de sus fotos reales y de lo que encontró en el mercado.
+                      Cada opción tiene su prompt guardado, así que puede pedir que la rehaga o que cambie solo el color.</>}
                 </div>
               </>
             )}
@@ -474,7 +474,7 @@ export function FlujoMiroFish({ modo, setToast, esAnuncio }: {
             : <Badge tone="muted">sin votar</Badge>}
         >
           {nivel < 3
-            ? espera(3, <I_Vote size={22} />, 'Acá votan los 5 jueces', `Los 5 jueces puntúan cada opción y cada uno mira algo distinto. El promedio define el puesto, del 1 al ${lote.length}.`)
+            ? espera(3, <I_Vote size={22} />, 'Aquí votan los 5 jueces', `Los 5 jueces puntúan cada opción y cada uno mira algo distinto. El promedio define el puesto, del 1 al ${lote.length}.`)
             : (
               <>
                 {trabajando(3, 'Los 5 jueces están votando cada opción')}
@@ -512,9 +512,9 @@ export function FlujoMiroFish({ modo, setToast, esAnuncio }: {
                 <div className="acc-why">
                   {quedan.length > 0
                     ? <>Del 1 al {orden.length}: <b>las {CUANTAS_PASAN} primeras pasan</b>, las otras {quedan.length} quedan guardadas con el voto de cada perfil,
-                      así sabés exactamente qué les faltó.</>
+                      así sabe exactamente qué les faltó.</>
                     : <>Las {orden.length} variantes van del 1 al {orden.length} y pasan las {pasan.length}: son la misma pieza que ganó, mejorada.
-                      La 1ª es la que más convenció con los cambios que pediste, y las tres quedan con el voto de cada juez.</>}
+                      La 1ª es la que más convenció con los cambios que pidió, y las tres quedan con el voto de cada juez.</>}
                 </div>
               </>
             )}
@@ -525,7 +525,7 @@ export function FlujoMiroFish({ modo, setToast, esAnuncio }: {
           action={nivel >= 4 ? <Badge tone="green">{pasan.length} seleccionadas</Badge> : <Badge tone="muted">sin seleccionar</Badge>}
         >
           {nivel < 4
-            ? espera(4, <I_Rocket size={22} />, 'Acá salen las 3 mejores', 'Cuando MiroFish termina de votar, las 3 primeras quedan listas para publicar.')
+            ? espera(4, <I_Rocket size={22} />, 'Aquí salen las 3 mejores', 'Cuando MiroFish termina de votar, las 3 primeras quedan listas para publicar.')
             : (
               <>
                 {pasan.map((o, i) => (
@@ -552,7 +552,7 @@ export function FlujoMiroFish({ modo, setToast, esAnuncio }: {
                 <div className="row" style={{ gap: 9, flexWrap: 'wrap' }}>
                   {publicado ? (
                     <Badge tone="green">
-                      {modo === 'auto' ? 'Publicadas y en la bitácora' : modo === 'shared' ? 'Esperando tu OK en la bitácora' : 'Listas para que las publiques'}
+                      {modo === 'auto' ? 'Publicadas y en la bitácora' : modo === 'shared' ? 'Esperando su OK en la bitácora' : 'Listas para que las publique'}
                     </Badge>
                   ) : (
                     <Button className="btn-sm" title={accionDice}
@@ -576,10 +576,10 @@ export function FlujoMiroFish({ modo, setToast, esAnuncio }: {
 
                 <div className="acc-why">
                   {modo === 'manual'
-                    ? <><b>Estás en Manual:</b> el motor te deja las 3 listas y las publicás vos cuando quieras.</>
+                    ? <><b>Está en Manual:</b> el motor le deja las 3 listas y las publica usted cuando quiera.</>
                     : modo === 'auto'
-                      ? <><b>Estás en Automático:</b> las 3 salen solas y quedan en la bitácora, reversibles 24 h.</>
-                      : <><b>Estás en Compartido:</b> el motor prepara todo y te pide el OK antes de publicarlas.</>}
+                      ? <><b>Está en Automático:</b> las 3 salen solas y quedan en la bitácora, reversibles 24 h.</>
+                      : <><b>Está en Compartido:</b> el motor prepara todo y le pide el OK antes de publicarlas.</>}
                   {' '}{mejoraRonda
                     ? <>Esta ronda costó <b>{costo.total} créditos</b>: {costo.crear} por crear las {costo.piezas} variantes y {costo.evaluar} por evaluarlas.</>
                     : <>Crear las {costo.piezas} opciones costó {costo.crear} créditos y evaluarlas {costo.evaluar}.</>}

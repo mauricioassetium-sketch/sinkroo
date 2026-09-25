@@ -11,7 +11,7 @@ import { PersonalizarPanel } from './PersonalizarPanel';
 export type Vista = 'hoy' | 'onboarding' | 'campanas' | 'conversaciones' | 'mercado' | 'cuenta' | 'creditos' | 'referidos' | 'kyc';
 
 
-/** Lleva al motor andando: si no estás en Hoy, cambia de vista y después baja hasta el bloque. */
+/** Lleva al motor andando: si no está en Hoy, cambia de vista y después baja hasta el bloque. */
 export function bajarAlMotor(setVista: (v: Vista) => void) {
   setVista('hoy');
   window.setTimeout(() => {
@@ -99,9 +99,9 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
             si muestra un dato tiene que poder ir a dónde se toca ese dato. */}
         <div className="sb-plan">
           <div className="sb-plan-top">
-            <div className="sb-plan-name" title={`${perfil.marca}: este panel es de tu negocio`}>{perfil.marca}</div>
+            <div className="sb-plan-name" title={`${perfil.marca}: este panel es de su negocio`}>{perfil.marca}</div>
             <span className="badge badge-purple sb-plan-badge"
-              title={`Plan ${plan.nombre}: ${plan.creditosMes.toLocaleString('es-AR')} créditos por mes, unos ${todosLosDias} días de motor. Se cambia desde Créditos.`}>
+              title={`Plan ${plan.nombre}: ${plan.creditosMes.toLocaleString('es-CO')} créditos por mes, unos ${todosLosDias} días de motor. Se cambia desde Créditos.`}>
               Plan {plan.nombre}
             </span>
           </div>
@@ -109,12 +109,12 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
           <div className="sb-plan-block" role="button" tabIndex={0}
             onClick={() => irA('creditos')}
             onKeyDown={e => { if (e.key === 'Enter') irA('creditos'); }}
-            title={`Créditos: te quedan ${TENANT.creditos.toLocaleString('es-AR')} de ${plan.creditosMes.toLocaleString('es-AR')} del plan del mes. Tocalo para ver en qué se va cada crédito`}>
+            title={`Créditos: le quedan ${TENANT.creditos.toLocaleString('es-CO')} de ${plan.creditosMes.toLocaleString('es-CO')} del plan del mes. Tóquelo para ver en qué se va cada crédito`}>
             <div className="sb-plan-cred">
-              <span className="sb-plan-num">{TENANT.creditos.toLocaleString('es-AR')}</span>
+              <span className="sb-plan-num">{TENANT.creditos.toLocaleString('es-CO')}</span>
               <span className="sb-plan-unit">créditos</span>
               <span className="sb-plan-dias"
-                title={`Autonomía: al consumo actual (150 créditos por día) al motor le quedan ${dias} días sin que recargues`}>
+                title={`Autonomía: al consumo actual (150 créditos por día) al motor le quedan ${dias} días sin que recargue`}>
                 {dias} días
               </span>
             </div>
@@ -126,7 +126,7 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
           <div className="sb-plan-block sb-plan-modo" role="button" tabIndex={0}
             onClick={() => irA('cuenta')}
             onKeyDown={e => { if (e.key === 'Enter') irA('cuenta'); }}
-            title={`Autonomía en modo ${nombreModo}: ${descModo} Tocalo para cambiarlo en Cuenta y autonomía`}>
+            title={`Autonomía en modo ${nombreModo}: ${descModo} Tóquelo para cambiarlo en Cuenta y autonomía`}>
             <span className="sb-plan-lb">Autonomía</span>
             <span className={`sb-modo sb-modo-${modo}`}><i className="sb-modo-dot" />{nombreModo}</span>
           </div>
@@ -161,13 +161,13 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
             <span className="nav-label">{n.nombre}</span>
             {n.key === 'onboarding' && !onb.arrancado && (
               <span className="badge badge-amber" style={{ marginLeft: 'auto', fontSize: 9 }}
-                title={`Primeros pasos: ${onb.listos.length} de 5 hechos. Faltan los datos que el motor no puede deducir solo.`}>
+                title={`Primeros pasos: ${onb.listos.length} de 5 hechos. Faltan los datos que el motor no puede deducir por sí solo.`}>
                 {onb.listos.length} de 5
               </span>
             )}
             {n.key === 'onboarding' && onb.arrancado && (
               <span className="badge badge-green" style={{ marginLeft: 'auto', fontSize: 9 }}
-                title="El motor ya arrancó con lo que le pusiste">en marcha</span>
+                title="El motor ya arrancó con lo que le puso">en marcha</span>
             )}
             {n.key === 'kyc' && (
               <span className="badge badge-amber" style={{ marginLeft: 'auto', fontSize: 9 }}>falta</span>
@@ -177,9 +177,9 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
 
         {/* El bloque de usuario abre LA PERSONALIZACIÓN (logo y colores). Los datos de la cuenta
             (nombre, email, WhatsApp…) tienen su propio botoncito al lado, para no mezclar las dos
-            cosas: acá se juega con la marca, ahí se editan los datos. */}
+            cosas: aquí se juega con la marca, ahí se editan los datos. */}
         <div className="sb-user" onClick={abrirPersonalizacion} role="button" tabIndex={0}
-          title="Personalizá tu panel: subí tu logo y elegí los colores de tu marca"
+          title="Personalice su panel: suba su logo y elija los colores de su marca"
           onKeyDown={e => { if (e.key === 'Enter') abrirPersonalizacion(); }}>
           <div className="av" style={{ width: 34, height: 34, fontSize: 12, background: `linear-gradient(135deg, ${perfil.color}, ${perfil.color}bb)` }}>
             {inicialesDe(perfil.nombre)}
@@ -188,8 +188,8 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
             <div className="tiny" style={{ fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{perfil.nombre}</div>
             <div className="tiny muted" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{perfil.marca}</div>
           </div>
-          <span className="sb-edit" title="Tu logo y tus colores: se ven en todo el panel"><I_Palette size={14} /></span>
-          <button className="sb-datos" title="Tus datos de cuenta: nombre, marca, email, WhatsApp, zona horaria y moneda"
+          <span className="sb-edit" title="Su logo y sus colores: se ven en todo el panel"><I_Palette size={14} /></span>
+          <button className="sb-datos" title="Sus datos de cuenta: nombre, marca, email, WhatsApp, zona horaria y moneda"
             onClick={e => { e.stopPropagation(); setPerfilAbierto(true); }}><I_User size={14} /></button>
         </div>
       </aside>
@@ -208,8 +208,8 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
                 el símbolo de Sinkroo, como hasta ahora. */}
             <span className={`tb-logo ${perfil.logo ? 'propio' : ''}`}
               title={perfil.logo
-                ? `El logo de ${perfil.marca}, tu negocio`
-                : 'Sinkroo. Si querés tu logo acá, abrí «Hacé tuyo este panel»: el botón de la paleta, arriba a la derecha'}>
+                ? `El logo de ${perfil.marca}, su negocio`
+                : 'Sinkroo. Si quiere su logo aquí, abra «Haga suyo este panel»: el botón de la paleta, arriba a la derecha'}>
               {perfil.logo
                 ? <img src={perfil.logo} alt={`Logo de ${perfil.marca}`} />
                 : <SinkrooMark size={26} />}
@@ -228,10 +228,10 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
 
             <div className="topbar-right">
               {/* El botón de la personalización: subir el logo y elegir los colores. Es la puerta
-                  más visible al pop-up «Hacé tuyo este panel». */}
+                  más visible al pop-up «Haga suyo este panel». */}
               <div className={`theme-tgl pers-tgl ${persAbierto ? 'on' : ''}`} onClick={abrirPersonalizacion}
                 role="button" tabIndex={0}
-                title="Personalizá tu panel: subí tu logo y elegí los colores de tu marca"
+                title="Personalice su panel: suba su logo y elija los colores de su marca"
                 onKeyDown={e => { if (e.key === 'Enter') abrirPersonalizacion(); }}>
                 <I_Palette size={16} />
               </div>
@@ -249,12 +249,12 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
           <div className="ebar">
             <span className="ebar-dot" />
             <span className="ebar-seg">
-              <b>{trabajando} agentes</b> trabajando en tu proyecto
+              <b>{trabajando} agentes</b> trabajando en su proyecto
             </span>
             <span className="ebar-sep" />
             <span className="ebar-seg">
               <I_Clock size={13} />
-              <b>{esperando}</b> decisiones esperan tu OK
+              <b>{esperando}</b> decisiones esperan su OK
             </span>
             <span className="ebar-sep" />
             <span className="ebar-seg">
@@ -270,7 +270,7 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
               <span className="badge badge-purple" style={{ fontSize: 10 }}>
                 Modo {nombreModo}
               </span>
-              <button className="btn btn-ghost btn-sm" title="Te lleva al bloque del motor: ahí ves qué están investigando tus 6 agentes ahora mismo" onClick={() => { setNotif(false); bajarAlMotor(setVista); }}>Ver el motor</button>
+              <button className="btn btn-ghost btn-sm" title="Le lleva al bloque del motor: ahí ve qué están investigando sus 6 agentes ahora mismo" onClick={() => { setNotif(false); bajarAlMotor(setVista); }}>Ver el motor</button>
             </span>
           </div>
         </header>
@@ -278,7 +278,7 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
         {notif && (
           <div className="notif-panel" style={{ top: 118 }}>
             <div className="row spread" style={{ marginBottom: 10 }}>
-              <div style={{ fontWeight: 800, fontSize: 13 }}>Lo que necesita tu atención</div>
+              <div style={{ fontWeight: 800, fontSize: 13 }}>Lo que necesita su atención</div>
               <span className="badge badge-red" style={{ fontSize: 10 }}>{criticas} críticas</span>
             </div>
             {ALARMAS.slice(0, 3).map(a => (
@@ -293,7 +293,7 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
               </div>
             ))}
             <div className="tiny muted" style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <I_Robot size={13} /> El resto está resuelto en la bitácora de Tu día.
+              <I_Robot size={13} /> El resto está resuelto en la bitácora de «Su día».
             </div>
           </div>
         )}
@@ -305,7 +305,7 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
 
       {/* La personalización va colgada de la raíz, NO adentro del sidebar: en celular el sidebar
           tiene `transform` (es la bandeja que entra y sale) y eso convertiría al pop-up en su
-          rehén, con lo que quedaría fuera de la pantalla. Acá ocupa la pantalla entera. */}
+          rehén, con lo que quedaría fuera de la pantalla. Aquí ocupa la pantalla entera. */}
         <PerfilModal abierto={perfilAbierto} cerrar={() => setPerfilAbierto(false)} avisar={avisar} />
       <PersonalizarPanel abierto={persAbierto} senal={persSenal} cerrar={() => setPersAbierto(false)} avisar={avisar} />
     </div>
@@ -313,19 +313,19 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
 }
 
 function tituloVista(v: Vista) {
-  return ({ hoy: 'Tu día', onboarding: 'Primeros pasos', campanas: 'Campañas', conversaciones: 'Conversaciones', mercado: 'Mercado', cuenta: 'Cuenta y autonomía', creditos: 'Créditos', referidos: 'Referidos', kyc: 'Verificación de identidad' } as const)[v];
+  return ({ hoy: 'Su día', onboarding: 'Primeros pasos', campanas: 'Campañas', conversaciones: 'Conversaciones', mercado: 'Mercado', cuenta: 'Cuenta y autonomía', creditos: 'Créditos', referidos: 'Referidos', kyc: 'Verificación de identidad' } as const)[v];
 }
 function subtituloVista(v: Vista) {
   return ({
-    hoy: 'Lo que el motor hizo, lo que espera de vos y lo que necesita tu atención',
+    hoy: 'Lo que el motor hizo, lo que espera de usted y lo que necesita su atención',
     onboarding: 'Cinco pantallas cortas y el motor queda trabajando',
-    campanas: 'Cada campaña con el veredicto de los 5 jueces y sus artefactos',
-    conversaciones: 'Todo lo que tus agentes contestan, con el contexto de cada cliente',
-    mercado: 'Qué está haciendo tu competencia y por dónde conviene ir',
-    cuenta: 'Cuánto decide la IA y cuánto decidís vos',
+    campanas: 'Cada campaña con el veredicto de los 5 jueces y sus piezas',
+    conversaciones: 'Todo lo que sus agentes contestan, con el contexto de cada cliente',
+    mercado: 'Qué está haciendo su competencia y por dónde conviene ir',
+    cuenta: 'Cuánto decide la IA y cuánto decide usted',
     creditos: 'Con qué se carga el motor y en qué se va cada crédito',
-    referidos: 'Traé gente y el motor te devuelve créditos',
-    kyc: 'Sin esto el motor no puede publicar ni mover dinero por vos',
+    referidos: 'Traiga gente y el motor le devuelve créditos',
+    kyc: 'Sin esto el motor no puede publicar ni mover dinero por usted',
   } as const)[v];
 }
 

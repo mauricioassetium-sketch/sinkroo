@@ -10,28 +10,28 @@ import { usePlan } from '../lib/plan';
 const LINK = 'https://sinkroo.ai/r/skincare-natural';
 const PREMIO = 250;
 
-/** La hora del envío: se calcula cuando mandás, no se escribe a mano. */
-const horaAhora = () => new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+/** La hora del envío: se calcula cuando manda, no se escribe a mano. */
+const horaAhora = () => new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
 /** El recordatorio sale una vez por semana: el próximo se calcula, no se escribe. */
 const enUnaSemana = () =>
-  new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('es-AR', { day: 'numeric', month: 'long' });
+  new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('es-CO', { day: 'numeric', month: 'long' });
 
-/** A quién le mandás la invitación: ya está en tu agenda y todavía no recibió el link. */
-const INVITADA = { nombre: 'Lucía Fernández', whatsapp: '+54 9 11 5512-8890', email: 'lucia.fernandez@correo.com' };
+/** A quién le manda la invitación: ya está en su agenda y todavía no recibió el link. */
+const INVITADA = { nombre: 'Lucía Fernández', whatsapp: '+57 300 512 8890', email: 'lucia.fernandez@correo.com' };
 
 type Canal = 'whatsapp' | 'email';
 
-/** El mensaje de invitación: el mismo texto que sale por WhatsApp, con tu link adentro. */
+/** El mensaje de invitación: el mismo texto que sale por WhatsApp, con su link adentro. */
 const mensajeInvitacion = (de: string) =>
-  `¡Hola ${INVITADA.nombre}! Soy ${de}, de ${TENANT.cuenta}. Te paso mi link de Sinkroo: entrás, probás el motor de marketing con IA y arrancás con ${PREMIO} créditos, sin tarjeta. Los créditos ya quedan en tu cuenta; yo gano los mismos ${PREMIO} recién si después pagás el primer mes, así que no te apuro. Es este: ${LINK}`;
+  `Hola ${INVITADA.nombre}: soy ${de}, de ${TENANT.cuenta}. Le paso mi link de Sinkroo: entre, pruebe el motor de marketing con IA y empiece con ${PREMIO} créditos, sin tarjeta. Los créditos quedan en su cuenta; yo gano los mismos ${PREMIO} sólo si después paga el primer mes, así que no lo apuro. Es este: ${LINK}`;
 
-const ASUNTO_INVITACION = `Te dejo mi link de ${TENANT.cuenta} en Sinkroo: arrancás con ${PREMIO} créditos`;
+const ASUNTO_INVITACION = `Le dejo mi link de ${TENANT.cuenta} en Sinkroo: ${PREMIO} créditos para empezar`;
 const cuerpoInvitacion = (de: string) =>
-  `Hola ${INVITADA.nombre}: te escribo para pasarte mi link de ${TENANT.cuenta} en Sinkroo. Con ese link entrás y arrancás con ${PREMIO} créditos para probar el motor de marketing con IA, sin poner plata. Yo gano los mismos ${PREMIO} créditos sólo si después pagás el primer mes: no te apuro, probalo y ves. El link es este: ${LINK} — ${de} · ${TENANT.cuenta}`;
+  `Hola ${INVITADA.nombre}: le escribo para pasarle mi link de ${TENANT.cuenta} en Sinkroo. Con ese link entra y empieza con ${PREMIO} créditos para probar el motor de marketing con IA, sin poner dinero. Yo gano los mismos ${PREMIO} créditos sólo si después paga el primer mes: no lo apuro, pruébelo y decida. El link es este: ${LINK} — ${de} · ${TENANT.cuenta}`;
 
 /** El recordatorio: uno por semana para el que se quedó en el camino. */
 const mensajeRecordatorio = (nombre: string, de: string) =>
-  `Hola ${nombre.split(' ')[0]}, soy ${de}, de ${TENANT.cuenta}. Te dejé la invitación a Sinkroo y todavía no la aprovechaste: son ${PREMIO} créditos para probar el motor de marketing con IA, sin tarjeta y sin compromiso. La retomás acá: ${LINK}`;
+  `Hola ${nombre.split(' ')[0]}, soy ${de}, de ${TENANT.cuenta}. Le dejé la invitación a Sinkroo y todavía no la ha aprovechado: son ${PREMIO} créditos para probar el motor de marketing con IA, sin tarjeta y sin compromiso. La puede retomar aquí: ${LINK}`;
 
 type Nodo = { nombre: string; estado: string; pago: boolean; nivel: 1 | 2; };
 const RED: Nodo[] = [
@@ -65,7 +65,7 @@ export function ViewReferidos({ setToast }: { setToast: (t: string) => void }) {
     catch { setToast(LINK); }
   };
 
-  const nombreCanal = (c: Canal) => (c === 'whatsapp' ? 'WhatsApp' : 'email');
+  const nombreCanal = (c: Canal) => (c === 'whatsapp' ? 'WhatsApp' : 'correo');
   const destinoDe = (c: Canal) => (c === 'whatsapp' ? INVITADA.whatsapp : INVITADA.email);
 
   /** El envío real: guarda destinatario, hora y cuántas veces salió, y eso queda escrito en la tarjeta. */
@@ -82,26 +82,26 @@ export function ViewReferidos({ setToast }: { setToast: (t: string) => void }) {
     const ya = envios[canal];
     detalle({
       titulo: `${ya ? 'Volver a mandar' : 'Mandar'} la invitación por ${nombreCanal(canal)}`,
-      sub: 'Este es el mensaje que sale, con tu link de referido adentro. Nada se manda hasta que lo confirmes, y el envío queda a la vista en Tu link.',
+      sub: 'Este es el mensaje que sale, con su link de referido adentro. Nada se manda hasta que lo confirme, y el envío queda a la vista en Su link.',
       bloques: [
         { tipo: 'datos', filas: [
-          { k: 'Destinatario', v: INVITADA.nombre, s: `${destinoDe(canal)} · contacto de tu agenda, todavía no recibió el link` },
-          { k: 'Por dónde sale', v: canal === 'whatsapp' ? 'Tu WhatsApp conectado' : 'Tu correo conectado', s: canal === 'whatsapp' ? 'desde el número de tu negocio' : `desde ${TENANT.cuenta}` },
-          { k: 'Lo que recibe', v: `+${PREMIO} créditos`, s: 'para probar el motor sin poner plata' },
-          { k: 'Lo que ganás vos', v: `+${PREMIO} créditos`, s: 'cuando paga su primer mes, no cuando entra' },
+          { k: 'Destinatario', v: INVITADA.nombre, s: `${destinoDe(canal)} · contacto de su agenda, todavía no recibió el link` },
+          { k: 'Por dónde sale', v: canal === 'whatsapp' ? 'Su WhatsApp conectado' : 'Su correo conectado', s: canal === 'whatsapp' ? 'desde el número de su negocio' : `desde ${TENANT.cuenta}` },
+          { k: 'Lo que recibe', v: `+${PREMIO} créditos`, s: 'para probar el motor sin poner dinero' },
+          { k: 'Lo que gana usted', v: `+${PREMIO} créditos`, s: 'cuando paga su primer mes, no cuando entra' },
         ] },
         canal === 'whatsapp'
           ? { tipo: 'texto', texto: `El mensaje, tal cual sale: «${mensajeInvitacion(perfil.nombre)}»` }
           : { tipo: 'texto', texto: `Asunto: ${ASUNTO_INVITACION}` },
         canal === 'email'
-          ? { tipo: 'texto', texto: `El cuerpo del email: «${cuerpoInvitacion(perfil.nombre)}»` }
-          : { tipo: 'texto', texto: 'El link que va adentro es el tuyo, el mismo que copiás arriba: cada uno que entra queda a tu nombre y lo ves abajo, en Tu red.' },
-        { tipo: 'aviso', texto: `Si no confirmás, no sale nada y ${INVITADA.nombre} no recibe el mensaje. Cuando lo mandes, el envío queda escrito en la tarjeta con la hora y podés volver a mandarlo cuando quieras.` },
+          ? { tipo: 'texto', texto: `El cuerpo del correo: «${cuerpoInvitacion(perfil.nombre)}»` }
+          : { tipo: 'texto', texto: 'El link que va adentro es el suyo, el mismo que copia arriba: cada uno que entra queda a su nombre y lo ve abajo, en Su red.' },
+        { tipo: 'aviso', texto: `Si no confirma, no sale nada y ${INVITADA.nombre} no recibe el mensaje. Cuando lo envíe, el envío queda escrito en la tarjeta con la hora y puede volver a enviarlo cuando quiera.` },
       ],
-      fuente: `Tu link de referido: ${LINK} · ${PREMIO} créditos por cada uno que paga su primer mes.`,
+      fuente: `Su link de referido: ${LINK} · ${PREMIO} créditos por cada uno que paga su primer mes.`,
       acciones: [
         { label: ya ? 'Mandar otra vez' : 'Mandar la invitación', variante: 'primary', onClick: () => enviar(canal) },
-        { label: 'Dejarlo para después', onClick: () => setToast('No se mandó nada: la invitación queda acá') },
+        { label: 'Dejarlo para después', onClick: () => setToast('No se mandó nada: la invitación queda aquí') },
       ],
     });
   };
@@ -115,20 +115,20 @@ export function ViewReferidos({ setToast }: { setToast: (t: string) => void }) {
   const abrirRecordatorio = () => {
     detalle({
       titulo: `Recordarles a los ${pendientes} que no pagaron`,
-      sub: 'El motor les recuerda una vez por semana. Acá ves el mensaje, a quién le llega y desde dónde, antes de que salga.',
+      sub: 'El motor les recuerda una vez por semana. Aquí ve el mensaje, a quién le llega y desde dónde, antes de que salga.',
       bloques: [
         { tipo: 'texto', texto: `El mensaje que les llega, con el nombre de cada uno: «${mensajeRecordatorio(pendientesNombres[0], perfil.nombre)}»` },
         { tipo: 'filas', items: RED.filter(r => !r.pago).map(r => ({ t: r.nombre, s: r.estado, etiqueta: 'le llega hoy', tono: 'amber' })) },
         { tipo: 'datos', filas: [
-          { k: 'Cuántos lo reciben', v: String(pendientes), s: `de ${RED.length} personas en tu red` },
+          { k: 'Cuántos lo reciben', v: String(pendientes), s: `de ${RED.length} personas en su red` },
           { k: 'Cada cuánto', v: 'una vez por semana', s: `el próximo sale el ${enUnaSemana()}` },
-          { k: 'Cuándo se frena solo', v: 'cuando la persona paga', s: 'o cuando te pide que no le escribas más' },
-          { k: 'Lo que cuesta', v: '0 créditos', s: 'los recordatorios no gastan tu saldo' },
-          { k: 'Por dónde sale', v: 'Tu WhatsApp conectado', s: `desde el número de ${TENANT.cuenta}` },
+          { k: 'Cuándo se frena solo', v: 'cuando la persona paga', s: 'o cuando le pide que no le escriban más' },
+          { k: 'Lo que cuesta', v: '0 créditos', s: 'los recordatorios no gastan su saldo' },
+          { k: 'Por dónde sale', v: 'Su WhatsApp conectado', s: `desde el número de ${TENANT.cuenta}` },
         ] },
-        { tipo: 'aviso', tono: 'amber', texto: `Van sólo a los ${pendientes} que no pagaron: los ${pagados} que ya pagan no reciben nada. Después de mandarlo, cada pendiente queda marcado como «recordado hoy» abajo, en Tu red.` },
+        { tipo: 'aviso', tono: 'amber', texto: `Van sólo a los ${pendientes} que no pagaron: los ${pagados} que ya pagan no reciben nada. Después de mandarlo, cada pendiente queda marcado como «recordado hoy» abajo, en Su red.` },
       ],
-      fuente: `Sale de tu red de hoy: ${RED.length} personas, ${pagados} pagando y ${pendientes} sin pagar.`,
+      fuente: `Sale de su red de hoy: ${RED.length} personas, ${pagados} pagando y ${pendientes} sin pagar.`,
       acciones: [
         { label: recordatorio ? 'Mandar otra vez' : `Mandar los ${pendientes} recordatorios`, variante: 'primary', onClick: mandarRecordatorio },
         { label: 'Dejarlo para después', onClick: () => setToast('No se mandó ningún recordatorio') },
@@ -141,9 +141,9 @@ export function ViewReferidos({ setToast }: { setToast: (t: string) => void }) {
       <ViewHead
         icon={<I_Gift size={19} />}
         titulo="Referidos"
-        sub="Cada persona que traés y paga su primer mes te devuelve créditos. No es un descuento: son créditos que el motor usa para trabajar."
+        sub="Cada persona que usted trae y paga su primer mes le devuelve créditos. No es un descuento: son créditos que el motor usa para trabajar."
         nums={[
-          { v: `+${ganados.toLocaleString('es-AR')}`, l: 'créditos ganados', c: 'var(--green)' },
+          { v: `+${ganados.toLocaleString('es-CO')}`, l: 'créditos ganados', c: 'var(--green)' },
           { v: String(pagados), l: 'referidos que pagaron', c: 'var(--purple3)' },
           { v: String(pendientes), l: recordatorio ? `invitados sin pagar · recordados hoy ${recordatorio.cuando}` : 'invitados sin pagar', c: recordatorio ? 'var(--amber)' : undefined },
           { v: `+${PREMIO}`, l: 'por cada uno que paga' },
@@ -153,26 +153,26 @@ export function ViewReferidos({ setToast }: { setToast: (t: string) => void }) {
       {/* ============ EL LINK Y EL PROGRESO ============ */}
       <div className="duo">
         <Card
-          title={<span className="row" style={{ gap: 8 }}><I_Gift size={14} style={{ color: 'var(--purple3)' }} /> Tu link</span>}
+          title={<span className="row" style={{ gap: 8 }}><I_Gift size={14} style={{ color: 'var(--purple3)' }} /> Su link</span>}
           action={<Badge tone="green">+{PREMIO} créditos por referido</Badge>}
         >
           <div className="bs">
-            Pasale este link a quien le pueda servir. <b>Gana créditos cuando la otra persona paga</b>,
+            Pase este link a quien le pueda servir. <b>Gana créditos cuando la otra persona paga</b>,
             no cuando se registra: así nadie llena la red de cuentas vacías.
           </div>
           <div className="row link-row" style={{ gap: 8 }}>
             <input className="input" value={LINK} readOnly style={{ fontFamily: 'ui-monospace, monospace', fontSize: 12 }} />
-            <Button className="btn-sm" title="Copia el link al portapapeles" onClick={copiar}>
+            <Button className="btn-sm" title="Copie el link al portapapeles" onClick={copiar}>
               <I_Copy size={14} /> {copiado ? 'Copiado' : 'Copiar'}
             </Button>
           </div>
           <div className="row" style={{ gap: 9, flexWrap: 'wrap' }}>
             <Button variant="outline" className="btn-sm"
-              title="Te muestra el mensaje exacto que sale por tu WhatsApp, con tu link adentro, antes de mandarlo. Reversible: si no lo confirmás, no se manda nada."
+              title="Le muestra el mensaje exacto que sale por su WhatsApp, con su link adentro, antes de enviarlo. Reversible: si no lo confirma, no se envía nada."
               onClick={() => abrirInvitacion('whatsapp')}><I_Whatsapp size={13} /> Mandarlo por WhatsApp</Button>
             <Button variant="ghost" className="btn-sm"
-              title="Te muestra el email con la invitación escrita, con tu link adentro, antes de mandarlo. Reversible: si no lo confirmás, no se manda nada."
-              onClick={() => abrirInvitacion('email')}><I_Mail size={13} /> Por email</Button>
+              title="Le muestra el correo con la invitación escrita, con su link adentro, antes de enviarlo. Reversible: si no lo confirma, no se envía nada."
+              onClick={() => abrirInvitacion('email')}><I_Mail size={13} /> Por correo</Button>
           </div>
 
           {/* El envío no se va solo: queda el mensaje, el destinatario, la hora y el botón para repetirlo. */}
@@ -187,11 +187,11 @@ export function ViewReferidos({ setToast }: { setToast: (t: string) => void }) {
                     {e.veces > 1 ? ` · ${e.veces}º envío` : ''}
                   </span>
                   <Button variant="ghost" className="btn-sm"
-                    title={`Vuelve a abrir el mensaje con ${e.a} para mandarlo otra vez. Reversible: se manda sólo si lo confirmás.`}
-                    onClick={() => abrirInvitacion(c)}><I_Send size={12} /> Volver a mandarlo</Button>
+                    title={`Vuelve a abrir el mensaje con ${e.a} para enviarlo otra vez. Reversible: se envía sólo si lo confirma.`}
+                    onClick={() => abrirInvitacion(c)}><I_Send size={12} /> Volver a enviarlo</Button>
                 </div>
                 <div className="acc-why">
-                  <b>{c === 'whatsapp' ? 'El mensaje que se mandó: ' : 'El email que se mandó: '}</b>
+                  <b>{c === 'whatsapp' ? 'El mensaje que se envió: ' : 'El correo que se envió: '}</b>
                   {c === 'whatsapp'
                     ? `«${mensajeInvitacion(perfil.nombre)}»`
                     : `«${ASUNTO_INVITACION}» — ${cuerpoInvitacion(perfil.nombre)}`}
@@ -202,16 +202,16 @@ export function ViewReferidos({ setToast }: { setToast: (t: string) => void }) {
 
           <div className="datos-row" style={{ marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--border)' }}>
             <div className="dato"><span className="dato-l">El que entra recibe</span><span className="dato-v" style={{ color: 'var(--green)' }}>+250 créditos</span></div>
-            <div className="dato"><span className="dato-l">Vos recibís</span><span className="dato-v" style={{ color: 'var(--green)' }}>+250 créditos</span></div>
+            <div className="dato"><span className="dato-l">Usted recibe</span><span className="dato-v" style={{ color: 'var(--green)' }}>+250 créditos</span></div>
           </div>
           <div className="acc-why">
-            Ganan los dos: <b>el que llega arranca con créditos para probar</b> y vos seguís cargando el motor
-            sin poner plata. Los créditos de referidos no vencen mientras tu plan esté activo.
+            Ganan los dos: <b>el que llega empieza con créditos para probar</b> y usted sigue cargando el motor
+            sin poner dinero. Los créditos de referidos no vencen mientras su plan esté activo.
           </div>
         </Card>
 
         <Card
-          title={<span className="row" style={{ gap: 8 }}><I_Trophy size={14} style={{ color: 'var(--amber)' }} /> Cómo va tu red</span>}
+          title={<span className="row" style={{ gap: 8 }}><I_Trophy size={14} style={{ color: 'var(--amber)' }} /> Cómo va su red</span>}
           action={<Badge tone="amber">{pagados} pagando</Badge>}
         >
           <div className="row" style={{ gap: 22, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -222,8 +222,8 @@ export function ViewReferidos({ setToast }: { setToast: (t: string) => void }) {
             <div style={{ flex: 1, minWidth: 150 }}>
               <div className="bs">
                 {faltan > 0
-                  ? <>Te faltan <b style={{ color: 'var(--purple3)' }}>{faltan}</b> para llegar a {proximoHito} y desbloquear el premio de 1.000 créditos.</>
-                  : <>Ya llegaste a {proximoHito}: <b style={{ color: 'var(--green)' }}>desbloqueaste 1.000 créditos extra</b>.</>}
+                  ? <>Le faltan <b style={{ color: 'var(--purple3)' }}>{faltan}</b> para llegar a {proximoHito} y desbloquear el premio de 1.000 créditos.</>
+                  : <>Ya llegó a {proximoHito}: <b style={{ color: 'var(--green)' }}>desbloqueó 1.000 créditos extra</b>.</>}
               </div>
               <div style={{ marginTop: 9 }}>
                 <BarRow label="" valor={pagados} max={proximoHito} formato={`${pagados} de ${proximoHito}`} color="var(--purple2)" />
@@ -236,12 +236,12 @@ export function ViewReferidos({ setToast }: { setToast: (t: string) => void }) {
               <span className="dato-v" style={{ color: 'var(--amber)' }}>{pendientes}</span>
               {recordatorio && <span className="tiny" style={{ color: 'var(--amber)', fontWeight: 700 }}>recordados hoy {recordatorio.cuando}</span>}
             </div>
-            <div className="dato"><span className="dato-l">Créditos ganados</span><span className="dato-v" style={{ color: 'var(--green)' }}>+{ganados.toLocaleString('es-AR')}</span></div>
-            <div className="dato"><span className="dato-l">Tu saldo hoy</span><span className="dato-v">{TENANT.creditos.toLocaleString('es-AR')}</span></div>
+            <div className="dato"><span className="dato-l">Créditos ganados</span><span className="dato-v" style={{ color: 'var(--green)' }}>+{ganados.toLocaleString('es-CO')}</span></div>
+            <div className="dato"><span className="dato-l">Su saldo hoy</span><span className="dato-v">{TENANT.creditos.toLocaleString('es-CO')}</span></div>
           </div>
           <div className="row" style={{ gap: 9, flexWrap: 'wrap' }}>
             <Button variant="outline" className="btn-sm"
-              title="Te muestra el recordatorio que les llega a los que no pagaron, con el mensaje y a quiénes, antes de mandarlo. Reversible: queda el registro de cuándo salió y se puede volver a mandar."
+              title="Le muestra el recordatorio que les llega a los que no pagaron, con el mensaje y a quiénes, antes de enviarlo. Reversible: queda el registro de cuándo salió y se puede volver a enviar."
               onClick={abrirRecordatorio}>
               {recordatorio ? <I_Refresh size={13} /> : <I_ArrowRight size={13} />}
               {recordatorio ? 'Volver a recordarles' : 'Recordarles a los que no pagaron'}
@@ -256,15 +256,15 @@ export function ViewReferidos({ setToast }: { setToast: (t: string) => void }) {
                 {' '}· {recordatorio.a.length} de {pendientes} pendientes{recordatorio.veces > 1 ? ` · ${recordatorio.veces}º envío` : ''}
               </div>
               <div className="acc-why">
-                <b>El próximo sale el {enUnaSemana()}.</b> Los que no pagaron quedan marcados abajo, en Tu red,
+                <b>El próximo sale el {enUnaSemana()}.</b> Los que no pagaron quedan marcados abajo, en Su red,
                 como «recordado hoy»: el contador de invitados sin pagar no baja hasta que paguen.
               </div>
             </div>
           )}
 
           <div className="acc-why">
-            Un referido que no paga igual sirve: <b>te dejó su contacto</b>. El motor se lo recuerda
-            una vez por semana y para cuando le sirva.
+            Un referido que no paga también sirve: <b>le dejó su contacto</b>. El motor se lo recuerda
+            una vez por semana, para cuando le sirva.
           </div>
         </Card>
       </div>
@@ -272,7 +272,7 @@ export function ViewReferidos({ setToast }: { setToast: (t: string) => void }) {
       {/* ============ LA RED Y LAS REGLAS ============ */}
       <div className="duo" style={{ marginTop: 16 }}>
         <Card
-          title={<span className="row" style={{ gap: 8 }}><I_Users size={14} style={{ color: 'var(--purple3)' }} /> Tu red</span>}
+          title={<span className="row" style={{ gap: 8 }}><I_Users size={14} style={{ color: 'var(--purple3)' }} /> Su red</span>}
           action={<Badge tone="purple">{RED.length} personas</Badge>}
         >
           <div className="reftree">
@@ -280,9 +280,9 @@ export function ViewReferidos({ setToast }: { setToast: (t: string) => void }) {
               <div className="av" style={{ width: 36, height: 36, background: `linear-gradient(135deg, ${perfil.color}, ${perfil.color}bb)` }}>{inicialesDe(perfil.nombre)}</div>
               <div style={{ flex: 1 }}>
                 <div className="bt">{perfil.nombre}</div>
-                <div className="tiny muted">vos · Plan {plan.nombre}</div>
+                <div className="tiny muted">usted · Plan {plan.nombre}</div>
               </div>
-              <Badge tone="purple">+{ganados.toLocaleString('es-AR')}</Badge>
+              <Badge tone="purple">+{ganados.toLocaleString('es-CO')}</Badge>
             </div>
 
             {RED.filter(r => r.nivel === 1).map(r => (
@@ -328,13 +328,13 @@ export function ViewReferidos({ setToast }: { setToast: (t: string) => void }) {
             ))}
           </div>
           <div className="acc-why">
-            Los de segundo nivel <b>son los que trajeron tus invitados</b>. También suman:
+            Los de segundo nivel <b>son los que trajeron sus invitados</b>. También suman:
             así funciona una red, no una lista.
           </div>
         </Card>
 
         <Card
-          title={<span className="row" style={{ gap: 8 }}><I_Credit size={14} style={{ color: 'var(--green)' }} /> Las reglas, sin letra chica</span>}
+          title={<span className="row" style={{ gap: 8 }}><I_Credit size={14} style={{ color: 'var(--green)' }} /> Las reglas, sin letra menuda</span>}
           action={<Badge tone="green">claras</Badge>}
         >
           <div className="guards">
@@ -342,13 +342,13 @@ export function ViewReferidos({ setToast }: { setToast: (t: string) => void }) {
               <span className="guard-lb">Se paga cuando el otro paga<small>No cuando se registra. Así nadie infla la red con cuentas vacías.</small></span>
               <span className="guard-val">{PREMIO}</span></div>
             <div className="guard"><span style={{ color: 'var(--green)', flexShrink: 0 }}><I_Check size={14} /></span>
-              <span className="guard-lb">Sin límite de referidos<small>Cuantos más traés, más créditos. No hay techo mensual.</small></span>
+              <span className="guard-lb">Sin límite de referidos<small>Cuantos más trae, más créditos. No hay techo mensual.</small></span>
               <span className="guard-val">∞</span></div>
             <div className="guard"><span style={{ color: 'var(--green)', flexShrink: 0 }}><I_Check size={14} /></span>
-              <span className="guard-lb">Los créditos no vencen<small>Mientras tu plan esté activo, quedan en tu saldo y podés juntarlos.</small></span>
+              <span className="guard-lb">Los créditos no vencen<small>Mientras su plan esté activo, quedan en su saldo y puede juntarlos.</small></span>
               <span className="guard-val">12 meses</span></div>
             <div className="guard"><span style={{ color: 'var(--green)', flexShrink: 0 }}><I_Check size={14} /></span>
-              <span className="guard-lb">El que entra también gana<small>Arranca con 250 créditos: puede probar el motor sin pagar nada.</small></span>
+              <span className="guard-lb">El que entra también gana<small>Empieza con 250 créditos: puede probar el motor sin pagar nada.</small></span>
               <span className="guard-val">{PREMIO}</span></div>
             <div className="guard"><span style={{ color: 'var(--amber)', flexShrink: 0 }}><I_Check size={14} /></span>
               <span className="guard-lb">Hito de {proximoHito} referidos<small>Al llegar, se suman 1.000 créditos extra de una sola vez.</small></span>
@@ -356,7 +356,7 @@ export function ViewReferidos({ setToast }: { setToast: (t: string) => void }) {
           </div>
           <div className="acc-why">
             Todas las reglas son las mismas para todos y <b>no hay condiciones ocultas</b>:
-            si algo cambia, te avisamos antes de que cambie y lo cobrás con las reglas viejas.
+            si algo cambia, le avisamos antes de que cambie y lo que ya ganó se respeta con las reglas anteriores.
           </div>
         </Card>
       </div>

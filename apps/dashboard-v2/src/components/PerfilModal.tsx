@@ -7,17 +7,17 @@ import {
 } from '../lib/perfil';
 
 // =============================================================================================
-// TU PERFIL — los datos de la cuenta: cómo te llamás, tu negocio, tu email, tu WhatsApp, la zona
-// horaria, la moneda y el color de tu avatar.
+// Su PERFIL — los datos de la cuenta: cómo le llamás, su negocio, su email, su WhatsApp, la zona
+// horaria, la moneda y el color de su avatar.
 //
-// LA UBICACIÓN MANDA: el buscador de acá abajo es el atajo corto. El cliente escribe su ciudad
+// LA UBICACIÓN MANDA: el buscador de aquí abajo es el atajo corto. El cliente escribe su ciudad
 // —o su país— y de un solo clic quedan puestas las DOS cosas que salen de ese dato: la zona horaria
 // con la que el motor publica y la moneda con la que se ven los presupuestos y las ventas. Al lado,
 // la conversión del día de esa moneda contra el dólar, con el banco central que publica el número.
 //
-// EL LOGO Y LOS COLORES YA NO VIVEN ACÁ: se mudaron a «Hacé tuyo este panel», el pop-up de la
+// EL LOGO Y LOS COLORES YA NO VIVEN Aquí: se mudaron a «Haga suyo este panel», el pop-up de la
 // personalización (el botón de la paleta, en la barra de arriba, y el bloque de usuario del menú).
-// Así cada cosa tiene su lugar: acá los datos, allá tu marca.
+// Así cada cosa tiene su lugar: aquí los datos, allá su marca.
 // =============================================================================================
 
 export function PerfilModal({ abierto, cerrar, avisar }: { abierto: boolean; cerrar: () => void; avisar?: (t: string) => void }) {
@@ -64,7 +64,7 @@ export function PerfilModal({ abierto, cerrar, avisar }: { abierto: boolean; cer
 
   const salvar = () => {
     if (faltaNombre) return;
-    const ok = guardar({ ...borrador, nombre: borrador.nombre.trim(), marca: borrador.marca.trim() || 'Tu negocio' });
+    const ok = guardar({ ...borrador, nombre: borrador.nombre.trim(), marca: borrador.marca.trim() || 'Su negocio' });
     if (!ok) { setSinEspacio(true); return; }
     setGuardado(true);
     avisar?.('Perfil actualizado: se ve en todo el panel');
@@ -74,16 +74,16 @@ export function PerfilModal({ abierto, cerrar, avisar }: { abierto: boolean; cer
   const cancelar = () => { volverAlPerfil(); cerrar(); };
 
   return (
-    <Modal open={abierto} onClose={cancelar} title="Tu perfil">
+    <Modal open={abierto} onClose={cancelar} title="Su perfil">
       <div className="perf-grid">
         <div className="perf-av">
           <div className="av" style={{ width: 62, height: 62, fontSize: 21, background: `linear-gradient(135deg, ${borrador.color}, ${borrador.color}bb)` }}>
             {inicialesDe(borrador.nombre)}
           </div>
-          <div className="tiny muted" style={{ textAlign: 'center', marginTop: 7 }}>Tu avatar</div>
+          <div className="tiny muted" style={{ textAlign: 'center', marginTop: 7 }}>Su avatar</div>
           <div className="row" style={{ gap: 6, marginTop: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
             {COLORES_AVATAR.map(c => (
-              <button key={c} className={`perf-color ${borrador.color === c ? 'sel' : ''}`} title="Cambiar el color de las iniciales de tu avatar"
+              <button key={c} className={`perf-color ${borrador.color === c ? 'sel' : ''}`} title="Cambiar el color de las iniciales de su avatar"
                 style={{ background: c }} onClick={() => set('color', c)} />
             ))}
           </div>
@@ -92,7 +92,7 @@ export function PerfilModal({ abierto, cerrar, avisar }: { abierto: boolean; cer
         <div style={{ minWidth: 0, flex: 1 }}>
           <label className="label">Nombre y apellido</label>
           <input className="input" placeholder="María Paula" value={borrador.nombre} onChange={e => set('nombre', e.target.value)} />
-          {faltaNombre && <div className="tiny" style={{ color: 'var(--amber)', marginTop: 5 }}>El nombre no puede quedar vacío: es con el que te saluda el panel.</div>}
+          {faltaNombre && <div className="tiny" style={{ color: 'var(--amber)', marginTop: 5 }}>El nombre no puede quedar vacío: es con el que le saluda el panel.</div>}
 
           <label className="label" style={{ marginTop: 11 }}>Nombre del negocio o marca</label>
           <input className="input" placeholder="Skincare Natural" value={borrador.marca} onChange={e => set('marca', e.target.value)} />
@@ -101,14 +101,14 @@ export function PerfilModal({ abierto, cerrar, avisar }: { abierto: boolean; cer
           <input className="input" placeholder="hola@tunegocio.com" value={borrador.email} onChange={e => set('email', e.target.value)} />
 
           <label className="label" style={{ marginTop: 11 }}>WhatsApp o teléfono</label>
-          <input className="input" placeholder="+54 9 11 5555-2341" value={borrador.telefono} onChange={e => set('telefono', e.target.value)} />
-          <div className="tiny muted" style={{ marginTop: 5 }}>Es el número que el motor usa para avisarte y para que te escriban tus clientes.</div>
+          <input className="input" placeholder="+57 300 555 2341" value={borrador.telefono} onChange={e => set('telefono', e.target.value)} />
+          <div className="tiny muted" style={{ marginTop: 5 }}>Es el número que el motor usa para avisarle y para que le escriban sus clientes.</div>
         </div>
       </div>
 
-      {/* ---------- EL RESUMEN: lo que el motor va a usar para publicar y para hablar de plata ---------- */}
+      {/* ---------- EL RESUMEN: lo que el motor va a usar para publicar y para hablar de dinero ---------- */}
       <div className="perf-resumen">
-        <span className="perf-resumen-lb"><I_Globe size={13} /> Cómo queda tu cuenta</span>
+        <span className="perf-resumen-lb"><I_Globe size={13} /> Cómo queda su cuenta</span>
         <span className="perf-resumen-txt">
           Zona horaria <b>{borrador.zona}</b> · Moneda <b>{mon.nombre} ({mon.codigo})</b>
         </span>
@@ -120,16 +120,16 @@ export function PerfilModal({ abierto, cerrar, avisar }: { abierto: boolean; cer
       {/* ---------- BUSCADOR DE UBICACIÓN: de dónde es el negocio, y con eso ya se sabe la zona y la moneda ---------- */}
       <div className="ubic-buscador">
         <span className="ubic-lupa" aria-hidden="true"><I_Search size={14} /></span>
-        <input className="input ubic-input" type="text" value={busqueda} placeholder="Buscá tu ciudad o país: Madrid, Bogotá, Miami…"
-          title="Escribí tu ciudad y el panel te propone la zona horaria y la moneda del país"
+        <input className="input ubic-input" type="text" value={busqueda} placeholder="Busque su ciudad o país: Bogotá, Miami, Madrid…"
+          title="Escriba su ciudad y el panel le propone la zona horaria y la moneda del país"
           onChange={e => { setBusqueda(e.target.value); setBuscoAhora(false); }}
           onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); setBuscoAhora(true); } }} />
         <Button variant="ghost" className="btn-sm ubic-btn"
-          title="Buscar tu ciudad entre los lugares que el panel conoce"
+          title="Buscar su ciudad entre los lugares que el panel conoce"
           onClick={() => setBuscoAhora(true)}><I_Search size={13} /> Buscar</Button>
       </div>
       <div className="tiny muted" style={{ marginTop: 6 }}>
-        Elegí tu ubicación y se aplican las dos cosas de una sola vez: la zona horaria con la que el motor publica y la moneda con la que ves tus presupuestos y tus ventas.
+        Elija su ubicación y se aplican las dos cosas de una sola vez: la zona horaria con la que el motor publica y la moneda con la que ve sus presupuestos y sus ventas.
       </div>
 
       {resultados.length > 0 && (
@@ -153,7 +153,7 @@ export function PerfilModal({ abierto, cerrar, avisar }: { abierto: boolean; cer
 
       {sinResultados && (
         <div className="ubic-vacio">
-          No encontramos «{consulta || busqueda}» entre los lugares que el panel conoce. Probá con Buenos Aires, Córdoba, Santiago, São Paulo, Bogotá, Ciudad de México, Miami o Madrid — o tocá una de las zonas de abajo.
+          No encontramos «{consulta || busqueda}» entre los lugares que el panel conoce. Pruebe con Medellín, Bogotá, Ciudad de México, Miami, Madrid, Santiago o São Paulo — o toque una de las zonas de abajo.
         </div>
       )}
 
@@ -162,12 +162,12 @@ export function PerfilModal({ abierto, cerrar, avisar }: { abierto: boolean; cer
           <span className="ubic-bandera" aria-hidden="true">{aplicado.bandera}</span>
           <span>
             <b>{aplicado.nombre} → {aplicado.zona} y {aplicado.moneda}.</b>{' '}
-            Se aplicaron las dos: así publica el motor y así se ven tus presupuestos y tus ventas.
+            Se aplicaron las dos: así publica el motor y así se ven sus presupuestos y sus ventas.
           </span>
         </div>
       )}
 
-      <div className="ubic-mano-lb">O elegí la zona a mano</div>
+      <div className="ubic-mano-lb">O elija la zona a mano</div>
       <div className="tipo-chips">
         {ZONAS.map(z => (
           <button key={z} type="button" className={`tipo-chip ${borrador.zona === z ? 'sel' : ''}`}
@@ -201,8 +201,8 @@ export function PerfilModal({ abierto, cerrar, avisar }: { abierto: boolean; cer
         <div className="conv-titulo">{conv.titulo}</div>
         <div className="conv-det">{conv.detalle} <span className="conv-banco">Publica el dato: {conv.banco}.</span></div>
         <div className="conv-disc">
-          Los valores son los que publica el banco central del país al tipo de cambio diario: la conversión es informativa,
-          puede variar y acá son valores de muestra de la maqueta. En producción se actualizan todos los días.
+          Los valores son los que publica el banco central del país al tipo de cambio del día. La conversión es informativa,
+          puede variar y se actualiza todos los días.
         </div>
       </div>
 
@@ -210,20 +210,20 @@ export function PerfilModal({ abierto, cerrar, avisar }: { abierto: boolean; cer
       <div className="acc-why" style={{ marginTop: 16, display: 'flex', alignItems: 'flex-start', gap: 9 }}>
         <I_Palette size={16} />
         <span>
-          <b>Tu logo y tus colores no están acá.</b> Se cambian en «Hacé tuyo este panel», el botón de la
-          paleta que está arriba a la derecha (o el de tu nombre, abajo del menú): ahí los subís, los
-          probás viendo el panel cambiar en vivo y quedan guardados en tu cuenta.
+          <b>Su logo y sus colores no están aquí.</b> Se cambian en «Haga suyo este panel», el botón de la
+          paleta que está arriba a la derecha (o el de su nombre, al final del menú): ahí sube su logo, prueba
+          los colores viendo el panel cambiar en vivo y todo queda guardado en su cuenta.
         </span>
       </div>
 
       <div className="row" style={{ gap: 9, justifyContent: 'flex-end', marginTop: 16, flexWrap: 'wrap' }}>
         {guardado && <span className="tiny" style={{ color: 'var(--green)', fontWeight: 700, marginRight: 'auto' }}><I_Check size={12} /> Guardado</span>}
-        {hayCambios && !guardado && <Badge tone="amber">tenés cambios sin guardar</Badge>}
-        {sinEspacio && <span className="tiny" style={{ color: 'var(--red)', marginRight: 'auto' }}>El navegador no dejó guardar (¿modo privado?). Probá de nuevo.</span>}
-        <Button variant="ghost" className="btn-sm" title="Cierra sin guardar nada: tus datos vuelven a como estaban"
+        {hayCambios && !guardado && <Badge tone="amber">tiene cambios sin guardar</Badge>}
+        {sinEspacio && <span className="tiny" style={{ color: 'var(--red)', marginRight: 'auto' }}>El navegador no permitió guardar (¿modo privado?). Pruebe de nuevo.</span>}
+        <Button variant="ghost" className="btn-sm" title="Cierra sin guardar nada: sus datos vuelven a como estaban"
           onClick={cancelar}>Cancelar</Button>
         <Button className="btn-sm" disabled={!hayCambios || faltaNombre}
-          title={faltaNombre ? 'Poné tu nombre primero' : hayCambios ? 'Guarda tus datos de cuenta: se ven en todo el panel' : 'No cambiaste nada todavía'}
+          title={faltaNombre ? 'Ponga su nombre primero' : hayCambios ? 'Guarde sus datos de cuenta: se ven en todo el panel' : 'Aún no ha cambiado nada'}
           onClick={salvar}><I_User size={13} /> Guardar cambios</Button>
       </div>
     </Modal>

@@ -6,15 +6,15 @@ import type { Modo } from '../data/demo';
 
 // =============================================================================================
 // CAMPAÑAS POR ETAPAS — cada paso es su propia pantalla, así no hay que scrollear media hora.
-// El camino fácil es el primero: decís qué querés y Sinkroo elige el tipo, crea todo y vos
+// El camino fácil es el primero: dice qué quiere y Sinkroo elige el tipo, crea todo y usted
 // decidís mirando las piezas.
 // =============================================================================================
 
 export type PasoCampana = 1 | 2 | 3 | 4 | 5;
 
 export const PASOS_CAMPANA: { n: PasoCampana; t: string; d: string; icono: string }[] = [
-  { n: 1, t: 'Con Sinkroo', d: 'Subís la info y él arranca', icono: '🤖' },
-  { n: 2, t: 'MiroFish', d: 'Todo pasa por acá: vota y ordena', icono: '🗳️' },
+  { n: 1, t: 'Con Sinkroo', d: 'Sube la información y él arranca', icono: '🤖' },
+  { n: 2, t: 'MiroFish', d: 'Todo pasa por aquí: vota y ordena', icono: '🗳️' },
   { n: 3, t: 'La galería', d: 'Lo que se creó, para decidir', icono: '🖼️' },
   { n: 4, t: 'En línea', d: 'Monitoreo directo, en vivo', icono: '📡' },
   { n: 5, t: 'Mis campañas', d: 'Lo que ya está corriendo', icono: '📊' },
@@ -61,12 +61,12 @@ export function IngestaManual({ setToast, ir }: { setToast: (t: string) => void;
     <>
       <div className="duo">
         <Card
-          title={<span className="row" style={{ gap: 8 }}><I_Upload size={14} style={{ color: 'var(--purple3)' }} /> Paso 1 · Subí lo que ya tenés</span>}
+          title={<span className="row" style={{ gap: 8 }}><I_Upload size={14} style={{ color: 'var(--purple3)' }} /> Paso 1 · Suba lo que ya tiene</span>}
           action={<Badge tone={piezas.length ? 'green' : 'amber'}>{piezas.length} {piezas.length === 1 ? 'pieza' : 'piezas'}</Badge>}
         >
           <div className="bs">
-            Si ya tenés las imágenes o los videos hechos, subilos acá. <b>El motor no inventa nada</b>:
-            los revisa, los puntúa con el panel y publica los mejores en tus redes.
+            Si ya tiene las imágenes o los videos hechos, súbalos aquí. <b>El motor no inventa nada</b>:
+            los revisa, los puntúa con el panel y publica los mejores en sus redes.
           </div>
           <div className="row" style={{ gap: 9, flexWrap: 'wrap' }}>
             <label className="dropzone" style={{ flex: '1 1 160px' }}>
@@ -97,33 +97,33 @@ export function IngestaManual({ setToast, ir }: { setToast: (t: string) => void;
           )}
           <div className="row" style={{ gap: 9, flexWrap: 'wrap' }}>
             <Button className="btn-sm" disabled={!piezas.length}
-              title={piezas.length ? 'Manda tus piezas a MiroFish: las votan y quedan ordenadas del 1 al 5' : 'Primero subí al menos una pieza'}
+              title={piezas.length ? 'Manda sus piezas a MiroFish: las votan y quedan ordenadas del 1 al 5' : 'Primero suba al menos una pieza'}
               onClick={() => { setToast(`${piezas.length} piezas entraron a MiroFish`); ir(2); }}>
               <I_Vote size={13} /> Mandarlas a MiroFish
             </Button>
           </div>
           <div className="acc-why">
-            Subís material terminado cuando ya sabés qué querés publicar. Es el camino más corto:
+            Sube material terminado cuando ya sabe qué quiere publicar. Es el camino más corto:
             <b> no hay nada que crear</b>, solo aprobar.
           </div>
         </Card>
 
         <Card
-          title={<span className="row" style={{ gap: 8 }}><I_Eye size={14} style={{ color: 'var(--green)' }} /> Qué miran los 5 jueces en tus piezas</span>}
+          title={<span className="row" style={{ gap: 8 }}><I_Eye size={14} style={{ color: 'var(--green)' }} /> Qué miran los 5 jueces en sus piezas</span>}
           action={<Badge tone="purple">5 jueces</Badge>}
         >
           <div className="guards">
             <div className="guard"><span style={{ color: 'var(--purple3)', flexShrink: 0 }}><I_Target size={14} /></span>
-              <span className="guard-lb">Si se entiende en 3 segundos<small>El comprador impulsivo decide ahí: si no entiende qué vendés, se va</small></span></div>
+              <span className="guard-lb">Si se entiende en 3 segundos<small>El comprador impulsivo decide ahí: si no entiende qué vende, se va</small></span></div>
             <div className="guard"><span style={{ color: 'var(--purple3)', flexShrink: 0 }}><I_Target size={14} /></span>
-              <span className="guard-lb">Si el color deja leer el texto<small>Muchas piezas se pierden por eso: se ven bien en la compu y no en el celular al sol</small></span></div>
+              <span className="guard-lb">Si el color deja leer el texto<small>Muchas piezas se pierden por eso: se ven bien en el computador y no en el celular al sol</small></span></div>
             <div className="guard"><span style={{ color: 'var(--purple3)', flexShrink: 0 }}><I_Target size={14} /></span>
               <span className="guard-lb">Si dice el precio o lo esconde<small>El que compara se va cuando no lo encuentra</small></span></div>
             <div className="guard"><span style={{ color: 'var(--purple3)', flexShrink: 0 }}><I_Target size={14} /></span>
               <span className="guard-lb">Si parece real o parece armado<small>El desconfiado castiga las fotos de banco de imágenes</small></span></div>
           </div>
           <div className="acc-why">
-            Los mismos 5 jueces de MiroFish miran <b>cualquier pieza, la hayas creado vos o el motor</b>.
+            Los mismos 5 jueces de MiroFish miran <b>cualquier pieza, la haya creado usted o el motor</b>.
             No se publica nada que no pase el mínimo.
           </div>
         </Card>
@@ -147,7 +147,7 @@ export function Galeria({ modo, setToast, ir }: { modo: Modo; setToast: (t: stri
 
   const accionDice = modo === 'auto'
     ? 'Salen solas y quedan en la bitácora, reversibles 24 h'
-    : modo === 'shared' ? 'Kai te pide el OK antes de publicarlas' : 'Quedan listas para que las publiques vos';
+    : modo === 'shared' ? 'Kai le pide el OK antes de publicarlas' : 'Quedan listas para que las publique usted';
 
   return (
     <>
@@ -157,13 +157,13 @@ export function Galeria({ modo, setToast, ir }: { modo: Modo; setToast: (t: stri
             <span style={{ color: 'var(--green)', flexShrink: 0 }}><I_Sparkle size={20} /></span>
             <div style={{ minWidth: 0 }}>
               <div className="bt">Las {OPCIONES.length} piezas ya están creadas</div>
-              <div className="bs">Mirá cada una y elegí. <b>Las 3 primeras vienen marcadas</b> porque son las que mejor votaron los 5 jueces, pero la decisión es tuya.</div>
+              <div className="bs">Mire cada una y elija. <b>Las 3 primeras vienen marcadas</b> porque son las que mejor votaron los 5 jueces, pero la decisión es suya.</div>
             </div>
           </div>
           <div className="row" style={{ gap: 9, flexWrap: 'wrap' }}>
             <Badge tone="purple">{salen.length} seleccionadas</Badge>
             <Button className="btn-sm" disabled={!salen.length}
-              title={salen.length ? accionDice : 'Elegí al menos una pieza'}
+              title={salen.length ? accionDice : 'Elija al menos una pieza'}
               onClick={() => { setToast(`${salen.length} ${salen.length === 1 ? 'pieza' : 'piezas'}: ${accionDice}`); ir(4); }}>
               <I_Rocket size={13} /> {salen.length === 1 ? 'Publicar la elegida' : `Publicar las ${salen.length}`}
             </Button>
@@ -214,7 +214,7 @@ export function Galeria({ modo, setToast, ir }: { modo: Modo; setToast: (t: stri
                       </div>
                     ) : (
                       <Button variant="ghost" className="btn-sm" style={{ marginTop: 10 }}
-                        title="Le pide al motor que rehaga esta pieza en particular, con lo que objetaron los 5 jueces. Reversible: la pieza que tenés no se pierde."
+                        title="Le pide al motor que rehaga esta pieza en particular, con lo que objetaron los 5 jueces. Reversible: la pieza que tiene no se pierde."
                         onClick={() => { setRehaciendo(r => [...r, o.id]); setToast(`Nia rehace «${o.titulo}» con lo que objetaron los 5 jueces`); }}>
                         <I_Refresh size={12} /> Que la rehaga
                       </Button>
@@ -246,8 +246,8 @@ export function Galeria({ modo, setToast, ir }: { modo: Modo; setToast: (t: stri
             ))}
           </div>
           <div className="acc-why">
-            Si <b>no te gusta ninguna</b>, podés pedir otra ronda: el motor investiga de nuevo y crea
-            5 opciones más. Nada se publica hasta que decidas.
+            Si <b>no le gusta ninguna</b>, puede pedir otra ronda: el motor investiga de nuevo y crea
+            5 opciones más. Nada se publica hasta que decida.
           </div>
         </Card>
 
@@ -256,7 +256,7 @@ export function Galeria({ modo, setToast, ir }: { modo: Modo; setToast: (t: stri
           action={<Badge tone="purple">2 caminos</Badge>}
         >
           <div className="bs">
-            Con lo que elegiste ya podés arrancar. Estas dos opciones son las que se usan después:
+            Con lo que eligió ya puede arrancar. Estas dos opciones son las que se usan después:
           </div>
           <div className="guards">
             <div className="guard"><span style={{ color: 'var(--purple3)', flexShrink: 0 }}><I_Plus size={14} /></span>
@@ -267,8 +267,8 @@ export function Galeria({ modo, setToast, ir }: { modo: Modo; setToast: (t: stri
               <Button variant="outline" className="btn-sm" title="Vuelve al principio del flujo" onClick={() => ir(1)}>Ir</Button></div>
           </div>
           <div className="acc-why">
-            La galería es la pantalla de decisión: <b>todo lo demás ya está resuelto</b>. Lo que marques
-            acá sale a tus redes.
+            La galería es la pantalla de decisión: <b>todo lo demás ya está resuelto</b>. Lo que marque
+            aquí sale a sus redes.
           </div>
         </Card>
       </div>

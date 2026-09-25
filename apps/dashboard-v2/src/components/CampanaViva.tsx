@@ -39,7 +39,7 @@ export function CampanaViva({ c, setToast }: { c: Campana; setToast: (t: string)
 
   const pausar = () => {
     setEnPausa(true);
-    setToast(`«${c.nombre}» en pausa: frena el gasto y se reanuda cuando quieras`);
+    setToast(`«${c.nombre}» en pausa: frena el gasto y se reanuda cuando quiera`);
   };
   const reanudar = () => {
     setEnPausa(false);
@@ -52,17 +52,17 @@ export function CampanaViva({ c, setToast }: { c: Campana; setToast: (t: string)
   const piezas = enVivo ? [enVivo, ...OPCIONES.filter(o => o.id !== enVivo.id)] : OPCIONES;
 
   // (a) El panel de las piezas: título, formato, estado y puntaje de cada una, más el estado de
-  // la campaña. Desde acá también se pausa y se reanuda, y el cambio se ve en la tarjeta.
+  // la campaña. Desde aquí también se pausa y se reanuda, y el cambio se ve en la tarjeta.
   const verPiezas = () => detalle({
     titulo: `Las piezas de «${c.nombre}»`,
-    sub: `Las ${piezas.length} del último lote que votó el panel, de las ${c.artefactos} que lleva esta campaña. La primera es la que salió a tus cuentas.`,
+    sub: `Las ${piezas.length} del último lote que votó el panel, de las ${c.artefactos} que lleva esta campaña. La primera es la que salió a sus cuentas.`,
     bloques: [
       { tipo: 'datos', filas: [
         { k: 'Piezas creadas para esta campaña', v: String(c.artefactos), s: 'entre las que corren, las que volvieron con la objeción y las que se frenaron' },
         { k: 'La que está corriendo', v: `${c.formato} · ${c.medida}`, s: `${c.plataforma} · es la del marco de arriba` },
         { k: 'Puntaje de esa pieza', v: `${c.score} de 100`, s: 'el mínimo para publicar es 80', tono: c.score >= 80 ? 'green' : 'amber' },
-        { k: 'Estado ahora', v: enPausa ? 'en pausa' : 'en vivo', s: enPausa ? 'dejó de gastar y de sumar: se reanuda cuando quieras' : 'está gastando y midiendo', tono: enPausa ? 'amber' : 'green' },
-        { k: 'Quién la juzgó', v: `${PERFILES.length} jueces + 500 del público`, s: 'mirando la pieza, antes de que gastaras un peso' },
+        { k: 'Estado ahora', v: enPausa ? 'en pausa' : 'en vivo', s: enPausa ? 'dejó de gastar y de sumar: se reanuda cuando quiera' : 'está gastando y midiendo', tono: enPausa ? 'amber' : 'green' },
+        { k: 'Quién la juzgó', v: `${PERFILES.length} jueces + 500 del público`, s: 'mirando la pieza, antes de que gastara un peso' },
       ] },
       { tipo: 'filas', items: piezas.map(o => {
         const esLaViva = o.id === enVivo?.id;
@@ -77,7 +77,7 @@ export function CampanaViva({ c, setToast }: { c: Campana; setToast: (t: string)
           tono: est.tono,
         };
       }) },
-      { tipo: 'aviso', tono: 'amber', texto: 'Arriba de 80 se publica, entre 60 y 80 vuelve con la objeción del juez que votó más bajo y abajo de 60 no se gasta un peso: es la misma regla que ya viste en la galería del paso 3.' },
+      { tipo: 'aviso', tono: 'amber', texto: 'Arriba de 80 se publica, entre 60 y 80 vuelve con la objeción del juez que votó más bajo y abajo de 60 no se gasta un peso: es la misma regla que ya vio en la galería del paso 3.' },
     ],
     fuente: 'Los votos son los de MiroFish: los mismos 5 jueces y las mismas piezas de la galería del paso 3. El puntaje de la que corre, el gasto y el alcance son los de esta campaña, tal como están en la tarjeta.',
     acciones: [
@@ -152,7 +152,7 @@ export function CampanaViva({ c, setToast }: { c: Campana; setToast: (t: string)
           </div>
         </div>
 
-        <div title="Cuánto del presupuesto que le asignaste a esta campaña ya se gastó. Al 100% el motor la frena sola.">
+        <div title="Cuánto del presupuesto que le asignó a esta campaña ya se gastó. Al 100% el motor la frena sola.">
           <div className="row spread tiny muted" style={{ marginBottom: 6 }}>
             <span>Presupuesto consumido</span><span>{c.pct}%</span>
           </div>
@@ -160,11 +160,11 @@ export function CampanaViva({ c, setToast }: { c: Campana; setToast: (t: string)
         </div>
 
         <div className="datos-row">
-          <div className="dato" title="Lo que le pagás a Meta por día para que la campaña corra">
+          <div className="dato" title="Lo que le paga a Meta por día para que la campaña corra">
             <span className="dato-l">Presupuesto</span>
             <span className="dato-v"><Dinero monto={c.presupuesto} /></span>
           </div>
-          <div className="dato" title="Cuánto te cuesta cada venta que trae esta campaña">
+          <div className="dato" title="Cuánto le cuesta cada venta que trae esta campaña">
             <span className="dato-l">Costo por venta</span>
             <span className="dato-v" style={{ color: c.costo === '—' ? 'var(--muted)' : 'var(--txt)' }}><Dinero monto={c.costo} /></span>
           </div>
@@ -178,16 +178,16 @@ export function CampanaViva({ c, setToast }: { c: Campana; setToast: (t: string)
           </div>
         </div>
 
-        {/* d) Lo que podés hacer con la campaña que está corriendo */}
+        {/* d) Lo que puede hacer con la campaña que está corriendo */}
         <div className="row cv-acciones">
           {enPausa
             ? <Button variant="primary" className="btn-sm"
-                title="Vuelve a correr y sigue desde donde quedó: no perdió el historial ni la pieza, y el gasto del día se reactiva. Es reversible: la podés volver a pausar con este mismo botón."
+                title="Vuelve a correr y sigue desde donde quedó: no perdió el historial ni la pieza, y el gasto del día se reactiva. Es reversible: la puede volver a pausar con este mismo botón."
                 onClick={reanudar}>
                 <I_Play size={12} /> Reanudar
               </Button>
             : <Button variant="ghost" className="btn-sm"
-                title="Frena la campaña ahora: deja de gastar su presupuesto del día y de sumar alcance. Es reversible: la reanudás con este mismo botón y sigue desde donde quedó."
+                title="Frena la campaña ahora: deja de gastar su presupuesto del día y de sumar alcance. Es reversible: la reanuda con este mismo botón y sigue desde donde quedó."
                 onClick={pausar}>
                 <I_Pause size={12} /> Pausar
               </Button>}

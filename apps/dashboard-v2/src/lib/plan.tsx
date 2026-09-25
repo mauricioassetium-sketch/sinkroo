@@ -7,7 +7,7 @@ import { PLANES, TENANT } from '../data/demo';
 // El plan se ve en tres lados: la píldora del menú, la barra de créditos del mes (que usa los
 // créditos que el plan incluye) y la pantalla de Créditos, donde se cambia. Si cada uno lo leyera
 // por su cuenta, el cambio se vería en una pantalla y no en las otras —y peor: el menú diría un
-// plan y la pantalla otro—. Por eso vive acá.
+// plan y la pantalla otro—. Por eso vive aquí.
 // =============================================================================================
 
 /** Un plan contratable, de cualquier piel: los dos catálogos comparten forma. */

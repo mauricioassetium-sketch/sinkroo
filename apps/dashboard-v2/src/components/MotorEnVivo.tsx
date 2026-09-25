@@ -15,7 +15,7 @@ import { useDetalle, type Bloque } from './Detalle';
 // Se ve la etapa, el sentimiento, el score, los votos y las reacciones.
 //
 // Las piezas del filtro son las 5 de la ronda y su puntaje es el promedio de los 5 jueces: es el
-// mismo veredicto que ya está en el paso de MiroFish, así que acá no hay números sueltos.
+// mismo veredicto que ya está en el paso de MiroFish, así que aquí no hay números sueltos.
 // =============================================================================================
 
 const COLOR: Record<string, string> = { positivo: '#34d399', negativo: '#f87171', analisis: '#a855f7' };
@@ -112,7 +112,7 @@ export function MotorEnVivo({ setToast }: { setToast: (t: string) => void }) {
   const sacarDelFiltro = () => {
     if (aprueba) {
       marcar('aprobada',
-        `«${pieza.titulo}» queda aprobada y sale a tus redes con el texto que ya aprobaron los 5 jueces (${score}/100). Se mide el costo por venta y lo que no rinde se frena.`,
+        `«${pieza.titulo}» queda aprobada y sale a sus redes con el texto que ya aprobaron los 5 jueces (${score}/100). Se mide el costo por venta y lo que no rinde se frena.`,
         `«${pieza.titulo}» aprobada: ${score}/100`);
     } else {
       marcar('correccion',
@@ -140,7 +140,7 @@ export function MotorEnVivo({ setToast }: { setToast: (t: string) => void }) {
     { tipo: 'datos', filas: [
       { k: 'La objeción que manda', v: `${oj.juez} · ${oj.voto}/100`, tono: 'amber', s: `«${oj.texto}»` },
       { k: 'El público de 500, en vivo', v: `${pctPublico}% a favor`, s: `de las ${total} reacciones que leyó el motor: ${sent.pos} a favor, ${sent.neg} en contra y ${sent.ana} pidiendo más información` },
-      { k: 'Si la reacción se sostiene', v: `${deLos500} de los 500`, s: 'los 500 reaccionan en vivo y nunca se cobran: la publicidad se paga recién cuando la pieza sale' },
+      { k: 'Si la reacción se sostiene', v: `${deLos500} de los 500`, s: 'los 500 reaccionan en vivo y nunca se cobran: la publicidad se paga solo cuando la pieza sale' },
       { k: 'Puntaje de los 5 jueces', v: `${score}/100`, s: aprueba ? 'arriba del mínimo de 80: la pieza se puede publicar' : 'abajo del mínimo de 80: vuelve al motor con esa objeción' },
     ] },
     { tipo: 'filas', items: LOTE.map((o, i) => ({
@@ -157,9 +157,9 @@ export function MotorEnVivo({ setToast }: { setToast: (t: string) => void }) {
 
   const abrirVeredicto = () => detalle({
     titulo: `Por qué votaron así: «${pieza.titulo}»`,
-    sub: `${pieza.formato} · ${pieza.medida}. Acá está el voto de cada juez, la reacción de los 500 del público y cómo quedaron las ${LOTE.length} piezas del lote.`,
+    sub: `${pieza.formato} · ${pieza.medida}. Aquí está el voto de cada juez, la reacción de los 500 del público y cómo quedaron las ${LOTE.length} piezas del lote.`,
     bloques: bloquesVeredicto,
-    fuente: 'Es el mismo veredicto que ya está en el paso de MiroFish: los 5 jueces y los 500 del público sobre las 5 piezas de la ronda. Acá no se gasta un peso.',
+    fuente: 'Es el mismo veredicto que ya está en el paso de MiroFish: los 5 jueces y los 500 del público sobre las 5 piezas de la ronda. Aquí no se gasta un peso.',
     acciones: [
       { label: 'Corregir la objeción más dura', variante: 'primary', onClick: corregir },
       { label: 'No hacer nada por ahora', onClick: () => setToast('Sin cambios: la pieza sigue en el filtro') },
@@ -171,14 +171,14 @@ export function MotorEnVivo({ setToast }: { setToast: (t: string) => void }) {
   // -------------------------------------------------------------------------------------------
   const abrirCorreccion = () => detalle({
     titulo: `Corregir lo que objetaron en «${pieza.titulo}»`,
-    sub: 'Nia reescribe la pieza contestando la objeción del juez que votó más bajo y los 5 jueces la vuelven a votar. La pieza que ves ahora no se toca.',
+    sub: 'Nia reescribe la pieza contestando la objeción del juez que votó más bajo y los 5 jueces la vuelven a votar. La pieza que ve ahora no se toca.',
     bloques: [
       { tipo: 'datos', filas: [
         { k: 'La objeción que manda', v: `${oj.juez} · ${oj.voto}/100`, tono: 'amber', s: `«${oj.texto}»` },
         { k: 'Puntaje de hoy', v: `${score}/100`, s: `los 5 votos: ${PERFILES.map(p => pieza.votos[p.k]).join(' · ')}` },
         { k: 'Variantes que escribe', v: String(CUANTAS_VARIANTES), s: 'cada una cambia una sola cosa, así se sabe qué la mejora' },
         { k: 'Lo que cuesta', v: `${costoMejora().total} créditos`, s: `${CUANTAS_VARIANTES} × ${TARIFA.crearVariante} por escribirla + ${CUANTAS_VARIANTES} × ${TARIFA.evaluarPieza} por votarla` },
-        { k: 'Dónde las ves', v: 'Campañas, en la galería', s: 'con el voto nuevo al lado del anterior' },
+        { k: 'Dónde las ve', v: 'Campañas, en la galería', s: 'con el voto nuevo al lado del anterior' },
       ] },
       { tipo: 'filas', items: variantesDe(pieza).map(v => ({
         t: v.titulo,
@@ -191,7 +191,7 @@ export function MotorEnVivo({ setToast }: { setToast: (t: string) => void }) {
         'Los 5 jueces vuelven a puntuar cada variante y las ordenan.',
         `Las ${CUANTAS_PASAN} mejores quedan listas para publicar.`,
       ] },
-      { tipo: 'aviso', tono: 'amber', texto: 'Esto no gasta publicidad: se paga en créditos. Y la pieza de hoy queda guardada con su voto, así podés volver a ella si te gustaba más.' },
+      { tipo: 'aviso', tono: 'amber', texto: 'Esto no gasta publicidad: se paga en créditos. Y la pieza de hoy queda guardada con su voto, así puede volver a ella si le gustaba más.' },
     ],
     fuente: `Sale del veredicto de los 5 jueces sobre «${pieza.titulo}» y de la objeción del que votó más bajo.`,
     acciones: [
@@ -202,11 +202,11 @@ export function MotorEnVivo({ setToast }: { setToast: (t: string) => void }) {
 
   return (
     <Card
-      title={<><I_Zap size={15} style={{ marginRight: 8, color: 'var(--purple4)' }} /> El motor andando: mercado secundario predictivo</>}
+      title={<><I_Zap size={15} style={{ marginRight: 8, color: 'var(--purple4)' }} /> El motor en marcha: mercado secundario predictivo</>}
       action={<span className="badge badge-green" style={{ fontSize: 10 }}>en vivo</span>}
     >
       <div className="small muted" style={{ marginBottom: 14, lineHeight: 1.5 }}>
-        Tu propuesta se prueba acá antes de salir a internet. Esto es lo que pasa <b>ahora mismo</b>:
+        Su propuesta se prueba aquí antes de salir a internet. Esto es lo que pasa <b>ahora mismo</b>:
       </div>
 
       <div className="motor-split">
@@ -363,12 +363,12 @@ export function MotorEnVivo({ setToast }: { setToast: (t: string) => void }) {
 
       {/* ============ CIERRE: el filtro + qué hace cada botón ============ */}
       <div style={{ marginTop: 14, padding: '10px 14px', borderRadius: 12, background: 'rgba(34,211,238,.08)', border: '1px solid rgba(34,211,238,.25)' }}>
-        <div className="tiny muted"><b style={{ color: '#22d3ee' }}>🔒 El filtro antes de salir live:</b> solo lo que convence acá se publica; lo que no, se descarta y enseña al sistema.</div>
+        <div className="tiny muted"><b style={{ color: '#22d3ee' }}>🔒 El filtro antes de salir live:</b> solo lo que convence aquí se publica; lo que no, se descarta y enseña al sistema.</div>
       </div>
 
       <div className="datos-row" style={{ marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--border)' }}>
-        <div className="dato" title="Las piezas que sacaste del filtro: ya salen a tus redes con el texto que aprobaron los 5 jueces">
-          <span className="dato-l">Aprobadas por vos</span>
+        <div className="dato" title="Las piezas que sacó del filtro: ya salen a sus redes con el texto que aprobaron los 5 jueces">
+          <span className="dato-l">Aprobadas por usted</span>
           <span className="dato-v" style={{ color: 'var(--green)' }}>{aprobadas}</span>
         </div>
         <div className="dato" title="Las que volvieron al motor con la objeción del juez que votó más bajo: Nia las reescribe y se votan de nuevo">
@@ -384,7 +384,7 @@ export function MotorEnVivo({ setToast }: { setToast: (t: string) => void }) {
       <div className="row" style={{ gap: 9, marginTop: 12, flexWrap: 'wrap' }}>
         {estadoPieza === 'aprobada' ? (
           <div className="tiny" style={{ display: 'flex', alignItems: 'center', gap: 7, color: 'var(--green)', fontWeight: 700 }}>
-            <I_Check size={13} /> Aprobada: queda lista para salir a tus redes con el texto que ya aprobaron los 5 jueces.
+            <I_Check size={13} /> Aprobada: queda lista para salir a sus redes con el texto que ya aprobaron los 5 jueces.
           </div>
         ) : (
           <Button variant={aprueba ? 'primary' : 'outline'} className="btn-sm"
@@ -407,7 +407,7 @@ export function MotorEnVivo({ setToast }: { setToast: (t: string) => void }) {
         ) : (
           <Button variant="ghost" className="btn-sm"
             title={estadoPieza === 'aprobada'
-              ? `La pieza ya está aprobada y sale a tus redes: si la corregís con Nia, vuelve al motor en corrección y el contador de aprobadas baja en uno. La versión que aprobaste queda guardada con su voto.`
+              ? `La pieza ya está aprobada y sale a sus redes: si la corrige con Nia, vuelve al motor en corrección y el contador de aprobadas baja en uno. La versión que aprobó queda guardada con su voto.`
               : `Muestra cómo la corrige Nia: contesta la objeción de ${oj.juez} (${oj.voto}/100) y los 5 jueces la vuelven a votar. La pieza de ahora queda intacta.`}
             onClick={abrirCorreccion}>
             {estadoPieza === 'aprobada' ? 'Corregirla igual (vuelve al motor)' : 'Corregir lo que objetaron'}
@@ -422,9 +422,9 @@ export function MotorEnVivo({ setToast }: { setToast: (t: string) => void }) {
       )}
 
       <div className="acc-why">
-        <b>Publicar</b> es lo único que gasta dinero y necesita tu OK si estás en modo Compartido.{' '}
+        <b>Publicar</b> es lo único que gasta dinero y necesita su OK si está en modo Compartido.{' '}
         <b>Ver por qué votaron así</b> abre el voto de los 5 jueces y la reacción de los 500 del público, sin cambiar nada.{' '}
-        <b>Corregir</b> pone la pieza en corrección: Nia la reescribe y la pieza de ahora queda intacta. Los contadores de arriba quedan con lo que decidiste.
+        <b>Corregir</b> pone la pieza en corrección: Nia la reescribe y la pieza de ahora queda intacta. Los contadores de arriba quedan con lo que decidió.
       </div>
     </Card>
   );

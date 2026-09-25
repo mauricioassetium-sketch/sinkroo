@@ -8,9 +8,9 @@ import { ANGULOS, CARPETA, CREDITOS_MOV, EXCEPCIONES, NUMEROS, TENANT } from '..
 
 // =============================================================================================
 // EN LÍNEA — el final del flujo: lo que se publicó y cómo está rindiendo AHORA.
-// Monitoreo directo: los números se mueven solos mientras mirás.
+// Monitoreo directo: los números se mueven solos mientras mira.
 //
-// Cada botón de acá hace algo QUE SE VE, y siempre una de estas dos cosas:
+// Cada botón de aquí hace algo QUE SE VE, y siempre una de estas dos cosas:
 //   (a) abre el PANEL DE DETALLE (Detalle.tsx) con los números de esa pieza o el informe completo;
 //   (b) cambia el estado en la pantalla misma: la fila se queda con el número congelado y su badge,
 //       aparece la línea de por qué se frenó y el botón pasa a «reanudar».
@@ -30,7 +30,7 @@ const ORDEN_RINDE = ['El problema primero', 'El testimonio solo', 'Antes y despu
 const conComa = (v: number | string) => Number(v).toFixed(1).replace('.', ',');
 
 // Los números que se muestran salen de los datos del negocio, no se escriben a mano:
-// lo que ya está subido en la carpeta, lo que costó una campaña en créditos y tu ROAS del mes.
+// lo que ya está subido en la carpeta, lo que costó una campaña en créditos y su ROAS del mes.
 const ARCHIVOS_SUBIDOS = Object.values(CARPETA).reduce((a, l) => a + l.length, 0);
 const COSTO_CAMPANA = Math.abs(CREDITOS_MOV.find(m => m.detalle.startsWith('Campaña'))!.cantidad);
 const ROAS_MES = NUMEROS.find(n => n.label === 'ROAS')!.valor;
@@ -70,7 +70,7 @@ export function EnLinea({ setToast, ir }: { setToast: (t: string) => void; ir?: 
   const roasActivas = activas.length ? activas.reduce((a, p) => a + p.roas, 0) / activas.length : 0;
   const roas = activas.length ? (roasActivas + reloj * 0.01).toFixed(1) : null;
   const maxRoas = Math.max(...PUBLICADAS.map(p => p.roas));
-  // Las que no rinden: las que devuelven MENOS que tu ROAS del mes (3,8x, sale de demo.ts). Hoy es
+  // Las que no rinden: las que devuelven MENOS que su ROAS del mes (3,8x, sale de demo.ts). Hoy es
   // una sola, y es la misma que el motor ya está vigilando de cerca.
   const flojas = PUBLICADAS.filter(p => p.roas < ROAS_MES_N);
   const flojasCorriendo = flojas.filter(p => !enPausa(p.titulo));
@@ -98,19 +98,19 @@ export function EnLinea({ setToast, ir }: { setToast: (t: string) => void; ir?: 
       sub: `${p.formato} · ${p.red}. Esto es lo que está pasando con esta pieza sola, no el promedio de la campaña.`,
       bloques: [
         { tipo: 'datos', filas: [
-          { k: 'Personas alcanzadas', v: alcanceP.toLocaleString('es-AR'), s: `${Math.round((alcanceP / alcance) * 100)}% de las ${alcance.toLocaleString('es-AR')} que suman las 3 piezas` },
-          { k: 'Clics al sitio', v: clicsP.toLocaleString('es-AR'), s: `${conComa((clicsP / alcanceP) * 100)} de cada 100 que la vieron hicieron clic` },
-          { k: 'ROAS de esta pieza', v: `${conComa(p.roas)}x`, s: `tu ROAS del mes es ${ROAS_MES}`, tono: p.roas >= ROAS_MES_N ? 'green' : 'amber' },
+          { k: 'Personas alcanzadas', v: alcanceP.toLocaleString('es-CO'), s: `${Math.round((alcanceP / alcance) * 100)}% de las ${alcance.toLocaleString('es-CO')} que suman las 3 piezas` },
+          { k: 'Clics al sitio', v: clicsP.toLocaleString('es-CO'), s: `${conComa((clicsP / alcanceP) * 100)} de cada 100 que la vieron hicieron clic` },
+          { k: 'ROAS de esta pieza', v: `${conComa(p.roas)}x`, s: `su ROAS del mes es ${ROAS_MES}`, tono: p.roas >= ROAS_MES_N ? 'green' : 'amber' },
           { k: 'Estado ahora', v: enPausa(p.titulo) ? 'en pausa' : 'publicada', tono: enPausa(p.titulo) ? 'amber' : 'green' },
         ] },
         { tipo: 'texto', texto: p.titulo === peor.titulo
-          ? `Es la que menos devuelve: ${conComa(p.roas)}x contra ${conComa(promedioRoas)}x de las 3 juntas. Por eso el motor la vigila de cerca: si sigue bajando, te va a pedir refrescar el creativo.`
-          : `Rinde ${conComa(p.roas)}x contra ${conComa(promedioRoas)}x de las 3 juntas: está por encima de tu promedio, así que conviene dejarla como está.` },
+          ? `Es la que menos devuelve: ${conComa(p.roas)}x contra ${conComa(promedioRoas)}x de las 3 juntas. Por eso el motor la vigila de cerca: si sigue bajando, le va a pedir refrescar el creativo.`
+          : `Rinde ${conComa(p.roas)}x contra ${conComa(promedioRoas)}x de las 3 juntas: está por encima de su promedio, así que conviene dejarla como está.` },
         { tipo: 'aviso', tono: enPausa(p.titulo) ? 'amber' : 'green', texto: enPausa(p.titulo)
-          ? 'Está en pausa: dejó de sumar alcance y clics y no gasta hasta que la reanudes. Lo que ya rindió queda en la bitácora.'
-          : 'Está publicada y sigue sumando. Si la pausás, el número se congela donde está y lo podés reanudar cuando quieras: no se pierde nada.' },
+          ? 'Está en pausa: dejó de sumar alcance y clics y no gasta hasta que la reanude. Lo que ya rindió queda en la bitácora.'
+          : 'Está publicada y sigue sumando. Si la pausa, el número se congela donde está y la puede reanudar cuando quiera: no se pierde nada.' },
       ],
-      fuente: 'Lectura cada 15 minutos de tus propias cuentas: alcance, clics y ROAS de esta pieza sola. Ningún número de acá está cargado a mano.',
+      fuente: 'Lectura cada 15 minutos de sus propias cuentas: alcance, clics y ROAS de esta pieza sola. Ningún número de aquí está cargado a mano.',
       acciones: [
         enPausa(p.titulo)
           ? { label: `Reanudar «${p.titulo}»`, variante: 'primary' as const, onClick: () => reanudar(p.titulo) }
@@ -122,26 +122,26 @@ export function EnLinea({ setToast, ir }: { setToast: (t: string) => void; ir?: 
 
   // (a) El informe completo: las 3 piezas, cómo se reparten el alcance y qué está haciendo el motor.
   const informe = () => detalle({
-    titulo: 'El informe completo de tus 3 piezas',
-    sub: 'Todo lo que pasó desde que salieron, con los mismos números que ves en la pantalla: acá no hay promedios de la industria.',
+    titulo: 'El informe completo de sus 3 piezas',
+    sub: 'Todo lo que pasó desde que salieron, con los mismos números que ve en la pantalla: aquí no hay promedios de la industria.',
     bloques: [
       { tipo: 'datos', filas: [
-        { k: 'Personas alcanzadas', v: alcance.toLocaleString('es-AR'), s: 'las 3 piezas juntas, medido en tus cuentas' },
-        { k: 'Clics al sitio', v: clics.toLocaleString('es-AR'), s: `${conComa((clics / alcance) * 100)} de cada 100 que las vieron` },
+        { k: 'Personas alcanzadas', v: alcance.toLocaleString('es-CO'), s: 'las 3 piezas juntas, medido en sus cuentas' },
+        { k: 'Clics al sitio', v: clics.toLocaleString('es-CO'), s: `${conComa((clics / alcance) * 100)} de cada 100 que las vieron` },
         { k: 'Ventas desde que salieron', v: String(ventas), s: 'las que el motor pudo atar a estas 3 piezas' },
-        { k: 'ROAS combinado', v: roas ? `${conComa(roas)}x` : '—', s: `tu ROAS del mes es ${ROAS_MES}`, tono: roas && Number(roas) >= ROAS_MES_N ? 'green' : 'amber' },
+        { k: 'ROAS combinado', v: roas ? `${conComa(roas)}x` : '—', s: `su ROAS del mes es ${ROAS_MES}`, tono: roas && Number(roas) >= ROAS_MES_N ? 'green' : 'amber' },
         { k: 'Piezas en línea', v: `${activas.length} de ${PUBLICADAS.length}`, s: pausadas.length ? `en pausa: ${pausadas.map(t => `«${t}»`).join(', ')}` : 'ninguna en pausa' },
       ] },
       { tipo: 'filas', items: PUBLICADAS.map((p, i) => ({
         t: p.titulo,
-        s: `${p.formato} · ${p.red} · ${alcanceDe(p, i).toLocaleString('es-AR')} de alcance · ${clicsDe(p, i).toLocaleString('es-AR')} clics`,
+        s: `${p.formato} · ${p.red} · ${alcanceDe(p, i).toLocaleString('es-CO')} de alcance · ${clicsDe(p, i).toLocaleString('es-CO')} clics`,
         etiqueta: `${conComa(p.roas)}x`,
         tono: enPausa(p.titulo) ? 'muted' : p.roas < ROAS_MES_N ? 'amber' : 'green',
       })) },
-      { tipo: 'aviso', tono: 'amber', texto: `La que va más abajo es «${peor.titulo}»: ${conComa(peor.roas)}x contra ${conComa(promedioRoas)}x de las 3, y abajo de tu ROAS del mes (${ROAS_MES}). Es la única que el motor está vigilando de cerca: si sigue bajando, te pide refrescar el creativo antes de gastar más.` },
-      { tipo: 'texto', texto: `Mientras no mirás: ${EXCEPCIONES.find(e => e.key === 'vigilancia')!.nota}` },
+      { tipo: 'aviso', tono: 'amber', texto: `La que va más abajo es «${peor.titulo}»: ${conComa(peor.roas)}x contra ${conComa(promedioRoas)}x de las 3, y abajo de su ROAS del mes (${ROAS_MES}). Es la única que el motor está vigilando de cerca: si sigue bajando, le pide refrescar el creativo antes de gastar más.` },
+      { tipo: 'texto', texto: `Mientras no mira: ${EXCEPCIONES.find(e => e.key === 'vigilancia')!.nota}` },
     ],
-    fuente: 'Sale de tus 3 piezas publicadas: alcance, clics y ROAS leídos cada 15 minutos. El gasto y el público de cada campaña están en «Mis campañas».',
+    fuente: 'Sale de sus 3 piezas publicadas: alcance, clics y ROAS leídos cada 15 minutos. El gasto y el público de cada campaña están en «Mis campañas».',
     acciones: [
       flojasCorriendo.length
         ? { label: `Frenar ${flojasCorriendo.length === 1 ? 'la que no rinde' : `las ${flojasCorriendo.length} que no rinden`}`, variante: 'primary' as const, onClick: frenarLasQueNoRinden }
@@ -152,25 +152,25 @@ export function EnLinea({ setToast, ir }: { setToast: (t: string) => void; ir?: 
 
   // (a) Campaña nueva: qué va a hacer el motor antes de arrancar, y recién ahí el paso 1 del flujo.
   const irAlPaso1 = () => {
-    if (ir) { ir(1); setToast('Campaña nueva: arrancás en el paso 1'); }
-    else setToast('Abrí Campañas para arrancar una campaña nueva');
+    if (ir) { ir(1); setToast('Campaña nueva: arranca en el paso 1'); }
+    else setToast('Abra Campañas para arrancar una campaña nueva');
   };
   const campanaNueva = () => detalle({
     titulo: 'Campaña nueva: cómo arranca',
-    sub: 'Te deja al principio del flujo. El camino corto: decís qué querés, Sinkroo crea y MiroFish vota antes de que se gaste un peso.',
+    sub: 'Le deja al principio del flujo. El camino corto: dice qué quiere, Sinkroo crea y MiroFish vota antes de que se gaste un peso.',
     bloques: [
       { tipo: 'datos', filas: [
         { k: 'Dónde arranca', v: `Paso 1 · ${PASOS_CAMPANA[0].t}`, s: PASOS_CAMPANA[0].d },
-        { k: 'Material que ya tenés', v: `${ARCHIVOS_SUBIDOS} archivos`, s: 'los de tu carpeta: fotos, reseñas, videos, logo y catálogo' },
-        { k: 'El ángulo que gana hoy', v: `${ANGULO_QUE_GANA.nombre} · ${ANGULO_QUE_GANA.pct}%`, s: 'es el que más usa tu rubro: arrancar por acá es arrancar donde ya hay demanda' },
-        { k: 'Lo que cuesta', v: `${COSTO_CAMPANA} créditos`, s: `los mismos que costó «Lanzamiento D2C». Hoy tenés ${TENANT.creditos.toLocaleString('es-AR')} créditos` },
+        { k: 'Material que ya tiene', v: `${ARCHIVOS_SUBIDOS} archivos`, s: 'los de su carpeta: fotos, reseñas, videos, logo y catálogo' },
+        { k: 'El ángulo que gana hoy', v: `${ANGULO_QUE_GANA.nombre} · ${ANGULO_QUE_GANA.pct}%`, s: 'es el que más usa su rubro: arrancar por aquí es arrancar donde ya hay demanda' },
+        { k: 'Lo que cuesta', v: `${COSTO_CAMPANA} créditos`, s: `los mismos que costó «Lanzamiento D2C». Hoy tiene ${TENANT.creditos.toLocaleString('es-CO')} créditos` },
         { k: 'Quién la juzga', v: '5 jueces + 500 del público', s: 'arriba de 80 se publica; abajo, vuelve con la objeción' },
       ] },
       { tipo: 'pasos', items: PASOS_CAMPANA.map(p => `${p.t}: ${p.d}`) },
       { tipo: 'texto', texto: `Las ${PUBLICADAS.length} piezas que están en línea siguen corriendo tal como están: la campaña nueva es otra cosa y no las toca.` },
       { tipo: 'aviso', tono: 'green', texto: EXCEPCIONES.find(e => e.key === 'publicar')!.nota },
     ],
-    fuente: 'Los archivos salen de tu carpeta ya subida, el costo del historial de créditos del plan Pro y el ángulo, de los 47 anuncios que leyó Lux en tu rubro.',
+    fuente: 'Los archivos salen de su carpeta ya subida, el costo del historial de créditos del plan Pro y el ángulo, de los 47 anuncios que leyó Lux en su rubro.',
     acciones: [
       { label: 'Empezar de cero (paso 1)', variante: 'primary' as const, onClick: irAlPaso1 },
       { label: 'Cerrar', onClick: () => {} },
@@ -187,9 +187,9 @@ export function EnLinea({ setToast, ir }: { setToast: (t: string) => void; ir?: 
               <div className="bt">Monitoreo directo, en vivo</div>
               <div className="bs">
                 {activas.length === PUBLICADAS.length
-                  ? `Tus ${PUBLICADAS.length} piezas están en tus redes.`
-                  : `${activas.length} de tus ${PUBLICADAS.length} piezas están corriendo y ${pausadas.length} en pausa.`}{' '}
-                <b>El motor las mira cada 15 minutos</b> y te avisa si alguna se enfría o si conviene moverle presupuesto.
+                  ? `Sus ${PUBLICADAS.length} piezas están en sus redes.`
+                  : `${activas.length} de sus ${PUBLICADAS.length} piezas están corriendo y ${pausadas.length} en pausa.`}{' '}
+                <b>El motor las mira cada 15 minutos</b> y le avisa si alguna se enfría o si conviene moverle presupuesto.
               </div>
             </div>
           </div>
@@ -206,11 +206,11 @@ export function EnLinea({ setToast, ir }: { setToast: (t: string) => void; ir?: 
         >
           <div className="live-nums">
             <div className="live-n">
-              <span className="live-v" style={{ color: 'var(--green)' }}>{alcance.toLocaleString('es-AR')}</span>
+              <span className="live-v" style={{ color: 'var(--green)' }}>{alcance.toLocaleString('es-CO')}</span>
               <span className="live-l">personas alcanzadas</span>
             </div>
             <div className="live-n">
-              <span className="live-v" style={{ color: 'var(--purple3)' }}>{clics.toLocaleString('es-AR')}</span>
+              <span className="live-v" style={{ color: 'var(--purple3)' }}>{clics.toLocaleString('es-CO')}</span>
               <span className="live-l">clics al sitio</span>
             </div>
             <div className="live-n">
@@ -236,7 +236,7 @@ export function EnLinea({ setToast, ir }: { setToast: (t: string) => void; ir?: 
           </div>
           <div className="acc-why">
             <b>Monitoreo directo quiere decir esto:</b> no es un informe de ayer, es lo que está pasando
-            mientras mirás. Si un número se cae, el motor actúa o te avisa.
+            mientras mira. Si un número se cae, el motor actúa o le avisa.
           </div>
         </Card>
 
@@ -263,8 +263,8 @@ export function EnLinea({ setToast, ir }: { setToast: (t: string) => void; ir?: 
                   <span className="rank-t">{p.titulo}</span>
                   <span className="rank-m">{p.formato} · {p.red}</span>
                   <span className="pub-nums">
-                    <span>{alcanceDe(p, i).toLocaleString('es-AR')} alcance</span>
-                    <span>{clicsDe(p, i).toLocaleString('es-AR')} clics</span>
+                    <span>{alcanceDe(p, i).toLocaleString('es-CO')} alcance</span>
+                    <span>{clicsDe(p, i).toLocaleString('es-CO')} clics</span>
                     <span style={{ color: pausa ? 'var(--muted)' : 'var(--green)', fontWeight: 800 }}>{conComa(p.roas)}x</span>
                   </span>
                 </span>
@@ -273,7 +273,7 @@ export function EnLinea({ setToast, ir }: { setToast: (t: string) => void; ir?: 
                   <Button variant="ghost" className="btn-sm"
                     title={pausa
                       ? `Reanuda «${p.titulo}»: vuelve a sumar alcance y clics desde donde quedó. Es reversible.`
-                      : `Pausa «${p.titulo}» ahora: deja de sumar y el número queda congelado donde está. No gasta mientras esté en pausa y la reanudás cuando quieras.`}
+                      : `Pausa «${p.titulo}» ahora: deja de sumar y el número queda congelado donde está. No gasta mientras esté en pausa y la reanuda cuando quiera.`}
                     onClick={() => { if (pausa) reanudar(p.titulo); else pausar(p.titulo); }}>
                     {pausa ? <I_Play size={12} /> : <I_Pause size={12} />}
                   </Button>
@@ -287,7 +287,7 @@ export function EnLinea({ setToast, ir }: { setToast: (t: string) => void; ir?: 
           <div className="row" style={{ gap: 9, flexWrap: 'wrap' }}>
             {flojasCorriendo.length > 0 ? (
               <Button variant="outline" className="btn-sm"
-                title={`Frena la pieza que devuelve menos que tu ROAS del mes (${ROAS_MES}): deja de sumar y de gastar, con el número congelado donde está. Es reversible: la reanudás cuando quieras.`}
+                title={`Frena la pieza que devuelve menos que su ROAS del mes (${ROAS_MES}): deja de sumar y de gastar, con el número congelado donde está. Es reversible: la reanuda cuando quiera.`}
                 onClick={frenarLasQueNoRinden}>
                 <I_Zap size={13} /> Frenar las que no rinden{flojasCorriendo.length > 1 ? ` (${flojasCorriendo.length})` : ''}
               </Button>
@@ -299,18 +299,18 @@ export function EnLinea({ setToast, ir }: { setToast: (t: string) => void; ir?: 
               </Button>
             ) : null}
             <Button variant="ghost" className="btn-sm"
-              title="Abre el informe de las 3 piezas: alcance, clics, ventas y ROAS de cada una, y qué hizo el motor mientras no mirabas"
+              title="Abre el informe de las 3 piezas: alcance, clics, ventas y ROAS de cada una, y qué hizo el motor mientras no miraba"
               onClick={informe}>Ver el informe completo</Button>
           </div>
           {pausadas.length > 0 && (
             <div className="tiny" style={{ marginTop: 10, color: 'var(--amber)', fontWeight: 700 }}>
               En pausa: {PUBLICADAS.filter(p => enPausa(p.titulo)).map(p => `«${p.titulo}» (${conComa(p.roas)}x)`).join(' · ')}.
-              Dejaron de sumar alcance y clics y no gastan hasta que las reanudes: lo que ya rindieron queda en la bitácora.
+              Dejaron de sumar alcance y clics y no gastan hasta que las reanude: lo que ya rindieron queda en la bitácora.
             </div>
           )}
           <div className="acc-why">
             Cada pieza se puede <b>pausar sin perder nada</b>: lo que ya rindió queda en la bitácora y la
-            podés reactivar cuando quieras.
+            puede reactivar cuando quiera.
           </div>
         </Card>
       </div>
@@ -325,14 +325,14 @@ export function EnLinea({ setToast, ir }: { setToast: (t: string) => void; ir?: 
               <span className="guard-lb">Rinde parejo<small>Ninguna pieza se enfrió: no hubo que tocar nada</small></span>
               <span className="guard-val" style={{ color: 'var(--green)' }}>todo bien</span></div>
             <div className="guard"><span style={{ color: 'var(--amber)', flexShrink: 0 }}><I_Trend size={14} /></span>
-              <span className="guard-lb">«Antes y después» bajó un poco<small>Pasó de 4,0x a 3,6x: la frecuencia subió. Si sigue, el motor va a pedirte refrescar el creativo</small></span>
+              <span className="guard-lb">«Antes y después» bajó un poco<small>Pasó de 4,0x a 3,6x: la frecuencia subió. Si sigue, el motor le va a pedir refrescar el creativo</small></span>
               <span className="guard-val" style={{ color: 'var(--amber)' }}>vigilando</span></div>
             <div className="guard"><span style={{ color: 'var(--green)', flexShrink: 0 }}><I_Zap size={14} /></span>
               <span className="guard-lb">Presupuesto repartido solo<small>Le sacó <Dinero monto="$4/día" equivalente={false} /> a la que más rinde y ya tiene techo de gasto</small></span>
               <span className="guard-val">hace 20 min</span></div>
           </div>
           <div className="acc-why">
-            Esto es lo que el motor hace <b>mientras no mirás</b>. Vos ves el resultado acá y te enterás
+            Esto es lo que el motor hace <b>mientras no mira</b>. Usted ve el resultado aquí y se entera
             de cada movimiento en la bitácora.
           </div>
           <NotaMoneda />
@@ -343,12 +343,12 @@ export function EnLinea({ setToast, ir }: { setToast: (t: string) => void; ir?: 
           action={<Badge tone="purple">el ciclo sigue</Badge>}
         >
           <div className="bs">
-            Cuando una pieza se enfría, el ciclo arranca de nuevo <b>sin que hagas nada</b>:
+            Cuando una pieza se enfría, el ciclo arranca de nuevo <b>sin que haga nada</b>:
             vuelve a MiroFish, se crean opciones nuevas y salen las mejores.
           </div>
           <div className="guards">
             <div className="guard"><span style={{ color: 'var(--purple3)', flexShrink: 0 }}><I_Play size={14} /></span>
-              <span className="guard-lb">Mira lo que está rindiendo<small>Cuál de tus piezas trae la gente más barata</small></span></div>
+              <span className="guard-lb">Revisa lo que está rindiendo<small>Cuál de sus piezas trae la gente más barata</small></span></div>
             <div className="guard"><span style={{ color: 'var(--purple3)', flexShrink: 0 }}><I_Refresh size={14} /></span>
               <span className="guard-lb">Crea variantes de la que gana<small>Con el mismo ángulo y los colores que ya funcionaron</small></span></div>
             <div className="guard"><span style={{ color: 'var(--purple3)', flexShrink: 0 }}><I_Eye size={14} /></span>
@@ -356,12 +356,12 @@ export function EnLinea({ setToast, ir }: { setToast: (t: string) => void; ir?: 
           </div>
           <div className="row" style={{ gap: 9, flexWrap: 'wrap' }}>
             <Button variant="ghost" className="btn-sm"
-              title="Te muestra con qué arranca una campaña nueva (el material que ya tenés, el ángulo que gana y lo que cuesta) y desde ahí te lleva al paso 1 del flujo. Nada se publica ni se gasta hasta que lo confirmes."
+              title="Le muestra con qué arranca una campaña nueva (el material que ya tiene, el ángulo que gana y lo que cuesta) y desde ahí le lleva al paso 1 del flujo. Nada se publica ni se gasta hasta que lo confirme."
               onClick={campanaNueva}>Crear una campaña nueva</Button>
           </div>
           <div className="acc-why">
             El ciclo <b>no se corta</b>: lo que se publica alimenta lo que se crea después.
-            Cuanto más corrés, mejor elige.
+            Cuanto más corre, mejor elige.
           </div>
         </Card>
       </div>

@@ -15,7 +15,7 @@ import {
 //
 // El mismo paso se llena en dos lugares: en el asistente que aparece al entrar y en «Primeros
 // pasos» dentro del panel. Si cada uno tuviera su versión del mismo control, cualquier cambio se
-// haría dos veces y una quedaría vieja. Acá viven los campos, el bloque de conexiones y el arranque.
+// haría dos veces y una quedaría vieja. Aquí viven los campos, el bloque de conexiones y el arranque.
 // =============================================================================================
 
 /** El ícono de un archivo subido: por el tipo que el motor le va a dar, no por el nombre. */
@@ -48,7 +48,7 @@ export function CamposPaso({ paso }: { paso: PasoOnb }) {
           onChange={e => onb.escribir(campo.id, e.target.value)}
           onPaste={e => {
             const txt = e.clipboardData?.getData('text') || '';
-            // Pegar un link en el panel de Sinkroo significa una sola cosa: que lo lea.
+            // Pegar un enlace en el panel de Sinkroo significa una sola cosa: que lo lea.
             if (/^https?:\/\//.test(txt.trim())) { setPegado(txt.trim()); }
           }} />
       );
@@ -63,8 +63,8 @@ export function CamposPaso({ paso }: { paso: PasoOnb }) {
             onChange={e => onb.escribir(campo.id, e.target.value)} />
           <div className="tiny muted">
             {largo === 0
-              ? 'Podés escribirlo como te salga: el motor ordena el resto.'
-              : `${largo} caracteres escritos · el motor lo lee y te devuelve qué entendió antes de escribir nada.`}
+              ? 'Puede escribirlo como le salga: el motor ordena el resto.'
+              : `${largo} caracteres escritos · el motor lo lee y le devuelve qué entendió antes de escribir nada.`}
           </div>
         </>
       );
@@ -78,7 +78,7 @@ export function CamposPaso({ paso }: { paso: PasoOnb }) {
         <div className="onb-chips">
           {(campo.opciones || []).map(op => (
             <button key={op} type="button" className={`tipo-chip ${activo(op) ? 'sel' : ''}`}
-              title={campo.detalle?.[op] || `${op}: elegilo para que el motor trabaje con eso`}
+              title={campo.detalle?.[op] || `${op}: elíjalo para que el motor trabaje con eso`}
               onClick={() => elegir(campo, op)}>
               {activo(op) ? '✓ ' : ''}{op}
             </button>
@@ -97,10 +97,10 @@ export function CamposPaso({ paso }: { paso: PasoOnb }) {
       return (
         <div className="onb-docs">
           <label className="onb-drop"
-            title="Soltá tus archivos acá: PDF, Word, Excel, PowerPoint, fotos, videos o audios. El motor lee el texto de los documentos y usa las imágenes y los videos en las piezas.">
+            title="Suelte sus archivos aquí: PDF, Word, Excel, PowerPoint, fotos, videos o audios. El motor lee el texto de los documentos y usa las imágenes y los videos en las piezas.">
             <span className="onb-drop-ic"><I_Upload size={22} /></span>
-            <span className="onb-drop-t">Soltá tus archivos acá</span>
-            <span className="onb-drop-s">o tocá para elegirlos · todos los formatos</span>
+            <span className="onb-drop-t">Suelte sus archivos aquí</span>
+            <span className="onb-drop-s">o toque para elegirlos · todos los formatos</span>
             <input type="file" multiple accept={ARCHIVOS_ACEPTADOS} style={{ display: 'none' }}
               onChange={e => { const n = onb.subirArchivos(e.target.files); if (n) onb.avisar(`${n} archivo${n > 1 ? 's' : ''} subido${n > 1 ? 's' : ''}: el motor los lee`); }} />
           </label>
@@ -121,7 +121,7 @@ export function CamposPaso({ paso }: { paso: PasoOnb }) {
 
           {/* Qué hace el motor con cada formato: sin esto, subir un PDF sería una apuesta. */}
           <div className="onb-tipos">
-            <div className="onb-tipos-t">Qué hace el motor con lo que subas</div>
+            <div className="onb-tipos-t">Qué hace el motor con lo que suba</div>
             {TIPOS_ARCHIVO.map(x => (
               <div key={x.para} className="onb-tipo-fila">
                 <span className="onb-tipo-para">{x.para}</span>
@@ -131,7 +131,7 @@ export function CamposPaso({ paso }: { paso: PasoOnb }) {
           </div>
           {arrastrando && (
             <div className="tiny onb-ok">
-              <I_Check size={12} /> {onb.archivos.length} archivo{onb.archivos.length > 1 ? 's' : ''} en la ingesta. Podés seguir sumando o pasar al paso siguiente.
+              <I_Check size={12} /> {onb.archivos.length} archivo{onb.archivos.length > 1 ? 's' : ''} en la ingesta. Puede seguir sumando o pasar al paso siguiente.
             </div>
           )}
         </div>
@@ -150,7 +150,7 @@ export function CamposPaso({ paso }: { paso: PasoOnb }) {
         </div>
       ))}
       {pegado && (
-        <div className="tiny muted">Pegaste un link: el motor lo lee solo y no hace falta que lo escribas.</div>
+        <div className="tiny muted">Pegó un enlace: el motor lo lee solo y no hace falta que lo escriba.</div>
       )}
     </div>
   );
@@ -176,11 +176,11 @@ export function BloqueConexiones() {
           <div key={c.key} className="guard">
             <span style={{ fontSize: 17, flexShrink: 0 }}>{c.icono}</span>
             <span className="guard-lb">{c.nombre}
-              <small>{activo && c.habilitadoHoy ? `${c.detalle} Ya estaba conectada cuando entraste: si la dejás, el motor sigue publicando ahí.` : c.detalle}</small>
+              <small>{activo && c.habilitadoHoy ? `${c.detalle} Ya estaba conectada cuando entró: si la deja, el motor sigue publicando ahí.` : c.detalle}</small>
             </span>
             <Badge tone={activo ? 'green' : 'muted'}>{activo ? 'conectada' : 'sin conectar'}</Badge>
             <Button variant={activo ? 'outline' : 'ghost'} className="btn-sm"
-              title={activo ? `Desconecta ${c.nombre}: el motor deja de publicar ahí al instante. Reversible desde acá mismo.` : `Conecta ${c.nombre}: ${c.detalle}`}
+              title={activo ? `Desconecta ${c.nombre}: el motor deja de publicar ahí al instante. Reversible desde aquí mismo.` : `Conecta ${c.nombre}: ${c.detalle}`}
               onClick={() => alternar(c.key)}>
               {activo ? 'Desconectar' : 'Conectar'}
             </Button>
@@ -200,8 +200,8 @@ export function BloqueArranque({ enAsistente, alCerrar }: { enAsistente?: boolea
       <>
         <div className="onb-arrancado">
           <I_Rocket size={15} />
-          <span><b>El motor está trabajando.</b> Arrancó por el mercado: en unas horas vas a ver el primer informe
-            y las piezas de la semana. Nada de esto gasta plata hasta que la pieza pasa el panel.</span>
+          <span><b>El motor está trabajando.</b> Arrancó por el mercado: en unas horas va a ver el primer informe
+            y las piezas de la semana. Nada de esto gasta dinero hasta que la pieza pasa el panel.</span>
         </div>
         <div className="onb-semana">
           {PRIMERA_SEMANA.map(d => (
@@ -214,12 +214,12 @@ export function BloqueArranque({ enAsistente, alCerrar }: { enAsistente?: boolea
           ))}
           <div className="onb-dia-total">
             <span>Total de la primera semana</span>
-            <span><b>{COSTO_PRIMERA_SEMANA} créditos</b> de los {plan.creditosMes.toLocaleString('es-AR')} del plan {plan.nombre} · publicar es aparte</span>
+            <span><b>{COSTO_PRIMERA_SEMANA} créditos</b> de los {plan.creditosMes.toLocaleString('es-CO')} del plan {plan.nombre} · publicar es aparte</span>
           </div>
         </div>
         {enAsistente && (
           <div className="row" style={{ gap: 9, marginTop: 14, flexWrap: 'wrap' }}>
-            <Button className="btn-sm" title="Cierra el asistente y te deja en el panel, con el motor ya trabajando"
+            <Button className="btn-sm" title="Cierra el asistente y le deja en el panel, con el motor ya trabajando"
               onClick={alCerrar}><I_ArrowRight size={13} /> Ir a mi panel</Button>
           </div>
         )}
@@ -230,13 +230,13 @@ export function BloqueArranque({ enAsistente, alCerrar }: { enAsistente?: boolea
   return (
     <div className="row" style={{ gap: 9, marginTop: 14, flexWrap: 'wrap' }}>
       <Button className="btn-sm"
-        title={`Arranca el motor ahora: investiga tu mercado y prepara las piezas de la semana. Cuesta ${COSTO_PRIMERA_SEMANA} créditos y no gasta plata hasta que las piezas pasan el panel.`}
+        title={`Arranca el motor ahora: investiga su mercado y prepara las piezas de la semana. Cuesta ${COSTO_PRIMERA_SEMANA} créditos y no gasta dinero hasta que las piezas pasan el panel.`}
         onClick={() => { onb.arrancar(); onb.marcar(5); onb.avisar('El motor arrancó: empieza por el mercado, no gasta nada hasta publicar'); }}>
         <I_Rocket size={13} /> Arrancar el motor
       </Button>
       {!enAsistente && (
-        <Button variant="ghost" className="btn-sm" title="Guarda lo que pusiste y te deja seguir después desde Hoy"
-          onClick={() => { onb.desmarcar(5); onb.avisar('Guardado: seguís cuando quieras desde Hoy'); }}>
+        <Button variant="ghost" className="btn-sm" title="Guarda lo que puso y le deja seguir después desde Hoy"
+          onClick={() => { onb.desmarcar(5); onb.avisar('Guardado: sigue cuando quiera desde Hoy'); }}>
           Dejarlo para después
         </Button>
       )}
@@ -244,7 +244,7 @@ export function BloqueArranque({ enAsistente, alCerrar }: { enAsistente?: boolea
   );
 }
 
-/** El aviso de la verificación: es legal, va aparte y no se resuelve acá. */
+/** El aviso de la verificación: es legal, va aparte y no se resuelve aquí. */
 export function AvisoVerificacion({ ir }: { ir: () => void }) {
   return (
     <div className="onb-infiere" style={{ borderColor: 'rgba(245,158,11,.32)' }}>

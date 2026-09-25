@@ -5,7 +5,7 @@ import { RETARDOS, CONDICIONES, DISPARADORES } from '../data/demo';
 
 /**
  * La automatización, tal como se edita en pantalla.
- * El estado editable vive en la vista (Conversaciones), no en el archivo de datos: acá sólo se
+ * El estado editable vive en la vista (Conversaciones), no en el archivo de datos: aquí sólo se
  * dibuja lo que la vista pasa y se avisa cada cambio con onCambio.
  * El retardo NO se escribe a mano: se elige de una lista corta (RETARDOS / CONDICIONES de demo.ts).
  * Escribir tiempos libres confundía al dueño de la tienda ("AI instante"), y además el motor sólo
@@ -61,8 +61,8 @@ function conVariables(txt: string) {
 /** El momento del paso escrito como se dice hablando: lo usa la prueba de la burbuja. */
 function cuandoLlega(p: PasoFlujo): string {
   if (p.condicion) return `cuando el cliente ${p.delay.replace(/^Si /, '').toLowerCase()}`;
-  if (p.delay === RETARDOS[0]) return 'al instante, apenas te escribe';
-  return `${p.delay.replace(' después', '')} después de que te escriba`;
+  if (p.delay === RETARDOS[0]) return 'al instante, apenas le escribe';
+  return `${p.delay.replace(' después', '')} después de que le escriba`;
 }
 
 export function AutomatizacionCard({ flujo, sucio, onCambio, onGuardar, onDescartar, onBorrar, avisar }: {
@@ -94,7 +94,7 @@ export function AutomatizacionCard({ flujo, sucio, onCambio, onGuardar, onDescar
     const p = pasoNuevo();
     onCambio({ ...flujo, pasos: [...flujo.pasos, p] });
     setEditando(p.id);
-    avisar(`Agregaste un paso al final de "${nombre}": elegí el tiempo de la lista, escribí el mensaje y apretá Guardar`);
+    avisar(`Agregaste un paso al final de "${nombre}": elija el tiempo de la lista, escriba el mensaje y apretá Guardar`);
   };
 
   const borrarPaso = (id: string) => {
@@ -113,11 +113,11 @@ export function AutomatizacionCard({ flujo, sucio, onCambio, onGuardar, onDescar
 
   const guardar = () => {
     if (sinNombre) {
-      avisar('Esta automatización todavía no tiene nombre: escribí uno (por ejemplo "Recordatorio de recompra") y volvé a guardar');
+      avisar('Esta automatización todavía no tiene nombre: escriba uno (por ejemplo "Recordatorio de recompra") y vuelva a guardar');
       return;
     }
     if (flujo.pasos.length === 0) {
-      avisar('Una automatización sin pasos no manda nada: agregá al menos un paso');
+      avisar('Una automatización sin pasos no manda nada: agregue al menos un paso');
       return;
     }
     const sinTexto = flujo.pasos.find(p => !p.txt.trim());
@@ -173,7 +173,7 @@ export function AutomatizacionCard({ flujo, sucio, onCambio, onGuardar, onDescar
         <span className="badge badge-muted" title="Para qué sirve esta automatización dentro de la tienda">{flujo.grupo}</span>
         <span className="aut-barra-nota">
           {sinCifras
-            ? 'Todavía no salió ningún mensaje de acá: cuando empiece a correr van a aparecer los clientes y la plata que movió.'
+            ? 'Todavía no salió ningún mensaje de aquí: cuando empiece a correr van a aparecer los clientes y la dinero que movió.'
             : activo
               ? 'Manda sus mensajes sola cuando se cumple el tiempo de cada paso.'
               : 'No se manda nada de esta automatización mientras esté en pausa.'}
@@ -193,7 +193,7 @@ export function AutomatizacionCard({ flujo, sucio, onCambio, onGuardar, onDescar
 
       {/* VARIABLES: aviso chico con las que se pueden usar en cualquier mensaje. */}
       <div className="aut-vars">
-        <span className="aut-vars-t">Podés usar estas variables en los mensajes:</span>
+        <span className="aut-vars-t">Puede usar estas variables en los mensajes:</span>
         {VARIABLES.map(v => (
           <span key={v} className="aut-var" title={`${v} se completa sola con el dato del cliente: en el mensaje se lee reemplazada, sin las llaves.`}>{v}</span>
         ))}
@@ -204,7 +204,7 @@ export function AutomatizacionCard({ flujo, sucio, onCambio, onGuardar, onDescar
       <div className="tl aut-pasos">
         {flujo.pasos.length === 0 ? (
           <div className="bs">
-            Esta automatización quedó sin pasos, así que no manda nada. Agregá uno con el botón
+            Esta automatización quedó sin pasos, así que no manda nada. Agregue uno con el botón
             <b> Agregar paso</b> de abajo.
           </div>
         ) : flujo.pasos.map(p => {
@@ -214,21 +214,21 @@ export function AutomatizacionCard({ flujo, sucio, onCambio, onGuardar, onDescar
               <span className="tl-dot" style={{ background: p.condicion ? 'var(--amber)' : 'var(--purple2)' }} />
               {p.condicion ? (
                 <select className="input aut-sel aut-sel-cond" value={p.delay}
-                  title="Este paso no espera un tiempo: depende de lo que haga el cliente. Elegí el caso de la lista."
+                  title="Este paso no espera un tiempo: depende de lo que haga el cliente. Elija el caso de la lista."
                   onChange={e => cambiarPaso(p.id, { delay: e.target.value })}>
                   {CONDICIONES.map(o => <option key={o} value={o}>{o}</option>)}
                 </select>
               ) : (
                 <select className="input aut-sel aut-sel-delay" value={p.delay}
-                  title="Cuándo se manda este mensaje. Elegí uno de los tiempos de la lista: son los que el motor sabe medir, no hace falta escribir nada."
+                  title="Cuándo se manda este mensaje. Elija uno de los tiempos de la lista: son los que el motor sabe medir, no hace falta escribir nada."
                   onChange={e => cambiarPaso(p.id, { delay: e.target.value })}>
                   {RETARDOS.map(o => <option key={o} value={o}>{o}</option>)}
                 </select>
               )}
               <div className="tl-body">
                 {edTxt ? (
-                  <input className="input aut-in" autoFocus value={p.txt} placeholder="Escribí el mensaje que le llega al cliente…"
-                    title="Escribí el mensaje tal como le llega al cliente. Podés usar las variables de arriba y apretar Enter al terminar."
+                  <input className="input aut-in" autoFocus value={p.txt} placeholder="Escriba el mensaje que le llega al cliente…"
+                    title="Escriba el mensaje tal como le llega al cliente. Puede usar las variables de arriba y apretar Enter al terminar."
                     onChange={e => cambiarPaso(p.id, { txt: e.target.value })}
                     onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') setEditando(null); }}
                     onBlur={() => setEditando(null)} />
@@ -236,7 +236,7 @@ export function AutomatizacionCard({ flujo, sucio, onCambio, onGuardar, onDescar
                   <div className="tl-text aut-clic" role="button" style={{ fontSize: 12.5 }}
                     title="Clic para editar el mensaje. Es reversible mientras no guardes."
                     onClick={() => setEditando(p.id)}>
-                    {p.txt.trim() ? conVariables(p.txt) : <span className="aut-vacio">Escribí el mensaje de este paso…</span>}
+                    {p.txt.trim() ? conVariables(p.txt) : <span className="aut-vacio">Escriba el mensaje de este paso…</span>}
                   </div>
                 )}
                 <div className="aut-paso-acts">
@@ -255,7 +255,7 @@ export function AutomatizacionCard({ flujo, sucio, onCambio, onGuardar, onDescar
       {prueba && primerPaso && (
         <div className="aut-prueba">
           <div className="aut-prueba-t">
-            <I_Whatsapp size={13} /> Así le llega a un cliente nuevo, en tu WhatsApp
+            <I_Whatsapp size={13} /> Así le llega a un cliente nuevo, en su WhatsApp
           </div>
           <div className="hilo aut-hilo">
             <div className="wa-burbuja">
@@ -268,7 +268,7 @@ export function AutomatizacionCard({ flujo, sucio, onCambio, onGuardar, onDescar
           <div className="tiny muted">
             Es una vista previa: no se le manda nada a nadie. {activo
               ? 'La automatización está encendida, así que este mensaje sale solo.'
-              : 'Si la encendés, este mensaje empieza a salir solo.'}
+              : 'Si la enciende, este mensaje empieza a salir solo.'}
           </div>
         </div>
       )}
@@ -283,11 +283,11 @@ export function AutomatizacionCard({ flujo, sucio, onCambio, onGuardar, onDescar
         {sucio && (
           <>
             <span className="badge badge-amber aut-sucio"
-              title="Todavía no se guardó: la automatización sigue funcionando como estaba. Guardá para aplicar los cambios o Descartá para volver atrás.">
+              title="Todavía no se guardó: la automatización sigue funcionando como estaba. Guarde para aplicar los cambios o Descartá para volver atrás.">
               cambios sin guardar
             </span>
             <Button className="btn-sm"
-              title="Aplica los cambios: desde acá la automatización funciona como la dejaste, con estos pasos y este estado."
+              title="Aplica los cambios: desde aquí la automatización funciona como la dejó, con estos pasos y este estado."
               onClick={guardar}><I_Check size={13} /> Guardar</Button>
             <Button variant="ghost" className="btn-sm"
               title="Vuelve la automatización a como estaba antes de editar. No se puede deshacer, pero sólo se pierden estos cambios."

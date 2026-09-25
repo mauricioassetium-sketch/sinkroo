@@ -13,7 +13,7 @@ export const PERFILES = [
   { k: 'compara', nombre: 'El que compara', mira: 'mira precio y alternativa' },
   { k: 'desconfiado', nombre: 'Desconfiado', mira: 'busca la letra chica' },
   { k: 'experto', nombre: 'Experto del rubro', mira: 'detecta lo que no es real' },
-  { k: 'nuevo', nombre: 'Alguien que nunca te vio', mira: 'no sabe qué vendés' },
+  { k: 'nuevo', nombre: 'Alguien que nunca le vio', mira: 'no sabe qué vende' },
 ] as const;
 
 // ---------------------------------------------------------------------------------------------
@@ -23,7 +23,7 @@ export const INVESTIGACION = {
   competidor: {
     nombre: 'Tienda Norte',
     leads: 240,
-    detalle: 'Es el que más leads trae del rubro: 240 por mes, contra 96 tuyos.',
+    detalle: 'Es el que más leads trae del rubro: 240 por mes, contra 96 suyos.',
   },
   colores: [
     { hex: '#4A7C59', nombre: 'Verde salvia', uso: 'fondo de video y placas', por: 'su anuncio con más leads del rubro' },
@@ -31,9 +31,9 @@ export const INVESTIGACION = {
     { hex: '#E8A33D', nombre: 'Ámbar', uso: 'precio y oferta', por: 'es lo que más se toca en esos anuncios' },
   ],
   hallazgos: [
-    { t: 'Color y contraste', d: 'El video que más leads trae de todo el rubro usa verde salvia con texto crema. Se lee perfecto en pantalla al sol, que es donde tu cliente mira.' },
-    { t: 'Duración y ritmo', d: 'Entre 12 y 18 segundos. El producto entra en los primeros 2 segundos: si tardás más, se van.' },
-    { t: 'El gancho', d: 'Arrancan mostrando el problema, no el producto. Ninguno de los que arranca con el logo está entre los que más rinden.' },
+    { t: 'Color y contraste', d: 'El video que más leads trae de todo el rubro usa verde salvia con texto crema. Se lee perfecto en pantalla al sol, que es donde su cliente mira.' },
+    { t: 'Duración y ritmo', d: 'Entre 12 y 18 segundos. El producto entra en los primeros 2 segundos: si tarda más, se van.' },
+    { t: 'El gancho', d: 'Arrancan mostrando el problema, no el producto. Los que arrancan con el logo no están entre los que más rinden.' },
     { t: 'Cuándo publican', d: 'Martes y jueves entre 19 y 21. Es la franja donde esos anuncios juntan más respuestas.' },
   ],
 };
@@ -64,9 +64,9 @@ export interface Opcion {
 export const OPCIONES: Opcion[] = [
   {
     id: 'op1', formato: 'Video vertical', medida: '15 s · 9:16', titulo: 'El problema primero',
-    gancho: '«Si tu piel se te pone roja con todo, esto te va a interesar»',
+    gancho: '«Si su piel se le pone roja con todo, esto le va a interesar»',
     prompt: 'Plano cenital de la mesada del baño con luz de mañana entrando de costado. Fondo verde salvia (#4A7C59) desenfocado. Una mano entra y apoya el frasco en el centro. Texto crema (#F5EFE6) grande: a los 2 s aparece «roja». Cierre: el frasco en primer plano, el precio en ámbar (#E8A33D). Sin música, sonido ambiente del baño.',
-    copy: 'Ese ardor no es normal: es tu piel pidiendo otra cosa. Serum con 3 ingredientes, nada más.',
+    copy: 'Ese ardor no es normal: es su piel pidiendo otra cosa. Serum con 3 ingredientes, nada más.',
     cta: 'Ver el serum',
     color: '#4A7C59', usaCompetidor: 'los 3 colores que mejor rinden',
     votos: { impulsivo: 92, compara: 78, desconfiado: 74, experto: 88, nuevo: 84 },
@@ -81,8 +81,8 @@ export const OPCIONES: Opcion[] = [
   {
     id: 'op2', formato: 'Carrusel', medida: '5 placas · 4:5', titulo: 'Antes y después real',
     gancho: '«30 días usando lo mismo, así quedó»',
-    prompt: 'Cinco placas con fondo crema (#F5EFE6) y borde verde salvia. Placa 1: foto de las fotos reales del cliente subida por la tienda, con la fecha encima en ámbar. Placsa 2 a 4: el frasco en la mesada, la textura en la mano, el resultado. Placa 5: los 3 ingredientes en lista y el precio en ámbar. Tipografía gruesa, sin decoración.',
-    copy: 'No te prometo magia: te muestro 30 días reales de la misma persona.',
+    prompt: 'Cinco placas con fondo crema (#F5EFE6) y borde verde salvia. Placa 1: una foto real del cliente, subida por la tienda, con la fecha encima en ámbar. Placas 2 a 4: el frasco en la mesada, la textura en la mano, el resultado. Placa 5: los 3 ingredientes en lista y el precio en ámbar. Tipografía gruesa, sin decoración.',
+    copy: 'No le prometo magia: le muestro 30 días reales de la misma persona.',
     cta: 'Ver los resultados',
     color: '#F5EFE6', usaCompetidor: 'la paleta crema y verde',
     votos: { impulsivo: 74, compara: 88, desconfiado: 86, experto: 79, nuevo: 71 },
@@ -96,14 +96,14 @@ export const OPCIONES: Opcion[] = [
   },
   {
     id: 'op3', formato: 'Video vertical', medida: '12 s · 9:16', titulo: 'El precio sin vueltas',
-    gancho: '«Sale $34. Te muestro exactamente qué llevás»',
+    gancho: '«Sale $34. Le muestro exactamente qué lleva»',
     prompt: 'Cámara en mano, un solo plano, sin cortes: alguien muestra el frasco, lo abre, pone una gota en el dorso de la mano y lo acerca. Fondo verde salvia. El precio en ámbar aparece a los 6 s y queda fijo. Voz real, no locución. Subtítulos en crema, chicos, abajo.',
     copy: '$34, con envío gratis desde $15.000. Nada más que explicar.',
     cta: 'Comprar ahora',
     color: '#E8A33D', usaCompetidor: 'el ámbar para el precio',
     votos: { impulsivo: 88, compara: 91, desconfiado: 69, experto: 72, nuevo: 66 },
     opiniones: {
-      impulsivo: 'El precio aparece a los 6 segundos y queda fijo: no tengo que esperar al final para saber cuánto sale.',
+      impulsivo: 'El precio aparece a los 6 segundos y queda fijo: no tengo que esperar al final para saber cuánto cuesta.',
       compara: 'Da el precio, el envío gratis y desde cuánto: no me deja ninguna duda para compararlo.',
       desconfiado: 'No dice en cuánto llega ni qué queda afuera del envío gratis: siempre hay una letra chica.',
       experto: 'Un solo plano sin cortes es riesgoso: sin edición, el ritmo depende de quien graba.',
@@ -128,7 +128,7 @@ export const OPCIONES: Opcion[] = [
   },
   {
     id: 'op5', formato: 'Reel', medida: '18 s · 9:16', titulo: 'La rutina de 3 pasos',
-    gancho: '«No sabés en qué orden usarlos, esto es para vos»',
+    gancho: '«No sabe en qué orden usarlos, esto es para usted»',
     prompt: 'Tres cortes rápidos, uno por paso, cada uno con el mismo encuadre para que se sienta una rutina. Fondo crema, el verde salvia solo en los subtítulos. En cada corte aparece el número del paso en ámbar y el cronómetro del tiempo que hay que esperar. Cierre con los tres frascos alineados y el pack completo.',
     copy: 'El orden importa más que el producto: en qué orden y cuánto esperar.',
     cta: 'Ver la rutina',
@@ -247,7 +247,7 @@ const CAMBIOS: CambioMejora[] = [
     queCambia: 'contesta la objeción del juez más duro: muestra los 3 ingredientes con nombre y porcentaje',
     delta: { impulsivo: 1, compara: 1, desconfiado: 14, experto: 1, nuevo: 1 },
     promptExtra: 'Sobre el cierre, antes del precio, entra una placa de 2 s con los 3 ingredientes, cada uno con su nombre y su porcentaje, en crema (#F5EFE6) sobre el verde salvia. Sin locución: se lee.',
-    copy: 'Ese ardor no es normal: es tu piel pidiendo otra cosa. 3 ingredientes, con nombre y porcentaje. Nada más.',
+    copy: 'Ese ardor no es normal: es su piel pidiendo otra cosa. 3 ingredientes, con nombre y porcentaje. Nada más.',
     cta: 'Ver el serum',
     opiniones: {
       impulsivo: 'El arranque y el producto a los 2 segundos no cambiaron: sigue entendiéndose en el primer segundo.',
@@ -262,7 +262,7 @@ const CAMBIOS: CambioMejora[] = [
     queCambia: 'suma prueba social: el mismo arranque, pero cierra con una clienta real y la captura del mensaje',
     delta: { impulsivo: -2, compara: 6, desconfiado: 12, experto: 3, nuevo: 8 },
     promptExtra: 'A los 11 s entra un corte de 3 s con una clienta real mostrando el frasco, con la frase subrayada en crema y el texto en ámbar: «128 reseñas, esta es la que más se repite». Cierra con la captura del mensaje con el número tapado.',
-    copy: 'Ese ardor no es normal: es tu piel pidiendo otra cosa. Y 128 clientas ya lo dijeron antes que yo.',
+    copy: 'Ese ardor no es normal: es su piel pidiendo otra cosa. Y 128 clientas ya lo dijeron antes que yo.',
     cta: 'Leer las reseñas',
     opiniones: {
       impulsivo: 'El cierre con la clienta estira el video y a mí con el primer segundo me alcanzaba: no me suma.',
@@ -277,14 +277,14 @@ const CAMBIOS: CambioMejora[] = [
     queCambia: 'cambia el ángulo: arranca por el precio en vez del problema, mismo formato y mismo producto',
     delta: { impulsivo: 6, compara: 2, desconfiado: 2, experto: -2, nuevo: 2 },
     promptExtra: 'Se da vuelta el orden: el precio en ámbar (#E8A33D) entra a los 3 s y queda fijo en la esquina, y el problema aparece después. El producto se sigue viendo en los primeros 2 s.',
-    copy: '$34, con envío gratis desde $15.000. Y si tu piel se te pone roja con todo, esto te va a interesar.',
+    copy: '$34, con envío gratis desde $15.000. Y si su piel se le pone roja con todo, esto le va a interesar.',
     cta: 'Ver el serum',
     opiniones: {
-      impulsivo: 'El precio a los 3 segundos y fijo: no tengo que esperar al final para saber cuánto sale.',
+      impulsivo: 'El precio a los 3 segundos y fijo: no tengo que esperar al final para saber cuánto cuesta.',
       compara: 'Da el precio primero y el problema después: así es más simple compararlo contra el resto.',
       desconfiado: 'Arrancar por el precio me hace pensar que algo esconde: no dice qué trae ni en cuánto llega.',
       experto: 'Empezar por el precio es el ángulo más difícil del rubro: se sostiene solo si el producto se ve igual de claro.',
-      nuevo: 'Sé cuánto sale, pero todavía me cuesta entender para qué sirve.',
+      nuevo: 'Sé cuánto cuesta, pero todavía me cuesta entender para qué sirve.',
     },
   },
 ];

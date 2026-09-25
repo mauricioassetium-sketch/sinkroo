@@ -10,11 +10,11 @@ import { TENANT } from '../data/demo';
 // LA ENTRADA — la primera pantalla del producto, y la primera impresión.
 //
 // Reglas que la mandan:
-//   · FONDO BLANCO SIEMPRE: acá se fuerzan las variables del tema claro, así la entrada se ve igual
+//   · FONDO BLANCO SIEMPRE: aquí se fuerzan las variables del tema claro, así la entrada se ve igual
 //     para todos y no depende de qué tema tenga el navegador.
 //   · EL TEXTO ES PARA TODOS: nada de rubros ni de negocios de ejemplo. Dice qué hace Sinkroo y qué
 //     va a poder hacer el que entra, con las capacidades una por una.
-//   · SE HABLA EN SEGUNDA PERSONA Y EN PRESENTE: «mientras dormís», «imaginá abrir el panel el lunes».
+//   · SE HABLA EN SEGUNDA PERSONA Y EN PRESENTE: «mientras usted duerme», «imagine abrir el panel el lunes».
 //     Cada línea tiene que poder leerse sola y decir una verdad que se sostiene.
 // =============================================================================================
 
@@ -22,24 +22,24 @@ export type Sesion = { nombre: string; email: string; via: 'email' | 'google' | 
 
 // CAPACIDADES: lo que el que entra va a poder hacer. Cortas, concretas y con su consecuencia.
 const CAPACIDADES: { icono: React.ReactNode; titulo: string; linea: string }[] = [
-  { icono: <I_Eye size={17} />, titulo: 'Investiga tu mercado cada mañana',
-    linea: 'Lee los anuncios de tus competidores y encuentra el ángulo que hoy gana en tu rubro, antes de que te levantes.' },
+  { icono: <I_Eye size={17} />, titulo: 'Investiga su mercado cada mañana',
+    linea: 'Lee los anuncios de sus competidores y encuentra el ángulo que hoy gana en su rubro, antes de que se levante.' },
   { icono: <I_Megaphone size={17} />, titulo: 'Escribe y arma las piezas',
-    linea: 'Con tu material, tu tono y tus precios. Nada de plantillas: cada pieza se parece a tu negocio.' },
-  { icono: <I_Vote size={17} />, titulo: 'Las revisa antes de que gastes un peso',
+    linea: 'Con su material, su tono y sus precios. Nada de plantillas: cada pieza se parece a su negocio.' },
+  { icono: <I_Vote size={17} />, titulo: 'Las revisa antes de que gaste un peso',
     linea: '5 jueces las puntúan y 500 personas del público reaccionan. Si ninguna convence, no sale ninguna.' },
-  { icono: <I_Upload size={17} />, titulo: 'Publica en tus cuentas',
-    linea: 'Instagram, Facebook y WhatsApp: publica donde ya tenés tu gente, en la franja en la que te leen.' },
+  { icono: <I_Upload size={17} />, titulo: 'Publica en sus cuentas',
+    linea: 'Instagram, Facebook y WhatsApp: publica donde ya tiene su gente, en la franja en la que le leen.' },
   { icono: <I_Chart size={17} />, titulo: 'Mide lo que rinde y frena lo que no',
-    linea: 'Ve el costo por venta, mueve el presupuesto y frena solo lo que no funciona. Sin que se lo pidas.' },
-  { icono: <I_Chat size={17} />, titulo: 'Te avisa sólo cuando hace falta',
-    linea: 'Una decisión por mensaje, con sus botones. La respondés desde el chat, sin entrar a buscar nada.' },
+    linea: 'Ve el costo por venta, mueve el presupuesto y frena solo lo que no funciona. Sin que se lo pida.' },
+  { icono: <I_Chat size={17} />, titulo: 'Le avisa sólo cuando hace falta',
+    linea: 'Una decisión por mensaje, con sus botones. La responde desde el chat, sin entrar a buscar nada.' },
 ];
 
 const REGLAS = [
   'Nada se publica sin pasar por el panel.',
-  'Nada sale a tus cuentas sin tu OK.',
-  'Publicar es lo único que gasta plata: investigar no cuesta.',
+  'Nada sale a sus cuentas sin su OK.',
+  'Publicar es lo único que gasta dinero: investigar no cuesta.',
 ];
 
 const CUENTAS_DEMO: { nombre: string; email: string; clave: string; etiqueta: string; quien: string }[] = [
@@ -62,7 +62,7 @@ export function PantallaLogin({ onEntrar }: { onEntrar: (s: Sesion) => void }) {
   const [recuperar, setRecuperar] = useState('');
   const [error, setError] = useState('');
 
-  /** Entrar se ve: el botón pasa a «Entrando…» y recién después aparece el panel con el asistente. */
+  /** Entrar se ve: el botón pasa a «Entrando…» y sólo después aparece el panel con el asistente. */
   const entrarCon = (via: Sesion['via'], quien: { nombre: string; email: string }) => {
     setError('');
     setEntrando(via);
@@ -71,18 +71,18 @@ export function PantallaLogin({ onEntrar }: { onEntrar: (s: Sesion) => void }) {
 
   const entrar = () => {
     if (!email.trim() || !clave.trim()) {
-      setError('Necesitamos tu email y tu contraseña para entrar. Si querés ver un panel ya cargado, entrá con la cuenta de demostración.');
+      setError('Necesitamos su correo y su contraseña para entrar. Si quiere ver un panel ya cargado, entre con la cuenta de demostración.');
       return;
     }
     const cuenta = cuentaDe(email);
 
     // LA REGLA DEL PRODUCTO: un correo, una cuenta. Si el correo ya existe, no se registra de nuevo.
     if (modo === 'crear' && cuenta) {
-      setError(`Ese correo ya tiene una cuenta (${cuenta.nombre}). Entrá con ese correo, o creá la cuenta con un correo distinto.`);
+      setError(`Ese correo ya tiene una cuenta (${cuenta.nombre}). Entre con ese correo, o cree la cuenta con un correo distinto.`);
       return;
     }
     if (modo === 'entrar' && !cuenta) {
-      setError('Ese correo todavía no tiene cuenta. Creala con «Crear una cuenta nueva».');
+      setError('Ese correo todavía no tiene cuenta. Créela con «Crear una cuenta nueva».');
       return;
     }
     entrarCon(modo === 'crear' ? 'nueva' : 'email', { nombre: nombre.trim() || cuenta?.nombre || '', email });
@@ -107,17 +107,17 @@ export function PantallaLogin({ onEntrar }: { onEntrar: (s: Sesion) => void }) {
             </span>
           </div>
 
-          <div className="login-eyebrow">Tu equipo de marketing, trabajando solo</div>
+          <div className="login-eyebrow">Su equipo de marketing, trabajando solo</div>
           <h1 className="login-titulo">
-            Mientras dormís,<br />tu marketing sigue trabajando.
+            Mientras usted duerme,<br />su marketing sigue trabajando.
           </h1>
           <p className="login-sub">
-            Sinkroo investiga tu mercado, escribe y arma las piezas, las hace revisar por un panel de 5 jueces
-            y 500 personas del público, y las publica en tus cuentas. <b>Vos sólo aprobás.</b>
+            Sinkroo investiga su mercado, escribe y arma las piezas, las hace revisar por un panel de 5 jueces
+            y 500 personas del público, y las publica en sus cuentas. <b>Usted sólo aprueba.</b>
           </p>
           <p className="login-futuro">
-            Imaginá abrir el panel el lunes y encontrar la semana ya armada: las piezas escritas, los números
-            medidos y una sola decisión esperándote.
+            Imagine abrir el panel el lunes y encontrar la semana ya armada: las piezas escritas, los números
+            medidos y una sola decisión esperando su OK.
           </p>
 
           <div className="login-cap">
@@ -141,8 +141,8 @@ export function PantallaLogin({ onEntrar }: { onEntrar: (s: Sesion) => void }) {
           <div className="login-demo">
             <span className="login-demo-lb"><I_Check size={12} /> {CUENTAS_DEMO[0].etiqueta}</span>
             <div className="login-demo-tx">
-              {CUENTAS_DEMO[0].quien} Entrá con <b>{CUENTAS_DEMO[0].email}</b> y mirá el panel trabajando, o creá
-              tu cuenta con tu correo para arrancar de cero.
+              {CUENTAS_DEMO[0].quien} Entre con <b>{CUENTAS_DEMO[0].email}</b> y mire el panel trabajando, o cree
+              su cuenta con su correo para empezar de cero.
             </div>
           </div>
         </div>
@@ -150,26 +150,26 @@ export function PantallaLogin({ onEntrar }: { onEntrar: (s: Sesion) => void }) {
         {/* ---------- ENTRAR ---------- */}
         <div className="login-form">
           <div className="login-form-head">
-            <div className="login-form-t">{modo === 'entrar' ? 'Entrá a tu panel' : 'Creá tu cuenta'}</div>
-            <Badge tone="purple">{modo === 'entrar' ? 'tenés una cuenta' : 'nueva'}</Badge>
+            <div className="login-form-t">{modo === 'entrar' ? 'Entre a su panel' : 'Cree su cuenta'}</div>
+            <Badge tone="purple">{modo === 'entrar' ? 'tiene una cuenta' : 'nueva'}</Badge>
           </div>
 
           {modo === 'crear' && (
             <div className="login-campo">
-              <label className="label">Tu nombre</label>
+              <label className="label">Su nombre</label>
               <span className="login-inp">
                 <I_User size={15} />
-                <input className="input" value={nombre} placeholder="Cómo te llamás"
+                <input className="input" value={nombre} placeholder="Cómo le gusta que le digan"
                   onChange={e => setNombre(e.target.value)} />
               </span>
             </div>
           )}
 
           <div className="login-campo">
-            <label className="label">Email</label>
+            <label className="label">Correo electrónico</label>
             <span className="login-inp">
               <I_Mail size={15} />
-              <input className="input" type="email" value={email} placeholder="tu@email.com"
+              <input className="input" type="email" value={email} placeholder="nombre@correo.com"
                 onChange={e => setEmail(e.target.value)} />
             </span>
           </div>
@@ -186,12 +186,12 @@ export function PantallaLogin({ onEntrar }: { onEntrar: (s: Sesion) => void }) {
           {error && <div className="login-error">{error}</div>}
           {recuperar && (
             <div className="login-ok">
-              <I_Check size={13} /> Te mandamos el link para cambiar la contraseña a <b>{email}</b>. En la
-              demostración no sale ningún mail: entrá con la cuenta que ya está cargada.
+              <I_Check size={13} /> Le enviamos el enlace para cambiar la contraseña a <b>{email}</b>. En la
+              demostración no se envía ningún correo: entre con la cuenta que ya está cargada.
             </div>
           )}
 
-          <Button className="login-btn" title="Entra al panel y abre el asistente de bienvenida: lo podés saltar y completarlo después."
+          <Button className="login-btn" title="Entre al panel y abra el asistente de bienvenida: lo puede omitir y completarlo después."
             onClick={entrar}>
             {entrando && entrando !== 'google'
               ? 'Entrando…'
@@ -200,37 +200,37 @@ export function PantallaLogin({ onEntrar }: { onEntrar: (s: Sesion) => void }) {
 
           <div className="login-o"><span>o</span></div>
 
-          <Button variant="outline" className="login-btn" title="Entra con tu cuenta de Google y arranca el asistente con ese usuario"
+          <Button variant="outline" className="login-btn" title="Entre con su cuenta de Google y empiece el asistente con ese usuario"
             onClick={() => entrarCon('google', { nombre: nombre.trim() || 'María Paula', email: email.trim() || 'maria@gmail.com' })}>
             {entrando === 'google' ? 'Entrando con Google…' : <><span className="login-g">G</span> Entrar con Google</>}
           </Button>
 
           {CUENTAS_DEMO.map(c => (
             <Button key={c.email} variant="ghost" className="login-btn"
-              title={`${c.etiqueta}: ${c.quien} Entra con ${c.email}.`}
+              title={`${c.etiqueta}: ${c.quien} Entre con ${c.email}.`}
               onClick={() => entrarDemo(c)}>
               {entrando && email === c.email ? 'Entrando…' : `Ver el panel · ${c.etiqueta}`}
             </Button>
           ))}
 
           <div className="login-pie">
-            <button className="login-link" title="Te manda el link para cambiar la contraseña al email que pusiste"
+            <button className="login-link" title="Le envía el enlace para cambiar la contraseña al correo que escribió"
               onClick={() => { setRecuperar(email); setError(''); }}>Olvidé mi contraseña</button>
-            <button className="login-link" title={modo === 'entrar' ? 'Cambia al formulario para crear una cuenta nueva' : 'Vuelve al formulario de siempre'}
+            <button className="login-link" title={modo === 'entrar' ? 'Cambie al formulario para crear una cuenta nueva' : 'Vuelva al formulario de siempre'}
               onClick={() => { setModo(modo === 'entrar' ? 'crear' : 'entrar'); setError(''); setRecuperar(''); }}>
               {modo === 'entrar' ? 'Crear una cuenta nueva' : 'Ya tengo cuenta'}
             </button>
           </div>
 
           <div className="login-legal">
-            Al entrar aceptás que el motor publique en tus cuentas según la autonomía que le des. Podés revocar
-            cada conexión cuando quieras. Un correo es una cuenta.
+            Al entrar acepta que el motor publique en sus cuentas según la autonomía que le dé. Puede revocar
+            cada conexión cuando quiera. Un correo es una cuenta.
           </div>
         </div>
       </div>
 
       <div className="login-pie-legal">
-        {TENANT.cuenta} · el panel que vas a ver funciona con datos reales de un negocio de ejemplo.
+        {TENANT.cuenta} · el panel que va a ver funciona con datos reales de un negocio de ejemplo.
       </div>
     </div>
   );

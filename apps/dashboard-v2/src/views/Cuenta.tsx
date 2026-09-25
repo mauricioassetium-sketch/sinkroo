@@ -8,7 +8,7 @@ import { useDetalle, type Bloque } from '../components/Detalle';
 const NOMBRE: Record<Modo, string> = { auto: 'Automático', shared: 'Compartido', manual: 'Manual' };
 
 /** La hora real de cada movimiento: es lo que hace que el historial no sea un texto fijo. */
-const ahora = () => new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+const ahora = () => new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
 
 const palabraCuenta = (n: number) => (n === 1 ? 'una cosa' : `${n} cosas`);
 
@@ -28,7 +28,7 @@ function ViewCuentaNegocio({ setToast, modo, setModo }: { setToast: (t: string) 
 
   // =============================================================================================
   // LO QUE ESTA PANTALLA CAMBIA — y por eso queda escrito en la pantalla, no en un aviso que se va.
-  // Cada estado de acá abajo tiene su línea o su etiqueta a la vista, con la hora real del momento
+  // Cada estado de aquí abajo tiene su línea o su etiqueta a la vista, con la hora real del momento
   // en que se produjo el cambio.
   // =============================================================================================
 
@@ -58,9 +58,9 @@ function ViewCuentaNegocio({ setToast, modo, setModo }: { setToast: (t: string) 
   };
 
   const volverACompartido = () => {
-    if (modo !== 'shared') registrar('El motor vuelve a Compartido', `venía en ${NOMBRE[modo]}: prepara todo y te pide OK antes de gastar`);
+    if (modo !== 'shared') registrar('El motor vuelve a Compartido', `venía en ${NOMBRE[modo]}: prepara todo y le pide OK antes de gastar`);
     setModo('shared');
-    setToast('Modo Compartido activado: el motor prepara y te pide OK antes de gastar un peso');
+    setToast('Modo Compartido activado: el motor prepara y le pide OK antes de gastar un peso');
   };
 
   // ---------------------------------------------------------------------------------------------
@@ -75,12 +75,12 @@ function ViewCuentaNegocio({ setToast, modo, setModo }: { setToast: (t: string) 
       { tipo: 'texto', texto: EXCEPCIONES[0].nota },
       { tipo: 'datos', filas: [
         { k: 'Cada cuánto mira', v: INVESTIGACION_MERCADO.cadencia, s: `arrancó ${INVESTIGACION_MERCADO.arranco}, ${INVESTIGACION_MERCADO.desde}` },
-        { k: 'Revisiones hechas', v: String(INVESTIGACION_MERCADO.revisiones), s: 'desde que terminaste el onboarding' },
+        { k: 'Revisiones hechas', v: String(INVESTIGACION_MERCADO.revisiones), s: 'desde que terminó la configuración inicial' },
         { k: 'Última revisión', v: INVESTIGACION_MERCADO.ultimaRevision, tono: 'green' },
         { k: 'Dónde mira', v: INVESTIGACION_MERCADO.zona, s: INVESTIGACION_MERCADO.zonaDetalle },
         { k: 'Lo que cuesta', v: 'nada', s: 'no gasta créditos: sólo lee' },
       ] },
-      { tipo: 'aviso', texto: 'Si la vigilancia se pudiera apagar, el motor dejaría de enterarse de lo que pasa y el resto de la autonomía trabajaría a ciegas. Todo lo demás sí lo decidís vos.' },
+      { tipo: 'aviso', texto: 'Si la vigilancia se pudiera apagar, el motor dejaría de enterarse de lo que pasa y el resto de la autonomía trabajaría a ciegas. Todo lo demás sí lo decide usted.' },
     ],
     fuente: 'Sale del reloj real de la vigilancia de esta cuenta: cuándo arrancó, cada cuánto revisa y cuántas veces revisó.',
     acciones: [
@@ -94,7 +94,7 @@ function ViewCuentaNegocio({ setToast, modo, setModo }: { setToast: (t: string) 
     const bloques: Bloque[] = [
       historial.length > 0
         ? { tipo: 'filas', items: historial.slice().reverse().map(h => ({ t: h.t, s: h.s, etiqueta: h.hora, tono: 'purple' as const })) }
-        : { tipo: 'texto', texto: 'Todavía no moviste nada en esta visita: el motor viene trabajando como lo dejaste la última vez. En cuanto muevas el dial o una excepción, cada cambio queda acá con la hora.' },
+        : { tipo: 'texto', texto: 'Todavía no ha movido nada en esta visita: el motor viene trabajando como lo dejó la última vez. En cuanto mueva el dial o una excepción, cada cambio queda aquí con la hora.' },
       { tipo: 'datos', filas: [
         { k: 'Modo general hoy', v: NOMBRE[modo], s: 'es el que decide cuando una acción no tiene nivel propio' },
         { k: 'Acciones con nivel propio', v: `${propias.length} de ${EXCEPCIONES.length}`, s: 'no siguen el modo general: tienen su propia palanca' },
@@ -109,9 +109,9 @@ function ViewCuentaNegocio({ setToast, modo, setModo }: { setToast: (t: string) 
     ];
     detalle({
       titulo: 'Historial de autonomía',
-      sub: 'Lo que moviste en esta visita, con la hora, y con qué nivel viene trabajando cada tipo de acción.',
+      sub: 'Lo que movió en esta visita, con la hora, y con qué nivel viene trabajando cada tipo de acción.',
       bloques,
-      fuente: 'Sale de esta misma pantalla: el dial, las 7 excepciones y los 7 frenos que tenés hoy. Se actualiza en cuanto cambiás algo.',
+      fuente: 'Sale de esta misma pantalla: el dial, las 7 excepciones y los 7 frenos que tiene hoy. Se actualiza en cuanto cambia algo.',
       acciones: modo === 'shared'
         ? [{ label: 'Cerrar', onClick: () => {} }]
         : [{ label: 'Volver a Compartido', variante: 'primary', onClick: volverACompartido }],
@@ -125,12 +125,12 @@ function ViewCuentaNegocio({ setToast, modo, setModo }: { setToast: (t: string) 
     bloques: [
       { tipo: 'datos', filas: [
         { k: 'Qué habilita', v: c.capacidades.join(' · ') },
-        { k: 'De quién es el acceso', v: 'Tuyo', s: 'conectás tu propio proveedor: Sinkroo no te pide la cuenta' },
-        { k: 'Qué necesitás', v: 'El acceso de tu proveedor', s: 'una sola vez' },
+        { k: 'De quién es el acceso', v: 'Suyo', s: 'conecta su propio proveedor: Sinkroo no le pide la cuenta' },
+        { k: 'Qué necesita', v: 'El acceso de su proveedor', s: 'una sola vez' },
         { k: 'Mientras no esté', v: 'El motor sigue sin esta capacidad', s: 'nada de lo que ya corre se frena por esto' },
       ] },
       { tipo: 'pasos', items: [
-        'Pegás el acceso de tu proveedor.',
+        'Pega el acceso de su proveedor.',
         'Se prueba contra su API antes de guardarlo.',
         'Recién ahí la conexión figura como conectada.',
         `El motor empieza a usar: ${c.capacidades.join(', ').toLowerCase()}.`,
@@ -141,7 +141,7 @@ function ViewCuentaNegocio({ setToast, modo, setModo }: { setToast: (t: string) 
     acciones: [
       { label: 'Agendarla para conectar hoy', variante: 'primary', onClick: () => {
         setParaConectar(p => (p.includes(c.key) ? p : [...p, c.key]));
-        setToast(`${c.nombre} quedó agendada: cuando pegues el acceso lo probamos antes de guardarlo`);
+        setToast(`${c.nombre} quedó agendada: cuando pegue el acceso lo probamos antes de guardarlo`);
       } },
       { label: 'Ahora no', onClick: () => setToast(`${c.nombre} queda como está: sin conectar`) },
     ],
@@ -150,27 +150,27 @@ function ViewCuentaNegocio({ setToast, modo, setModo }: { setToast: (t: string) 
   /** «Reemplazar»: qué implica cambiar el token, y deja la conexión marcada. */
   const abrirReemplazo = (c: Conexion) => detalle({
     titulo: `Reemplazar el token de ${c.nombre}`,
-    sub: 'Cambiar un token no toca nada de lo que ya publicaste: es para cuando rotás el acceso o el proveedor te dio uno nuevo.',
+    sub: 'Cambiar un token no toca nada de lo que ya publicó: es para cuando rota el acceso o el proveedor le dio uno nuevo.',
     bloques: [
       { tipo: 'datos', filas: [
         { k: 'Conexión', v: c.nombre, s: c.detalle },
-        { k: 'Qué usa ahora', v: 'El token actual', s: 'sigue andando hasta que el nuevo pase la prueba' },
+        { k: 'Qué usa ahora', v: 'El token actual', s: 'sigue funcionando hasta que el nuevo pase la prueba' },
         { k: 'Qué habilita', v: c.capacidades.join(' · ') },
-        { k: 'Mientras lo cambiás', v: 'No se frena nada', s: 'lo que está corriendo sigue corriendo' },
+        { k: 'Mientras lo cambia', v: 'No se frena nada', s: 'lo que está corriendo sigue corriendo' },
       ] },
       { tipo: 'pasos', items: [
-        'Pegás el token nuevo de tu proveedor.',
+        'Pega el token nuevo de su proveedor.',
         'Se prueba contra su API antes de guardarlo.',
         'Si responde bien, el viejo se descarta y queda el nuevo.',
         'Si no responde, sigue el viejo: una conexión nunca queda a medio cambiar.',
       ] },
-      { tipo: 'aviso', tono: 'amber', texto: 'El token viejo se descarta recién cuando el nuevo responde. Si lo pegás mal, la conexión sigue funcionando como hasta ahora.' },
+      { tipo: 'aviso', tono: 'amber', texto: 'El token viejo se descarta recién cuando el nuevo responde. Si lo pega mal, la conexión sigue funcionando como hasta ahora.' },
     ],
     fuente: `Sale del estado real de ${c.nombre} en esta cuenta, hoy.`,
     acciones: [
       { label: 'Marcarla para reemplazo', variante: 'primary', onClick: () => {
         setParaReemplazar(p => (p.includes(c.key) ? p : [...p, c.key]));
-        setToast(`${c.nombre} quedó marcada: sigue con el token actual hasta que pegues el nuevo`);
+        setToast(`${c.nombre} quedó marcada: sigue con el token actual hasta que pegue el nuevo`);
       } },
       { label: 'Cancelar', onClick: () => setToast(`${c.nombre} sigue con el token actual: sin cambios`) },
     ],
@@ -185,10 +185,10 @@ function ViewCuentaNegocio({ setToast, modo, setModo }: { setToast: (t: string) 
       <ViewHead
         icon={<I_Settings size={19} />}
         titulo="Cuenta y autonomía"
-        sub="Cuánto decide la IA y cuánto decidís vos. Se puede cambiar cuando quieras, sin perder nada."
+        sub="Cuánto decide la IA y cuánto decide usted. Se puede cambiar cuando quiera, sin perder nada."
         nums={[
           { v: NOMBRE[modo], l: 'modo actual', c: 'var(--purple3)' },
-          { v: TENANT.creditos.toLocaleString('es-AR'), l: 'créditos disponibles' },
+          { v: TENANT.creditos.toLocaleString('es-CO'), l: 'créditos disponibles' },
           { v: String(TENANT.diasAutonomia), l: 'días de autonomía', c: 'var(--amber)' },
           { v: `${conectadas}/${CONEXIONES.length}`, l: 'conexiones activas', c: 'var(--green)' },
         ]}
@@ -198,7 +198,7 @@ function ViewCuentaNegocio({ setToast, modo, setModo }: { setToast: (t: string) 
       <div className="csec" style={{ marginTop: 0 }}>
         <span className="csec-n">★</span>
         <span className="csec-t">¿Cuánto decide la IA?</span>
-        <span className="csec-s">Una decisión tuya. El mismo vidrio del motor, tres comportamientos distintos</span>
+        <span className="csec-s">Una decisión suya. El mismo vidrio del motor, tres comportamientos distintos</span>
       </div>
       <Card>
         <div className="dial-modes">
@@ -226,10 +226,10 @@ function ViewCuentaNegocio({ setToast, modo, setModo }: { setToast: (t: string) 
           </div>
           <div className="alarm-sug">
             {modo === 'auto'
-              ? <>En <b>Automático</b> el motor no te pregunta nada: hace y te lo cuenta en la bitácora. Vas a ver "hizo 3 acciones mientras no estabas". Lo que igual no puede tocar son los frenos de abajo.</>
+              ? <>En <b>Automático</b> el motor no le pregunta nada: hace y se lo cuenta en la bitácora. Va a ver "hizo 3 acciones mientras usted no estaba". Lo que igual no puede tocar son los frenos de abajo.</>
               : modo === 'shared'
-                ? <>En <b>Compartido</b> el motor prepara todo y se frena esperándote. Vas a ver "3 decisiones esperan tu OK" en la barra del motor, y podés resolverlas sin salir de Tu día.</>
-                : <>En <b>Manual</b> el motor sólo sugiere y acumula propuestas. Vos escribís, publicás y respondés. No gasta nada por su cuenta.</>}
+                ? <>En <b>Compartido</b> el motor prepara todo y se frena esperándolo. Va a ver "3 decisiones esperan su OK" en la barra del motor, y puede resolverlas sin salir de Su día.</>
+                : <>En <b>Manual</b> el motor sólo sugiere y acumula propuestas. Usted escribe, publica y responde. No gasta nada por su cuenta.</>}
           </div>
         </div>
 
@@ -237,7 +237,7 @@ function ViewCuentaNegocio({ setToast, modo, setModo }: { setToast: (t: string) 
           <I_Credit size={22} style={{ color: 'var(--amber)' }} />
           <div style={{ flex: 1, minWidth: 220 }}>
             <Gauge pct={pctCreditos} label="Días de autonomía restantes"
-              detalle={`${TENANT.creditos.toLocaleString('es-AR')} de ${TENANT.creditosMes.toLocaleString('es-AR')} créditos`} />
+              detalle={`${TENANT.creditos.toLocaleString('es-CO')} de ${TENANT.creditosMes.toLocaleString('es-CO')} créditos`} />
             <div className="bs" style={{ marginTop: 8 }}>
               Con el modo actual el motor trabaja <b style={{ color: 'var(--purple3)' }}>{TENANT.diasAutonomia} días más</b> y se detiene el 5 de octubre.
               El modo Automático consume más: bajaría a 8 días.
@@ -246,15 +246,15 @@ function ViewCuentaNegocio({ setToast, modo, setModo }: { setToast: (t: string) 
           {autoRecarga && <Badge tone="green">auto-recarga activa</Badge>}
           <Button variant={autoRecarga ? 'outline' : 'primary'} className="btn-sm"
             title={autoRecarga
-              ? 'Apaga la auto-recarga: el motor vuelve a detenerse cuando se agoten los créditos. Reversible: la podés volver a activar.'
-              : 'Paga el próximo paquete solo cuando los créditos bajen de 500, sin que el motor se detenga. Reversible: se apaga cuando quieras.'}
+              ? 'Apaga la auto-recarga: el motor vuelve a detenerse cuando se agoten los créditos. Reversible: la puede volver a activar.'
+              : 'Paga el próximo paquete solo cuando los créditos bajen de 500, sin que el motor se detenga. Reversible: se apaga cuando quiera.'}
             onClick={() => {
               const nuevo = !autoRecarga;
               setAutoRecarga(nuevo);
               setAutoRecargaDesde(nuevo ? ahora() : '');
               setToast(nuevo
                 ? 'Auto-recarga activada: al bajar de 500 créditos se paga el paquete y el motor no se detiene'
-                : 'Auto-recarga apagada: volvés a recargar vos cuando quieras');
+                : 'Auto-recarga apagada: vuelve a recargar usted cuando quiera');
             }}>
             {autoRecarga ? <><I_Check size={13} /> Apagar auto-recarga</> : <><I_Zap size={13} /> Activar auto-recarga</>}
           </Button>
@@ -293,7 +293,7 @@ function ViewCuentaNegocio({ setToast, modo, setModo }: { setToast: (t: string) 
           </div>
           <div className="acc-why">
             No es una sola palanca: <b>el dinero y los clientes tienen su propio nivel</b>.
-            Pausar una campaña que se quema va en Automático aunque todo lo demás te pregunte.
+            Pausar una campaña que se quema va en Automático aunque todo lo demás le pregunte.
           </div>
         </Card>
 
@@ -312,16 +312,16 @@ function ViewCuentaNegocio({ setToast, modo, setModo }: { setToast: (t: string) 
           </div>
           <div className="datos-row" style={{ marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--border)' }}>
             <div className="dato"><span className="dato-l">Cortes por freno este mes</span><span className="dato-v">7</span></div>
-            <div className="dato"><span className="dato-l">Plata que evitaron</span><span className="dato-v" style={{ color: 'var(--green)' }}><Dinero monto={180} /></span></div>
-            <div className="dato"><span className="dato-l">Te pidió permiso</span><span className="dato-v" style={{ color: 'var(--amber)' }}>2 veces</span></div>
+            <div className="dato"><span className="dato-l">Dinero que evitaron</span><span className="dato-v" style={{ color: 'var(--green)' }}><Dinero monto={180} /></span></div>
+            <div className="dato"><span className="dato-l">Le pidió permiso</span><span className="dato-v" style={{ color: 'var(--amber)' }}>2 veces</span></div>
           </div>
           <div className="bs" style={{ marginTop: 11 }}>
-            Los frenos no son castigos: son lo que te permite dejar el modo Automático prendido sin estar mirando.
-            Cada vez que uno se activa, el motor te lo cuenta en la bitácora con el motivo.
+            Los frenos no son castigos: son lo que le permite dejar el modo Automático prendido sin estar mirando.
+            Cada vez que uno se activa, el motor se lo cuenta en la bitácora con el motivo.
           </div>
           <div className="acc-why">
             Aplican <b>incluso en Automático</b>. Si esto se pudiera desactivar, el modo Automático no debería existir:
-            un bug que toca presupuestos sin techo cuesta plata real.
+            un error que toca presupuestos sin techo cuesta dinero real.
           </div>
           <NotaMoneda />
           <div className="row" style={{ gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
@@ -338,7 +338,7 @@ function ViewCuentaNegocio({ setToast, modo, setModo }: { setToast: (t: string) 
           action={<Badge tone={porConectar ? 'amber' : 'green'}>{conectadas} de {CONEXIONES.length}</Badge>}
         >
           <div className="bs" style={{ marginBottom: 12 }}>
-            Todo lo externo es tuyo: conectás tu propia API, no la nuestra. Cada conexión declara qué <b>capacidades</b> habilita.
+            Todo lo externo es suyo: conecta su propia API, no la nuestra. Cada conexión declara qué <b>capacidades</b> habilita.
             Las conectadas se pueden probar y sus tokens, reemplazar: cada movimiento queda escrito en la fila.
           </div>
           {CONEXIONES.map(c => {
@@ -387,7 +387,7 @@ function ViewCuentaNegocio({ setToast, modo, setModo }: { setToast: (t: string) 
                         }}><I_X size={13} /> Cancelar reemplazo</Button>
                     ) : (
                       <Button variant="ghost" className="btn-sm"
-                        title="Te muestra qué implica cambiar el token y deja la conexión marcada para reemplazarlo. Reversible: se cancela desde esta misma fila."
+                        title="Le muestra qué implica cambiar el token y deja la conexión marcada para reemplazarlo. Reversible: se cancela desde esta misma fila."
                         onClick={() => abrirReemplazo(c)}>Reemplazar</Button>
                     )}
                   </>
@@ -400,8 +400,8 @@ function ViewCuentaNegocio({ setToast, modo, setModo }: { setToast: (t: string) 
                     }}><I_X size={13} /> Quitar de la lista</Button>
                 ) : (
                   <Button className="btn-sm"
-                    title="Te muestra qué habilita esta conexión y qué hace el motor mientras tanto, y la deja agendada para conectar hoy. Reversible: se quita de la lista cuando quieras."
-                    onClick={() => abrirConexion(c)}><I_Link size={13} /> Conectar mi API</Button>
+                    title="Le muestra qué habilita esta conexión y qué hace el motor mientras tanto, y la deja agendada para conectar hoy. Reversible: se quita de la lista cuando quiera."
+                    onClick={() => abrirConexion(c)}><I_Link size={13} /> Conectar su API</Button>
                 )}
               </div>
               {probada && (
@@ -411,12 +411,12 @@ function ViewCuentaNegocio({ setToast, modo, setModo }: { setToast: (t: string) 
               )}
               {marcadaReemplazo && (
                 <div className="tiny" style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 8, color: 'var(--amber)', fontWeight: 700 }}>
-                  <I_Clock size={13} /> Marcada para reemplazar el token: sigue usando el actual hasta que pegues el nuevo y la prueba dé bien. El motor no se frena mientras tanto.
+                  <I_Clock size={13} /> Marcada para reemplazar el token: sigue usando el actual hasta que pegue el nuevo y la prueba dé bien. El motor no se frena mientras tanto.
                 </div>
               )}
               {agendada && (
                 <div className="tiny" style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 8, color: 'var(--amber)', fontWeight: 700 }}>
-                  <I_Clock size={13} /> Agendada para conectar hoy: cuando pegues el acceso de {c.nombre} se prueba antes de guardarlo. Hasta entonces el motor sigue sin {c.capacidades.join(', ').toLowerCase()}.
+                  <I_Clock size={13} /> Agendada para conectar hoy: cuando pegue el acceso de {c.nombre} se prueba antes de guardarlo. Hasta entonces el motor sigue sin {c.capacidades.join(', ').toLowerCase()}.
                 </div>
               )}
             </div>
@@ -424,14 +424,14 @@ function ViewCuentaNegocio({ setToast, modo, setModo }: { setToast: (t: string) 
           })}
           <div className="acc-why">
             Las capacidades son lo que el negocio pide (<b>"enviar mensaje", "leer anuncios"</b>), no un proveedor concreto.
-            Si mañana cambiás de herramienta, el motor sigue funcionando sin tocar una línea.
+            Si mañana cambia de herramienta, el motor sigue funcionando sin tocar una línea.
           </div>
         </Card>
 
         <div className="col">
         <Card
           title={<span className="row" style={{ gap: 8 }}><I_Credit size={14} style={{ color: 'var(--amber)' }} /> Créditos</span>}
-          action={<Badge tone="amber">{TENANT.creditos.toLocaleString('es-AR')} disponibles</Badge>}
+          action={<Badge tone="amber">{TENANT.creditos.toLocaleString('es-CO')} disponibles</Badge>}
         >
           <div style={{ marginBottom: 16 }}>
             <Gauge pct={100 - pctCreditos} label="Consumo del mes" detalle={`${100 - pctCreditos}% usado`} color="var(--grad)" />
@@ -462,12 +462,12 @@ function ViewCuentaNegocio({ setToast, modo, setModo }: { setToast: (t: string) 
           </div>
           {autoRecarga && (
             <div className="tiny" style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 11, color: 'var(--green)', fontWeight: 700 }}>
-              <I_Check size={13} /> Auto-recarga activa: no tenés que acordarte de recargar ni mirar los días de autonomía.
+              <I_Check size={13} /> Auto-recarga activa: no tiene que acordarse de recargar ni mirar los días de autonomía.
             </div>
           )}
           <div className="acc-why">
             <b>Días de autonomía</b> es la traducción de los créditos a algo que se entiende:
-            cuánto puede seguir trabajando el motor si no recargás.
+            cuánto puede seguir trabajando el motor si no recarga.
           </div>
         </Card>
 
@@ -475,28 +475,28 @@ function ViewCuentaNegocio({ setToast, modo, setModo }: { setToast: (t: string) 
           <div className="row" style={{ gap: 12, alignItems: 'flex-start' }}>
             <I_Sun size={20} style={{ color: 'var(--purple3)', flexShrink: 0 }} />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div className="bt">Podés cambiar el modo en cualquier momento</div>
+              <div className="bt">Puede cambiar el modo en cualquier momento</div>
               <div className="bs" style={{ marginTop: 4 }}>
-                Si te cansa aprobar, pasás a Automático. Si algo te asusta, volvés a Compartido.
+                Si le cansa aprobar, pasa a Automático. Si algo le asusta, vuelve a Compartido.
                 <b> Nada de lo que el motor hizo se pierde al cambiar de modo.</b>
               </div>
             </div>
           </div>
           <div className="row" style={{ gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
             <Button variant="outline" className="btn-sm"
-              title="Abre lo que moviste en esta visita, con la hora, y con qué nivel viene trabajando cada tipo de acción hoy."
+              title="Abre lo que movió en esta visita, con la hora, y con qué nivel viene trabajando cada tipo de acción hoy."
               onClick={abrirHistorial}>Ver historial</Button>
-            <Button variant="ghost" className="btn-sm" title="Vuelve al modo recomendado, el que te pide OK antes de gastar. Reversible: podés volver a Automático cuando quieras."
+            <Button variant="ghost" className="btn-sm" title="Vuelve al modo recomendado, el que le pide OK antes de gastar. Reversible: puede volver a Automático cuando quiera."
               onClick={volverACompartido}>Volver a Compartido</Button>
           </div>
           {historial.length > 0 && (
             <div className="tiny" style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 12, color: 'var(--purple3)', fontWeight: 700 }}>
-              <I_Clock size={13} /> En esta visita moviste {palabraCuenta(historial.length)}: el historial las tiene con la hora y qué nivel tenía antes (la última: {historial[historial.length - 1].hora}).
+              <I_Clock size={13} /> En esta visita movió {palabraCuenta(historial.length)}: el historial las guarda con la hora y el nivel que tenían antes (la última: {historial[historial.length - 1].hora}).
             </div>
           )}
           <div className="row" style={{ gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
             <Badge tone="purple">Cambiar de modo no borra nada</Badge>
-            <Badge tone="green">Podés volver cuando quieras</Badge>
+            <Badge tone="green">Puede volver cuando quiera</Badge>
           </div>
         </div>
         </div>
