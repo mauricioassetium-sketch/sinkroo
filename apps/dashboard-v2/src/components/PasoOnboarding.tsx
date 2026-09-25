@@ -43,8 +43,8 @@ export function CamposPaso({ paso }: { paso: PasoOnb }) {
 
     if (campo.tipo === 'texto' || campo.tipo === 'numero') {
       return (
-        <input className="input" style={campo.ancho ? { maxWidth: campo.ancho } : undefined}
-          placeholder={campo.tipo === 'numero' ? '0' : 'Escriba aquí'} value={(v as string) || ''}
+        <input className="input" style={campo.ancho && !campo.fila ? { maxWidth: campo.ancho } : undefined}
+          placeholder={campo.tipo === 'numero' ? '$' : 'Escriba aquí'} value={(v as string) || ''}
           onChange={e => onb.escribir(campo.id, e.target.value)}
           onPaste={e => {
             const txt = e.clipboardData?.getData('text') || '';
@@ -143,20 +143,35 @@ export function CamposPaso({ paso }: { paso: PasoOnb }) {
     return null;
   };
 
+  /**
+   * Dibuja un campo con su nombre, su ayuda y su control.
+   * La ayuda va a la vista y no en el placeholder: en el teléfono el placeholder desaparece al primer
+   * toque, y es justo lo que hay que leer cuando el motor todavía no sabe nada del negocio.
+   */
+  const campo = (c: CampoOnb) => (
+    <div key={c.id} className="onb-campo">
+      <label className="label">{c.etiqueta}</label>
+      {c.ayuda && (c.tipo === 'texto' || c.tipo === 'texto-largo' || c.tipo === 'numero') && (
+        <div className="onb-ayuda">{c.ayuda}</div>
+      )}
+      {control(c)}
+    </div>
+  );
+
+  // Los campos que comparten `fila` van en la misma línea: el producto y su precio se leen juntos y el
+  // precio deja de quedar como una cajita suelta al final de una línea larga.
+  const filas: CampoOnb[][] = [];
+  paso.campos.forEach(c => {
+    const ult = filas[filas.length - 1];
+    if (c.fila && ult && ult[0].fila === c.fila) ult.push(c);
+    else filas.push([c]);
+  });
+
   return (
     <div className="onb-campos">
-      {paso.campos.map(c => (
-        <div key={c.id} className="onb-campo">
-          <label className="label">{c.etiqueta}</label>
-          {/* En los campos que se escriben, la ayuda va a la vista y no en el placeholder: en el
-              teléfono el placeholder desaparece al primer toque, y es justo lo que hay que leer
-              cuando el motor todavía no sabe nada del negocio. */}
-          {c.ayuda && (c.tipo === 'texto' || c.tipo === 'texto-largo' || c.tipo === 'numero') && (
-            <div className="onb-ayuda">{c.ayuda}</div>
-          )}
-          {control(c)}
-        </div>
-      ))}
+      {filas.map(f => f.length === 1
+        ? campo(f[0])
+        : <div key={f[0].id} className="onb-fila">{f.map(campo)}</div>)}
       {pegado && (
         <div className="tiny muted">Pegó un enlace: el motor lo lee solo y no hace falta que lo escriba.</div>
       )}

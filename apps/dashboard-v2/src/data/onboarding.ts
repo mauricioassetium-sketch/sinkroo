@@ -42,6 +42,8 @@ export type CampoOnb = {
   detalle?: Record<string, string>;
   /** Ancho del control cuando la fila tiene varios campos chicos. */
   ancho?: number;
+  /** Campos que comparten fila (el producto y su precio, por ejemplo) van con la misma marca. */
+  fila?: string;
 };
 
 export type PasoOnb = {
@@ -144,10 +146,10 @@ export const PASOS_ONB: PasoOnb[] = [
     infiere: 'Con su tienda conectada, los precios y el stock se leen de ahí y se mantienen solos.',
     minima: ['prod_1', 'precio_1', 'formas_pago'],
     campos: [
-      { id: 'prod_1', etiqueta: 'Lo que más vende', tipo: 'texto', ayuda: 'Puede ser un producto o un servicio: lo que sostiene el negocio. Eso se empuja primero.' },
-      { id: 'precio_1', etiqueta: 'A cuánto lo vende', tipo: 'numero', ayuda: 'En dólares. Si es en su moneda, el panel muestra la equivalencia.', ancho: 160 },
-      { id: 'prod_2', etiqueta: 'El segundo que más vende', tipo: 'texto', ayuda: 'Sirve para las piezas que muestran el pack o el combo.' },
-      { id: 'precio_2', etiqueta: 'Su precio', tipo: 'numero', ayuda: 'En dólares.', ancho: 160 },
+      { id: 'prod_1', etiqueta: 'Lo que más vende', tipo: 'texto', fila: 'p1', ayuda: 'Puede ser un producto o un servicio: lo que sostiene el negocio. Eso se empuja primero.' },
+      { id: 'precio_1', etiqueta: 'A cuánto lo vende', tipo: 'numero', fila: 'p1', ayuda: 'En dólares. Si es en su moneda, el panel muestra la equivalencia.', ancho: 160 },
+      { id: 'prod_2', etiqueta: 'El segundo que más vende', tipo: 'texto', fila: 'p2', ayuda: 'Sirve para las piezas que muestran el pack o el combo.' },
+      { id: 'precio_2', etiqueta: 'Su precio', tipo: 'numero', fila: 'p2', ayuda: 'En dólares.', ancho: 160 },
       { id: 'formas_pago', etiqueta: 'Formas de pago que acepta', tipo: 'chips-multi', ayuda: 'El anuncio y la pieza dicen el botón y la aclaración que correspondan.',
         opciones: ['Efectivo', 'Transferencia bancaria', 'Tarjeta de débito o crédito', 'Cuotas sin interés', 'Mercado Pago', 'Nequi o Daviplata', 'PayPal', 'USDT (cripto)', 'Bitcoin (cripto)'] },
       { id: 'entrega', etiqueta: 'Cómo lo entrega o cómo se lo compran', tipo: 'texto', ayuda: 'Como sea en su negocio: envío a todo el país, entrega a domicilio en su zona, retiro o atención en el local, cita previa, servicio a domicilio, instalación… Es lo primero que pregunta alguien que le compra por primera vez, y el motor lo dice en la pieza.' },
