@@ -235,7 +235,35 @@ export async function migrate(db: Pool): Promise<void> {
       UNIQUE (business_id, numero)
     );
 
+    -- LA CALIBRACIÓN: cada agente sabe de qué segmento del público real viene y cuánto pesa. 'origen'
+    -- dice de dónde salió el dato (propia = de las cuentas del negocio, inferida = del rubro,
+    -- competencia = de los anuncios públicos). Sin esto, los 500 son inventados y repartidos parejo.
+    ALTER TABLE publico_agentes ADD COLUMN IF NOT EXISTS segmento TEXT NOT NULL DEFAULT '';
+    ALTER TABLE publico_agentes ADD COLUMN IF NOT EXISTS peso NUMERIC(6,5) NOT NULL DEFAULT 0;
+    ALTER TABLE publico_agentes ADD COLUMN IF NOT EXISTS origen TEXT NOT NULL DEFAULT 'inferida';
+    ALTER TABLE publico_agentes ADD COLUMN IF NOT EXISTS contexto TEXT NOT NULL DEFAULT '';
+    ALTER TABLE publico_agentes ADD COLUMN IF NOT EXISTS genero TEXT NOT NULL DEFAULT '';
+
     CREATE INDEX IF NOT EXISTS idx_publico_business ON publico_agentes(business_id);
+
+    -- Cada calibración queda guardada: qué distribuciones se cargaron, de dónde salieron y cuándo. Es la
+    -- trazabilidad del panel: si mañana cambia, se sabe con qué dato se armó el de hoy.
+    CREATE TABLE IF NOT EXISTS calibraciones (
+      id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+      origen      TEXT NOT NULL DEFAULT 'propia',
+      fuente      TEXT NOT NULL DEFAULT '',
+      segmentos   JSONB NOT NULL DEFAULT '[]'::jsonb,
+      agentes     INT NOT NULL DEFAULT 0,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_calibraciones_business ON calibraciones(business_id, created_at DESC);
+
+    -- La métrica real de la plataforma (alcance, guardados, clics, ventas), cuando llega: es contra esto
+    -- que se mide el modelo, no contra su propia estimación.
+    ALTER TABLE predicciones ADD COLUMN IF NOT EXISTS metrica_real NUMERIC(14,2);
+    ALTER TABLE predicciones ADD COLUMN IF NOT EXISTS metrica_nombre TEXT NOT NULL DEFAULT '';
 
     -- Una evaluación de MiroFish: los 5 jueces y el público sobre una pieza.
     CREATE TABLE IF NOT EXISTS evaluaciones (
