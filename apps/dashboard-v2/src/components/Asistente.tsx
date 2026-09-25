@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Button } from '../components/ui';
 import {
-  I_X, I_Check, I_ArrowRight, I_ArrowLeft, I_Rocket, I_Zap, I_Clock,
+  I_X, I_Check, I_ArrowRight, I_ArrowLeft, I_Rocket, I_Zap, I_Clock, I_Doc, I_Checklist,
 } from '../components/icons';
 import { useOnboarding } from '../lib/onboarding';
 import { useDetalle } from './Detalle';
@@ -79,33 +79,47 @@ export function Asistente({ sesion, setVista }: { sesion: Sesion; setVista: (v: 
 
         <div className="asist-cuerpo">
           {/* ---------------- BIENVENIDA ----------------
-              Es la primera impresión: saluda por su nombre, promete el trabajo ya hecho, muestra las
-              tres cosas que empiezan a pasar y dice lo fácil que es empezar. Nada más. */}
+              La pantalla que recibe a cualquiera que entra por primera vez: el titular que le quita el
+              miedo (no necesita saber de marketing), el recuadro que le dice que ya tiene lo necesario,
+              las dos tarjetas que resumen el producto y el pie con lo que cuesta en tiempo. Nada más. */}
           {fase === 0 && (
             <>
-              <div className="asist-titular">{BIENVENIDA.titular}</div>
-              <div className="asist-sub">{BIENVENIDA.sub}</div>
-              <div className="asist-que">
-                {BIENVENIDA.queHace.map((q, i) => (
-                  <div key={q.t} className="asist-que-fila">
-                    <span className="asist-que-n">{i + 1}</span>
-                    <span style={{ minWidth: 0 }}>
-                      <b>{q.t}</b>
-                      <small>{q.s}</small>
-                    </span>
+              <div className="asist-badge"><span className="asist-badge-dot" /> {BIENVENIDA.badge}</div>
+              <div className="asist-titular">
+                {BIENVENIDA.titular}<br />
+                <span className="asist-titular-2">{BIENVENIDA.titular2}</span>
+              </div>
+              <div className="asist-sub">{BIENVENIDA.intro}</div>
+
+              <div className="asist-caja">
+                <b>{BIENVENIDA.caja.t}</b>
+                <small>{BIENVENIDA.caja.s}</small>
+              </div>
+
+              <div className="asist-nota"><I_Doc size={13} /> {BIENVENIDA.nota}</div>
+
+              <div className="asist-tarjetas">
+                {BIENVENIDA.tarjetas.map(tj => (
+                  <div key={tj.t} className="asist-tarjeta">
+                    <b>{tj.t}</b>
+                    <small>{tj.s}</small>
                   </div>
                 ))}
               </div>
+
               <div className="asist-reglas">
                 {BIENVENIDA.reglas.map(r => <div key={r} className="asist-regla"><I_Check size={12} /> {r}</div>)}
               </div>
-              <div className="asist-facil">
-                <I_Zap size={12} /> {BIENVENIDA.facil}
+
+              <div className="asist-pie-datos">
+                <span><I_Zap size={12} /> {BIENVENIDA.pie[0]} · {BIENVENIDA.pie[1]}</span>
+                <span><I_Checklist size={12} /> {BIENVENIDA.pie[2]}</span>
               </div>
+
               <div className="asist-cta">
                 <Button className="btn-lg" title="Empieza a llenar los datos del negocio: cinco preguntas cortas que el motor usa para arrancar."
                   onClick={siguiente}>Continuar <I_ArrowRight size={14} /></Button>
-                <span className="tiny muted"><I_Clock size={11} /> 4 minutos · se puede saltar y hacerlo después</span>
+                <span className="tiny muted"><I_Clock size={11} /> se puede saltar y hacerlo después</span>
               </div>
             </>
           )}

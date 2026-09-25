@@ -248,25 +248,31 @@ export const siguientePaso = (hechos: number[]) =>
 // =============================================================================================
 
 export const BIENVENIDA = {
-  titulo: 'Bienvenido a Sinkroo',
-  // El titular de la bienvenida. Es lo primero que se lee en todo el producto: tiene que emocionar en
-  // una línea y no pedir nada todavía. Se escribe en futuro y con el trabajo ya hecho, para que el
-  // cliente se vea del otro lado antes de empezar.
-  titular: 'Su equipo de marketing arranca hoy.',
-  sub: 'En 4 minutos. El lunes abre el panel y la semana ya está armada.',
-  // Tres cosas que empiezan a pasar. Una línea cada una, con su número: es lo que sostiene la promesa.
-  queHace: [
-    { t: 'Investiga su mercado cada mañana',
-      s: '47 anuncios de sus competidores leídos antes de que abra el negocio.' },
-    { t: 'Arma las piezas y las hace revisar',
-      s: '5 jueces y 500 personas del público las puntúan: sólo salen las que convencen.' },
-    { t: 'Publica, mide y frena lo que no rinde',
-      s: 'El costo por venta, el presupuesto y lo que no funciona se mueven solos.' },
+  // El encabezado de la pantalla: quién entra y para qué es esto.
+  titulo: 'Bienvenido',
+  sub: 'Vamos a conocer su negocio para que el motor pueda ayudarle a vender más.',
+  badge: 'Inteligencia artificial para su negocio',
+  // El titular en dos líneas: la primera dice lo que el cliente NO necesita, la segunda quién lo hace.
+  titular: 'No necesita saber de marketing.',
+  titular2: 'Sinkroo lo hace todo por usted.',
+  intro: 'Cualquier persona puede vender más sin saber nada de marketing: el motor trabaja en automático, ' +
+    'de la publicación a la venta, apuntando al mercado que de verdad le compra.',
+  // El recuadro: el argumento que más pesa, porque le quita el miedo a empezar.
+  caja: {
+    t: '¿Tiene un negocio? Ya tiene todo lo que hace falta.',
+    s: 'Sin importar el rubro, el tamaño ni su experiencia: Sinkroo se ocupa del resto, de la primera ' +
+      'publicación a la primera venta.',
+  },
+  nota: 'La información que suba es justo la que la IA necesita para arrancar.',
+  // Las dos tarjetas que resumen el producto.
+  tarjetas: [
+    { t: 'Todo en automático', s: 'De la publicación a la venta, sin mover un dedo.' },
+    { t: 'Al mercado exacto', s: 'El motor apunta a quien de verdad le compra.' },
   ],
-  // La confianza va en una línea, no en tres.
+  // El pie de la bienvenida: cuánto cuesta en tiempo y qué hay que saber.
+  pie: ['5 pasos', '4 minutos', 'Cero conocimiento técnico'],
   reglas: [
     'Nada se publica sin pasar por el panel ni sin su permiso.',
   ],
-  // Lo fácil que es empezar, dicho antes de que lea un solo campo.
   facil: 'Son cinco preguntas cortas: el nombre del negocio y qué vende. Todo lo demás lo saca el motor solo.',
 };

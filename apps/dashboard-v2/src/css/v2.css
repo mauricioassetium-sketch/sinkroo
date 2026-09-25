@@ -1463,13 +1463,37 @@
 .asist-cuerpo { padding: 14px 18px 4px; }
 .asist-hola { font-size: 20px; font-weight: 900; letter-spacing: -.4px; margin-bottom: 6px; }
 /* La bienvenida: un titular grande con la promesa, una línea de futuro y tres cosas que empiezan a pasar. */
-.asist-titular { font-size: 25px; font-weight: 900; letter-spacing: -.9px; line-height: 1.14; color: var(--txt); margin-top: 2px; }
-.asist-sub { font-size: 13.5px; line-height: 1.55; color: var(--purple3); font-weight: 700; }
+.asist-badge { display: inline-flex; align-items: center; gap: 7px; align-self: flex-start; font-size: 10px;
+  font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: var(--purple3);
+  background: rgba(168,85,247,.10); border: 1px solid var(--border2); border-radius: 999px; padding: 4px 11px; }
+.asist-badge-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--purple3); box-shadow: 0 0 8px var(--purple3); }
+.asist-titular { font-size: 26px; font-weight: 900; letter-spacing: -.9px; line-height: 1.18; color: var(--txt); margin-top: 4px; }
+.asist-titular-2 { background: linear-gradient(100deg, #a855f7, #6366f1); -webkit-background-clip: text;
+  background-clip: text; -webkit-text-fill-color: transparent; }
+.asist-sub { font-size: 13px; line-height: 1.6; color: var(--muted); }
+/* El recuadro: el argumento que le quita el miedo a empezar. */
+.asist-caja { border: 1px solid var(--border2); border-radius: 13px; padding: 12px 14px;
+  background: linear-gradient(135deg, rgba(168,85,247,.10), rgba(99,102,241,.06)); }
+.asist-caja b { display: block; font-size: 14px; color: var(--txt); }
+.asist-caja small { display: block; font-size: 12px; line-height: 1.55; color: var(--muted); margin-top: 3px; }
+.asist-nota { display: flex; align-items: flex-start; gap: 8px; font-size: 12px; line-height: 1.5; color: var(--muted); }
+.asist-nota svg { flex-shrink: 0; margin-top: 2px; color: var(--purple3); }
+/* Las dos tarjetas que resumen el producto. */
+.asist-tarjetas { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.asist-tarjeta { border: 1px solid var(--border); border-radius: 12px; padding: 11px 13px; background: var(--bg2); }
+.asist-tarjeta b { display: block; font-size: 13px; color: var(--txt); }
+.asist-tarjeta small { display: block; font-size: 11.5px; line-height: 1.5; color: var(--muted); margin-top: 2px; }
+/* El pie de la bienvenida: lo que cuesta en tiempo y qué hay que saber. */
+.asist-pie-datos { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; font-size: 11.5px;
+  font-weight: 700; color: var(--muted); }
+.asist-pie-datos span { display: inline-flex; align-items: center; gap: 6px; }
+.asist-pie-datos svg { color: var(--purple3); }
 .asist-facil { display: flex; align-items: flex-start; gap: 8px; font-size: 12px; line-height: 1.55;
   color: var(--muted); border-left: 3px solid var(--border2); padding-left: 10px; }
 .asist-facil svg { flex-shrink: 0; margin-top: 2px; color: var(--purple3); }
 /* El botón de la bienvenida: es lo único que hay que hacer en esta pantalla. */
 .asist-cta { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 4px; }
+@media (max-width: 560px) { .asist-tarjetas { grid-template-columns: minmax(0, 1fr); } .asist-titular { font-size: 22px; } }
 .asist-que { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
 .asist-que-fila { display: flex; align-items: flex-start; gap: 11px; }
 .asist-que-n { display: grid; place-items: center; width: 22px; height: 22px; flex-shrink: 0; border-radius: 8px;
