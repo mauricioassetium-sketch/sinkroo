@@ -5,10 +5,10 @@ import { canjearCodigo as canjearMeta, leerInsightsInstagram, urlDeAutorizacion 
 // =============================================================================================
 // EL REGISTRO DE REDES — un solo lugar donde vive cada integración.
 //
-// POR QUÉ UN REGISTRO Y NO NUEVE CONECTORES SUELTOS
-//   Las nueve redes hacen lo mismo por dentro (autorizar, leer, devolver datos con fuente) y sólo
+// POR QUÉ UN REGISTRO Y NO CONECTORES SUELTOS
+//   Las diez redes hacen lo mismo por dentro (autorizar, leer, devolver datos con fuente) y sólo
 //   cambian en tres cosas: las variables de entorno, la dirección de autorización y cómo se leen los
-//   datos. Con el registro, las rutas son UNA (`/api/integraciones/:red/...`) y las nueve redes se
+//   datos. Con el registro, las rutas son UNA (`/api/integraciones/:red/...`) y las diez redes se
 //   atienden solas: agregar una red nueva es agregar una entrada acá, sin tocar las rutas ni el panel.
 //
 // LAS TRES REGLAS QUE CUMPLE CADA CONECTOR (pedido del dueño)
@@ -109,6 +109,12 @@ export type DefinicionRed = {
   /** Cuando la regla de «qué falta» no es una lista plana (correo y YouTube tienen alternativas). */
   faltan?: () => string[];
   urlDeAutorizacion(state: string): string;
+  /**
+   * El enlace de conexión para las redes que NO pueden armarlo de una vez: hay plataformas (bundle.social)
+   * donde la dirección se pide a su API en el momento y viene con un token de un solo uso. Si está, la ruta
+   * `/empezar` la espera y usa lo que devuelva; si no está, sigue con `urlDeAutorizacion` como las nueve.
+   */
+  prepararConexion?: (state: string) => Promise<string>;
   canjearCodigo(codigo: string): Promise<ResultadoCanje>;
   leer(token: string, cuenta: CuentaConectada): Promise<ResultadoLectura>;
   /** Renovación del token de acceso (Google y TikTok vencen; el resto son de larga duración). */
@@ -128,6 +134,9 @@ export function secretoDe(red: string): string {
     case 'youtube': return process.env.GOOGLE_CLIENT_SECRET || '';
     case 'email': return process.env.RESEND_API_KEY || process.env.SMTP_PASS || '';
     case 'tienda': return process.env.TIENDA_TOKEN || '';
+    // bundle.social firma el `state` con la clave de su API: sin esto saldría firmado con un secreto
+    // vacío, o sea con una firma que cualquiera podría armar.
+    case 'bundle': return process.env.BUNDLE_API_KEY || '';
     case 'instagram':
     case 'meta_ads':
     case 'pixel':
@@ -221,7 +230,7 @@ const haceDias = (d: number) => new Date(Date.now() - d * 86_400_000).toISOStrin
 /** Cabecera Bearer: el token viaja en la cabecera y no en la URL, así no queda en ningún registro. */
 const bearer = (token: string) => ({ Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' });
 
-// ---------------------------------- LAS NUEVE REDES ----------------------------------
+// ---------------------------------- LAS DIEZ REDES ----------------------------------
 
 // 1 · INSTAGRAM — la que ya funciona. Entrega demografía real y calibra los 500.
 const instagram: DefinicionRed = {
@@ -914,11 +923,130 @@ async function renovarGoogle(cuenta: CuentaConectada): Promise<ResultadoCanje> {
   return { token: String(d.access_token), expira: d.expires_in ? new Date(Date.now() + Number(d.expires_in) * 1000).toISOString() : undefined };
 }
 
+// ---------------------------------- BUNDLE.SOCIAL ----------------------------------
+
+// 10 · BUNDLE.SOCIAL — la puerta para PUBLICAR sin montar la app de cada plataforma.
+//
+// POR QUÉ ENTRA COMO UNA RED MÁS
+//   Es un agregador: el dueño conecta sus cuentas en la pantalla de bundle.social (permiso y elección de
+//   cuenta, en dos pasos) y desde ahí se publica, sin crear una app propia en Meta, TikTok ni Google.
+//   Para el panel es una red normal: se ve, se conecta y se sincroniza como las demás.
+//
+// LO QUE NO HACE, DICHO DE FRENTE
+//   · Su plan no incluye analítica (la API responde 403 «Analytics access is disabled for your
+//     subscription tier»): sirve para publicar, no para medir. La audiencia se sigue calibrando con
+//     Instagram y YouTube.
+//   · La API de bundle tampoco expone, hoy, una ruta para leer la lista de cuentas conectadas: esa lista
+//     se ve en su pantalla. Acá no se inventa un listado; se cuenta lo que sí se puede leer.
+const BUNDLE_BASE = 'https://api.bundle.social/api/v1';
+
+/** Las redes que la pantalla de bundle.social ofrece para autorizar. El dueño elige ahí cuáles conectar. */
+const REDES_DE_BUNDLE = ['INSTAGRAM', 'FACEBOOK', 'TIKTOK', 'YOUTUBE', 'LINKEDIN', 'THREADS', 'PINTEREST'];
+
+/** La cabecera con la que se habla con bundle.social: la clave va en `x-api-key` y nunca en la URL. */
+const cabeceraBundle = (clave: string) => ({ 'x-api-key': clave, 'Content-Type': 'application/json' });
+
+/**
+ * El equipo de bundle.social con el que se trabaja.
+ * HOY la cuenta tiene UN solo equipo («sinkroo network») y se usa el primero. Lo correcto más adelante
+ * —y es lo que bundle mismo recomienda— es un equipo por negocio, para que cada cliente conecte sus
+ * cuentas sin ver las de los demás; ese día, acá se busca el equipo del negocio en vez del primero.
+ */
+async function equipoDeBundle(clave: string): Promise<{ id?: string; nombre?: string; error?: string }> {
+  const r = await pedirJson(`${BUNDLE_BASE}/team`, { headers: cabeceraBundle(clave) });
+  if (r.status === 401 || r.status === 403) {
+    return { error: 'bundle.social rechazó la clave del servidor (BUNDLE_API_KEY): revise que siga vigente' };
+  }
+  const items = (r.dato?.items ?? r.dato?.data ?? []) as { id?: string; name?: string }[];
+  const primero = Array.isArray(items) ? items.find(t => !!t?.id) : undefined;
+  if (!primero?.id) {
+    const motivo = r.dato?.message || r.dato?.error || r.error || 'bundle.social no devolvió ningún equipo';
+    return { error: sinSecretos(motivo, clave) || 'bundle.social no devolvió ningún equipo' };
+  }
+  return { id: String(primero.id), nombre: String(primero.name || '').trim() };
+}
+
+const bundle: DefinicionRed = {
+  red: 'bundle',
+  nombre: 'bundle.social',
+  rol: 'Publicar en sus redes sin montar cada API',
+  categoria: 'publicación',
+  env: ['BUNDLE_API_KEY'],
+  permisos: ['publicar en las cuentas que usted conecte dentro de bundle.social'],
+  tipo: 'oauth',
+  que_aporta: 'Publica en las cuentas que usted conecte —Instagram, Facebook, TikTok, YouTube, LinkedIn, Threads y Pinterest— sin crear una app ni pedir permisos de desarrollador en cada plataforma.',
+  como_funciona: 'La conexión se hace en la pantalla de bundle.social: ahí usted autoriza el permiso y elige la cuenta, en dos pasos, y nosotros sólo abrimos esa pantalla para su negocio. Es el camino para publicar cuando todavía no cuenta con app propia de Meta, TikTok o Google. Lo que no trae, y por eso se dice: su plan de bundle no incluye analítica, así que esta conexión sirve para publicar y no para medir la audiencia.',
+  // La dirección de verdad la entrega bundle en el momento (lleva un token de un solo uso), así que el
+  // camino real es `prepararConexion`. Esto queda como respaldo por si alguna vez se pide sin ella.
+  urlDeAutorizacion: () => 'https://bundle.social/connect',
+  prepararConexion: async () => {
+    const clave = process.env.BUNDLE_API_KEY || '';
+    if (!clave) throw new Error('falta la clave de bundle.social (BUNDLE_API_KEY)');
+    const equipo = await equipoDeBundle(clave);
+    if (equipo.error || !equipo.id) throw new Error(equipo.error || 'bundle.social no devolvió ningún equipo');
+
+    const cuerpo: Record<string, unknown> = {
+      teamId: equipo.id,
+      socialAccountTypes: REDES_DE_BUNDLE,
+      language: 'es',
+      // La pantalla queda válida 48 horas (2880 minutos): el dueño puede cerrarla y volver sin perderla.
+      expiresIn: 2880,
+      showModalOnConnectSuccess: true,
+      userName: 'Sinkroo',
+    };
+    // La vuelta al panel sólo se manda si está declarada la dirección pública (BUNDLE_REDIRECT_URL); si
+    // no está, la pantalla de bundle cierra sola y no se inventa una dirección que no existe.
+    const vuelta = process.env.BUNDLE_REDIRECT_URL || '';
+    if (vuelta) cuerpo.redirectUrl = vuelta;
+
+    const portal = await pedirJson(`${BUNDLE_BASE}/social-account/create-portal-link`, {
+      method: 'POST', headers: cabeceraBundle(clave), body: JSON.stringify(cuerpo),
+    });
+    const url = String(portal.dato?.url || '').trim();
+    if (!url) {
+      const motivo = portal.dato?.message || portal.dato?.error || portal.error || 'bundle.social no devolvió la pantalla de conexión';
+      throw new Error(sinSecretos(motivo, clave) || 'bundle.social no devolvió la pantalla de conexión');
+    }
+    // Esta url se devuelve TAL CUAL: lleva el token de la sesión de conexión y el navegador lo necesita.
+    // Por eso NO pasa por `sinSecretos` (lo tacharía) y por eso no se escribe en ningún registro.
+    return url;
+  },
+  canjearCodigo: async () => ({ token: '', error: 'bundle.social conecta las cuentas en su propia pantalla: no hay código que canjear' }),
+  leer: async () => {
+    const clave = process.env.BUNDLE_API_KEY || '';
+    if (!clave) return fallo('falta la clave de bundle.social (BUNDLE_API_KEY)');
+    const equipo = await equipoDeBundle(clave);
+    if (equipo.error || !equipo.id) return fallo(equipo.error || 'bundle.social no devolvió ningún equipo');
+
+    // Lo único que esta cuenta deja leer es el listado de publicaciones hechas por esta vía. La analítica
+    // contesta 403 para su plan, así que no hay números que traer y no se traen.
+    const publicaciones = await pedirJson(`${BUNDLE_BASE}/post?teamId=${encodeURIComponent(equipo.id)}&limit=25`, { headers: cabeceraBundle(clave) });
+    if (publicaciones.status === 401 || publicaciones.status === 403) {
+      return fallo('bundle.social rechazó la clave del servidor (BUNDLE_API_KEY) al leer las publicaciones');
+    }
+    const items = (publicaciones.dato?.items || []) as unknown[];
+    const total = Number(publicaciones.dato?.total ?? (Array.isArray(items) ? items.length : 0));
+    const mensaje = 'bundle.social quedó conectado para publicar; su plan no incluye analítica, así que todavía no hay datos para medir';
+    return {
+      ok: false,
+      detalle: total ? `${mensaje} (van ${total} publicaciones hechas por esta vía, contadas en bundle.social)` : mensaje,
+      error: mensaje,
+      datos: {
+        equipo: { external_id: equipo.id, nombre: equipo.nombre || '' },
+        publicaciones: total,
+        analitica: 'no incluida en el plan de bundle.social (la API responde 403)',
+        nota: 'bundle.social no expone una ruta para leer la lista de cuentas conectadas: esa lista se ve en su pantalla.',
+      },
+    };
+  },
+};
+
 // ---------------------------------- EL REGISTRO ----------------------------------
 
 /**
- * Las nueve redes, en el orden en que el panel las muestra: primero lo que trae el público (que es lo
- * que calibra a los 500), después la pauta y las conversaciones, y al final los canales de medición.
+ * Las diez redes, en el orden en que el panel las muestra: primero lo que trae el público (que es lo
+ * que calibra a los 500), después la pauta y las conversaciones, y al final los canales de medición y
+ * la puerta para publicar (bundle.social).
  */
 export const REDES: Record<string, DefinicionRed> = {
   instagram,
@@ -930,7 +1058,8 @@ export const REDES: Record<string, DefinicionRed> = {
   tienda,
   pixel,
   email,
+  bundle,
 };
 
 /** Las redes en orden, para recorrerlas sin depender del orden de las claves. */
-export const LISTA_REDES: DefinicionRed[] = [instagram, metaAds, whatsapp, tiktok, youtube, google, tienda, pixel, email];
+export const LISTA_REDES: DefinicionRed[] = [instagram, metaAds, whatsapp, tiktok, youtube, google, tienda, pixel, email, bundle];

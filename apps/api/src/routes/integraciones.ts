@@ -160,7 +160,22 @@ export async function integracionRoutes(app: FastifyInstance, db: Pool) {
     // El `state` va firmado con el secreto de la red: así una respuesta ajena no puede conectar una
     // cuenta que no es de este negocio.
     const estado = firmarEstado(def.red, u.business_id, nonceNuevo());
-    return { url: def.urlDeAutorizacion(estado) };
+    // Casi todas las redes arman la dirección de una vez. bundle.social no: la pide a su API en el
+    // momento (`prepararConexion`) y devuelve la pantalla de conexión con un token propio y temporal.
+    // Si esa llamada falla, se responde 502 con el motivo: nunca se inventa un enlace.
+    let url = '';
+    if (def.prepararConexion) {
+      try {
+        url = await def.prepararConexion(estado);
+      } catch (e) {
+        const m = sinSecretos((e as Error).message || '') || `no se pudo abrir la pantalla de conexión de ${def.nombre}`;
+        return reply.status(502).send({ error: m, codigo: 'sin_enlace' });
+      }
+    } else {
+      url = def.urlDeAutorizacion(estado);
+    }
+    if (!url) return reply.status(502).send({ error: `no se pudo abrir la pantalla de conexión de ${def.nombre}`, codigo: 'sin_enlace' });
+    return { url };
   });
 
   /** Paso 2: vuelve la plataforma con el código; se canjea por el token y se guarda del lado del servidor. */
