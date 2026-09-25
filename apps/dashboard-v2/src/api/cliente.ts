@@ -31,7 +31,15 @@ export const guardarToken = (t: string) => {
   try { t ? window.localStorage.setItem(CLAVE_TOKEN, t) : window.localStorage.removeItem(CLAVE_TOKEN); } catch { /* nada */ }
 };
 
-export type Usuario = { id: string; email: string; nombre: string; business_id: string | null };
+export type Usuario = {
+  id: string; email: string; nombre: string; business_id: string | null;
+  /** Si la dirección de la cuenta ya quedó confirmada. Con el back nuevo siempre viene; si no viene, es «todavía no». */
+  correo_verificado?: boolean;
+};
+
+/** El error que devuelve el back, con su código y su cuerpo: lo que la pantalla necesita para explicar el porqué
+ *  (por ejemplo, cuántos intentos de PIN quedan cuando la clave es incorrecta). */
+export type ErrorApi = Error & { codigo?: string; estado?: number; cuerpo?: Record<string, unknown> };
 
 async function pedir<T>(ruta: string, opciones: { metodo?: string; cuerpo?: unknown } = {}): Promise<T> {
   const base = baseApi();
@@ -47,8 +55,8 @@ async function pedir<T>(ruta: string, opciones: { metodo?: string; cuerpo?: unkn
   const texto = await r.text();
   const datos = texto ? JSON.parse(texto) : {};
   if (!r.ok) {
-    const e = new Error(datos?.error || `error ${r.status}`) as Error & { codigo?: string; estado?: number };
-    e.codigo = datos?.codigo; e.estado = r.status;
+    const e = new Error(datos?.error || `error ${r.status}`) as ErrorApi;
+    e.codigo = datos?.codigo; e.estado = r.status; e.cuerpo = datos;
     throw e;
   }
   return datos as T;
@@ -82,6 +90,51 @@ export async function salir() {
   guardarToken('');
 }
 
+// ---------------- Seguridad de la cuenta (el PIN y el correo) ----------------
+// Las dos cosas que la pantalla de Cuenta muestra y que el back responde en una sola consulta: si el
+// negocio tiene PIN, si su correo está confirmado, si el servidor tiene el correo configurado y, si
+// está frenado por intentos fallidos, hasta cuándo.
+
+export type EstadoSeguridad = {
+  tiene_pin: boolean;
+  correo_verificado: boolean;
+  intentos_restantes: number;
+  bloqueado_hasta: string | null;
+  correo_configurado: boolean;
+  falta: string[];
+};
+
+export const leerSeguridad = () => pedir<EstadoSeguridad>('/api/seguridad/estado');
+
+/** Crea el PIN del negocio (sin `pinActual`) o lo cambia (con el actual, que es lo que lo protege). */
+export const guardarPin = (pin: string, pinActual?: string) =>
+  pedir<{ ok: boolean }>('/api/seguridad/pin', {
+    metodo: 'POST',
+    cuerpo: pinActual ? { pin, pin_actual: pinActual } : { pin },
+  });
+
+/** Verifica el PIN contra el back antes de reintentar una acción sensible. */
+export const verificarPin = (pin: string) =>
+  pedir<{ ok: boolean; intentos_restantes: number }>('/api/seguridad/pin/verificar', {
+    metodo: 'POST',
+    cuerpo: { pin },
+  });
+
+/** El paso de vuelta del correo de bienvenida: el enlace trae el token y esto confirma la dirección. */
+export const verificarCorreo = (tokenDeLaDireccion: string) =>
+  pedir<{ ok: boolean; correo_verificado: boolean }>('/api/auth/verificar', {
+    metodo: 'POST',
+    cuerpo: { token: tokenDeLaDireccion },
+  });
+
+/**
+ * PEDIR OTRO CORREO DE CONFIRMACIÓN. El contrato del back todavía no tiene esta ruta: se llama a la
+ * dirección que le corresponde por nombre y, si el servidor no la tiene, la pantalla lo dice tal cual
+ * (no promete un correo que no va a salir). Cuando el back la publique, esto empieza a funcionar solo.
+ */
+export const reenviarVerificacion = () =>
+  pedir<{ ok: boolean }>('/api/auth/verificar/reenviar', { metodo: 'POST', cuerpo: {} });
+
 // ---------------- Onboarding ----------------
 
 export type OnboardingRemoto = { datos: Record<string, unknown>; hechos: number[]; arrancado: boolean };
@@ -92,7 +145,10 @@ export const leerOnboarding = () => pedir<OnboardingRemoto>('/api/onboarding');
 export const guardarOnboarding = (cuerpo: { datos?: Record<string, unknown>; hechos?: number[]; arrancado?: boolean }) =>
   pedir<OnboardingRemoto>('/api/onboarding', { metodo: 'PUT', cuerpo });
 
-export const arrancarMotor = () => pedir<{ ok: boolean }>('/api/onboarding/arrancar', { metodo: 'POST' });
+export const arrancarMotor = (pin?: string) => pedir<{ ok: boolean }>('/api/onboarding/arrancar', {
+  metodo: 'POST',
+  ...(pin ? { cuerpo: { pin } } : {}),
+});
 
 // ---------------- Integraciones ----------------
 
@@ -157,6 +213,18 @@ const marcaDeFallo = (q: URLSearchParams) => {
 const redDeLaMarca = (marca: string) => (/-callback$|-not-enough/.test(marca)
   ? marca.replace(/-callback$/, '').replace(/-not-enough.*$/, '').replace(/-(error|fallo)$/, '')
   : '');
+
+/**
+ * LA VUELTA DEL CORREO DE BIENVENIDA. El enlace que el negocio recibe lo devuelve a esta misma dirección
+ * con el token de la confirmación: `?token=…`. Es una vuelta distinta de la del proveedor (no trae código
+ * ni marca de red) y por eso se lee aparte. Devuelve '' si la dirección no trae ninguna.
+ */
+export function tokenDeVerificacion(): string {
+  try {
+    const q = new URLSearchParams(window.location.search);
+    return (q.get('token') || q.get('verificar') || '').trim();
+  } catch { return ''; }
+}
 
 /** Los parámetros que deja el proveedor al volver, con la red a la que corresponden. */
 export function codigoDeMeta(): { codigo: string; state: string; red: string; exito: string; fallo: string } | null {

@@ -319,11 +319,6 @@ export async function migrate(db: Pool): Promise<void> {
 
     CREATE INDEX IF NOT EXISTS idx_calibraciones_business ON calibraciones(business_id, created_at DESC);
 
-    -- La métrica real de la plataforma (alcance, guardados, clics, ventas), cuando llega: es contra esto
-    -- que se mide el modelo, no contra su propia estimación.
-    ALTER TABLE predicciones ADD COLUMN IF NOT EXISTS metrica_real NUMERIC(14,2);
-    ALTER TABLE predicciones ADD COLUMN IF NOT EXISTS metrica_nombre TEXT NOT NULL DEFAULT '';
-
     -- Una evaluación de MiroFish: los 5 jueces y el público sobre una pieza.
     CREATE TABLE IF NOT EXISTS evaluaciones (
       id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -373,6 +368,13 @@ export async function migrate(db: Pool): Promise<void> {
 
     CREATE INDEX IF NOT EXISTS idx_predicciones_business ON predicciones(business_id, created_at DESC);
 
+    -- La métrica real de la plataforma (alcance, guardados, clics, ventas), cuando llega: es contra esto
+    -- que se mide el modelo, no contra su propia estimación. Van DESPUÉS de crear la tabla: un ALTER sobre
+    -- una tabla que todavía no existe corta toda la migración, y en una base nueva no se creaba nada de lo
+    -- que viene más abajo.
+    ALTER TABLE predicciones ADD COLUMN IF NOT EXISTS metrica_real NUMERIC(14,2);
+    ALTER TABLE predicciones ADD COLUMN IF NOT EXISTS metrica_nombre TEXT NOT NULL DEFAULT '';
+
     -- Las campañas: lo que el negocio arma y el motor publica.
     CREATE TABLE IF NOT EXISTS campanas (
       id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -406,6 +408,68 @@ export async function migrate(db: Pool): Promise<void> {
 
     CREATE INDEX IF NOT EXISTS idx_conversations_lead ON conversations(lead_phone);
     CREATE INDEX IF NOT EXISTS idx_messages_conversation ON conversation_messages(conversation_id, created_at);
+
+    -- ------------------- FASE 3: correo de la cuenta, verificación y PIN de seguridad -------------------
+    -- POR QUÉ ESTAS CUATRO TABLAS
+    --   · El correo de la cuenta es la llave de la cuenta (un correo, una cuenta). Por eso su confirmación se
+    --     guarda como un hecho del negocio: «correo_verificado». Sin confirmar, el negocio no pierde nada —puede
+    --     usar todo—, pero el panel lo dice en vez de dar por bueno un correo que nadie comprobó.
+    --   · Cada envío queda en «correos_enviados», salió o no salió. Es la regla que no se rompe: si el correo no
+    --     está configurado, NO se envía y queda escrito el intento con su motivo. Nunca se dice que se envió si
+    --     no salió. En esa tabla va la plantilla y el asunto, NUNCA el cuerpo: adentro hay datos personales.
+    --   · «verificaciones» guarda los enlaces de un solo uso (confirmar el correo y restablecer el PIN). El token
+    --     se guarda hasheado: en la base no queda nada que sirva para abrir el enlace.
+    --   · «pines» guarda el PIN hasheado con sal, con su contador de intentos fallidos y su bloqueo. Y
+    --     «intentos_pin» es la auditoría: cada intento, con su hora, para poder revisar qué pasó.
+    ALTER TABLE businesses ADD COLUMN IF NOT EXISTS correo_verificado BOOLEAN NOT NULL DEFAULT false;
+
+    CREATE TABLE IF NOT EXISTS correos_enviados (
+      id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      business_id UUID REFERENCES businesses(id) ON DELETE CASCADE,
+      para        TEXT NOT NULL DEFAULT '',
+      asunto      TEXT NOT NULL DEFAULT '',
+      plantilla   TEXT NOT NULL DEFAULT '',
+      ok          BOOLEAN NOT NULL DEFAULT false,
+      motivo      TEXT NOT NULL DEFAULT '',
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_correos_business ON correos_enviados(business_id, created_at DESC);
+
+    CREATE TABLE IF NOT EXISTS verificaciones (
+      id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+      tipo        TEXT NOT NULL DEFAULT 'correo',
+      token_hash  TEXT NOT NULL,
+      -- El buscador: sha256 del token, para poder encontrar la fila sin recorrer la tabla. Un token de 32 bytes
+      -- al azar no se puede adivinar, así que este índice no le quita seguridad a la huella con sal de al lado.
+      busqueda    TEXT NOT NULL DEFAULT '',
+      expira      TIMESTAMPTZ NOT NULL,
+      usos        INT NOT NULL DEFAULT 0,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_verificaciones_busqueda ON verificaciones(tipo, busqueda);
+    CREATE INDEX IF NOT EXISTS idx_verificaciones_business ON verificaciones(business_id, tipo);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_verificaciones_token ON verificaciones(token_hash);
+
+    CREATE TABLE IF NOT EXISTS pines (
+      business_id       UUID PRIMARY KEY REFERENCES businesses(id) ON DELETE CASCADE,
+      pin_hash          TEXT NOT NULL,
+      creado            TIMESTAMPTZ NOT NULL DEFAULT now(),
+      actualizado       TIMESTAMPTZ NOT NULL DEFAULT now(),
+      intentos_fallidos INT NOT NULL DEFAULT 0,
+      bloqueado_hasta   TIMESTAMPTZ
+    );
+
+    CREATE TABLE IF NOT EXISTS intentos_pin (
+      id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+      ok          BOOLEAN NOT NULL DEFAULT false,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_intentos_pin ON intentos_pin(business_id, created_at DESC);
   `);
 }
 
