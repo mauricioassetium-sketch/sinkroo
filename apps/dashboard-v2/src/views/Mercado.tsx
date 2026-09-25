@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Card, Badge, Button, Dinero, NotaMoneda } from '../components/ui';
-import { ViewHead, BarRow, Ring } from '../components/viz';
-import { I_Globe, I_Trend, I_Star, I_Eye, I_Zap, I_Check, I_ArrowRight, I_Plus, I_Users } from '../components/icons';
+import { ViewHead, BarRow, Bars, Ring } from '../components/viz';
+import { I_Globe, I_Trend, I_Star, I_Eye, I_Zap, I_Check, I_ArrowRight, I_Plus, I_Users, I_Target } from '../components/icons';
 import { COMPETIDORES, ANGULOS, TENDENCIAS } from '../data/demo';
 import { useDetalle } from '../components/Detalle';
 import { useDatos } from '../api/datos';
@@ -19,6 +19,16 @@ const fechaCorta = (iso?: string) => {
   const f = new Date(iso);
   return isNaN(+f) ? '' : f.toLocaleDateString('es-CO', { day: 'numeric', month: 'short' });
 };
+
+/** El origen del dato en una palabra: el peso de un segmento se muestra siempre con su origen. */
+const ORIGEN_TXT: Record<string, string> = {
+  propia: 'Propia',
+  inferida: 'Inferida',
+  competencia: 'De la competencia',
+};
+const origenTexto = (o?: string | null) => (o ? ORIGEN_TXT[o] ?? o : 'Sin declarar');
+/** El peso de un segmento, como porcentaje del público real (el back lo manda sobre 1). */
+const pct = (peso: number) => `${Math.round((Number(peso) || 0) * 100)}%`;
 
 const OFERTA = [
   { k: 'Precio', usted: '$34', ellos: '$29 el más bajo', gana: false, nota: 'Va 17% arriba. Se compensa con envío y garantía.' },
@@ -48,6 +58,23 @@ export function ViewMercado({ setToast, setVista }: { setToast: (t: string) => v
   // El motor saliendo a investigar de verdad, disparado desde el estado vacío.
   const [investigando, setInvestigando] = useState(false);
   const oro = ANGULOS[0];
+
+  // ---------- SU PÚBLICO CALIBRADO Y EL ACIERTO DEL MODELO (sólo con el back encendido) ----------
+  // Los pesos se normalizan una sola vez: la base los puede devolver como número o como texto, y las
+  // barras, la lista y los datos tienen que leer exactamente lo mismo.
+  const segmentos = (d.calibracion?.por_segmento ?? []).map(s => ({
+    segmento: s.segmento, agentes: Number(s.agentes) || 0, peso: Number(s.peso) || 0, origen: s.origen,
+  }));
+  const pesos = segmentos.map(s => s.peso);
+  const etiquetas = segmentos.map(s => s.segmento);
+
+  /**
+   * Mientras el back está respondiendo NO se afirma que no hay nada: se dice que se está leyendo.
+   * Un «todavía no hay» que dura un segundo es una afirmación falsa.
+   */
+  const vacio = (titulo: string, texto: string) => d.cargando
+    ? { titulo: 'Leyendo el back…', texto: 'El panel está leyendo lo que hay en el servidor. Si no hay nada, lo dice enseguida; mientras tanto no se muestra ninguna cifra inventada.' }
+    : { titulo, texto };
 
   /** Corre la investigación del mercado en el back (investigar no cuesta créditos) y relee los hallazgos. */
   const investigar = async () => {
@@ -491,6 +518,133 @@ export function ViewMercado({ setToast, setVista }: { setToast: (t: string) => v
           </div>
         </Card>
       </div>
+
+      {/* ============ SU PÚBLICO CALIBRADO Y EL ACIERTO DEL MODELO ============
+          Los dos bloques leen del back y existen sólo con el back encendido: son los únicos datos de
+          esta pantalla que llegan medidos, y se muestran como llegan, con su peso, su origen, su fuente
+          y su fecha. Sin back no se dibujan y la pantalla queda exactamente como estaba en el diseño. */}
+      {esReal && (
+        <div className="duo" style={{ marginTop: 16 }}>
+          <Card
+            title={<span className="row" style={{ gap: 8 }}><I_Users size={14} style={{ color: 'var(--purple3)' }} /> Su público, calibrado</span>}
+            action={<Badge tone={d.calibracion?.calibrada ? 'purple' : 'muted'}>
+              {d.calibracion ? `${d.calibracion.total} agentes` : 'leyendo'}
+            </Badge>}
+          >
+            {!d.calibracion ? (
+              /* El back no respondió: se dice eso, no que no haya público. */
+              <EstadoVacio
+                {...vacio('Todavía no se pudo leer su público', 'Esta tarjeta muestra cómo está repartido su público en el back: los agentes de cada segmento, cuánto pesa cada uno y de dónde salió el dato. El servidor no respondió; vuelva a leerlo y aparece.')}
+                accion="Volver a leer"
+                onAccion={() => void d.refrescar()}
+              />
+            ) : !d.calibracion.calibrada ? (
+              /* Sin calibrar, el panel entero pesa igual en todos los segmentos: hay que decirlo tal cual. */
+              <EstadoVacio
+                titulo="Su público está en reparto parejo"
+                texto={`Los ${d.calibracion.total} agentes del panel están repartidos en partes iguales: todavía no se calibró con su público real. Cuando el panel lea las proporciones de quienes interactúan con su cuenta, cada segmento empieza a pesar lo que pesa de verdad y esta tarjeta muestra su público, no un promedio.`}
+              />
+            ) : (
+              /* ---------- EL PÚBLICO CALIBRADO, REAL ----------
+                 El peso va en la barra (se ve la proporción) y cada segmento queda con sus agentes, su
+                 peso y el origen del dato: un peso sin origen no se muestra. */
+              <>
+                <div className="como-se-lee">
+                  <b>Cómo se lee:</b> cada barra es un segmento de su público y su altura, cuánto pesa
+                  dentro del panel. El número de arriba es ese peso como porcentaje de su público real.
+                  Abajo queda cada segmento con sus agentes, su peso y de dónde salió el dato.
+                </div>
+                <Bars data={pesos} labels={etiquetas} color="var(--purple2)" fmt={v => pct(v)} />
+                <div className="guards">
+                  {segmentos.map(s => (
+                    <div key={s.segmento} className="guard">
+                      <I_Users size={14} style={{ color: 'var(--purple3)', flexShrink: 0 }} />
+                      <span className="guard-lb">{s.segmento}
+                        <small>{origenTexto(s.origen)} · {pct(s.peso)} de su público real</small>
+                      </span>
+                      <span className="guard-val">{s.agentes} {s.agentes === 1 ? 'agente' : 'agentes'}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="datos-row" style={{ marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--border)' }}>
+                  <div className="dato"><span className="dato-l">Agentes en su público</span><span className="dato-v">{d.calibracion.total}</span></div>
+                  <div className="dato"><span className="dato-l">Segmentos</span><span className="dato-v">{segmentos.length}</span></div>
+                  <div className="dato"><span className="dato-l">Origen del dato</span><span className="dato-v">{origenTexto(d.calibracion.ultima?.origen)}</span></div>
+                  <div className="dato"><span className="dato-l">Calibrado el</span><span className="dato-v">{fechaCorta(d.calibracion.ultima?.created_at) || 'sin fecha'}</span></div>
+                </div>
+                <div className="acc-why">
+                  <b>Fuente: </b>{d.calibracion.ultima?.fuente || 'sin fuente declarada'}
+                  {d.calibracion.ultima?.created_at ? ` · calibrado el ${fechaCorta(d.calibracion.ultima.created_at)}` : ''}
+                </div>
+                <div className="acc-why"><b>Confianza: </b>{d.calibracion.confianza}</div>
+              </>
+            )}
+          </Card>
+
+          <Card
+            title={<span className="row" style={{ gap: 8 }}><I_Target size={14} style={{ color: 'var(--purple3)' }} /> Qué tan cerca le pega el modelo</span>}
+            action={<Badge tone={d.backtest && d.backtest.casos ? 'purple' : 'muted'}>
+              {d.backtest ? `${d.backtest.casos} ${d.backtest.casos === 1 ? 'caso medido' : 'casos medidos'}` : 'leyendo'}
+            </Badge>}
+          >
+            {!d.backtest ? (
+              <EstadoVacio
+                {...vacio('Todavía no se pudo leer el acierto del modelo', 'Esta tarjeta mide la predicción contra lo que pasó de verdad: el error promedio y el error de cada caso. El servidor no respondió; vuelva a leerlo y aparece.')}
+                accion="Volver a leer"
+                onAccion={() => void d.refrescar()}
+              />
+            ) : d.backtest.casos === 0 ? (
+              <EstadoVacio
+                titulo="El modelo todavía no se midió contra la realidad"
+                texto="Todavía no hay ninguna predicción comparada con lo que pasó. El modelo se corrige con el desvío, y ese desvío existe cuando una pieza publicada tiene su resultado real: en cuanto haya un caso, aquí queda su error y el promedio de todos."
+              />
+            ) : (
+              /* ---------- EL BACKTEST, REAL ----------
+                 El error de cada caso contra el promedio del propio modelo: verde quedó en el promedio
+                 o mejor, ámbar se corrió más. La métrica y la fecha van en cada caso, siempre. */
+              <>
+                <div className="como-se-lee">
+                  <b>Cómo se lee:</b> el error promedio es la distancia entre lo que predijo el modelo y lo
+                  que pasó, en la unidad de la métrica. El porcentaje lo pone en relación a lo predicho, para
+                  poder comparar piezas de tamaños distintos. En la lista, <b style={{ color: 'var(--green)' }}>verde</b> es
+                  un caso que quedó en ese promedio o mejor, y <b style={{ color: 'var(--amber)' }}>ámbar</b> uno
+                  que se corrió más.
+                </div>
+                <div className="datos-row">
+                  <div className="dato"><span className="dato-l">Error promedio</span><span className="dato-v">{d.backtest.mae ?? '—'}</span></div>
+                  <div className="dato"><span className="dato-l">Error sobre lo predicho</span><span className="dato-v">{d.backtest.error_pct == null ? '—' : `${d.backtest.error_pct.toLocaleString('es-CO')}%`}</span></div>
+                  <div className="dato"><span className="dato-l">Casos medidos</span><span className="dato-v">{d.backtest.casos}</span></div>
+                  <div className="dato"><span className="dato-l">Con métrica real</span><span className="dato-v">{d.backtest.casos_con_metrica_real}</span></div>
+                </div>
+                <div className="acc-why"><b>Confianza: </b>{d.backtest.confianza}</div>
+                <div className="bs" style={{ marginBottom: 8 }}>Caso por caso:</div>
+                <div className="guards">
+                  {d.backtest.detalle.map((c, i) => (
+                    <div key={i} className="guard">
+                      <I_Target size={14} style={{ color: c.error <= (d.backtest?.mae ?? c.error) ? 'var(--green)' : 'var(--amber)', flexShrink: 0 }} />
+                      <span className="guard-lb">
+                        Predijo {c.predicho.toLocaleString('es-CO')} · pasó {c.real.toLocaleString('es-CO')}
+                        <small>{c.metrica || 'reacción del público'} · {c.con_metrica_real ? 'resultado real de su cuenta' : 'reacción de su público'} · {fechaCorta(c.cuando)}</small>
+                      </span>
+                      <span className="guard-val" style={{ color: c.error <= (d.backtest?.mae ?? c.error) ? 'var(--green)' : 'var(--amber)' }}>
+                        error {c.error.toLocaleString('es-CO')}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <div className="acc-why">
+                  <b>Predijo antes de publicar y pasó de verdad:</b> es la única medición que no depende
+                  del propio modelo. {d.backtest.casos_con_metrica_real === 0
+                    ? 'Ninguno tiene todavía la métrica real de la plataforma: se miden contra la reacción de su público.'
+                    : d.backtest.casos_con_metrica_real === d.backtest.casos
+                      ? 'Todos tienen la métrica real de la plataforma.'
+                      : `${d.backtest.casos_con_metrica_real} de ${d.backtest.casos} ${d.backtest.casos_con_metrica_real === 1 ? 'tiene' : 'tienen'} la métrica real de la plataforma; el resto se mide contra la reacción de su público.`}
+                </div>
+              </>
+            )}
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

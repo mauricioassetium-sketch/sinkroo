@@ -33,6 +33,24 @@ export type TareaCorrida = { agente: string; que: string; resultado: Record<stri
 export type Publico = { total: number; por_estilo: { estilo: string; n: number }[]; por_edad: { rango: string; n: number }[]; muestra: any[] };
 export type Conversacion = { id: string; lead_phone: string; stage: string; status: string; lead_score: number; last_message_at: string; ultimo: string | null };
 export type Movimiento = { delta: number; motivo: string; detalle: string; saldo: number; created_at: string };
+/** Cómo está repartido el público del panel: agentes y peso por segmento, y de dónde salió el dato. */
+export type Calibracion = {
+  total: number;
+  calibrada: boolean;
+  ultima: { origen: string; fuente: string; segmentos: unknown; agentes: number; created_at: string } | null;
+  por_segmento: { segmento: string; agentes: number; peso: number; origen: string }[];
+  por_origen: { origen: string; n: number }[];
+  confianza: string;
+};
+/** El modelo medido contra la historia real del negocio: error promedio y caso por caso. */
+export type Backtest = {
+  casos: number;
+  casos_con_metrica_real: number;
+  mae: number | null;
+  error_pct: number | null;
+  confianza: string;
+  detalle: { predicho: number; real: number; error: number; con_metrica_real: boolean; metrica: string; cuando: string }[];
+};
 
 export type Datos = {
   /** true cuando los datos son del back. Si es false, el panel está en modo demostración. */
@@ -50,6 +68,10 @@ export type Datos = {
   publico: Publico | null;
   conversaciones: Conversacion[];
   creditos: { saldo: number; movimientos: Movimiento[] } | null;
+  /** El público calibrado del back: cómo está repartido y de dónde salió cada peso. null = sin back. */
+  calibracion: Calibracion | null;
+  /** El backtest del back: qué tan cerca le pega el modelo a la realidad. null = sin back. */
+  backtest: Backtest | null;
   desvioPct: number;
   refrescar: () => Promise<void>;
   /** Guarda el onboarding en el back (mezcla los campos) y refresca. */
@@ -61,7 +83,7 @@ const VACIO: Datos = {
   real: false, cargando: false, error: '',
   negocio: null, resumen: null, onboarding: null,
   campanas: [], piezas: [], evaluaciones: [], hallazgos: [], corridas: [],
-  publico: null, conversaciones: [], creditos: null, desvioPct: 0,
+  publico: null, conversaciones: [], creditos: null, calibracion: null, backtest: null, desvioPct: 0,
   refrescar: async () => {}, guardar: async () => {}, arrancar: async () => {},
 };
 
@@ -84,7 +106,7 @@ export function ProveedorDatos({ children }: { children: ReactNode }) {
   const refrescar = useCallback(async () => {
     if (!hayApi() || !token()) { setEstado(VACIO); return; }
     setEstado(e => ({ ...e, real: true, cargando: true, error: '' }));
-    const [neg, onb, camp, piez, eval_, hall, corr, publ, conv, cred] = await Promise.all([
+    const [neg, onb, camp, piez, eval_, hall, corr, publ, conv, cred, calib, back] = await Promise.all([
       traer<{ negocio: Negocio; resumen: Resumen; onboarding: { hechos: number[]; arrancado: boolean } } | null>('/api/negocio', null),
       traer<{ datos: Record<string, unknown>; hechos: number[]; arrancado: boolean }>('/api/onboarding', { datos: {}, hechos: [], arrancado: false }),
       traer<{ campanas: Campana[] }>('/api/campanas', { campanas: [] }),
@@ -95,6 +117,8 @@ export function ProveedorDatos({ children }: { children: ReactNode }) {
       traer<Publico | null>('/api/publico', null),
       traer<{ conversaciones: Conversacion[] }>('/api/conversaciones', { conversaciones: [] }),
       traer<{ saldo: number; movimientos: Movimiento[] }>('/api/creditos', { saldo: 0, movimientos: [] }),
+      traer<Calibracion | null>('/api/publico/calibracion', null),
+      traer<Backtest | null>('/api/mirofish/backtest', null),
     ]);
     setEstado({
       real: true, cargando: false, error: neg ? '' : 'no se pudo leer el negocio del servidor',
@@ -109,6 +133,8 @@ export function ProveedorDatos({ children }: { children: ReactNode }) {
       publico: publ,
       conversaciones: conv.conversaciones || [],
       creditos: cred,
+      calibracion: calib,
+      backtest: back,
       desvioPct: hall.desvio_actual_pct || 0,
       refrescar: async () => {},
       guardar: async () => {},
