@@ -21,8 +21,8 @@ export type Sesion = { nombre: string; email: string; via: 'email' | 'google' | 
 
 // LO QUE HACE, en cuatro líneas cortas: es lo único que se lee en la entrada.
 const CAPACIDADES = [
-  'Investiga su mercado cada mañana',
-  'Escribe las piezas con su material y sus precios',
+  'Investiga el mercado cada mañana',
+  'Escribe las piezas con el material y los precios del negocio',
   'Las revisa con 5 jueces y 500 personas del público',
   'Publica, mide el costo por venta y frena lo que no rinde',
 ];
@@ -93,20 +93,21 @@ export function PantallaLogin({ onEntrar }: { onEntrar: (s: Sesion) => void }) {
               <span className="login-logo"><SinkrooMark size={42} /></span>
               <span className="login-marca-tx">
                 <b>Sinkroo</b>
-                <small>Marketing que trabaja solo</small>
+                <small>Marketing autónomo</small>
               </span>
             </div>
 
             <h1 className="login-titulo">
-              Su marketing,<br />trabajando solo.
+              Tu equipo de marketing,<br />trabajando solo <span className="login-247">24/7</span>
             </h1>
             <p className="login-linea">
-              Investiga su mercado, escribe las piezas, las publica y mide cada peso. <b>Usted sólo aprueba.</b>
+              Investiga el mercado, escribe las piezas, las publica y mide cada peso.
+              <b> Todo el trabajo queda hecho: sólo queda aprobar.</b>
             </p>
 
             <div className="login-pred">
               <div className="login-pred-lb"><I_Sparkle size={10} /> Análisis predictivo</div>
-              <div className="login-pred-t">Sabe cómo va a rendir antes de publicar.</div>
+              <div className="login-pred-t">Predice cómo va a rendir antes de publicar.</div>
               <div className="login-pred-p">
                 Cuántas personas la verán, cuántos clics traerá y cuánto costará cada venta.
                 Predijo 84, pasó 79: la próxima estima 6% más cerca.
@@ -121,7 +122,7 @@ export function PantallaLogin({ onEntrar }: { onEntrar: (s: Sesion) => void }) {
               ))}
             </div>
             <div className="login-ok-linea">
-              <I_Shield size={12} /> Nada sale a sus cuentas sin su OK.
+              <I_Shield size={12} /> Nada sale a las cuentas sin aprobación.
             </div>
             <div className="login-demo">
               <span className="login-demo-lb">{CUENTAS_DEMO[0].etiqueta}</span>
