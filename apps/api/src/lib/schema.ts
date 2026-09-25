@@ -470,6 +470,33 @@ export async function migrate(db: Pool): Promise<void> {
     );
 
     CREATE INDEX IF NOT EXISTS idx_intentos_pin ON intentos_pin(business_id, created_at DESC);
+
+    -- ------------------------------ CÓDIGOS DE ENTRADA ------------------------------
+    -- Un código es la puerta de entrada al producto: lo entrega el dueño a un negocio concreto y sirve
+    -- las veces que diga usos_max. La nota es cómo el dueño lo identifica («Skincare Natural · Ana») y
+    -- es también lo que ve el negocio cuando el código se acepta.
+    CREATE TABLE IF NOT EXISTS codigos_entrada (
+      codigo      TEXT PRIMARY KEY,
+      nota        TEXT NOT NULL DEFAULT '',
+      usos_max    INT  NOT NULL DEFAULT 1,
+      usos        INT  NOT NULL DEFAULT 0,
+      business_id UUID REFERENCES businesses(id) ON DELETE SET NULL,
+      usado_at    TIMESTAMPTZ,
+      creado_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    -- Un código puede servir para más de un negocio (usos_max > 1), así que codigos_entrada.business_id
+    -- sólo alcanza para el ÚLTIMO que lo canjeó: con él, el primero de los dos volvería a ver el código
+    -- como no reclamado y podría pedir otro. Esta tabla guarda un renglón por negocio que canjeó, y es la
+    -- que responde «¿este negocio ya entró?». La columna usos sigue siendo el contador del código.
+    CREATE TABLE IF NOT EXISTS codigos_entrada_usos (
+      codigo      TEXT NOT NULL REFERENCES codigos_entrada(codigo) ON DELETE CASCADE,
+      business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+      usado_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+      PRIMARY KEY (codigo, business_id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_codigos_usos_business ON codigos_entrada_usos(business_id);
   `);
 }
 

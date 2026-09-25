@@ -80,6 +80,11 @@ export function hooksSeguridad(app: FastifyInstance) {
   // Freno en las rutas de entrada: 10 intentos cada 10 minutos por IP y por ruta.
   app.addHook('onRequest', async (req, reply) => {
     if (!req.url.startsWith('/api/auth/')) return;
+    // `/api/auth/yo` NO se frena: el panel lo llama cada vez que se abre o se recarga para restaurar la
+    // sesión, así que con el freno puesto (10 cada 10 minutos) la sesión dejaba de restaurarse durante 10
+    // minutos, con el token válido en el navegador. Y no hay nada que adivinar acá: sin un token bueno
+    // responde 401 igual.
+    if (req.method === 'GET' && /^\/api\/auth\/yo(\?|$)/.test(req.url)) return;
     const clave = `${ipDe(req)}:${req.url}`;
     const { pasa, restantes } = pasarElFreno(clave, 10, 10 * 60_000);
     reply.header('X-Freno-Restante', String(restantes));

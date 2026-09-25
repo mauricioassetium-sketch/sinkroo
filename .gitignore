@@ -15,3 +15,6 @@ dist/
 
 # Los iconos que genera el script de favicons: los que valen son los que estan en apps/dashboard-v2/public
 scripts/favicons-generados/
+
+# El material que suben los negocios se guarda en el disco del servidor: no va al repositorio
+datos/

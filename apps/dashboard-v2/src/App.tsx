@@ -122,7 +122,11 @@ export default function App() {
   // Desde acá para adentro, todo el panel tiene los datos del back (o los del demo si no hay back).
 
   return (
-    <ProveedorDatos>
+    // `modoDemo`: cuando se entra por la demostración (la cuenta de ejemplo), el panel no lee el back
+    // aunque haya una sesión abierta en el navegador. Antes las dos cosas se mezclaban: se veían los
+    // datos reales del negocio con el nombre de la persona del ejemplo, que es lo que hacía que el panel
+    // dijera «Hola María».
+    <ProveedorDatos modoDemo={sesion.via === 'demo'}>
     {/* La vuelta del proveedor: va dentro del proveedor de datos para poder releer las conexiones. */}
     <VueltaDeConexion avisar={avisar} />
     {/* La seguridad de la cuenta (el PIN y el correo) envuelve al panel: el aviso del PIN se abre desde
@@ -130,7 +134,7 @@ export default function App() {
     <SeguridadProvider>
     {/* Con sesión, la vuelta del correo se cuenta con el aviso del panel y la seguridad se relee. */}
     <SeguridadAlDia vuelta={vueltaDeCorreo} avisar={avisar} />
-    <PerfilProvider>
+    <PerfilProvider cuenta={sesion} demo={sesion.via === 'demo'}>
     <OnboardingProvider avisar={avisar}>
     <PlanProvider>
     <DetalleProvider>

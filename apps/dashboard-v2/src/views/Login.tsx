@@ -5,7 +5,7 @@ import {
 } from '../components/icons';
 import { TENANT } from '../data/demo';
 import {
-  crearCuenta, entrar as entrarApi, hayApi, leerSeguridad,
+  crearCuenta, entrar as entrarApi, hayApi, leerSeguridad, guardarToken,
   correoConfigurado, faltaDeCorreo, faltaEnlaces,
   type AvisoDeCorreo, type ErrorApi, type EstadoSeguridad,
 } from '../api/cliente';
@@ -25,7 +25,13 @@ import { textoDeVuelta, type VueltaCorreo } from '../lib/seguridad';
 //     Cada línea tiene que poder leerse sola y decir una verdad que se sostiene.
 // =============================================================================================
 
-export type Sesion = { nombre: string; email: string; via: 'email' | 'google' | 'nueva' };
+/**
+ * `via` es por dónde se entró. Importa para una cosa sola, y es grande: `'demo'` es la demostración con
+ * los datos del negocio de ejemplo, y en ese modo el panel NO lee el back aunque haya una sesión abierta
+ * en el navegador. Mezclar las dos cosas mostraba los datos reales del negocio con el nombre de la
+ * persona del ejemplo.
+ */
+export type Sesion = { nombre: string; email: string; via: 'email' | 'google' | 'nueva' | 'demo' };
 
 // LO QUE HACE, en cuatro líneas cortas: es lo único que se lee en la entrada.
 const CAPACIDADES = [
@@ -52,7 +58,7 @@ export function PantallaLogin({ onEntrar, vuelta }: { onEntrar: (s: Sesion) => v
   const [nombre, setNombre] = useState('');
   const [email, setEmail] = useState('');
   const [clave, setClave] = useState('');
-  const [entrando, setEntrando] = useState<'' | 'email' | 'google' | 'nueva'>('');
+  const [entrando, setEntrando] = useState<'' | 'email' | 'google' | 'nueva' | 'demo'>('');
   const [recuperar, setRecuperar] = useState('');
   const [error, setError] = useState('');
   // LA ENTRADA CON EL BACK ENCENDIDO TIENE DOS PASOS: los datos y, después, el correo. Nada de esto
@@ -139,10 +145,18 @@ export function PantallaLogin({ onEntrar, vuelta }: { onEntrar: (s: Sesion) => v
     entrarCon(modo === 'crear' ? 'nueva' : 'email', { nombre: nombre.trim() || cuenta?.nombre || '', email });
   };
 
-  /** La puerta rápida: entra con la cuenta ya cargada, sin escribir nada. */
+  /**
+   * LA DEMOSTRACIÓN — el panel con los datos del negocio de ejemplo, sin escribir nada.
+   *
+   * Al entrar acá se cierra la sesión que hubiera abierta: la demostración no es su cuenta. Mezclar las
+   * dos cosas era lo peor de todo —se veían los datos reales del negocio con el nombre de la persona del
+   * ejemplo, y lo que se escribiera en el asistente se guardaba en la cuenta de verdad—. Volver a su
+   * cuenta cuesta una sola cosa, y es reversible: entrar otra vez con su correo. No se borra nada.
+   */
   const entrarDemo = (c: typeof CUENTAS_DEMO[number]) => {
+    guardarToken('');
     setNombre(c.nombre); setEmail(c.email); setClave(c.clave);
-    entrarCon('email', { nombre: c.nombre, email: c.email });
+    entrarCon('demo', { nombre: c.nombre, email: c.email });
   };
 
   return (
@@ -299,14 +313,29 @@ export function PantallaLogin({ onEntrar, vuelta }: { onEntrar: (s: Sesion) => v
 
           <div className="login-o"><span>o</span></div>
 
-          <Button variant="outline" className="login-btn" title="Entre con su cuenta de Google y empiece el asistente con ese usuario"
-            onClick={() => entrarCon('google', { nombre: nombre.trim() || 'María Paula', email: email.trim() || 'maria@gmail.com' })}>
+          {/* ENTRAR CON GOOGLE — con el back encendido no hay por dónde: el servidor no tiene montada la
+              entrada con Google. Antes este botón abría el panel con una sesión inventada («María Paula»)
+              que no era la de nadie, y esa es una de las dos razones por las que el panel saludaba con el
+              nombre del ejemplo. Ahora, con back, el botón está apagado y dice qué falta; sin back sigue
+              siendo la puerta de la demostración, pero sin inventar ningún nombre. */}
+          <Button variant="outline" className="login-btn" disabled={conBack}
+            title={conBack
+              ? 'Todavía no se puede: la entrada con Google no está configurada en el servidor, así que este botón no hace nada. Entre con su correo y su contraseña.'
+              : 'Entre con su cuenta de Google y empiece el asistente con ese usuario'}
+            onClick={() => entrarCon('google', { nombre: nombre.trim(), email: email.trim() })}>
             {entrando === 'google' ? 'Entrando con Google…' : <><span className="login-g">G</span> Entrar con Google</>}
           </Button>
 
+          {conBack && (
+            <div className="login-legal">
+              Entrar con Google todavía no está configurado en el servidor: por eso el botón está apagado y no
+              se envió nada. Su cuenta entra con el correo y la contraseña de arriba.
+            </div>
+          )}
+
           {CUENTAS_DEMO.map(c => (
             <Button key={c.email} variant="ghost" className="login-btn"
-              title={`${c.etiqueta}: ${c.quien} Entre con ${c.email}.`}
+              title={`${c.etiqueta}: ${c.quien} Entre con ${c.email}. Al entrar acá se cierra la sesión de su cuenta (si tenía una abierta) y el panel pasa a mostrar los datos del negocio de ejemplo; para volver a su cuenta, entre otra vez con su correo: no se borra nada.`}
               onClick={() => entrarDemo(c)}>
               {entrando && email === c.email ? 'Entrando…' : `Ver el panel · ${c.etiqueta}`}
             </Button>

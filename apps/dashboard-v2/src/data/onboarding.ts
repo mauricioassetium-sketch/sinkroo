@@ -33,6 +33,22 @@ export const TIPOS_ARCHIVO: { para: string; lectura: string }[] = [
 export const ARCHIVOS_ACEPTADOS =
   '.pdf,.doc,.docx,.rtf,.txt,.md,.xls,.xlsx,.csv,.ppt,.pptx,.odt,.ods,image/*,video/*,audio/*';
 
+/** El tope por archivo. Es el mismo del servidor: el panel lo dice antes de que alguien suba 40 MB. */
+export const MAX_ARCHIVO_MB = 25;
+
+/** Los formatos que el motor sabe leer: los del servidor, ni uno más. Se declaran acá y no en el JSX. */
+export const ARCHIVOS_PERMITIDOS =
+  /\.(pdf|doc|docx|rtf|txt|md|xls|xlsx|csv|ppt|pptx|odt|ods|jpe?g|png|webp|gif|avif|heic|svg|mp4|mov|webm|avi|mp3|wav|m4a|ogg)$/i;
+
+/**
+ * Lo que el selector de archivos ofrece CON EL SERVIDOR ENCENDIDO: los formatos exactos que el back
+ * acepta. El `image/*,video/*,audio/*` de la demostración dejaba elegir cosas que el servidor rechaza
+ * (un .tiff, un .flac), y eso se veía como un error del panel en vez de un «eso no se puede leer».
+ */
+export const ARCHIVOS_ACEPTADOS_BACK =
+  '.pdf,.doc,.docx,.rtf,.txt,.md,.xls,.xlsx,.csv,.ppt,.pptx,.odt,.ods,' +
+  '.jpg,.jpeg,.png,.webp,.gif,.avif,.heic,.svg,.mp4,.mov,.webm,.avi,.mp3,.wav,.m4a,.ogg';
+
 export type CampoOnb = {
   id: string;
   etiqueta: string;
@@ -200,15 +216,15 @@ export const PASOS_ONB: PasoOnb[] = [
   {
     n: 3, t: 'Su material', d: 'Suba lo que tenga', icono: '📎',
     titular: 'Suba lo que ya tiene',
-    paraQue: 'Suba lo que tenga: el motor lo lee y usa su información real.',
-    infiere: 'Si no sube nada, arranca con su descripción y lo que encuentre en sus páginas.',
+    paraQue: 'Con esto el motor escribe con su información real: precios, promesas, condiciones y su tono, tal como usted los tiene escritos.',
+    infiere: 'Si no sube nada, arranca con su descripción y lo que encuentre en sus páginas y redes.',
     minima: ['archivos'],
     campos: [
       { id: 'negocio_links', etiqueta: 'Sus páginas y redes (opcional)', tipo: 'links',
         ayuda: 'De ahí el motor saca solo los precios, el tono, el catálogo y cada cuánto publica.' },
-      { id: 'docs', etiqueta: 'Sus archivos', tipo: 'docs', ayuda: 'Suelte aquí lo que tenga o elija archivos: PDF, Word, Excel, PowerPoint, fotos, videos o audios. Puede subir varios a la vez y de cualquier formato.' },
+      { id: 'docs', etiqueta: 'Sus archivos', tipo: 'docs', ayuda: 'Suelte aquí lo que tenga o elija archivos: PDF, Word, Excel, PowerPoint, fotos, videos o audios. Puede subir varios a la vez, hasta 25 MB por archivo.' },
     ],
-    nota: 'Lo que suba queda en su carpeta y se puede usar en cualquier campaña. Nada se publica con sus archivos sin que lo vea antes: primero pasa por el panel.',
+    nota: 'Los archivos se pueden sacar cuando quiera y nada se publica con ellos sin que lo vea antes: primero pasa por el panel.',
   },
   {
     n: 4, t: 'Cómo trabaja', d: 'Tono, presupuesto y frenos', icono: '🎚️',

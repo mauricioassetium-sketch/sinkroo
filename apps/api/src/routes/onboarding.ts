@@ -77,6 +77,18 @@ export async function onboardingRoutes(app: FastifyInstance, db: Pool) {
   app.post('/api/onboarding/arrancar', async (req, reply) => {
     const u = await exigirSesion(req, reply);
     if (!u || !u.business_id) return;
+    // LA PUERTA ES DE VERDAD, Y VIVE ACÁ. El código de entrada no puede ser un adorno del asistente: si
+    // sólo lo frenara el panel, cualquiera arrancaría el motor llamando a esta ruta de frente (y hay más
+    // de una pantalla que la llama). El negocio que no entró con un código no arranca nada.
+    const entro = await query<{ uno: number }>(
+      'SELECT 1 AS uno FROM codigos_entrada_usos WHERE business_id = $1 LIMIT 1', [u.business_id],
+    );
+    if (!entro.length) {
+      return reply.status(403).send({
+        error: 'para arrancar el motor falta el código de entrada: escríbalo en el asistente y el motor arranca',
+        codigo: 'sin_codigo_de_entrada',
+      });
+    }
     await execute(
       `INSERT INTO onboarding (business_id, arrancado, arrancado_at) VALUES ($1, true, now())
        ON CONFLICT (business_id) DO UPDATE SET arrancado = true, arrancado_at = now(), actualizado = now()`,

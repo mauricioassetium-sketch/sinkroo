@@ -115,7 +115,14 @@ export async function quienSoy(): Promise<Usuario | null> {
   try {
     const r = await pedir<{ usuario: Usuario }>('/api/auth/yo');
     return r.usuario;
-  } catch { guardarToken(''); return null; }
+  } catch (e) {
+    // La sesión sólo se cae cuando el back dice que NO sirve (401/403). Un 429 (demasiadas peticiones),
+    // un 500 o un corte de red no son la sesión: borrar el token ahí dejaba a la persona afuera por un
+    // tropiezo del servidor, y volver a entrar costaba escribir la clave otra vez.
+    const estado = (e as ErrorApi)?.estado;
+    if (estado === 401 || estado === 403) guardarToken('');
+    return null;
+  }
 }
 
 export async function salir() {
@@ -212,6 +219,77 @@ export const arrancarMotor = (pin?: string) => pedir<{ ok: boolean }>('/api/onbo
   metodo: 'POST',
   ...(pin ? { cuerpo: { pin } } : {}),
 });
+
+// ---------------- El código de entrada ----------------
+// Sinkroo se entrega por invitación: el negocio recibe un código de quien le instaló el sistema y el
+// asistente no avanza hasta que lo valide. El código se manda una vez y NO se guarda en el navegador:
+// después de validarlo, lo único que el panel recuerda es si esa cuenta ya quedó registrada.
+
+export type EstadoEntrada = {
+  /** ¿Esta cuenta ya validó su código de entrada? Es lo único que deja avanzar el asistente. */
+  registrado: boolean;
+  /** Lo que el back quiera decirle al negocio cuando el código quedó aceptado. Sin nota, null. */
+  nota: string | null;
+  /** Cuándo se registró, si el back lo dice. */
+  usado_at?: string | null;
+};
+
+export const leerCodigoDeEntrada = () => pedir<EstadoEntrada>('/api/entrada/codigo');
+
+/**
+ * Manda el código de entrada. `ya` viene en true cuando esa cuenta ya lo tenía registrado (volver a
+ * mandarlo no es un error). Los 400 traen `codigo`: `codigo_vacio`, `codigo_invalido` o
+ * `codigo_ya_usado` — es lo que la pantalla usa para explicar el porqué sin tecnicismos.
+ */
+export const reclamarCodigoDeEntrada = (codigo: string) =>
+  pedir<{ ok: boolean; ya: boolean; nota: string | null }>('/api/entrada/codigo', {
+    metodo: 'POST', cuerpo: { codigo },
+  });
+
+// ---------------- Los archivos del negocio ----------------
+// Lo que el cliente sube en el paso 3 no puede quedarse en la memoria del navegador: vive en la carpeta
+// del servidor, y es de ahí de donde el motor lo lee. Estas tres rutas son las únicas que lo tocan.
+
+export type ArchivoRemoto = {
+  id: string;
+  nombre: string;
+  tipo: string;
+  /** El peso en bytes, tal como lo devuelve el back. */
+  peso: number;
+  created_at: string;
+};
+
+export const listarArchivos = () => pedir<{ archivos: ArchivoRemoto[] }>('/api/archivos');
+
+/**
+ * Sube UN archivo. Va por multipart, así que no pasa por `pedir` (ese manda JSON): la cabecera
+ * Content-Type la pone el navegador con el límite del formulario, y el archivo va en el campo `archivo`.
+ * Devuelve el archivo tal como quedó guardado (con su id y su peso reales).
+ */
+export async function subirArchivo(archivo: File): Promise<ArchivoRemoto> {
+  const base = baseApi();
+  if (!base) throw new Error('sin_api');
+  const cuerpo = new FormData();
+  cuerpo.append('archivo', archivo);
+  const r = await fetch(base + '/api/archivos', {
+    method: 'POST',
+    headers: token() ? { Authorization: `Bearer ${token()}` } : {},
+    body: cuerpo,
+  });
+  const texto = await r.text();
+  let datos: Record<string, any> = {};
+  try { datos = texto ? JSON.parse(texto) : {}; } catch { datos = {}; }
+  if (!r.ok) {
+    const e = new Error(datos?.error || `error ${r.status}`) as ErrorApi;
+    e.codigo = datos?.codigo; e.estado = r.status; e.cuerpo = datos;
+    throw e;
+  }
+  return datos.archivo as ArchivoRemoto;
+}
+
+/** Saca un archivo de la carpeta del servidor. Se puede volver a subir: no se pierde nada del negocio. */
+export const borrarArchivo = (id: string) =>
+  pedir<{ ok: boolean }>(`/api/archivos/${encodeURIComponent(id)}`, { metodo: 'DELETE' });
 
 // ---------------- Integraciones ----------------
 

@@ -139,11 +139,12 @@ async function traer<T>(ruta: string, porDefecto: T): Promise<T> {
   } catch { return porDefecto; }
 }
 
-export function ProveedorDatos({ children }: { children: ReactNode }) {
+export function ProveedorDatos({ children, modoDemo = false }: { children: ReactNode; modoDemo?: boolean }) {
   const [estado, setEstado] = useState<Datos>(VACIO);
 
   const refrescar = useCallback(async () => {
-    if (!hayApi() || !token()) { setEstado(VACIO); return; }
+    // En modo demostración no se lee el back ni con sesión abierta: la demostración no es la cuenta.
+    if (!hayApi() || !token() || modoDemo) { setEstado(VACIO); return; }
     setEstado(e => ({ ...e, real: true, cargando: true, error: '' }));
     const [neg, onb, camp, piez, eval_, hall, corr, publ, conv, cred, calib, back, integ] = await Promise.all([
       traer<{ negocio: Negocio; resumen: Resumen; onboarding: { hechos: number[]; arrancado: boolean } } | null>('/api/negocio', null),
@@ -181,21 +182,21 @@ export function ProveedorDatos({ children }: { children: ReactNode }) {
       guardar: async () => {},
       arrancar: async () => {},
     });
-  }, []);
+  }, [modoDemo]);
 
   useEffect(() => { void refrescar(); }, [refrescar]);
 
   const guardar = useCallback(async (cuerpo: { datos?: Record<string, unknown>; hechos?: number[]; arrancado?: boolean }) => {
-    if (!hayApi() || !token()) return;
+    if (!hayApi() || !token() || modoDemo) return;
     await guardarOnboarding(cuerpo).catch(() => {});
     void refrescar();
-  }, [refrescar]);
+  }, [refrescar, modoDemo]);
 
   const arrancar = useCallback(async () => {
-    if (!hayApi() || !token()) return;
+    if (!hayApi() || !token() || modoDemo) return;
     await arrancarMotor().catch(() => {});
     void refrescar();
-  }, [refrescar]);
+  }, [refrescar, modoDemo]);
 
   // El estado se completa con las funciones una sola vez, para no re-renderizar de más.
   const valor: Datos = { ...estado, refrescar, guardar, arrancar };

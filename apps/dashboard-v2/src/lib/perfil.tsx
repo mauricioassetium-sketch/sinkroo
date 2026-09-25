@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { useDatos } from '../api/datos';
 
 // =============================================================================================
 // PERFIL — los datos del dueño de la cuenta + LA MARCA DEL CLIENTE (su logo y sus colores).
@@ -432,6 +433,71 @@ export function leerLogo(archivo: File, lado = 320): Promise<string> {
 }
 
 // =============================================================================================
+// LOS DATOS DE EJEMPLO NO SON DE NADIE
+//
+// Esta maqueta nace con el negocio de ejemplo cargado (María Paula, Skincare Natural, el teléfono y la
+// zona del caso). Mientras el panel va sin back, eso es la demostración y está bien. CON EL BACK
+// ENCENDIDO NO PUEDE QUEDAR EN PANTALLA: el panel saludaba con el nombre del ejemplo («Hola María») a
+// quien había entrado con SU cuenta. Lo que sigue es lo que corrige eso: con datos del back, el nombre,
+// el correo y el negocio salen de la cuenta y del negocio guardados en el servidor.
+//
+// La regla es una sola: se escribe encima SÓLO de lo que todavía es el ejemplo (o de lo que está vacío).
+// Lo que el cliente escribió en «Haga suyo este panel» se respeta tal cual, aunque no coincida con nada.
+// =============================================================================================
+
+/** ¿El valor es el del ejemplo (o está vacío, que también es «sin dato»)? */
+const deEjemplo = (valor: string, ejemplo: string) => !valor.trim() || valor.trim() === ejemplo.trim();
+
+/**
+ * DE QUÉ CUENTA ES EL PERFIL GUARDADO.
+ *
+ * El perfil vive en el navegador, así que sobrevive a cerrar sesión y entrar con otra cuenta: sin esta
+ * marca, el perfil de una cuenta se le mostraba a la siguiente (entrar con una cuenta sin nombre saludaba
+ * con el nombre de la anterior). Con la marca, cuando la cuenta no es la misma, los datos de la persona y
+ * de su negocio se vuelven a sacar de la cuenta nueva; el logo y los colores que el cliente haya elegido
+ * se quedan donde están.
+ */
+const CLAVE_DE = 'sinkroo-perfil-de';
+const cuentaDelPerfil = () => { try { return window.localStorage.getItem(CLAVE_DE) || ''; } catch { return ''; } };
+const anotarCuentaDelPerfil = (email: string) => {
+  try { window.localStorage.setItem(CLAVE_DE, email); } catch { /* modo privado: no se puede anotar */ }
+};
+
+/**
+ * El perfil con los datos de la cuenta. El negocio aporta su nombre, su zona y (por la zona) la moneda
+ * con la que se muestran los presupuestos: son los mismos datos que usa el motor, así que la pantalla y
+ * el trabajo del motor no pueden decir cosas distintas.
+ *
+ * `deOtraCuenta` dice que el perfil guardado es de otra cuenta: en ese caso los datos de la persona y de
+ * su negocio se escriben encima SIEMPRE (no hay nada que respetar, porque no son de quien está entrando).
+ */
+function conLaCuenta(
+  p: Perfil,
+  cuenta: { nombre?: string; email?: string } | null | undefined,
+  negocio: { name?: string; zona?: string } | null | undefined,
+  deOtraCuenta: boolean,
+): Perfil {
+  const zona = (negocio?.zona || '').trim().toLowerCase();
+  const lugar = zona ? LUGARES.find(l => l.nombre.toLowerCase() === zona) : undefined;
+  const toca = (valor: string, ejemplo: string) => deOtraCuenta || deEjemplo(valor, ejemplo);
+  return {
+    ...p,
+    nombre: toca(p.nombre, PERFIL_INICIAL.nombre) ? (cuenta?.nombre || '').trim() : p.nombre,
+    email: toca(p.email, PERFIL_INICIAL.email) ? (cuenta?.email || '').trim() : p.email,
+    // El teléfono del ejemplo no es el de nadie: se deja vacío hasta que el cliente ponga el suyo.
+    telefono: toca(p.telefono, PERFIL_INICIAL.telefono) ? '' : p.telefono,
+    marca: toca(p.marca, PERFIL_INICIAL.marca) ? (negocio?.name || '').trim() : p.marca,
+    zona: toca(p.zona, PERFIL_INICIAL.zona) ? (lugar?.zona || '') : p.zona,
+    moneda: toca(p.moneda, PERFIL_INICIAL.moneda) ? (lugar?.moneda || p.moneda) : p.moneda,
+  };
+}
+
+/** ¿Los dos perfiles se ven igual? Sirve para no guardar ni repintar cuando no hay nada que cambiar. */
+const mismoPerfil = (a: Perfil, b: Perfil) =>
+  a.nombre === b.nombre && a.email === b.email && a.telefono === b.telefono &&
+  a.marca === b.marca && a.zona === b.zona && a.moneda === b.moneda;
+
+// =============================================================================================
 // CONTEXTO
 // =============================================================================================
 
@@ -464,7 +530,9 @@ function leerGuardado(): Perfil {
   } catch { return PERFIL_INICIAL; }
 }
 
-export function PerfilProvider({ children }: { children: ReactNode }) {
+export function PerfilProvider({ children, cuenta, demo = false }: { children: ReactNode; cuenta?: { nombre: string; email: string } | null; demo?: boolean }) {
+  // Los datos del back: acá se dice si lo que se está viendo es el negocio real o la demostración.
+  const datos = useDatos();
   // Se guarda en el navegador: lo que usted edita sobrevive a recargar la página.
   const [perfil, setPerfil] = useState<Perfil>(leerGuardado);
   // Mientras el pop-up de personalización está abierto, aquí vive el borrador: así el logo y los
@@ -476,7 +544,11 @@ export function PerfilProvider({ children }: { children: ReactNode }) {
   // (Antes miraba sólo el guardado: al guardar los datos de cuenta con el pop-up abierto, los
   // colores que usted estaba eligiendo volvían atrás en la pantalla aunque el pop-up siguiera
   // mostrándolos elegidos.)
-  useEffect(() => { aplicarMarca(previa ?? perfil); }, [perfil, previa]);
+  // EN LA DEMOSTRACIÓN manda el negocio del ejemplo, con su dueña y sus colores: esa pantalla es la que
+  // muestra el producto, no la cuenta de nadie. Y es de mentira pasajera: lo que el cliente tenga
+  // guardado NO se toca — al volver a su cuenta, su nombre, su logo y sus colores están como los dejó.
+  const mostrado: Perfil = demo ? PERFIL_INICIAL : (previa ?? perfil);
+  useEffect(() => { aplicarMarca(mostrado); }, [mostrado]);
 
   const guardar = (p: Perfil) => {
     setPerfil(p);
@@ -487,7 +559,21 @@ export function PerfilProvider({ children }: { children: ReactNode }) {
   const previsualizar = (p: Perfil) => { setPrevia(p); aplicarMarca(p); };
   const terminarPrevia = () => { setPrevia(null); aplicarMarca(perfil); };
 
-  const valor = { perfil, perfilVisible: previa ?? perfil, guardar, previsualizar, terminarPrevia };
+  // ---- LA CUENTA CON LA QUE SE ENTRÓ MANDA SOBRE EL EJEMPLO ----
+  // Con el back encendido, el nombre, el correo y el negocio se toman de la cuenta y del negocio que
+  // están guardados en el servidor. Sin back no se toca nada: ahí el ejemplo ES la demostración.
+  // La corrección se repite mientras el panel siga leyendo del back, porque el negocio puede llegar
+  // después que la persona; en cuanto no queda nada de ejemplo, no cambia nada y no se guarda de más.
+  useEffect(() => {
+    if (!datos.real) return;
+    const de = (cuenta?.email || '').trim();
+    const deOtraCuenta = cuentaDelPerfil() !== de;
+    const siguiente = conLaCuenta(perfil, cuenta, datos.negocio, deOtraCuenta);
+    if (deOtraCuenta && de) anotarCuentaDelPerfil(de);
+    if (!mismoPerfil(siguiente, perfil)) guardar(siguiente);
+  }, [datos.real, datos.negocio, cuenta?.nombre, cuenta?.email, perfil]);
+
+  const valor = { perfil, perfilVisible: mostrado, guardar, previsualizar, terminarPrevia };
   return <Ctx.Provider value={valor}>{children}</Ctx.Provider>;
 }
 

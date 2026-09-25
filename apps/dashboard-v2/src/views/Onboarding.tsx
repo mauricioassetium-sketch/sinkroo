@@ -38,11 +38,22 @@ export function ViewOnboarding({ setToast, setVista }: { setToast: (t: string) =
     return Array.isArray(v) ? v.length > 0 : !!String(v || '').trim();
   };
 
+  // CON EL BACK ENCENDIDO no se promete un aviso por una vía que puede no estar conectada: si no hay
+  // cuenta de WhatsApp conectada, se dice lo que sí pasa (queda en Su día), que es lo verificable.
+  const whatsappConectado = !!(datos.integraciones?.redes || []).find(r => r.red === 'whatsapp')?.cuenta;
+  const comoSeEntera = !datos.real || whatsappConectado
+    ? 'No hace falta que esté mirando: le avisa por WhatsApp cuando hay algo para decidir.'
+    : 'No hace falta que esté mirando: lo que el motor vaya haciendo queda en Su día, y ahí aparece lo que hay que decidir.';
+
   const irAlSiguiente = (marcar: boolean) => {
     if (marcar) onb.marcar(paso.n);
     setPendiente(!marcar);
     if (!ultimo) onb.irA(paso.n + 1);
-    else setToast('Puede arrancar cuando quiera: nada de lo que puso se pierde');
+    // El paso de cierre no se cierra prometiendo un arranque que todavía no se puede dar: con el
+    // servidor encendido y sin código de entrada, el motor no arranca y el aviso lo dice.
+    else setToast(onb.conBack && !onb.puedeArrancar
+      ? 'Quedó guardado. Para arrancar falta el código de entrada: se valida en el asistente de entrada'
+      : 'Puede arrancar cuando quiera: nada de lo que puso se pierde');
   };
 
   return (
@@ -171,8 +182,7 @@ export function ViewOnboarding({ setToast, setVista }: { setToast: (t: string) =
         >
           <div className="bs">
             Con las cuentas conectadas, el motor tarda <b>unas 3 horas</b> en tener el primer informe del mercado
-            y las primeras piezas listas. No hace falta que esté mirando: le avisa por WhatsApp cuando hay
-            algo para decidir.
+            y las primeras piezas listas. {comoSeEntera}
           </div>
           <div className="onb-datos">
             <div className="dato"><span className="dato-l">Primer informe del mercado</span><span className="dato-v">~2 h</span></div>
@@ -184,17 +194,25 @@ export function ViewOnboarding({ setToast, setVista }: { setToast: (t: string) =
               onClick={() => detalle({
                 titulo: 'Qué hace el motor mientras tanto',
                 sub: 'Estos pasos no son un permiso: el motor ya está investigando con lo que hay. Esto es lo que está pasando ahora mismo.',
-                bloques: [
-                  { tipo: 'filas', items: [
-                    { t: 'Lux · el mercado', s: 'leyó 47 anuncios de sus 6 competidores de la zona', etiqueta: 'en curso', tono: 'purple' },
-                    { t: 'Rex · el presupuesto', s: 'comparó dónde rinde más cada peso hoy', etiqueta: 'en curso', tono: 'purple' },
-                    { t: 'Kai · la pauta', s: 'revisa cada 15 minutos las campañas que ya corren', etiqueta: 'en curso', tono: 'purple' },
-                    { t: 'Rumi · las conversaciones', s: 'espera su OK para el primer mensaje', etiqueta: 'espera su OK', tono: 'amber' },
-                    { t: 'Nia · las piezas', s: 'todavía no escribió: arranca cuando tenga el material o el ángulo', etiqueta: 'sin arrancar', tono: 'muted' },
-                  ] },
-                  { tipo: 'aviso', texto: 'Cuando ponga algo en un paso, el motor lo toma en la próxima vuelta: no hay que oprimir ningún botón para que lo use.' },
-                ],
-                fuente: 'Cada agente declara qué está haciendo en su propia ficha, en Hoy y en Campañas.',
+                bloques: datos.real
+                  // CON EL SERVIDOR ENCENDIDO no se repite un estado ni un número que el servidor no
+                  // haya mandado: los agentes declaran lo suyo en su propia ficha, con la corrida real.
+                  ? [
+                    { tipo: 'aviso' as const, texto: 'Lo que cada agente está haciendo ahora mismo sale de su corrida en el servidor: se lee en Su día, en Campañas y en la ficha de cada agente. Aquí no se adelanta un estado que el servidor no haya mandado.' },
+                  ]
+                  : [
+                    { tipo: 'filas', items: [
+                      { t: 'Lux · el mercado', s: 'leyó 47 anuncios de sus 6 competidores de la zona', etiqueta: 'en curso', tono: 'purple' },
+                      { t: 'Rex · el presupuesto', s: 'comparó dónde rinde más cada peso hoy', etiqueta: 'en curso', tono: 'purple' },
+                      { t: 'Kai · la pauta', s: 'revisa cada 15 minutos las campañas que ya corren', etiqueta: 'en curso', tono: 'purple' },
+                      { t: 'Rumi · las conversaciones', s: 'espera su OK para el primer mensaje', etiqueta: 'espera su OK', tono: 'amber' },
+                      { t: 'Nia · las piezas', s: 'todavía no escribió: arranca cuando tenga el material o el ángulo', etiqueta: 'sin arrancar', tono: 'muted' },
+                    ] },
+                    { tipo: 'aviso', texto: 'Cuando ponga algo en un paso, el motor lo toma en la próxima vuelta: no hay que oprimir ningún botón para que lo use.' },
+                  ],
+                fuente: datos.real
+                  ? 'Primeros pasos · el estado real de cada agente sale de su corrida en el servidor.'
+                  : 'Cada agente declara qué está haciendo en su propia ficha, en Hoy y en Campañas.',
               })}>Ver qué está haciendo ahora</Button>
             <Button variant="ghost" className="btn-sm" title="Muestre en qué se va cada uno de los créditos que usa"
               onClick={() => setVista('creditos')}><I_Credit size={13} /> En qué se van mis créditos</Button>

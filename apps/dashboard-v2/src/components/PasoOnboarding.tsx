@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Badge, Button } from '../components/ui';
 import { EstadoVacio } from '../components/EstadoVacio';
 import {
-  I_Check, I_Upload, I_Image, I_Film, I_File, I_Shield, I_ArrowRight, I_X, I_Link, I_Plus, I_Play, I_Zap,
+  I_Check, I_Upload, I_Image, I_Film, I_File, I_Shield, I_ArrowRight, I_X, I_Link, I_Plus, I_Play, I_Zap, I_Lock,
 } from '../components/icons';
 import { useOnboarding } from '../lib/onboarding';
 import { usePlan } from '../lib/plan';
@@ -10,6 +10,7 @@ import { useDatos, type IntegracionRed } from '../api/datos';
 import { baseApi, recordarRed, token } from '../api/cliente';
 import {
   CONEXIONES_ONB, CONEXIONES_BACK, ARRANQUE, COSTO_ARRANQUE, TIPOS_ARCHIVO, ARCHIVOS_ACEPTADOS,
+  ARCHIVOS_ACEPTADOS_BACK, MAX_ARCHIVO_MB,
   type CampoOnb, type ConexionOnb, type PasoOnb,
 } from '../data/onboarding';
 
@@ -143,30 +144,61 @@ export function CamposPaso({ paso }: { paso: PasoOnb }) {
     }
 
     if (campo.tipo === 'docs') {
-      const arrastrando = onb.archivos.length > 0;
+      // Con el servidor encendido, esta lista ES la del servidor (se lee al abrir el panel y se
+      // refresca al subir o al borrar). Sin servidor, los archivos sólo viven en esta visita y la
+      // pantalla lo dice: no se puede afirmar que quedaron guardados en ninguna parte.
+      const hay = onb.conBack;
+      const subiendo = onb.subiendo;
+      const n = onb.archivos.length;
       return (
         <div className="onb-docs">
           <label className="onb-drop"
-            title="Suelte sus archivos aquí: PDF, Word, Excel, PowerPoint, fotos, videos o audios. El motor lee el texto de los documentos y usa las imágenes y los videos en las piezas.">
+            title={hay
+              ? `Elija o suelte sus archivos: documentos, fotos, videos o audios, hasta ${MAX_ARCHIVO_MB} MB cada uno. Quedan en su carpeta del servidor y el motor los lee. Se pueden sacar y volver a subir cuando quiera.`
+              : 'Suelte sus archivos aquí: PDF, Word, Excel, PowerPoint, fotos, videos o audios. El motor lee el texto de los documentos y usa las imágenes y los videos en las piezas.'}>
             <span className="onb-drop-ic"><I_Upload size={22} /></span>
-            <span className="onb-drop-t">Suelte sus archivos aquí</span>
-            <span className="onb-drop-s">o toque para elegirlos · todos los formatos</span>
-            <input type="file" multiple accept={ARCHIVOS_ACEPTADOS} style={{ display: 'none' }}
-              onChange={e => { const n = onb.subirArchivos(e.target.files); if (n) onb.avisar(`${n} archivo${n > 1 ? 's' : ''} subido${n > 1 ? 's' : ''}: el motor los lee`); }} />
+            <span className="onb-drop-t">{subiendo ? 'Subiendo sus archivos…' : 'Suelte sus archivos aquí'}</span>
+            <span className="onb-drop-s">{hay
+              ? `o toque para elegirlos · hasta ${MAX_ARCHIVO_MB} MB cada uno`
+              : 'o toque para elegirlos · todos los formatos'}</span>
+            <input type="file" multiple accept={hay ? ARCHIVOS_ACEPTADOS_BACK : ARCHIVOS_ACEPTADOS}
+              disabled={!!subiendo} style={{ display: 'none' }}
+              onChange={e => {
+                // Los archivos se copian ANTES de limpiar el campo: si no, el mismo archivo no se
+                // puede volver a elegir después de un error (el campo queda apuntando a lo mismo).
+                const elegidos = Array.from(e.target.files || []);
+                e.target.value = '';
+                void onb.subirArchivos(elegidos);
+              }} />
           </label>
 
-          {onb.archivos.length > 0 && (
+          {/* El avance: sube uno por uno y el negocio ve por dónde va. */}
+          {subiendo && (
+            <div className="tiny muted" style={{ marginTop: 8 }}>
+              Subiendo {subiendo.hechos} de {subiendo.total}… no cierre esta pantalla hasta que termine.
+            </div>
+          )}
+
+          {n > 0 && (
             <div className="onb-archivos">
               {onb.archivos.map(a => (
-                <div key={a.nombre} className="onb-arch">
+                <div key={a.id || a.nombre} className="onb-arch">
                   <span className="onb-arch-ic"><IconoArchivo tipo={a.tipo} /></span>
                   <span className="onb-arch-n" title={a.nombre}>{a.nombre}</span>
                   <span className="onb-arch-p">{a.peso}</span>
-                  <button className="onb-arch-x" title="Sacar este archivo de la ingesta"
-                    onClick={() => { onb.quitarArchivo(a.nombre); onb.avisar('Archivo sacado de la ingesta'); }}><I_X size={12} /></button>
+                  <button className="onb-arch-x" disabled={!!subiendo}
+                    title={hay
+                      ? `Saca ${a.nombre} de su carpeta: el motor deja de leerlo. Se puede volver a subir cuando quiera.`
+                      : `Saca ${a.nombre} de la lista de esta visita.`}
+                    onClick={() => void onb.quitarArchivo(a)}><I_X size={12} /></button>
                 </div>
               ))}
             </div>
+          )}
+
+          {/* Lo que no se pudo subir, con su motivo, y sin perder lo que sí subió. */}
+          {onb.errorArchivos && (
+            <div className="tiny" style={{ color: 'var(--amber)', marginTop: 8 }}>{onb.errorArchivos}</div>
           )}
 
           {/* Qué hace el motor con cada formato: sin esto, subir un PDF sería una apuesta. */}
@@ -179,11 +211,15 @@ export function CamposPaso({ paso }: { paso: PasoOnb }) {
               </div>
             ))}
           </div>
-          {arrastrando && (
+          {n > 0 && (hay ? (
             <div className="tiny onb-ok">
-              <I_Check size={12} /> {onb.archivos.length} archivo{onb.archivos.length > 1 ? 's' : ''} en la ingesta. Puede seguir sumando o pasar al paso siguiente.
+              <I_Check size={12} /> {n} archivo{n > 1 ? 's' : ''} en su carpeta del servidor: el motor los lee para escribir sus piezas. Puede seguir sumando o sacar los que no quiera.
             </div>
-          )}
+          ) : (
+            <div className="tiny muted" style={{ marginTop: 10 }}>
+              {n} archivo{n > 1 ? 's' : ''} en la lista. Esta visita es la demostración: no se sube nada ni queda guardado.
+            </div>
+          ))}
         </div>
       );
     }
@@ -463,6 +499,68 @@ export function BloqueConexiones() {
   );
 }
 
+/**
+ * EL CÓDIGO DE ENTRADA — el freno de la entrada, en un solo lugar.
+ *
+ * Sinkroo se entrega por invitación: el negocio recibe un código de quien le instaló el sistema y el
+ * asistente no avanza sin él. El bloque vive en la bienvenida del asistente y, con el servidor
+ * encendido, se repite al lado del botón de arranque cuando el código falta: el negocio que ya cerró
+ * el asistente tiene que poder validarlo sin quedar encerrado.
+ *
+ * SIN SERVIDOR NO SE DIBUJA NADA: la demostración queda igual que siempre.
+ * El código no se guarda en el navegador ni se vuelve a mostrar: se manda una vez y lo único que
+ * queda es si el back lo dio por registrado.
+ */
+export function BloqueCodigoDeEntrada() {
+  const onb = useOnboarding();
+  const [codigo, setCodigo] = useState('');
+  const e = onb.entrada;
+  // Sin servidor encendido no hay código que pedir: el asistente queda tal como está hoy.
+  if (!onb.conBack) return null;
+
+  const validar = () => { void onb.reclamarCodigo(codigo); };
+
+  return (
+    <div className="asist-caja"
+      style={{ borderColor: e.registrado ? 'rgba(34,197,94,.32)' : 'rgba(245,158,11,.36)' }}>
+      <b style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+        {e.registrado ? <I_Check size={13} /> : <I_Lock size={13} />}
+        {e.registrado ? 'Su código de entrada quedó aceptado' : 'Sinkroo está en entrada por invitación'}
+      </b>
+      <small>
+        {e.registrado
+          ? (e.nota || 'Su cuenta ya quedó registrada: puede seguir, y el motor trabaja con su negocio.')
+          : 'El código lo recibe de quien le instaló el sistema. Sin él, el asistente no avanza y el motor no arranca.'}
+      </small>
+
+      {!e.registrado && (
+        <>
+          <div className="onb-links-in" style={{ marginTop: 10 }}>
+            <input className="input" type="text" autoComplete="off" value={codigo}
+              placeholder="Código de entrada" aria-label="Código de entrada"
+              disabled={e.cargando}
+              title="Escriba el código que le entregaron. Sólo sirve para dejar su cuenta registrada: no se guarda en este navegador ni se vuelve a mostrar."
+              onChange={ev => setCodigo(ev.target.value)}
+              onKeyDown={ev => { if (ev.key === 'Enter') { ev.preventDefault(); validar(); } }} />
+            <Button variant="outline" className="btn-sm" disabled={e.cargando}
+              title="Revisa el código contra el servidor. Si sirve, su cuenta queda registrada y el asistente avanza; cada código sirve una sola vez. Se puede intentar las veces que haga falta."
+              onClick={validar}>{e.cargando ? 'Revisando…' : 'Validar el código'}</Button>
+          </div>
+          {e.error && <div className="tiny" style={{ color: 'var(--red)', marginTop: 7 }}>{e.error}</div>}
+          {e.errorLectura && <div className="tiny" style={{ color: 'var(--amber)', marginTop: 7 }}>{e.errorLectura}</div>}
+          {e.errorLectura && (
+            <div style={{ marginTop: 8 }}>
+              <Button variant="ghost" className="btn-sm"
+                title="Vuelve a preguntarle al servidor si su código ya quedó registrado. No cambia nada de lo que ya puso."
+                onClick={() => void onb.recargarEntrada()}>Volver a leer</Button>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 /** El arranque: el botón, la línea de estado y lo que hace el motor, paso por paso. */
 export function BloqueArranque({ enAsistente, alCerrar }: { enAsistente?: boolean; alCerrar?: () => void }) {
   const onb = useOnboarding();
@@ -500,20 +598,42 @@ export function BloqueArranque({ enAsistente, alCerrar }: { enAsistente?: boolea
     );
   }
 
+  // El freno: con el servidor encendido y sin código de entrada, el motor NO se arranca. El botón queda
+  // apagado y explica qué falta y dónde se consigue; al lado va el mismo bloque de la bienvenida, para
+  // que el negocio que ya cerró el asistente lo pueda validar acá mismo.
+  const faltaCodigo = !onb.puedeArrancar;
+
   return (
-    <div className="row" style={{ gap: 9, marginTop: 14, flexWrap: 'wrap' }}>
-      <Button className="btn-sm"
-        title={`Arranca el motor ahora: arma su público de 500 personas, investiga su mercado y prepara las primeras piezas. Cuesta ${COSTO_ARRANQUE} créditos y no gasta dinero hasta que las piezas pasan el panel.`}
-        onClick={() => { onb.arrancar(); onb.marcar(5); onb.avisar('El motor arrancó: quedaron sus 500 del público y empieza por el mercado; no gasta nada hasta publicar'); }}>
-        <I_Play size={13} /> Arrancar el motor
-      </Button>
-      {!enAsistente && (
-        <Button variant="ghost" className="btn-sm" title="Guarda lo que puso y le deja seguir después desde Hoy"
-          onClick={() => { onb.desmarcar(5); onb.avisar('Guardado: sigue cuando quiera desde Hoy'); }}>
-          Dejarlo para después
-        </Button>
+    <>
+      {faltaCodigo && (
+        <>
+          <div className="bs" style={{ marginTop: 12 }}>
+            <b style={{ color: 'var(--txt)' }}>Para arrancar falta el código de entrada. </b>
+            El asistente lo pide en la bienvenida y sin él el motor no arranca: es la entrada por invitación.
+          </div>
+          <BloqueCodigoDeEntrada />
+        </>
       )}
-    </div>
+      <div className="row" style={{ gap: 9, marginTop: 14, flexWrap: 'wrap' }}>
+        <Button className="btn-sm" disabled={faltaCodigo || onb.arrancando}
+          title={faltaCodigo
+            ? 'Apagado: falta el código de entrada, que entrega quien le instaló Sinkroo. Se valida acá arriba y queda registrado en su cuenta.'
+            : `Arranca el motor ahora: arma su público de 500 personas, investiga su mercado y prepara las primeras piezas. Cuesta ${COSTO_ARRANQUE} créditos y no gasta dinero hasta que las piezas pasan el panel.`}
+          onClick={() => void onb.arrancar()}>
+          <I_Play size={13} /> {onb.arrancando ? 'Arrancando…' : 'Arrancar el motor'}
+        </Button>
+        {!enAsistente && (
+          <Button variant="ghost" className="btn-sm" title="Guarda lo que puso y le deja seguir después desde Hoy"
+            onClick={() => { onb.desmarcar(5); onb.avisar('Guardado: sigue cuando quiera desde Hoy'); }}>
+            Dejarlo para después
+          </Button>
+        )}
+      </div>
+      {/* Lo que dijo el back cuando el arranque no salió: el motor NO queda arrancado y se dice así. */}
+      {onb.errorArranque && (
+        <div className="tiny" style={{ color: 'var(--red)', marginTop: 9, flexBasis: '100%' }}>{onb.errorArranque}</div>
+      )}
+    </>
   );
 }
 

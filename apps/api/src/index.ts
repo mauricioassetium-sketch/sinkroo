@@ -19,6 +19,8 @@ import { productRoutes } from './routes/products.js';
 import { generateRoutes } from './routes/generate.js';
 import { predictRoutes } from './routes/predict.js';
 import { webhookRoutes } from './routes/webhook.js';
+import { entradaRoutes } from './routes/entrada.js';
+import { archivosRoutes } from './routes/archivos.js';
 
 const PORT = Number(process.env.PORT ?? 3000);
 // Dónde escucha. En el servidor propio se ata a 127.0.0.1 y nginx es la única puerta: si escucha en
@@ -96,6 +98,11 @@ export async function buildApp() {
   generateRoutes(app, db);
   predictRoutes(app, db);
   webhookRoutes(app, db);
+  // Los códigos de entrada: la puerta por la que el negocio entra al producto.
+  entradaRoutes(app);
+  // Los archivos del negocio. Se espera a que termine porque adentro registra el lector de
+  // multipart/form-data y las rutas tienen que quedar puestas después de eso.
+  await archivosRoutes(app);
 
   try { await migrate(db); } catch (e: any) { app.log.warn(`migration pending: ${e.message}`); }
 

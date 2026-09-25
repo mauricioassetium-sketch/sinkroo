@@ -455,7 +455,12 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
                 </button>}
               </div>
               <div className="hdr-t hero-title">
-                Hola {nombreDePila(perfil.nombre)}, soy <span className="grad-text">Sinkroo</span> 👋
+                {/* El saludo usa el nombre de la cuenta con la que se entró. Si la cuenta no tiene nombre
+                    todavía, se saluda sin nombre: nunca se pone el de otra persona (antes, con el back
+                    encendido, esta línea decía «Hola María» aunque hubiera entrado cualquiera). */}
+                {perfil.nombre.trim()
+                  ? <>Hola {nombreDePila(perfil.nombre)}, soy <span className="grad-text">Sinkroo</span> 👋</>
+                  : <>Hola, soy <span className="grad-text">Sinkroo</span> 👋</>}
               </div>
               <div className="hdr-s hero-sub">
                 <b>Su marketing, en automático.</b><br />

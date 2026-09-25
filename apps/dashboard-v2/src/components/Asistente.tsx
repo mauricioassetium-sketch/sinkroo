@@ -6,7 +6,7 @@ import {
 import { useOnboarding } from '../lib/onboarding';
 import { useDetalle } from './Detalle';
 import { usePlan } from '../lib/plan';
-import { CamposPaso, BloqueConexiones, BloqueArranque, AvisoVerificacion } from './PasoOnboarding';
+import { CamposPaso, BloqueConexiones, BloqueArranque, AvisoVerificacion, BloqueCodigoDeEntrada } from './PasoOnboarding';
 import { BIENVENIDA } from '../data/onboarding';
 import type { Sesion } from '../views/Login';
 
@@ -39,6 +39,13 @@ export function Asistente({ sesion, setVista }: { sesion: Sesion; setVista: (v: 
   const fase = onb.asistente.fase;
   const paso = fase >= 1 ? onb.pasos[fase - 1] : null;
   const ultimo = fase === onb.pasos.length;
+
+  // EL FRENO DE LA BIENVENIDA: con el servidor encendido y sin código de entrada registrado, el
+  // asistente no avanza. Sin servidor no cambia nada: la demostración queda como está.
+  const e = onb.entrada;
+  const leyendoCodigo = onb.conBack && e.cargando;
+  const faltaCodigo = onb.conBack && !e.registrado;
+  const noAvanza = leyendoCodigo || faltaCodigo;
 
   const cerrar = (aviso: string) => { onb.cerrarAsistente(); onb.avisar(aviso); };
   const siguiente = () => onb.irAFase(Math.min(onb.pasos.length, fase + 1));
@@ -115,10 +122,21 @@ export function Asistente({ sesion, setVista }: { sesion: Sesion; setVista: (v: 
                 <span><I_Checklist size={12} /> {BIENVENIDA.pie[2]}</span>
               </div>
 
+              {/* EL CÓDIGO DE ENTRADA: con el servidor encendido, aquí está lo único que deja seguir.
+                  Sin servidor, el bloque no se dibuja y esta pantalla queda igual que siempre. */}
+              {onb.conBack && <BloqueCodigoDeEntrada />}
+
               <div className="asist-cta">
-                <Button className="btn-lg" title="Empiece a llenar los datos del negocio: son cinco preguntas cortas que el motor usa para arrancar."
+                <Button className="btn-lg" disabled={noAvanza}
+                  title={leyendoCodigo
+                    ? 'Un momento: el panel está leyendo si su código de entrada ya quedó registrado.'
+                    : faltaCodigo
+                      ? 'Apagado: falta su código de entrada. Lo recibe de quien le instaló Sinkroo; escríbalo aquí arriba y valídelo. Sin él el asistente no avanza y el motor no arranca.'
+                      : 'Empiece a llenar los datos del negocio: son cinco preguntas cortas que el motor usa para arrancar.'}
                   onClick={siguiente}>Continuar <I_ArrowRight size={14} /></Button>
-                <span className="tiny muted"><I_Clock size={11} /> se puede saltar y hacerlo después</span>
+                <span className="tiny muted">{noAvanza
+                  ? <>{faltaCodigo ? 'falta el código de entrada' : 'leyendo su código de entrada…'} · sin él no se puede seguir</>
+                  : <><I_Clock size={11} /> se puede saltar y hacerlo después</>}</span>
               </div>
             </>
           )}
@@ -151,13 +169,16 @@ export function Asistente({ sesion, setVista }: { sesion: Sesion; setVista: (v: 
 
               <div className="row asist-acciones">
                 <Button className="btn-sm"
+                  disabled={(ultimo && onb.conBack && !onb.puedeArrancar) || onb.arrancando}
                   title={ultimo
-                    ? 'Arranca el motor con lo que haya y deja el paso de cierre anotado como hecho.'
+                    ? (onb.conBack && !onb.puedeArrancar
+                      ? 'Apagado: falta el código de entrada y sin él el motor no arranca. El código lo entrega quien le instaló Sinkroo: se valida en la bienvenida (el primer punto de la barra de arriba) o aquí abajo, en el bloque del código.'
+                      : 'Arranca el motor con lo que haya y deja el paso de cierre anotado como hecho.')
                     : onb.completo(paso.n)
                       ? 'Queda anotado como hecho y pasa al paso siguiente.'
                       : 'El paso queda anotado como hecho con lo que puso: el motor usa lo que haya y completa el resto.'}
-                  onClick={() => { onb.marcar(paso.n); ultimo ? onb.arrancar() : siguiente(); }}>
-                  {ultimo ? <><I_Play size={13} /> Terminar y arrancar</> : <>{onb.completo(paso.n) ? 'Continuar' : 'Darlo por hecho y seguir'} <I_ArrowRight size={13} /></>}
+                  onClick={() => { onb.marcar(paso.n); ultimo ? void onb.arrancar() : siguiente(); }}>
+                  {ultimo ? <><I_Play size={13} /> {onb.arrancando ? 'Arrancando…' : 'Terminar y arrancar'}</> : <>{onb.completo(paso.n) ? 'Continuar' : 'Darlo por hecho y seguir'} <I_ArrowRight size={13} /></>}
                 </Button>
                 <Button variant="ghost" className="btn-sm" title="Pasa al paso siguiente sin marcarlo: queda pendiente y el motor usa lo que haya"
                   onClick={siguiente}>Saltar</Button>
