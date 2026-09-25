@@ -117,7 +117,7 @@ export const COSTO_ARRANQUE = PRIMERA_SEMANA.reduce((a, d) => a + Number((d.cred
 //
 // `red` es la red del BACK con la que esa fila se conecta de verdad (`POST /api/integraciones/:red/...`).
 // Es lo que deja de mentir el paso 5: con el back encendido, cada fila muestra el estado de SU red, no
-// el del ejemplo. Una fila sin `red` no tiene conexión propia en el back (ver Facebook).
+// el del ejemplo. Una fila sin `red` no tiene conexión propia en el back (hoy no hay ninguna) y lo dice.
 export type ConexionOnb = {
   key: string; nombre: string; icono: string; habilitadoHoy: boolean; detalle: string;
   /** La red del back de esta fila. Sin `red`, el back no tiene una conexión propia para esa fila. */
@@ -126,12 +126,12 @@ export type ConexionOnb = {
 
 export const CONEXIONES_ONB: ConexionOnb[] = [
   { key: 'instagram', nombre: 'Instagram', icono: '📸', habilitadoHoy: true, detalle: 'Publicar piezas y leer comentarios y mensajes.', red: 'instagram' },
-  // Facebook NO lleva `red`: la conexión con Meta es la MISMA cuenta que Instagram (misma app y mismas
-  // variables en el servidor) y el back sólo confirma la cuenta de Instagram. Si esta fila dijera
-  // «conectada» cuando Instagram está conectada, estaría afirmando algo que el back no dice — que es
-  // justo lo que el paso 5 viene a corregir. Con el back encendido, la fila lo explica y no ofrece
-  // conectar: para conectar Facebook se conecta Instagram.
-  { key: 'facebook', nombre: 'Facebook', icono: '👍', habilitadoHoy: true, detalle: 'Publicar y pautar en la misma cuenta de Meta.' },
+  // Facebook SÍ lleva `red` desde que existe bundle.social: el agregador conecta la cuenta de Facebook
+  // como plataforma propia (FACEBOOK), aparte de la de Instagram. Por eso esta fila tiene su propia
+  // conexión y su propio botón —antes no lo tenía porque la única vía era la app de Meta, que confirma
+  // una sola cuenta y la de Facebook no llegaba aparte—. Sin `viaBundle` ni app propia configurada, el
+  // back diría «falta configurar» y la fila sólo lo nombra: nunca ofrece un botón que no puede funcionar.
+  { key: 'facebook', nombre: 'Facebook', icono: '👍', habilitadoHoy: true, detalle: 'Publicar y pautar en la misma cuenta de Meta.', red: 'facebook' },
   { key: 'whatsapp', nombre: 'WhatsApp de su negocio', icono: '💬', habilitadoHoy: true, detalle: 'Contestar solo, mandar la invitación a un referido y pedir la reseña.', red: 'whatsapp' },
   { key: 'tiktok', nombre: 'TikTok', icono: '🎵', habilitadoHoy: false, detalle: 'Publicar piezas en video y leer los comentarios.', red: 'tiktok' },
   { key: 'email', nombre: 'Su email', icono: '✉️', habilitadoHoy: false, detalle: 'Mandar el informe semanal y las secuencias a sus clientes.', red: 'email' },

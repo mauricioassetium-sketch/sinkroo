@@ -63,6 +63,12 @@ export type IntegracionRed = {
   categoria: string;
   /** ¿La app de esa red está configurada en el servidor? Si no, `falta` dice qué variables faltan. */
   configurado: boolean;
+  /**
+   * La plataforma dentro de bundle.social con la que esa red se conecta (ej. 'INSTAGRAM'), cuando la
+   * cubre el agregador. Una red con esto SE PUEDE CONECTAR aunque `configurado` siga en false: no
+   * depende de que la app propia esté cargada en el servidor. Por eso no puede decir «falta configurar».
+   */
+  viaBundle?: string;
   falta: string[];
   cuenta: {
     red: string; external_id: string | null; nombre: string | null; estado: string;

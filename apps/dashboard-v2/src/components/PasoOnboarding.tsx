@@ -252,10 +252,14 @@ export function CamposPaso({ paso }: { paso: PasoOnb }) {
  * CÓMO SE VE UNA FILA DEL PASO 5 CON EL BACK ENCENDIDO — el estado REAL de esa red, nunca el del ejemplo.
  *
  * El back es el único que sabe: `conectada` sólo cuando devuelve la cuenta de esa red; `sin conectar`
- * cuando la red está configurada y todavía no hay cuenta; y `falta configurar` —nombrando las variables
- * que faltan— cuando la app de esa red no está cargada en el servidor. `habilitadoHoy` es del ejemplo y
- * aquí NO se usa: decir «ya estaba conectada» sin que el back lo diga es lo que esta pantalla corregía.
+ * cuando la red se puede conectar y todavía no hay cuenta; y `falta configurar` —nombrando las variables
+ * que faltan— sólo cuando la red no se puede conectar por NINGUNA vía: ni app propia en el servidor ni
+ * bundle.social. `habilitadoHoy` es del ejemplo y aquí NO se usa: decir «ya estaba conectada» sin que el
+ * back lo diga es lo que esta pantalla corregía.
  */
+/** ¿Esta red se puede conectar hoy? Con su app propia cargada en el servidor, o por bundle.social. */
+const sePuedeConectar = (r: { configurado: boolean; viaBundle?: string }) => r.configurado || !!r.viaBundle;
+
 function estadoFila(c: ConexionOnb, r: IntegracionRed | null): {
   tono: 'green' | 'amber' | 'red' | 'muted'; rotulo: string; texto: string;
 } {
@@ -270,8 +274,8 @@ function estadoFila(c: ConexionOnb, r: IntegracionRed | null): {
       : 'Todavía no se sincronizó ninguna vez.'}`,
   };
 
-  // La fila que no tiene red propia en el back (Facebook): lo dice y no ofrece conectar, porque
-  // conectar ahí conectaría otra cosa. El estado que se ve es el de la fila de Instagram.
+  // La fila que no tiene red propia en el back: lo dice y no ofrece conectar, porque conectar ahí
+  // conectaría otra cosa. Sin estado no se afirma nada de ella.
   if (!c.red) return {
     tono: 'muted', rotulo: 'sin conectar',
     texto: `No hay una conexión de ${c.nombre} aparte: la de Meta es la misma cuenta que Instagram, y aquí se ve el estado de esa fila.`,
@@ -283,21 +287,26 @@ function estadoFila(c: ConexionOnb, r: IntegracionRed | null): {
     texto: `El back no mandó el estado de ${c.nombre}: esa red no vino en su lista, así que aquí no se puede decir si está conectada.`,
   };
 
-  if (!r.configurado) return {
+  // No hay ninguna vía para conectar esta red: ni app propia en el servidor, ni bundle.social. Se
+  // nombran las variables que faltan y no se ofrece un botón que no puede funcionar.
+  if (!sePuedeConectar(r)) return {
     tono: 'red', rotulo: 'falta configurar',
-    texto: `${c.nombre} todavía no tiene su app configurada en el servidor${falta.length
+    texto: `${c.nombre} todavía no tiene su app configurada en el servidor y bundle.social tampoco la cubre${falta.length
       ? `: falta cargar ${falta.length === 1 ? 'esta variable' : 'estas variables'} ${falta.join(', ')}` : ''}. Mientras falte, no hay permiso que pedir ni conexión que ofrecer.`,
   };
 
   // Las redes que van por clave no tienen pantalla de autorización: su clave ya está en el servidor.
   if (r.tipo === 'token') return {
-    tono: 'amber', rotulo: 'sin conectar',
+    tono: 'muted', rotulo: 'sin conectar',
     texto: 'Su clave ya está cargada en el servidor: no hay permiso que pedir, sólo falta la primera lectura para que sus datos entren al motor. El panel nunca la pide ni la muestra.',
   };
 
+  // Se puede conectar y todavía no hay cuenta: el permiso se le pide al dueño de la cuenta.
   return {
-    tono: 'amber', rotulo: 'sin conectar',
-    texto: `Su cuenta todavía no está conectada. Al conectar, el permiso se le pide a ${r.nombre} y el token queda guardado del lado del servidor: el panel nunca lo pide ni lo muestra.`,
+    tono: 'muted', rotulo: 'sin conectar',
+    texto: r.viaBundle
+      ? `Su cuenta todavía no está conectada. Al conectar se abre la pantalla de bundle.social, donde el permiso lo da el dueño de la cuenta (${r.nombre} · ${r.viaBundle}); el token queda guardado del lado del servidor y el panel nunca lo pide ni lo muestra.`
+      : `Su cuenta todavía no está conectada. Al conectar se le pide el permiso al dueño de la cuenta en ${r.nombre}, y el token queda guardado del lado del servidor: el panel nunca lo pide ni lo muestra.`,
   };
 }
 
@@ -423,14 +432,16 @@ export function BloqueConexiones() {
                 <small>{texto}</small>
               </span>
               <Badge tone={tono}>{rotulo}</Badge>
-              {r && r.configurado && !cuenta && r.tipo !== 'token' && (
+              {r && sePuedeConectar(r) && !cuenta && r.tipo !== 'token' && (
                 <Button variant="ghost" className="btn-sm" disabled={trabajando !== null}
-                  title={`Conecta ${r.nombre}: lo lleva a autorizar su cuenta y el token queda guardado en el servidor. Reversible: se desconecta desde Cuenta.`}
+                  title={r.viaBundle
+                    ? `Conecta ${r.nombre}: abre la pantalla de bundle.social, donde el permiso lo da el dueño de la cuenta (POST /api/integraciones/${r.red}/empezar). El token queda guardado en el servidor: esta pantalla nunca lo ve. Reversible: se desconecta desde Cuenta.`
+                    : `Conecta ${r.nombre}: el permiso se le pide al dueño de la cuenta en ${r.nombre} (POST /api/integraciones/${r.red}/empezar) y el token queda guardado en el servidor: esta pantalla nunca lo ve. Reversible: se desconecta desde Cuenta.`}
                   onClick={() => void conectarRed(r.red, r.nombre)}>
                   {enCurso === 'conectar' ? 'Abriendo…' : 'Conectar'}
                 </Button>
               )}
-              {r && r.configurado && !cuenta && r.tipo === 'token' && (
+              {r && sePuedeConectar(r) && !cuenta && r.tipo === 'token' && (
                 <Button variant="ghost" className="btn-sm" disabled={trabajando !== null}
                   title={`Lee los datos de ${r.nombre} con la clave que ya está cargada en el servidor. Si la clave no sirve, lo dice: no inventa datos.`}
                   onClick={() => void sincronizarRed(r.red, r.nombre)}>

@@ -109,6 +109,18 @@ export const volverDeMeta = (codigo: string, state: string, red = 'instagram', e
     cuerpo: { codigo, state, external_id, nombre },
   });
 
+/**
+ * EL PASO DE VUELTA DEL PROVEEDOR QUE CONECTA EN SU PROPIA PANTALLA (bundle.social): no devuelve
+ * ningún `code` que canjear —la cuenta ya quedó conectada allá—, así que lo único que falta es dejar
+ * constancia de que el negocio volvió. Después de esto, la próxima lectura de las integraciones trae
+ * esa red con su cuenta. Se llama sólo con la marca de éxito de la vuelta: con un error, no.
+ */
+export const confirmarRed = (red: string) =>
+  pedir<{ ok: boolean; red?: string }>(`/api/integraciones/${encodeURIComponent(red)}/confirmar`, {
+    metodo: 'POST',
+    cuerpo: { ok: true },
+  });
+
 const CLAVE_RED = 'sinkroo-red-conectando';
 /** La red a la que hay que volver: la que el panel anotó cuando abrió la autorización del proveedor. */
 export const recordarRed = (red: string) => { try { window.localStorage.setItem(CLAVE_RED, red); } catch { /* sin almacén */ } };
@@ -116,13 +128,49 @@ const redAnotada = () => { try { return window.localStorage.getItem(CLAVE_RED) |
 /** El canje ya volvió: se olvida la red para que una recarga no vuelva a usarla. */
 export const olvidarRed = () => { try { window.localStorage.removeItem(CLAVE_RED); } catch { /* sin almacén */ } };
 
+/**
+ * LAS MARCAS DE VUELTA DEL PROVEEDOR QUE CONECTA EN SU PANTALLA (bundle.social). No trae `code`: vuelve
+ * con un parámetro por plataforma, y son dos, distintos:
+ *   · Éxito — `instagram-callback`, `facebook-callback`, `tiktok-callback`, `youtube-callback`…
+ *   · Error — `instagram-not-enough-accounts`, `facebook-not-enough-pages`, `*-not-enough-permissions`,
+ *     o un `error` / `error_description` con su mensaje.
+ * El `code` de siempre (Meta, TikTok, Google con app propia) sigue leyéndose igual: esto se suma.
+ */
+const QUE_DICE_QUE_NO = new Set(['false', '0', 'no', 'error', 'denied']);
+const ES_EXITO = (k: string) => /-callback$/.test(k) || ['success', 'connected', 'conectado', 'ok'].includes(k);
+const ES_FALLO = (k: string) => /not-enough|(^|-)error|(^|-)fallo/.test(k);
+
+/** La marca de éxito de la vuelta, o '' si no vino ninguna. */
+const marcaDeExito = (q: URLSearchParams) => [...q.keys()].find(k =>
+  ES_EXITO(k) && !QUE_DICE_QUE_NO.has((q.get(k) || '').trim().toLowerCase())) || '';
+
+/** La marca de error de la vuelta, o '' si no vino ninguna. El error siempre gana: no se confirma nada. */
+const marcaDeFallo = (q: URLSearchParams) => {
+  const claves = [...q.keys()];
+  const directa = claves.find(k => ES_FALLO(k) || ['error', 'error_description'].includes(k));
+  if (directa) return directa;
+  // Un `-callback` con un valor que dice que no también es un error del proveedor.
+  return claves.find(k => ES_EXITO(k) && QUE_DICE_QUE_NO.has((q.get(k) || '').trim().toLowerCase())) || '';
+};
+
+/** El nombre de la red tal como la nombra la marca (`instagram-callback` → `instagram`). Sin marca, ''. */
+const redDeLaMarca = (marca: string) => (/-callback$|-not-enough/.test(marca)
+  ? marca.replace(/-callback$/, '').replace(/-not-enough.*$/, '').replace(/-(error|fallo)$/, '')
+  : '');
+
 /** Los parámetros que deja el proveedor al volver, con la red a la que corresponden. */
-export function codigoDeMeta(): { codigo: string; state: string; red: string } | null {
+export function codigoDeMeta(): { codigo: string; state: string; red: string; exito: string; fallo: string } | null {
   try {
     const q = new URLSearchParams(window.location.search);
     const codigo = q.get('code') || '';
     const state = q.get('state') || '';
-    if (!codigo) return null;
-    return { codigo, state, red: q.get('red') || redAnotada() || 'instagram' };
+    const exito = marcaDeExito(q);
+    const fallo = marcaDeFallo(q);
+    // Sin código, sin marca de éxito y sin error no hay vuelta que atender.
+    if (!codigo && !exito && !fallo) return null;
+    // La red: la que trae la dirección, la que nombra la marca, o la que el panel anotó al salir. Con
+    // el `code` de siempre, la regla es exactamente la de antes (nada de esto la cambia).
+    const red = q.get('red') || (codigo ? '' : redDeLaMarca(exito || fallo)) || redAnotada() || 'instagram';
+    return { codigo, state, red, exito, fallo };
   } catch { return null; }
 }

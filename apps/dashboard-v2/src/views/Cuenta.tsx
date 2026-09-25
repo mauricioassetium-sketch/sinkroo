@@ -7,7 +7,7 @@ import { useDetalle, type Bloque } from '../components/Detalle';
 // La capa de datos del panel: con el back encendido (`datos.real`), esta pantalla muestra el negocio
 // real, el estado del onboarding y el libro de créditos del back. Lo que es del negocio de ejemplo
 // (el historial de autonomía, los frenos y las conexiones de la demo) se muestra sólo sin back.
-import { useDatos } from '../api/datos';
+import { useDatos, type IntegracionRed } from '../api/datos';
 // Las acciones de la conexión con Instagram (conectar, sincronizar, desconectar) van al back con el
 // token de la sesión: es el mismo cliente que usa la capa de datos, no una puerta nueva.
 import { baseApi, recordarRed, token } from '../api/cliente';
@@ -223,6 +223,12 @@ function ViewCuentaNegocio({ setToast, modo, setModo }: { setToast: (t: string) 
   // fila muestre lo que quedó en el servidor.
   // ---------------------------------------------------------------------------------------------
   const ig = datos.integraciones;
+  /**
+   * ¿Esta red se puede conectar hoy? Con su app propia cargada en el servidor, o por bundle.social
+   * (`viaBundle`): el agregador conecta la cuenta sin que haga falta la app de la plataforma. Una red
+   * que se puede conectar no puede decir «falta configurar» ni quedarse sin su botón.
+   */
+  const sePuedeConectar = (r: IntegracionRed) => r.configurado || !!r.viaBundle;
 
   /** Una llamada al back con el token de la sesión, siempre la misma forma de leer el error. */
   const accionRed = async (red: string, accion: 'empezar' | 'sincronizar' | 'desconectar') => {
@@ -649,9 +655,10 @@ function ViewCuentaNegocio({ setToast, modo, setModo }: { setToast: (t: string) 
         {/* ============ LAS CONEXIONES REALES (sólo con el back encendido) ============
             La misma fila de la demo —ícono, nombre, rol, estado y botones—, repetida para CADA red que
             devuelva el back, en el orden en que llegan: si la app de esa red está configurada en el
-            servidor, si hay cuenta conectada y cuándo se sincronizó. El token vive en el servidor: acá no
-            se pide ni se muestra, sólo se dice si hay uno guardado. Los nombres y los roles son los que
-            manda el back: acá no hay una lista de redes escrita a mano. */}
+            servidor (o si la cubre bundle.social, que va con `viaBundle`), si hay cuenta conectada y
+            cuándo se sincronizó. El token vive en el servidor: acá no se pide ni se muestra, sólo se dice
+            si hay uno guardado. Los nombres y los roles son los que manda el back: acá no hay una lista de
+            redes escrita a mano. */}
         {datos.real && (
         <Card
           title={<span className="row" style={{ gap: 8 }}><I_Link size={14} style={{ color: 'var(--green)' }} /> Conexiones</span>}
@@ -695,19 +702,20 @@ function ViewCuentaNegocio({ setToast, modo, setModo }: { setToast: (t: string) 
                   </span>
                 </span>
                 <span className="row" style={{ gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                  <Badge tone={cuenta ? 'green' : r.configurado ? 'amber' : 'red'}>
-                    {cuenta ? 'conectada' : r.configurado ? 'por conectar' : 'falta configurar'}
+                  <Badge tone={cuenta ? 'green' : sePuedeConectar(r) ? 'muted' : 'red'}>
+                    {cuenta ? 'conectada' : sePuedeConectar(r) ? 'sin conectar' : 'falta configurar'}
                   </Badge>
                 </span>
               </div>
 
               {r.que_aporta && <div className="bs">{r.que_aporta}</div>}
 
-              {/* SIN CONFIGURAR: se nombra lo que falta y NO se ofrece un botón que no puede funcionar. */}
-              {!r.configurado ? (
+              {/* NO SE PUEDE CONECTAR POR NINGUNA VÍA: se nombra lo que falta y NO se ofrece un botón
+                  que no puede funcionar. Si la cubre bundle.social, esta rama ni se toca. */}
+              {!sePuedeConectar(r) ? (
                 <>
                   <div className="bs" style={{ marginTop: 4 }}>
-                    {r.nombre} todavía no está configurada en el servidor{falta.length ? `: falta cargar ${falta.length === 1 ? 'esta variable' : 'estas variables'} de entorno` : ''}.
+                    {r.nombre} todavía no está configurada en el servidor y bundle.social tampoco la cubre{falta.length ? `: falta cargar ${falta.length === 1 ? 'esta variable' : 'estas variables'} de entorno` : ''}.
                     Mientras falte, el panel no le puede ofrecer conectar {r.nombre}: sin eso el permiso no se
                     puede pedir ni el token se puede guardar.
                   </div>
@@ -717,22 +725,29 @@ function ViewCuentaNegocio({ setToast, modo, setModo }: { setToast: (t: string) 
                     </div>
                   )}
                   <div className="tiny" style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 8, color: 'var(--amber)', fontWeight: 700 }}>
-                    <I_Lock size={13} /> Sin {r.nombre} configurada no hay botón de conectar: esta fila no ofrece lo que todavía no puede hacer.
+                    <I_Lock size={13} /> Sin ninguna vía configurada no hay botón de conectar: esta fila no ofrece lo que todavía no puede hacer.
                   </div>
                 </>
               ) : !cuenta ? (
-                /* CONFIGURADA Y SIN CUENTA. Hay dos casos, y son distintos de verdad:
+                /* SE PUEDE CONECTAR Y NO HAY CUENTA. Hay dos casos, y son distintos de verdad:
                    · las redes por autorización (Instagram, TikTok, Google, YouTube, Meta Ads) todavía no
-                     tienen permiso: hay que autorizar en la plataforma.
+                     tienen permiso: el permiso lo da el dueño de la cuenta en la plataforma (o en la
+                     pantalla de bundle.social, cuando la red va por el agregador).
                    · las redes por clave (WhatsApp, correo, tienda, píxel) ya tienen su clave cargada en el
                      servidor: no hay permiso que pedir, sólo falta la primera lectura. */
                 <div className="bs">
                   {r.tipo === 'token' ? (
                     <>Su clave ya está cargada en el servidor: no hay permiso que pedir. Falta la primera lectura
                     para que sus datos entren al motor —el panel nunca muestra ni pide esa clave.</>
+                  ) : r.viaBundle ? (
+                    <>Su cuenta todavía no está conectada, y se puede conectar: al tocar «Conectar» se abre la
+                    pantalla de bundle.social, donde el permiso lo da el dueño de la cuenta y elige la cuenta
+                    ({r.viaBundle.toLowerCase()}). El token queda guardado del lado del servidor: el panel nunca
+                    lo pide ni lo muestra.</>
                   ) : (
-                    <>Su cuenta todavía no está conectada. Al conectar, el permiso se le pide a {r.nombre} y el token
-                    queda guardado del lado del servidor: el panel nunca lo pide ni lo muestra.</>
+                    <>Su cuenta todavía no está conectada. Al conectar, el permiso se le pide al dueño de la cuenta
+                    en {r.nombre} y el token queda guardado del lado del servidor: el panel nunca lo pide ni lo
+                    muestra.</>
                   )}
                 </div>
               ) : (
@@ -765,16 +780,19 @@ function ViewCuentaNegocio({ setToast, modo, setModo }: { setToast: (t: string) 
               )}
 
               <div className="row" style={{ gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
-                {/* Las redes por autorización ofrecen «Conectar»; las que van por clave no tienen permiso
-                    que pedir, así que ofrecen la lectura (que es lo único que les falta). */}
-                {r.configurado && !cuenta && r.tipo !== 'token' && (
+                {/* Las redes por autorización ofrecen «Conectar» —el permiso lo da el dueño de la cuenta,
+                    en la plataforma o en la pantalla de bundle.social—; las que van por clave no tienen
+                    permiso que pedir, así que ofrecen la lectura (que es lo único que les falta). */}
+                {sePuedeConectar(r) && !cuenta && r.tipo !== 'token' && (
                   <Button className="btn-sm" disabled={trabajando !== null}
-                    title={`Lo lleva a ${r.nombre} para que autorice su cuenta (POST /api/integraciones/${r.red}/empezar). El permiso se pide allá y el token queda guardado en el servidor: esta pantalla nunca lo ve. Reversible: se desconecta desde esta misma fila.`}
+                    title={r.viaBundle
+                      ? `Conecta ${r.nombre}: abre la pantalla de bundle.social, donde el permiso lo da el dueño de la cuenta y elige cuál conectar (POST /api/integraciones/${r.red}/empezar). El token queda guardado en el servidor: esta pantalla nunca lo ve. Reversible: se desconecta desde esta misma fila.`
+                      : `Conecta ${r.nombre}: el permiso lo da el dueño de la cuenta en ${r.nombre} (POST /api/integraciones/${r.red}/empezar). El token queda guardado en el servidor: esta pantalla nunca lo ve. Reversible: se desconecta desde esta misma fila.`}
                     onClick={() => void conectarRed(r.red, r.nombre)}>
-                    <I_Link size={13} /> {enCurso === 'conectar' ? 'Abriendo…' : `Conectar ${r.nombre}`}
+                    <I_Link size={13} /> {enCurso === 'conectar' ? 'Abriendo…' : 'Conectar'}
                   </Button>
                 )}
-                {r.configurado && !cuenta && r.tipo === 'token' && (
+                {sePuedeConectar(r) && !cuenta && r.tipo === 'token' && (
                   <Button className="btn-sm" disabled={trabajando !== null}
                     title={`Lee los datos de ${r.nombre} con la clave que ya está cargada en el servidor (POST /api/integraciones/${r.red}/sincronizar). Si la clave no sirve, lo dice: no inventa datos.`}
                     onClick={() => void sincronizarRed(r.red, r.nombre)}>

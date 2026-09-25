@@ -6,9 +6,9 @@ import { canjearCodigo as canjearMeta, leerInsightsInstagram, urlDeAutorizacion 
 // EL REGISTRO DE REDES — un solo lugar donde vive cada integración.
 //
 // POR QUÉ UN REGISTRO Y NO CONECTORES SUELTOS
-//   Las diez redes hacen lo mismo por dentro (autorizar, leer, devolver datos con fuente) y sólo
+//   Las once redes hacen lo mismo por dentro (autorizar, leer, devolver datos con fuente) y sólo
 //   cambian en tres cosas: las variables de entorno, la dirección de autorización y cómo se leen los
-//   datos. Con el registro, las rutas son UNA (`/api/integraciones/:red/...`) y las diez redes se
+//   datos. Con el registro, las rutas son UNA (`/api/integraciones/:red/...`) y las once redes se
 //   atienden solas: agregar una red nueva es agregar una entrada acá, sin tocar las rutas ni el panel.
 //
 // LAS TRES REGLAS QUE CUMPLE CADA CONECTOR (pedido del dueño)
@@ -81,6 +81,19 @@ export type CuentaConectada = {
 };
 
 /**
+ * Lo mínimo que el registro necesita de la base para recordar, por negocio, dónde quedaron sus cuentas
+ * (el equipo de bundle.social). Es sólo `query`: así el conector no arrastra el pool entero.
+ */
+export type BaseDeDatos = { query: (texto: string, valores?: unknown[]) => Promise<{ rows: any[] }> };
+
+/** Lo que el registro necesita saber del negocio que está conectando, además del `state` firmado. */
+export type ContextoConexion = {
+  businessId: string;
+  nombreNegocio: string;
+  base: BaseDeDatos;
+};
+
+/**
  * La definición de una red. Todo lo que cambia entre plataformas está acá adentro.
  * `tipo`:
  *   · 'oauth' → el negocio autoriza en la plataforma y volvemos con un código; el token queda guardado.
@@ -100,6 +113,13 @@ export type DefinicionRed = {
   que_aporta: string;
   como_funciona: string;
   tipo: 'oauth' | 'token';
+  /**
+   * La plataforma de bundle.social que cubre esta red (INSTAGRAM, FACEBOOK, TIKTOK, YOUTUBE, LINKEDIN,
+   * THREADS, PINTEREST). Se pone SÓLO en las redes que bundle conecta por nosotros: con esta marca, el
+   * panel ofrece «Conectar» aunque la app propia de la plataforma todavía no exista en el servidor, y la
+   * conexión pasa por bundle en el equipo del negocio. Sin la marca, la red sigue siendo 501 honesto.
+   */
+  viaBundle?: string;
   /** ¿Esta red recalibra a los 500 agentes? Si sí, cuando no hay datos se responde `sin_audiencia`. */
   calibra?: boolean;
   /** Si el token sale del entorno (tipo 'token'), acá se lee. Nunca se guarda en la base. */
@@ -112,9 +132,10 @@ export type DefinicionRed = {
   /**
    * El enlace de conexión para las redes que NO pueden armarlo de una vez: hay plataformas (bundle.social)
    * donde la dirección se pide a su API en el momento y viene con un token de un solo uso. Si está, la ruta
-   * `/empezar` la espera y usa lo que devuelva; si no está, sigue con `urlDeAutorizacion` como las nueve.
+   * `/empezar` la espera y usa lo que devuelva; si no está, sigue con `urlDeAutorizacion` como las once.
+   * El contexto trae el negocio (para el equipo de bundle) y la base (para recordar dónde quedó su equipo).
    */
-  prepararConexion?: (state: string) => Promise<string>;
+  prepararConexion?: (state: string, ctx: ContextoConexion) => Promise<string>;
   canjearCodigo(codigo: string): Promise<ResultadoCanje>;
   leer(token: string, cuenta: CuentaConectada): Promise<ResultadoLectura>;
   /** Renovación del token de acceso (Google y TikTok vencen; el resto son de larga duración). */
@@ -138,6 +159,7 @@ export function secretoDe(red: string): string {
     // vacío, o sea con una firma que cualquiera podría armar.
     case 'bundle': return process.env.BUNDLE_API_KEY || '';
     case 'instagram':
+    case 'facebook':
     case 'meta_ads':
     case 'pixel':
     case 'whatsapp': return process.env.META_APP_SECRET || process.env.PIXEL_TOKEN || '';
@@ -241,6 +263,9 @@ const instagram: DefinicionRed = {
   env: ['META_APP_ID', 'META_APP_SECRET', 'META_REDIRECT_URI'],
   permisos: ['instagram_basic', 'instagram_manage_insights', 'pages_show_list', 'pages_read_engagement', 'read_insights'],
   tipo: 'oauth',
+  // bundle.social ofrece INSTAGRAM en su pantalla de conexión, así que esta fila se puede conectar hoy
+  // aunque la app propia de Meta todavía no exista en el servidor. La app propia, cuando exista, manda.
+  viaBundle: 'INSTAGRAM',
   calibra: true,
   que_aporta: 'Quiénes son sus seguidores de verdad —edad, género y las ciudades donde están— y cómo rinde cada publicación.',
   como_funciona: 'Es la API oficial de Instagram sobre su propia cuenta: los datos vienen agregados y con mínimos (100 seguidores o 100 interacciones) y nunca con identidades, sólo proporciones del público. Es una de las dos redes del registro que sí entrega demografía real.',
@@ -269,7 +294,63 @@ const instagram: DefinicionRed = {
   },
 };
 
-// 2 · META ADS — la métrica real de la pauta: la que mide el backtest.
+// 2 · FACEBOOK — la Página del negocio: publicar y saber cuánta gente la sigue.
+const facebook: DefinicionRed = {
+  red: 'facebook',
+  nombre: 'Facebook',
+  rol: 'Página y contenido',
+  categoria: 'red social',
+  env: ['META_APP_ID', 'META_APP_SECRET', 'META_REDIRECT_URI'],
+  permisos: ['pages_show_list', 'pages_read_engagement', 'pages_manage_posts', 'read_insights'],
+  tipo: 'oauth',
+  // bundle.social conecta la cuenta de Facebook como plataforma propia (FACEBOOK), aparte de la de
+  // Instagram: es el camino que hace que esta fila ofrezca «Conectar» hoy, sin la app de Meta cargada.
+  // (La app propia de Meta sirve para las dos: por eso el `env` es el mismo que el de Instagram.)
+  viaBundle: 'FACEBOOK',
+  que_aporta: 'La Página del negocio por la que se publica en Facebook y cuánta gente la sigue.',
+  como_funciona: 'Se conecta la cuenta de Facebook del negocio y se lee SÓLO su propia Página: su nombre, sus seguidores y sus publicaciones con comentarios, reacciones y veces compartido. NO entrega demografía —la de Meta se pide por Instagram—, así que no calibra a los 500: entra al backtest como métrica real. Con el plan de bundle.social, además, sirve para publicar.',
+  urlDeAutorizacion: (state) => urlMeta(state, facebook.permisos),
+  canjearCodigo: (codigo) => canjearMeta(codigo),
+  leer: async (token) => {
+    const paginas = await pedirJson(`${GRAPH}/me/accounts?fields=id,name,fan_count&limit=25`, { headers: bearer(token) });
+    const errPaginas = paginas.dato?.error?.message;
+    if (errPaginas) return fallo(errPaginas, { tokenVencido: paginas.status === 401 });
+    const lista = (paginas.dato?.data || []) as { id?: string; name?: string; fan_count?: number }[];
+    if (!lista.length) return fallo('la cuenta de Facebook no tiene ninguna Página administrada');
+
+    const pagina = lista[0];
+    const id = String(pagina.id || '');
+    const publicaciones = await pedirJson(
+      `${GRAPH}/${id}/posts?fields=message,created_time,shares,comments.summary(true),reactions.summary(true)&limit=25`,
+      { headers: bearer(token) });
+    const errPosts = publicaciones.dato?.error?.message;
+    if (errPosts) return fallo(errPosts, { tokenVencido: publicaciones.status === 401 });
+    const filas = (publicaciones.dato?.data || []) as Record<string, any>[];
+
+    const metricas: MetricaReal[] = [];
+    for (const p of filas.slice(0, 25)) {
+      const cuando = String(p.created_time || '').slice(0, 10);
+      const pieza = String(p.message || '').slice(0, 120) || `publicación del ${cuando || 'día sin fecha'}`;
+      metricas.push(
+        { pieza, metrica: 'comentarios', valor: Number(p.comments?.summary?.total_count || 0), fuente: 'facebook', cuando },
+        { pieza, metrica: 'reacciones', valor: Number(p.reactions?.summary?.total_count || 0), fuente: 'facebook', cuando },
+        { pieza, metrica: 'compartidos', valor: Number(p.shares?.count || 0), fuente: 'facebook', cuando },
+      );
+    }
+    return {
+      ok: true,
+      detalle: `leyó la Página ${String(pagina.name || id)} (${Number(pagina.fan_count || 0)} seguidores) y ${filas.length} publicaciones`,
+      metricas,
+      datos: {
+        pagina: { external_id: id, nombre: pagina.name ?? '', seguidores: Number(pagina.fan_count || 0) },
+        publicaciones: filas.length,
+        demografia: 'Facebook no entrega demografía: el público se calibra con Instagram o YouTube',
+      },
+    };
+  },
+};
+
+// 3 · META ADS — la métrica real de la pauta: la que mide el backtest.
 const metaAds: DefinicionRed = {
   red: 'meta_ads',
   nombre: 'Meta Ads',
@@ -335,7 +416,7 @@ const metaAds: DefinicionRed = {
   },
 };
 
-// 3 · WHATSAPP — el canal de las conversaciones del negocio.
+// 4 · WHATSAPP — el canal de las conversaciones del negocio.
 const whatsapp: DefinicionRed = {
   red: 'whatsapp',
   nombre: 'WhatsApp',
@@ -383,7 +464,7 @@ const whatsapp: DefinicionRed = {
   },
 };
 
-// 4 · TIKTOK — video corto: alcance y rendimiento por video.
+// 5 · TIKTOK — video corto: alcance y rendimiento por video.
 const tiktok: DefinicionRed = {
   red: 'tiktok',
   nombre: 'TikTok',
@@ -392,6 +473,8 @@ const tiktok: DefinicionRed = {
   env: ['TIKTOK_CLIENT_KEY', 'TIKTOK_CLIENT_SECRET', 'TIKTOK_REDIRECT_URI'],
   permisos: ['user.info.basic', 'user.info.profile', 'user.info.stats', 'video.list'],
   tipo: 'oauth',
+  // TikTok está en la lista de bundle.social: se puede conectar por ahí sin crear la app propia de TikTok.
+  viaBundle: 'TIKTOK',
   que_aporta: 'Cuánta gente ve sus videos y cómo rinde cada uno: vistas, me gusta, comentarios y veces compartido.',
   como_funciona: 'Es la API oficial de TikTok (Login Kit for Business y Display API) sobre la cuenta del propio negocio. NO entrega demografía: ni edad, ni género, ni ciudad, ni país. Este conector no la inventa: el público se calibra con Instagram o YouTube, y lo de TikTok entra al backtest como métrica real por video.',
   urlDeAutorizacion: (state) => {
@@ -480,7 +563,7 @@ const tiktok: DefinicionRed = {
   },
 };
 
-// 5 · EMAIL — por dónde salen los informes.
+// 6 · EMAIL — por dónde salen los informes.
 const email: DefinicionRed = {
   red: 'email',
   nombre: 'Correo',
@@ -529,7 +612,7 @@ const email: DefinicionRed = {
   },
 };
 
-// 6 · TIENDA — la mejor métrica del backtest: lo que de verdad se vendió.
+// 7 · TIENDA — la mejor métrica del backtest: lo que de verdad se vendió.
 const tienda: DefinicionRed = {
   red: 'tienda',
   nombre: 'Tienda',
@@ -610,7 +693,7 @@ const tienda: DefinicionRed = {
   },
 };
 
-// 7 · GOOGLE — campañas y tráfico del sitio.
+// 8 · GOOGLE — campañas y tráfico del sitio.
 const google: DefinicionRed = {
   red: 'google',
   nombre: 'Google',
@@ -697,7 +780,7 @@ const google: DefinicionRed = {
   },
 };
 
-// 8 · PÍXEL — las conversiones reales del sitio del negocio.
+// 9 · PÍXEL — las conversiones reales del sitio del negocio.
 const pixel: DefinicionRed = {
   red: 'pixel',
   nombre: 'Píxel del sitio',
@@ -748,7 +831,7 @@ const pixel: DefinicionRed = {
   },
 };
 
-// 9 · YOUTUBE — la otra red que sí entrega demografía real.
+// 10 · YOUTUBE — la otra red que sí entrega demografía real.
 const youtube: DefinicionRed = {
   red: 'youtube',
   nombre: 'YouTube',
@@ -757,6 +840,9 @@ const youtube: DefinicionRed = {
   env: ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REDIRECT_URI', 'YOUTUBE_REDIRECT_URI'],
   permisos: ['https://www.googleapis.com/auth/youtube.readonly', 'https://www.googleapis.com/auth/yt-analytics.readonly'],
   tipo: 'oauth',
+  // bundle.social cubre YouTube en su pantalla; la demografía real sigue viniendo de la app propia de
+  // Google cuando exista (bundle no entrega analítica de audiencia).
+  viaBundle: 'YOUTUBE',
   calibra: true,
   faltan: () => {
     const f: string[] = [];
@@ -925,45 +1011,241 @@ async function renovarGoogle(cuenta: CuentaConectada): Promise<ResultadoCanje> {
 
 // ---------------------------------- BUNDLE.SOCIAL ----------------------------------
 
-// 10 · BUNDLE.SOCIAL — la puerta para PUBLICAR sin montar la app de cada plataforma.
+// 11 · BUNDLE.SOCIAL — la puerta para PUBLICAR sin montar la app de cada plataforma.
 //
 // POR QUÉ ENTRA COMO UNA RED MÁS
-//   Es un agregador: el dueño conecta sus cuentas en la pantalla de bundle.social (permiso y elección de
-//   cuenta, en dos pasos) y desde ahí se publica, sin crear una app propia en Meta, TikTok ni Google.
+//   Es un agregador: cada negocio conecta sus cuentas en la pantalla de bundle.social (permiso y elección
+//   de cuenta, en dos pasos) y desde ahí se publica, sin crear una app propia en Meta, TikTok ni Google.
 //   Para el panel es una red normal: se ve, se conecta y se sincroniza como las demás.
+//
+// UN EQUIPO POR NEGOCIO (lo que hace que las cuentas sean de cada quien)
+//   bundle.social guarda las cuentas conectadas dentro de un EQUIPO. Si todos los negocios usaran el mismo
+//   equipo, cada cliente vería las cuentas de los demás; por eso acá cada negocio tiene el suyo: se crea
+//   con `POST /team` la primera vez (lo pidió el dueño: cada usuario agrega SU cuenta) y el elegido queda
+//   anotado en `cuentas_conectadas.extra` para no volver a buscarlo. El negocio del dueño es la excepción:
+//   ya tiene su equipo con sus cuentas conectadas, y se reconoce porque ese equipo lo creó el correo de un
+//   usuario de ese negocio (o porque lo declara BUNDLE_NEGOCIO_DUENO). Así el dueño ve lo que ya conectó.
+//
+// LAS REDES QUE BUNDLE CUBRE
+//   Se marcan con `viaBundle` sólo las que están en su lista: INSTAGRAM, FACEBOOK, TIKTOK y YOUTUBE. Las
+//   otras siete quedan sin marca a propósito —Meta Ads es pauta y bundle publica (no administra campañas),
+//   WhatsApp no está en su pantalla de conexión, Google entra por YouTube pero no por Ads ni GA4, y tienda,
+//   píxel y correo no aplican—: sin marca, esa fila sigue respondiendo 501 con lo que le falta.
 //
 // LO QUE NO HACE, DICHO DE FRENTE
 //   · Su plan no incluye analítica (la API responde 403 «Analytics access is disabled for your
 //     subscription tier»): sirve para publicar, no para medir. La audiencia se sigue calibrando con
 //     Instagram y YouTube.
 //   · La API de bundle tampoco expone, hoy, una ruta para leer la lista de cuentas conectadas: esa lista
-//     se ve en su pantalla. Acá no se inventa un listado; se cuenta lo que sí se puede leer.
+//     se ve en su pantalla. Por eso la constancia de que una cuenta quedó conectada la guardamos NOSOTROS
+//     en `cuentas_conectadas` cuando el negocio vuelve de la pantalla (`/confirmar`): no hay otra forma de
+//     que la fila del panel diga «conectada».
 const BUNDLE_BASE = 'https://api.bundle.social/api/v1';
 
-/** Las redes que la pantalla de bundle.social ofrece para autorizar. El dueño elige ahí cuáles conectar. */
+/** Las redes que la pantalla de bundle.social ofrece para autorizar. El negocio elige ahí cuáles conectar. */
 const REDES_DE_BUNDLE = ['INSTAGRAM', 'FACEBOOK', 'TIKTOK', 'YOUTUBE', 'LINKEDIN', 'THREADS', 'PINTEREST'];
 
 /** La cabecera con la que se habla con bundle.social: la clave va en `x-api-key` y nunca en la URL. */
 const cabeceraBundle = (clave: string) => ({ 'x-api-key': clave, 'Content-Type': 'application/json' });
 
-/**
- * El equipo de bundle.social con el que se trabaja.
- * HOY la cuenta tiene UN solo equipo («sinkroo network») y se usa el primero. Lo correcto más adelante
- * —y es lo que bundle mismo recomienda— es un equipo por negocio, para que cada cliente conecte sus
- * cuentas sin ver las de los demás; ese día, acá se busca el equipo del negocio en vez del primero.
- */
-async function equipoDeBundle(clave: string): Promise<{ id?: string; nombre?: string; error?: string }> {
+/** ¿Está cargada la clave de bundle.social? Es lo que habilita cualquier camino por bundle. */
+export function bundleConfigurado(): boolean {
+  return !!process.env.BUNDLE_API_KEY;
+}
+
+/** ¿Esta red se conecta por bundle.social? `bundle` es la puerta misma; las demás, por `viaBundle`. */
+export function cubiertaPorBundle(def: DefinicionRed): boolean {
+  return def.red === 'bundle' || !!def.viaBundle;
+}
+
+/** Las plataformas de bundle que hay que autorizar para conectar esta red. */
+export function plataformasDeBundle(def: DefinicionRed): string[] {
+  return def.viaBundle ? [def.viaBundle] : REDES_DE_BUNDLE;
+}
+
+/** Un equipo de bundle.social, con quién lo creó y cuándo (sirve para saber de quién es). */
+type EquipoBundle = { id: string; nombre: string; creadoPor: string; creadoEl: string };
+
+/** Los equipos que ya existen en la organización de bundle.social. */
+async function equiposDeBundle(clave: string): Promise<{ equipos?: EquipoBundle[]; error?: string }> {
   const r = await pedirJson(`${BUNDLE_BASE}/team`, { headers: cabeceraBundle(clave) });
   if (r.status === 401 || r.status === 403) {
     return { error: 'bundle.social rechazó la clave del servidor (BUNDLE_API_KEY): revise que siga vigente' };
   }
-  const items = (r.dato?.items ?? r.dato?.data ?? []) as { id?: string; name?: string }[];
-  const primero = Array.isArray(items) ? items.find(t => !!t?.id) : undefined;
-  if (!primero?.id) {
+  const crudos = (r.dato?.items ?? r.dato?.data ?? []) as any[];
+  const equipos: EquipoBundle[] = (Array.isArray(crudos) ? crudos : [])
+    .filter(t => !!t?.id)
+    .map(t => ({
+      id: String(t.id),
+      nombre: String(t.name || '').trim(),
+      creadoPor: String(t.createdBy?.email || '').trim().toLowerCase(),
+      creadoEl: String(t.createdAt || ''),
+    }));
+  if (!equipos.length) {
     const motivo = r.dato?.message || r.dato?.error || r.error || 'bundle.social no devolvió ningún equipo';
     return { error: sinSecretos(motivo, clave) || 'bundle.social no devolvió ningún equipo' };
   }
-  return { id: String(primero.id), nombre: String(primero.name || '').trim() };
+  return { equipos };
+}
+
+/** El primer equipo de la organización: respaldo para las cuentas que se conectaron sin equipo anotado. */
+async function primerEquipo(clave: string): Promise<{ id?: string; nombre?: string; error?: string }> {
+  const r = await equiposDeBundle(clave);
+  const primero = r.equipos?.[0];
+  if (!primero) return { error: r.error || 'bundle.social no devolvió ningún equipo' };
+  return { id: primero.id, nombre: primero.nombre };
+}
+
+/** El equipo del negocio ya anotado en la base (lo deja `/empezar` y lo confirma `/confirmar`). */
+export async function equipoAnotado(base: BaseDeDatos, businessId: string): Promise<string> {
+  const r = await base.query(
+    `SELECT extra->>'team_id' AS team_id FROM cuentas_conectadas
+      WHERE business_id = $1 AND extra ? 'team_id' ORDER BY actualizado DESC LIMIT 1`, [businessId]);
+  return String(r.rows?.[0]?.team_id || '').trim();
+}
+
+/** El nombre con el que se crea el equipo del negocio (bundle exige 3 letras como mínimo). */
+function nombreDeEquipo(nombreNegocio: string, businessId: string): string {
+  const nombre = String(nombreNegocio || '').trim().replace(/\s+/g, ' ');
+  if (nombre.length >= 3) return nombre.slice(0, 80);
+  return `Negocio ${businessId.slice(0, 8)}`;
+}
+
+/** Crea el equipo del negocio en bundle.social: es lo que separa las cuentas de cada cliente. */
+async function crearEquipoDeBundle(clave: string, nombre: string): Promise<{ id?: string; nombre?: string; error?: string }> {
+  const r = await pedirJson(`${BUNDLE_BASE}/team`, {
+    method: 'POST', headers: cabeceraBundle(clave), body: JSON.stringify({ name: nombre }),
+  });
+  const d = (r.dato?.team ?? r.dato?.data ?? r.dato ?? {}) as { id?: string; name?: string };
+  const id = String(d?.id || '').trim();
+  if (!id) {
+    const motivo = r.dato?.message || r.dato?.error || r.error
+      || `bundle.social no creó el equipo del negocio (respuesta ${r.status || 'sin respuesta'})`;
+    return { error: sinSecretos(motivo, clave) || 'bundle.social no creó el equipo del negocio' };
+  }
+  return { id, nombre: String(d.name || nombre) };
+}
+
+/**
+ * EL EQUIPO DEL NEGOCIO — de dónde salen las cuentas que ese negocio conecta.
+ * El orden, y el porqué de cada paso:
+ *   1. Lo que ya quedó anotado en `cuentas_conectadas.extra` para ESTE negocio: no se vuelve a buscar.
+ *      (Si el equipo anotado ya no existe en bundle, se sigue de largo y se resuelve otra vez.)
+ *   2. El negocio del dueño, que ya tiene su equipo con cuentas conectadas. Se reconoce de dos maneras:
+ *      porque lo declara `BUNDLE_NEGOCIO_DUENO` (con `BUNDLE_TEAM_DUENO` o, si no, el más antiguo), o
+ *      porque el correo de un usuario de este negocio es el que creó ese equipo en bundle.social. Nunca
+ *      se toma un equipo que otro negocio ya tenga anotado, por más que el correo coincida.
+ *   3. Un equipo nuevo para el negocio (`POST /team`): es lo que hace que cada cliente tenga lo suyo.
+ *   4. Si no se pudo crear: se usa el primer equipo SÓLO si la organización tiene uno solo (hoy, el del
+ *      dueño). Con más de uno no se adivina: repartir equipos a ciegas sería mostrarle a un negocio las
+ *      cuentas de otro, y eso es peor que fallar. FALTA la creación por negocio cuando se cae acá.
+ */
+export async function equipoDelNegocio(clave: string, businessId: string, nombreNegocio: string, base: BaseDeDatos)
+  : Promise<{ id?: string; nombre?: string; origen?: string; error?: string }> {
+  const r = await equiposDeBundle(clave);
+  if (!r.equipos) return { error: r.error || 'bundle.social no devolvió ningún equipo' };
+  const equipos = r.equipos;
+
+  // 1 · lo anotado para este negocio
+  const idAnotado = await equipoAnotado(base, businessId);
+  if (idAnotado) {
+    const mio = equipos.find(t => t.id === idAnotado);
+    if (mio) return { id: mio.id, nombre: mio.nombre, origen: 'equipo ya anotado para este negocio' };
+  }
+
+  // 2a · el equipo del dueño, declarado por variable de entorno
+  const equipoDueno = String(process.env.BUNDLE_TEAM_DUENO || '').trim();
+  const negocioDueno = String(process.env.BUNDLE_NEGOCIO_DUENO || '').trim();
+  if (negocioDueno && negocioDueno === businessId) {
+    const pin = equipoDueno ? equipos.find(t => t.id === equipoDueno) : equipos[0];
+    if (pin) return { id: pin.id, nombre: pin.nombre, origen: 'equipo del dueño (BUNDLE_TEAM_DUENO)' };
+  }
+
+  // 2b · el equipo del dueño, deducido: el más antiguo de la organización que haya creado el correo de
+  //      alguien de este negocio y que NINGÚN OTRO negocio tenga anotado. La exclusión es la que lo hace
+  //      confiable: los equipos que crea este servidor quedan a nombre del usuario de la clave de bundle
+  //      (el dueño), así que sin excluir los ya anotados el dueño podría caer en el equipo de un cliente.
+  const correos = await base.query('SELECT lower(email) AS email FROM users WHERE business_id = $1', [businessId]);
+  const delNegocio = new Set<string>((correos.rows || []).map((f: any) => String(f.email || '').trim().toLowerCase()));
+  const ajenas = await base.query(
+    `SELECT DISTINCT extra->>'team_id' AS team_id FROM cuentas_conectadas
+      WHERE business_id <> $1 AND extra ? 'team_id'`, [businessId]);
+  const deOtros = new Set<string>((ajenas.rows || []).map((f: any) => String(f.team_id || '')));
+  const suyos = equipos
+    .filter(t => !deOtros.has(t.id) && !!t.creadoPor && delNegocio.has(t.creadoPor))
+    .sort((a, b) => a.creadoEl.localeCompare(b.creadoEl));
+  if (suyos.length) return { id: suyos[0].id, nombre: suyos[0].nombre, origen: 'equipo ya existente de este negocio' };
+
+  // 3 · un equipo nuevo para este negocio
+  const nuevo = await crearEquipoDeBundle(clave, nombreDeEquipo(nombreNegocio, businessId));
+  if (nuevo.id) return { id: nuevo.id, nombre: nuevo.nombre || '', origen: 'equipo nuevo para este negocio' };
+
+  // 4 · no se pudo crear
+  if (equipos.length === 1) {
+    return { id: equipos[0].id, nombre: equipos[0].nombre, origen: 'primer equipo de la organización (FALTA la creación por negocio)' };
+  }
+  return { error: nuevo.error || 'bundle.social no devolvió ningún equipo para este negocio' };
+}
+
+/**
+ * La dirección a la que vuelve la pantalla de bundle.social al terminar de conectar.
+ * Es `BUNDLE_REDIRECT_URL` y, si no está declarada, la dirección del panel que el servidor ya conoce
+ * (la de CORS). Sin ninguna de las dos no se manda vuelta: la pantalla cierra sola y no se inventa una
+ * dirección que no existe.
+ */
+function vueltaAlPanel(): string {
+  const declarada = String(process.env.BUNDLE_REDIRECT_URL || '').trim();
+  if (declarada) return declarada;
+  return String(process.env.CORS_ORIGENES || '').split(',')
+    .map(s => s.trim())
+    .find(s => s !== '*' && /^https?:\/\/[a-z0-9.-]+/i.test(s)) || '';
+}
+
+/** El enlace de conexión de bundle.social para un negocio (su equipo) y unas plataformas. */
+export async function enlaceDeBundle(clave: string, equipoId: string, plataformas: string[])
+  : Promise<{ url?: string; error?: string }> {
+  const cuerpo: Record<string, unknown> = {
+    teamId: equipoId,
+    socialAccountTypes: plataformas.length ? plataformas : REDES_DE_BUNDLE,
+    language: 'es',
+    // La pantalla queda válida 48 horas (2880 minutos): se puede cerrar y volver sin perderla.
+    expiresIn: 2880,
+    showModalOnConnectSuccess: true,
+    userName: 'Sinkroo',
+  };
+  const vuelta = vueltaAlPanel();
+  if (vuelta) cuerpo.redirectUrl = vuelta;
+
+  const portal = await pedirJson(`${BUNDLE_BASE}/social-account/create-portal-link`, {
+    method: 'POST', headers: cabeceraBundle(clave), body: JSON.stringify(cuerpo),
+  });
+  const url = String(portal.dato?.url || '').trim();
+  if (!url) {
+    const motivo = portal.dato?.message || portal.dato?.error || portal.error
+      || `bundle.social no devolvió la pantalla de conexión (respuesta ${portal.status || 'sin respuesta'})`;
+    return { error: sinSecretos(motivo, clave) || 'bundle.social no devolvió la pantalla de conexión' };
+  }
+  // Esta url se devuelve TAL CUAL: lleva el token de la sesión de conexión y el navegador lo necesita.
+  // Por eso NO pasa por `sinSecretos` (lo tacharía) y por eso no se escribe en ningún registro.
+  return { url };
+}
+
+/**
+ * Anota en `cuentas_conectadas` (fila `red='bundle'`) cuál es el equipo del negocio: es el lugar donde
+ * queda escrito de una vez por todas dónde están sus cuentas.
+ * Mientras la conexión no vuelva confirmada la fila queda en `estado='iniciada'`, y el listado sólo cuenta
+ * como conectada la fila que de verdad lo está: así el panel no muestra conectada una conexión a medias.
+ */
+export async function anotarEquipoDeBundle(base: BaseDeDatos, businessId: string, equipo: { id?: string; nombre?: string }): Promise<void> {
+  if (!equipo.id) return;
+  await base.query(
+    `INSERT INTO cuentas_conectadas (business_id, red, external_id, nombre, token, permisos, estado, extra, actualizado)
+     VALUES ($1, 'bundle', '', 'bundle.social', '', $4::text[], 'iniciada',
+             jsonb_build_object('team_id', $2::text, 'equipo_nombre', $3::text, 'via', 'bundle.social'), now())
+     ON CONFLICT (business_id, red) DO UPDATE SET
+       extra = cuentas_conectadas.extra || EXCLUDED.extra,
+       actualizado = now()`,
+    [businessId, equipo.id, equipo.nombre || '', ['publicar por bundle.social']]);
 }
 
 const bundle: DefinicionRed = {
@@ -979,63 +1261,59 @@ const bundle: DefinicionRed = {
   // La dirección de verdad la entrega bundle en el momento (lleva un token de un solo uso), así que el
   // camino real es `prepararConexion`. Esto queda como respaldo por si alguna vez se pide sin ella.
   urlDeAutorizacion: () => 'https://bundle.social/connect',
-  prepararConexion: async () => {
+  prepararConexion: async (_state, ctx) => {
     const clave = process.env.BUNDLE_API_KEY || '';
     if (!clave) throw new Error('falta la clave de bundle.social (BUNDLE_API_KEY)');
-    const equipo = await equipoDeBundle(clave);
+    // El equipo del negocio: ahí van SUS cuentas, no las de otro cliente ni las del dueño.
+    const equipo = await equipoDelNegocio(clave, ctx.businessId, ctx.nombreNegocio, ctx.base);
     if (equipo.error || !equipo.id) throw new Error(equipo.error || 'bundle.social no devolvió ningún equipo');
-
-    const cuerpo: Record<string, unknown> = {
-      teamId: equipo.id,
-      socialAccountTypes: REDES_DE_BUNDLE,
-      language: 'es',
-      // La pantalla queda válida 48 horas (2880 minutos): el dueño puede cerrarla y volver sin perderla.
-      expiresIn: 2880,
-      showModalOnConnectSuccess: true,
-      userName: 'Sinkroo',
-    };
-    // La vuelta al panel sólo se manda si está declarada la dirección pública (BUNDLE_REDIRECT_URL); si
-    // no está, la pantalla de bundle cierra sola y no se inventa una dirección que no existe.
-    const vuelta = process.env.BUNDLE_REDIRECT_URL || '';
-    if (vuelta) cuerpo.redirectUrl = vuelta;
-
-    const portal = await pedirJson(`${BUNDLE_BASE}/social-account/create-portal-link`, {
-      method: 'POST', headers: cabeceraBundle(clave), body: JSON.stringify(cuerpo),
-    });
-    const url = String(portal.dato?.url || '').trim();
-    if (!url) {
-      const motivo = portal.dato?.message || portal.dato?.error || portal.error || 'bundle.social no devolvió la pantalla de conexión';
-      throw new Error(sinSecretos(motivo, clave) || 'bundle.social no devolvió la pantalla de conexión');
-    }
-    // Esta url se devuelve TAL CUAL: lleva el token de la sesión de conexión y el navegador lo necesita.
-    // Por eso NO pasa por `sinSecretos` (lo tacharía) y por eso no se escribe en ningún registro.
-    return url;
+    // El equipo queda anotado: la fila dice 'iniciada' hasta que la conexión vuelva confirmada.
+    await anotarEquipoDeBundle(ctx.base, ctx.businessId, equipo);
+    const enlace = await enlaceDeBundle(clave, equipo.id, REDES_DE_BUNDLE);
+    if (!enlace.url) throw new Error(enlace.error || 'bundle.social no devolvió la pantalla de conexión');
+    return enlace.url;
   },
   canjearCodigo: async () => ({ token: '', error: 'bundle.social conecta las cuentas en su propia pantalla: no hay código que canjear' }),
-  leer: async () => {
+  leer: async (_token, cuenta) => {
     const clave = process.env.BUNDLE_API_KEY || '';
     if (!clave) return fallo('falta la clave de bundle.social (BUNDLE_API_KEY)');
-    const equipo = await equipoDeBundle(clave);
-    if (equipo.error || !equipo.id) return fallo(equipo.error || 'bundle.social no devolvió ningún equipo');
+    // El equipo del negocio es el que quedó anotado al conectar; sin anotación, el primero de la
+    // organización (como cuando esta integración era una sola cuenta).
+    let equipoId = String(cuenta.extra?.team_id || '').trim();
+    let nombreEquipo = String(cuenta.extra?.equipo_nombre || '').trim();
+    if (!equipoId) {
+      const primero = await primerEquipo(clave);
+      if (primero.error || !primero.id) return fallo(primero.error || 'bundle.social no devolvió ningún equipo');
+      equipoId = primero.id;
+      nombreEquipo = primero.nombre || '';
+    }
 
     // Lo único que esta cuenta deja leer es el listado de publicaciones hechas por esta vía. La analítica
     // contesta 403 para su plan, así que no hay números que traer y no se traen.
-    const publicaciones = await pedirJson(`${BUNDLE_BASE}/post?teamId=${encodeURIComponent(equipo.id)}&limit=25`, { headers: cabeceraBundle(clave) });
+    const publicaciones = await pedirJson(`${BUNDLE_BASE}/post?teamId=${encodeURIComponent(equipoId)}&limit=25`, { headers: cabeceraBundle(clave) });
     if (publicaciones.status === 401 || publicaciones.status === 403) {
       return fallo('bundle.social rechazó la clave del servidor (BUNDLE_API_KEY) al leer las publicaciones');
     }
+    if (publicaciones.status >= 400) {
+      return fallo(publicaciones.dato?.message || publicaciones.dato?.error
+        || `bundle.social no devolvió las publicaciones (respuesta ${publicaciones.status})`);
+    }
     const items = (publicaciones.dato?.items || []) as unknown[];
     const total = Number(publicaciones.dato?.total ?? (Array.isArray(items) ? items.length : 0));
-    const mensaje = 'bundle.social quedó conectado para publicar; su plan no incluye analítica, así que todavía no hay datos para medir';
+    const mensaje = `bundle.social quedó conectado para publicar${nombreEquipo ? ` en el equipo «${nombreEquipo}»` : ''}. `
+      + 'Su plan no incluye analítica de audiencia (la API responde 403), así que todavía no hay números para medir.';
+    // La lectura SÍ salió: devuelve ok:true con lo que haya, aunque sean 0 publicaciones. Antes volvía
+    // ok:false y una sincronización correcta se veía en el panel como un fallo.
     return {
-      ok: false,
-      detalle: total ? `${mensaje} (van ${total} publicaciones hechas por esta vía, contadas en bundle.social)` : mensaje,
-      error: mensaje,
+      ok: true,
+      detalle: total
+        ? `${mensaje} Van ${total} publicaciones hechas por esta vía, contadas en bundle.social.`
+        : `${mensaje} Todavía no hay publicaciones hechas por esta vía.`,
       datos: {
-        equipo: { external_id: equipo.id, nombre: equipo.nombre || '' },
+        equipo: { external_id: equipoId, nombre: nombreEquipo },
         publicaciones: total,
         analitica: 'no incluida en el plan de bundle.social (la API responde 403)',
-        nota: 'bundle.social no expone una ruta para leer la lista de cuentas conectadas: esa lista se ve en su pantalla.',
+        nota: 'bundle.social no expone una ruta para leer la lista de cuentas conectadas: esa lista se ve en su pantalla, y la constancia de la conexión la guarda Sinkroo cuando el negocio vuelve (/confirmar).',
       },
     };
   },
@@ -1044,12 +1322,13 @@ const bundle: DefinicionRed = {
 // ---------------------------------- EL REGISTRO ----------------------------------
 
 /**
- * Las diez redes, en el orden en que el panel las muestra: primero lo que trae el público (que es lo
+ * Las once redes, en el orden en que el panel las muestra: primero lo que trae el público (que es lo
  * que calibra a los 500), después la pauta y las conversaciones, y al final los canales de medición y
  * la puerta para publicar (bundle.social).
  */
 export const REDES: Record<string, DefinicionRed> = {
   instagram,
+  facebook,
   meta_ads: metaAds,
   whatsapp,
   tiktok,
@@ -1062,4 +1341,4 @@ export const REDES: Record<string, DefinicionRed> = {
 };
 
 /** Las redes en orden, para recorrerlas sin depender del orden de las claves. */
-export const LISTA_REDES: DefinicionRed[] = [instagram, metaAds, whatsapp, tiktok, youtube, google, tienda, pixel, email, bundle];
+export const LISTA_REDES: DefinicionRed[] = [instagram, facebook, metaAds, whatsapp, tiktok, youtube, google, tienda, pixel, email, bundle];
