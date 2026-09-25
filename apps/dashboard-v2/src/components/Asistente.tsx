@@ -124,8 +124,9 @@ export function Asistente({ sesion, setVista }: { sesion: Sesion; setVista: (v: 
           {/* ---------------- LOS CINCO PASOS ---------------- */}
           {paso && (
             <>
-              {/* En el paso 1 no se dibuja: la pantalla tiene que entrar entera y lo que el motor
-                  saca solo ya vive en el botón «Qué hace con esto». */}
+              <div className="bs"><b style={{ color: 'var(--txt)' }}>Para qué: </b>{paso.paraQue}</div>
+              {/* En el paso 1 no se dibuja el cuadro de «lo que saca solo»: la pantalla tiene que
+                  entrar entera y esa frase ya vive en el botón «Qué hace con esto». */}
               {paso.infiere && paso.n !== 1 && (
                 <div className="onb-infiere">
                   <span className="onb-infiere-ic"><I_Zap size={13} /></span>

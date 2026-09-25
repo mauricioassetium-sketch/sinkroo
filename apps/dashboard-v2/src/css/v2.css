@@ -1253,13 +1253,23 @@
    ============================================================================================= */
 .onb-campo-head { display: flex; align-items: baseline; gap: 8px 10px; justify-content: space-between; flex-wrap: wrap; }
 /* Los grupos de opciones: de a dos por fila en el teléfono, para que la pantalla entre entera. */
+.onb-links { display: flex; flex-direction: column; gap: 7px; }
+.onb-links-lista { display: flex; flex-direction: column; gap: 5px; }
+.onb-link { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 10px;
+  border: 1px solid var(--border); background: var(--bg3); font-size: 12px; }
+.onb-link svg { flex-shrink: 0; color: var(--purple3); }
+.onb-link-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.onb-links-in { display: flex; align-items: center; gap: 8px; }
+.onb-links-in .input { flex: 1; min-width: 0; }
 .onb-opciones { display: grid; grid-template-columns: minmax(0, 1fr); gap: 9px; }
 .onb-opciones .onb-chips { gap: 5px; }
-.onb-ayuda-inline { font-size: 11px; color: var(--muted2); text-align: right; flex-shrink: 0; }
+.onb-ayuda-inline { font-size: 11px; color: var(--muted2); text-align: right; min-width: 0;
+  overflow-wrap: anywhere; }
 .onb-fila { display: grid; grid-template-columns: minmax(0, 1fr) 170px; gap: 14px; align-items: start; }
 .onb-fila .onb-campo { min-width: 0; }
 @media (max-width: 560px) { .onb-fila { grid-template-columns: minmax(0, 1fr) 128px; gap: 10px; } }
-.onb-ayuda { font-size: 11.5px; line-height: 1.45; color: var(--muted); margin: -3px 0 1px; max-width: 68ch; }
+.onb-ayuda { font-size: 11.5px; line-height: 1.45; color: var(--muted); margin: -2px 0 1px; max-width: 68ch;
+  overflow-wrap: anywhere; }
 .onb-campos { display: flex; flex-direction: column; gap: 14px; margin-top: 14px; }
 .onb-campo { display: flex; flex-direction: column; gap: 6px; }
 

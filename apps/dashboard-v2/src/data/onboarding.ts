@@ -36,7 +36,7 @@ export const ARCHIVOS_ACEPTADOS =
 export type CampoOnb = {
   id: string;
   etiqueta: string;
-  tipo: 'texto' | 'texto-largo' | 'numero' | 'chips' | 'chips-multi' | 'material' | 'docs';
+  tipo: 'texto' | 'texto-largo' | 'numero' | 'chips' | 'chips-multi' | 'material' | 'docs' | 'links';
   ayuda: string;
   opciones?: string[];
   detalle?: Record<string, string>;
@@ -146,30 +146,30 @@ export const PASOS_ONB: PasoOnb[] = [
   },
   {
     n: 2, t: 'Qué vende', d: 'Productos y precios', icono: '💵',
-    titular: 'Lo que vende, con su precio',
-    paraQue: 'El motor no inventa precios: si los sabe, las piezas y los anuncios calculan la ganancia real y el costo por venta. Sin precios, la campaña se mide a ciegas.',
+    titular: 'Qué vende y a cuánto',
+    paraQue: 'Sin precios, el motor no sabe cuánto puede gastar por venta.',
     infiere: 'Con su tienda conectada, los precios y el stock se leen de ahí y se mantienen solos.',
     minima: ['prod_1', 'precio_1', 'formas_pago'],
     campos: [
-      { id: 'prod_1', etiqueta: 'Lo que más vende', tipo: 'texto', fila: 'p1', ayuda: 'Puede ser un producto o un servicio: lo que sostiene el negocio. Eso se empuja primero.' },
-      { id: 'precio_1', etiqueta: 'A cuánto lo vende', tipo: 'numero', fila: 'p1', ayuda: 'En dólares. Si es en su moneda, el panel muestra la equivalencia.', ancho: 160 },
-      { id: 'prod_2', etiqueta: 'El segundo que más vende', tipo: 'texto', fila: 'p2', ayuda: 'Sirve para las piezas que muestran el pack o el combo.' },
-      { id: 'precio_2', etiqueta: 'Su precio', tipo: 'numero', fila: 'p2', ayuda: 'En dólares.', ancho: 160 },
-      { id: 'formas_pago', etiqueta: 'Formas de pago que acepta', tipo: 'chips-multi', ayuda: 'El anuncio y la pieza dicen el botón y la aclaración que correspondan.',
+      { id: 'prod_1', etiqueta: 'Lo que más vende', tipo: 'texto', fila: 'p1', ayuda: 'Un producto o un servicio: lo que sostiene el negocio.' },
+      { id: 'precio_1', etiqueta: 'Precio en dólares', tipo: 'numero', fila: 'p1', ayuda: 'El panel muestra el equivalente.', ancho: 160 },
+      { id: 'prod_2', etiqueta: 'Otro que venda bien (opcional)', tipo: 'texto', fila: 'p2', ayuda: 'Sirve para las piezas que muestran el combo.' },
+      { id: 'precio_2', etiqueta: 'Precio en dólares', tipo: 'numero', fila: 'p2', ayuda: '', ancho: 160 },
+      { id: 'formas_pago', etiqueta: 'Formas de pago que acepta', tipo: 'chips-multi', ayuda: 'Puede marcar varias.',
         opciones: ['Efectivo', 'Transferencia bancaria', 'Tarjeta de débito o crédito', 'Cuotas sin interés', 'Mercado Pago', 'Nequi o Daviplata', 'PayPal', 'USDT (cripto)', 'Bitcoin (cripto)'] },
-      { id: 'entrega', etiqueta: 'Cómo lo entrega o cómo se lo compran', tipo: 'texto', ayuda: 'Como sea en su negocio: envío a todo el país, entrega a domicilio en su zona, retiro o atención en el local, cita previa, servicio a domicilio, instalación… Es lo primero que pregunta alguien que le compra por primera vez, y el motor lo dice en la pieza.' },
+      { id: 'entrega', etiqueta: 'Cómo lo entrega o cómo se lo compran', tipo: 'texto', ayuda: 'Envío a todo el país, entrega a domicilio, retiro en el local, cita previa o servicio a domicilio. El motor lo dice en la pieza.' },
     ],
     nota: 'Los precios se pueden cargar después.',
   },
   {
     n: 3, t: 'Su material', d: 'Suba lo que tenga', icono: '📎',
     titular: 'Suba lo que ya tiene',
-    paraQue: 'No haga trabajo de más: suba su catálogo, la lista de precios, las fotos de sus productos, las reseñas de sus clientes o el PDF de su marca, y el motor lo lee. Con eso las piezas salen con su información real y no con texto genérico.',
-    infiere: 'Si no sube nada, el motor arranca igual con su descripción y lo que encuentra en su Instagram o su web: va a preguntar menos y a copiar menos.',
+    paraQue: 'Suba lo que tenga: el motor lo lee y usa su información real.',
+    infiere: 'Si no sube nada, arranca con su descripción y lo que encuentre en sus páginas.',
     minima: ['archivos'],
     campos: [
-      { id: 'negocio_link', etiqueta: 'Su Instagram, su web o su ficha (opcional)', tipo: 'texto',
-        ayuda: 'Con el link el motor completa solo los precios, el tono y el catálogo.' },
+      { id: 'negocio_links', etiqueta: 'Sus páginas y redes (opcional)', tipo: 'links',
+        ayuda: 'De ahí el motor saca solo los precios, el tono, el catálogo y cada cuánto publica.' },
       { id: 'docs', etiqueta: 'Sus archivos', tipo: 'docs', ayuda: 'Suelte aquí lo que tenga o elija archivos: PDF, Word, Excel, PowerPoint, fotos, videos o audios. Puede subir varios a la vez y de cualquier formato.' },
     ],
     nota: 'Lo que suba queda en su carpeta y se puede usar en cualquier campaña. Nada se publica con sus archivos sin que lo vea antes: primero pasa por el panel.',

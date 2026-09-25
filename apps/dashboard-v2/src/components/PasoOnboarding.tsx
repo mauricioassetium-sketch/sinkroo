@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Badge, Button } from '../components/ui';
 import {
-  I_Check, I_Upload, I_Image, I_Film, I_File, I_Shield, I_Rocket, I_ArrowRight, I_X,
+  I_Check, I_Upload, I_Image, I_Film, I_File, I_Shield, I_Rocket, I_ArrowRight, I_X, I_Link, I_Plus,
 } from '../components/icons';
 import { useOnboarding } from '../lib/onboarding';
 import { usePlan } from '../lib/plan';
@@ -27,6 +27,8 @@ const IconoArchivo = ({ tipo }: { tipo: 'doc' | 'imagen' | 'video' | 'audio' | '
 export function CamposPaso({ paso }: { paso: PasoOnb }) {
   const onb = useOnboarding();
   const [pegado, setPegado] = useState('');
+  // Lo que se está escribiendo en cada campo de enlaces, antes de agregarlo a la lista.
+  const [texto, setTexto] = useState<Record<string, string>>({});
 
   const elegir = (campo: CampoOnb, op: string) => {
     const actual = onb.datos[campo.id];
@@ -94,6 +96,49 @@ export function CamposPaso({ paso }: { paso: PasoOnb }) {
       );
     }
 
+    if (campo.tipo === 'links') {
+      const lista = ((v as string[]) || []);
+      const borrador = texto[campo.id] || '';
+      const agregar = () => {
+        const t = borrador.trim();
+        if (!t) { onb.avisar('Pegue el enlace antes de agregarlo'); return; }
+        onb.escribir(campo.id, [...lista, t]);
+        setTexto(s => ({ ...s, [campo.id]: '' }));
+        onb.avisar(`Enlace agregado (${lista.length + 1}): el motor lo lee`);
+      };
+      return (
+        <div className="onb-links">
+          {lista.length > 0 && (
+            <div className="onb-links-lista">
+              {lista.map((l, i) => (
+                <div key={l + i} className="onb-link">
+                  <I_Link size={13} />
+                  <span className="onb-link-t" title={l}>{l}</span>
+                  <button type="button" className="onb-arch-x" title="Sacar este enlace de la lista"
+                    onClick={() => { onb.escribir(campo.id, lista.filter((_, j) => j !== i)); onb.avisar('Enlace sacado'); }}>
+                    <I_X size={12} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="onb-links-in">
+            <input className="input" value={borrador}
+              placeholder={lista.length ? 'Pegue otro enlace' : 'Pegue el primero (Instagram, web, ficha…)'}
+              onChange={e => setTexto(s => ({ ...s, [campo.id]: e.target.value }))}
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); agregar(); } }} />
+            <Button variant="outline" className="btn-sm" title="Suma este enlace a la lista: puede cargar todos los que tenga"
+              onClick={agregar}><I_Plus size={13} /> Agregar</Button>
+          </div>
+          <div className="tiny muted">
+            {lista.length === 0
+              ? 'Puede cargar varias: Instagram, web, Facebook, TikTok, la ficha de Google.'
+              : `${lista.length} enlace${lista.length > 1 ? 's' : ''} cargado${lista.length > 1 ? 's' : ''} · puede sumar todos los que tenga.`}
+          </div>
+        </div>
+      );
+    }
+
     if (campo.tipo === 'docs') {
       const arrastrando = onb.archivos.length > 0;
       return (
@@ -152,11 +197,15 @@ export function CamposPaso({ paso }: { paso: PasoOnb }) {
     <div key={c.id} className="onb-campo">
       <div className="onb-campo-head">
         <label className="label">{c.etiqueta}</label>
-        {/* Lo que se elige no necesita renglón de ayuda: va al lado del nombre. */}
-        {c.ayuda && c.tipo !== 'docs' && c.tipo !== 'material' && (
+        {/* La ayuda corta va al lado del nombre; la larga, en su propio renglón: al lado se cortaba y
+            no se alcanzaba a leer. */}
+        {c.ayuda && c.ayuda.length <= 44 && c.tipo !== 'docs' && c.tipo !== 'material' && (
           <span className="onb-ayuda-inline">{c.ayuda}</span>
         )}
       </div>
+      {c.ayuda && c.ayuda.length > 44 && c.tipo !== 'docs' && c.tipo !== 'material' && (
+        <div className="onb-ayuda">{c.ayuda}</div>
+      )}
       {control(c)}
     </div>
   );
