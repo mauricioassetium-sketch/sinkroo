@@ -442,7 +442,9 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
             <span className="csec-c purple">{'5 jueces · 500 del público'}</span>
             <span className="csec-s">Todo lo que suba cae aquí: el mercado lo mira, vota y lo ordena del 1 al 5</span>
           </div>
-          <MotorEnVivo setToast={setToast} />
+          {/* Las reacciones en vivo del demo salen sólo sin back: con un negocio real, lo que se ve
+              abajo son los votos y las reacciones que existen de verdad. */}
+          {!d.real && <MotorEnVivo setToast={setToast} />}
           <FlujoMiroFish modo={modo} setToast={setToast} esAnuncio />
         </>
       )}
