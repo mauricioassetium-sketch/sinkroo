@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Badge, Button } from '../components/ui';
 import {
-  I_Check, I_Upload, I_Image, I_Film, I_File, I_Shield, I_Rocket, I_ArrowRight, I_X, I_Link, I_Plus,
+  I_Check, I_Upload, I_Image, I_Film, I_File, I_Shield, I_ArrowRight, I_X, I_Link, I_Plus, I_Play, I_Zap,
 } from '../components/icons';
 import { useOnboarding } from '../lib/onboarding';
 import { usePlan } from '../lib/plan';
@@ -288,7 +288,7 @@ export function BloqueArranque({ enAsistente, alCerrar }: { enAsistente?: boolea
     return (
       <>
         <div className="onb-arrancado">
-          <I_Rocket size={15} />
+          <I_Zap size={15} />
           <span><b>El motor está trabajando.</b> Arrancó por el mercado: en unas horas va a tener el primer
             informe y las primeras piezas listas. Nada de esto gasta dinero hasta que la pieza pasa el panel.</span>
         </div>
@@ -321,7 +321,7 @@ export function BloqueArranque({ enAsistente, alCerrar }: { enAsistente?: boolea
       <Button className="btn-sm"
         title={`Arranca el motor ahora: investiga su mercado y prepara las piezas de la semana. Cuesta ${COSTO_ARRANQUE} créditos y no gasta dinero hasta que las piezas pasan el panel.`}
         onClick={() => { onb.arrancar(); onb.marcar(5); onb.avisar('El motor arrancó: empieza por el mercado, no gasta nada hasta publicar'); }}>
-        <I_Rocket size={13} /> Arrancar el motor
+        <I_Play size={13} /> Arrancar el motor
       </Button>
       {!enAsistente && (
         <Button variant="ghost" className="btn-sm" title="Guarda lo que puso y le deja seguir después desde Hoy"

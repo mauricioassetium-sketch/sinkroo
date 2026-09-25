@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Button } from '../components/ui';
 import {
-  I_X, I_Check, I_ArrowRight, I_ArrowLeft, I_Rocket, I_Zap, I_Clock, I_Doc, I_Checklist,
+  I_X, I_Check, I_ArrowRight, I_ArrowLeft, I_Play, I_Zap, I_Clock, I_Doc, I_Checklist,
 } from '../components/icons';
 import { useOnboarding } from '../lib/onboarding';
 import { useDetalle } from './Detalle';
@@ -151,7 +151,7 @@ export function Asistente({ sesion, setVista }: { sesion: Sesion; setVista: (v: 
                 <Button className="btn-sm"
                   title="Queda anotado y pasa al paso siguiente"
                   onClick={() => { onb.marcar(paso.n); ultimo ? onb.arrancar() : siguiente(); }}>
-                  {ultimo ? <><I_Rocket size={13} /> Terminar y arrancar</> : <>{onb.completo(paso.n) ? 'Continuar' : 'Seguir después'} <I_ArrowRight size={13} /></>}
+                  {ultimo ? <><I_Play size={13} /> Terminar y arrancar</> : <>{onb.completo(paso.n) ? 'Continuar' : 'Seguir después'} <I_ArrowRight size={13} /></>}
                 </Button>
                 <Button variant="ghost" className="btn-sm" title="Pasa al paso siguiente sin marcarlo: queda pendiente y el motor usa lo que haya"
                   onClick={siguiente}>Saltar</Button>
@@ -199,7 +199,7 @@ export function Asistente({ sesion, setVista }: { sesion: Sesion; setVista: (v: 
 
         {/* Lo que va a pasar al terminar: en la bienvenida, que tiene lugar. En los pasos, no. */}
         <div className="asist-pie-2" style={fase > 0 ? { display: 'none' } : undefined}>
-          <I_Rocket size={12} /> Al terminar, el motor arranca con los {plan.creditosMes.toLocaleString('es-CO')} créditos del plan {plan.nombre}.
+          <I_Play size={12} /> Al terminar, el motor arranca con los {plan.creditosMes.toLocaleString('es-CO')} créditos del plan {plan.nombre}.
         </div>
       </div>
     </div>
