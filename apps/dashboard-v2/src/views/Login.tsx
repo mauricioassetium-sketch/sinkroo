@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Button, Badge } from '../components/ui';
 import {
   SinkrooMark, I_Mail, I_Lock, I_Check, I_ArrowRight, I_User, I_Eye, I_Megaphone, I_Vote,
-  I_Upload, I_Chart, I_Chat, I_Shield,
+  I_Upload, I_Chart, I_Chat, I_Shield, I_Sparkle,
 } from '../components/icons';
 import { TENANT } from '../data/demo';
 
@@ -27,7 +27,7 @@ const CAPACIDADES: { icono: React.ReactNode; titulo: string; linea: string }[] =
   { icono: <I_Megaphone size={17} />, titulo: 'Escribe y arma las piezas',
     linea: 'Con su material, su tono y sus precios. Nada de plantillas: cada pieza se parece a su negocio.' },
   { icono: <I_Vote size={17} />, titulo: 'Las revisa antes de que gaste un peso',
-    linea: '5 jueces las puntúan y 500 personas del público reaccionan. Si ninguna convence, no sale ninguna.' },
+    linea: '5 jueces las puntúan, 500 personas del público reaccionan y le dejan el rendimiento estimado antes de que gaste. Si ninguna convence, no sale ninguna.' },
   { icono: <I_Upload size={17} />, titulo: 'Publica en sus cuentas',
     linea: 'Instagram, Facebook y WhatsApp: publica donde ya tiene su gente, en la franja en la que le leen.' },
   { icono: <I_Chart size={17} />, titulo: 'Mide lo que rinde y frena lo que no',
@@ -107,6 +107,7 @@ export function PantallaLogin({ onEntrar }: { onEntrar: (s: Sesion) => void }) {
             </span>
           </div>
 
+          <div className="login-intro">
           <div className="login-eyebrow">Su equipo de marketing, trabajando solo</div>
           <h1 className="login-titulo">
             Mientras usted duerme,<br />su marketing sigue trabajando.
@@ -117,9 +118,32 @@ export function PantallaLogin({ onEntrar }: { onEntrar: (s: Sesion) => void }) {
           </p>
           <p className="login-futuro">
             Imagine abrir el panel el lunes y encontrar la semana ya armada: las piezas escritas, los números
-            medidos y una sola decisión esperando su OK.
+            medidos y una sola decisión esperándole.
           </p>
 
+          {/* ---------- LA PREDICCIÓN: lo más importante del sistema, y por eso va destacado ---------- */}
+          <div className="login-pred">
+            <div className="login-pred-lb"><I_Sparkle size={10} /> Análisis predictivo</div>
+            <div className="login-pred-t">Vea el futuro de sus publicaciones antes de publicarlas.</div>
+            <div className="login-pred-p">
+              Sinkroo es la primera plataforma que le dice cómo va a rendir una pieza antes de sacarla:
+              cuántas personas la verán, cuántos clics va a traer y cuánto va a costar cada venta. Cuando la
+              campaña corre, compara lo que había predicho con lo que pasó de verdad y corrige el modelo con
+              el desvío.
+            </div>
+            <div className="login-pred-datos">
+              <span><b>Predijo 84</b><small>lo que iba a vender</small></span>
+              <span><b>Pasó 79</b><small>lo que vendió de verdad</small></span>
+              <span><b>Corrige 6%</b><small>la próxima estima más cerca</small></span>
+            </div>
+            <div className="login-pred-cierre">
+              Usted decide con el resultado a la vista, no a ciegas.
+            </div>
+          </div>
+
+          </div>
+
+          <div className="login-resto">
           <div className="login-cap">
             {CAPACIDADES.map(c => (
               <div key={c.titulo} className="login-cap-fila">
@@ -144,6 +168,7 @@ export function PantallaLogin({ onEntrar }: { onEntrar: (s: Sesion) => void }) {
               {CUENTAS_DEMO[0].quien} Entre con <b>{CUENTAS_DEMO[0].email}</b> y mire el panel trabajando, o cree
               su cuenta con su correo para empezar de cero.
             </div>
+          </div>
           </div>
         </div>
 

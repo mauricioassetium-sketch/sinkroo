@@ -1362,6 +1362,7 @@
 .login-panel { width: 100%; max-width: 1120px; display: grid; grid-template-columns: minmax(0,1fr) 396px;
   gap: 40px; align-items: start; }
 .login-lado { display: flex; flex-direction: column; gap: 15px; padding-top: 6px; }
+.login-intro, .login-resto { display: flex; flex-direction: column; gap: 15px; }
 
 .login-marca { display: flex; align-items: center; gap: 11px; }
 .login-logo { display: flex; }
@@ -1375,6 +1376,25 @@
 .login-sub b { color: #100c18; }
 .login-futuro { font-size: 13px; line-height: 1.6; color: var(--muted); margin: 0; max-width: 56ch;
   border-left: 3px solid #ddd3f5; padding-left: 12px; }
+
+/* La predicción: el bloque más importante de la entrada, y por eso tiene su propio marco y peso. */
+.login-pred { position: relative; border: 1px solid #d9c9f7; border-radius: 16px; padding: 16px 18px 15px 20px;
+  background: linear-gradient(135deg, #faf7ff 0%, #f4f0ff 58%, #f7f9ff 100%);
+  box-shadow: 0 10px 30px rgba(124,58,237,.10); max-width: 58ch; overflow: hidden; }
+.login-pred::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+  background: linear-gradient(180deg, #a855f7, #6366f1); }
+.login-pred-lb { display: inline-flex; align-items: center; gap: 6px; font-size: 10px; font-weight: 800;
+  letter-spacing: .9px; text-transform: uppercase; color: #6d28d9;
+  background: #f0e9ff; border: 1px solid #ddccff; border-radius: 999px; padding: 3px 9px; }
+.login-pred-t { font-size: 19px; font-weight: 900; letter-spacing: -.5px; line-height: 1.22; color: #14091f; margin: 10px 0 0; }
+.login-pred-p { font-size: 12.5px; line-height: 1.62; color: #443b57; margin: 7px 0 0; }
+.login-pred-datos { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 0; }
+.login-pred-datos > span { flex: 1 1 0; min-width: 118px; background: #ffffff; border: 1px solid #e6dcfa;
+  border-radius: 11px; padding: 8px 10px; }
+.login-pred-datos b { display: block; font-size: 15px; font-weight: 900; color: #6d28d9; letter-spacing: -.3px; }
+.login-pred-datos small { display: block; font-size: 10.5px; line-height: 1.4; color: #6b6280; margin-top: 1px; }
+.login-pred-cierre { font-size: 12px; font-weight: 800; color: #14091f; margin-top: 11px;
+  border-top: 1px dashed #e2d6f8; padding-top: 10px; }
 
 .login-cap { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 12px 20px; margin-top: 4px; }
 .login-cap-fila { display: flex; align-items: flex-start; gap: 10px; }
@@ -1421,9 +1441,17 @@
 .login-pie-legal { font-size: 10.5px; color: #a49cb5; text-align: center; }
 
 @media (max-width: 980px) {
-  .login-panel { grid-template-columns: minmax(0, 1fr); max-width: 520px; gap: 22px; }
-  .login-form { order: -1; position: static; }
+  /* En el teléfono, primero lo que Sinkroo le promete (la predicción incluida), después el formulario y
+     al final el resto. `display: contents` deja que los bloques de la izquierda entren en la misma grilla
+     que el formulario, así se puede ordenar la presentación, el formulario y el resto por separado. */
+  .login-panel { grid-template-columns: minmax(0, 1fr); max-width: 520px; gap: 20px; }
+  .login-lado { display: contents; }
+  .login-intro { order: 1; gap: 12px; }
+  .login-form { order: 2; position: static; }
+  .login-resto { order: 3; gap: 14px; }
+  .login-marca { order: 0; }
   .login-titulo { font-size: 27px; letter-spacing: -.8px; }
+  .login-pred-t { font-size: 17px; }
   .login-cap { grid-template-columns: minmax(0, 1fr); }
   .login-sub { font-size: 13.5px; }
   .login-futuro { font-size: 12.5px; }
