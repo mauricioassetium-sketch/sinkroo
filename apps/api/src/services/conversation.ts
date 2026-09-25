@@ -18,6 +18,8 @@ export interface InboundLeadMessage {
   text: string;
   messageId: string;
   timestamp: number;
+  /** El número que recibió el mensaje (metadata.phone_number_id): dice de qué negocio es la conversación. */
+  phoneNumberId?: string;
 }
 
 export async function handleInbound(
@@ -26,7 +28,7 @@ export async function handleInbound(
   inbound: InboundLeadMessage,
 ): Promise<SalesAgentResult> {
   // 1) Find or create the conversation keyed by business + lead phone.
-  const business = await resolveBusiness(db);
+  const business = await resolveBusiness(db, inbound.phoneNumberId);
   let conv = await db.query(
     `SELECT * FROM conversations WHERE business_id = $1 AND lead_phone = $2 ORDER BY created_at DESC LIMIT 1`,
     [business.id, inbound.from],
@@ -110,11 +112,27 @@ export async function handleInbound(
   return result;
 }
 
-async function resolveBusiness(db: Pool) {
-  // Default business: the most recent one. (Multi-business routing is a later concern.)
-  const r = await db.query(`SELECT id, name, tone FROM businesses ORDER BY created_at DESC LIMIT 1`);
-  if (r.rows.length === 0) throw new Error('no business configured — create one via /api/businesses first');
-  return r.rows[0];
+async function resolveBusiness(db: Pool, phoneNumberId?: string) {
+  // El negocio es el DUEÑO DEL NÚMERO que recibió el mensaje.
+  //
+  // Antes se tomaba «el negocio más reciente» (`ORDER BY created_at DESC LIMIT 1`): con varios clientes
+  // conectados, un mensaje que entraba por el WhatsApp de uno podía caer en la conversación de otro y
+  // hasta responderle con el catálogo y el tono del negocio equivocado. La cuenta conectada de WhatsApp
+  // guarda el identificador del número, así que por ahí se sabe de quién es.
+  const numero = String(phoneNumberId ?? process.env.WHATSAPP_PHONE_ID ?? '').trim();
+  if (numero) {
+    const porNumero = await db.query(
+      `SELECT b.id, b.name, b.tone
+         FROM cuentas_conectadas c
+         JOIN businesses b ON b.id = c.business_id
+        WHERE c.red = 'whatsapp' AND c.external_id = $1
+        LIMIT 1`,
+      [numero],
+    );
+    if (porNumero.rows.length) return porNumero.rows[0];
+  }
+  // Sin número reconocido NO se adivina: mejor no atender el mensaje que atenderlo con datos de otro.
+  throw new Error('sin_negocio_para_el_numero');
 }
 
 async function resolveProduct(db: Pool, businessId: string) {

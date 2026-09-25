@@ -22,6 +22,12 @@ export interface InboundMessage {
   messageId: string;
   /** Timestamp (sec). */
   timestamp: number;
+  /**
+   * El número de WhatsApp que RECIBIÓ el mensaje (metadata.phone_number_id).
+   * Es lo que dice a qué negocio pertenece la conversación: sin este dato, un mensaje entrante no se
+   * puede atribuir a nadie y no se sabe de quién es la conversación que continúa.
+   */
+  phoneNumberId: string;
 }
 
 export interface WhatsAppTransport {
@@ -45,6 +51,8 @@ export class CloudApiTransport implements WhatsAppTransport {
     for (const entry of entries) {
       for (const change of entry?.changes ?? []) {
         const v = change?.value ?? {};
+        // El número que recibió el mensaje: es el dueño de la conversación.
+        const phoneNumberId = String(v?.metadata?.phone_number_id ?? '');
         for (const msg of v.messages ?? []) {
           const text = msg?.text?.body ?? '';
           if (!text) continue;
@@ -53,6 +61,7 @@ export class CloudApiTransport implements WhatsAppTransport {
             text,
             messageId: msg.id ?? '',
             timestamp: Number(msg.timestamp ?? 0),
+            phoneNumberId,
           });
         }
       }
@@ -97,6 +106,11 @@ export function verifySignature(header: string | undefined, rawBody: string, sec
 
 /** Webhook verification (GET) challenge handshake. */
 export function verifyWebhook(mode: string, token: string, challenge: string, expectedToken: string): string | null {
+  // SIN TOKEN CONFIGURADO NO PASA NADIE.
+  //   Antes, si el servidor no tenía `WHATSAPP_VERIFY_TOKEN`, se comparaba contra el token que mandaba
+  //   quien pedía: cualquiera pasaba el saludo con el valor que se le antojara. Un saludo sin verificar
+  //   no es sólo cosmético: es la puerta que Meta usa para dar por bueno el webhook.
+  if (!expectedToken) return null;
   if (mode === 'subscribe' && token === expectedToken) return challenge;
   return null;
 }

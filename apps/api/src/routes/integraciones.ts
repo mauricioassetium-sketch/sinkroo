@@ -2,6 +2,7 @@ import type { FastifyInstance, FastifyReply } from 'fastify';
 import type { Pool } from 'pg';
 import { exigirSesion } from '../lib/auth.js';
 import { exigirCuerpo, limpiar } from '../lib/seguridad.js';
+import { cifrar } from '../lib/cifrado.js';
 import { conAvisoDePin, exigirPin } from '../lib/pin.js';
 import { avisoConexion, enviar, faltaCorreo, fechaEnLetras } from '../services/correo.js';
 import { negocioYCorreo } from '../services/verificaciones.js';
@@ -119,8 +120,11 @@ async function guardarCuenta(db: Pool, businessId: string, def: DefinicionRed, d
        permisos      = EXCLUDED.permisos,
        estado        = 'conectada',
        actualizado   = now()`,
+    // Los secretos se guardan cifrados (ver lib/cifrado.ts): un volcado de la base no entrega las
+    // cuentas de los clientes. Un valor vacío sigue siendo vacío, así que la regla de «un token vacío no
+    // borra el que ya estaba» no cambia.
     [businessId, def.red, limpiar(datos.external_id, 120), limpiar(datos.nombre, 160),
-     datos.token, datos.refresh_token ?? '', datos.expira ?? null, def.permisos],
+     cifrar(datos.token), cifrar(datos.refresh_token ?? ''), datos.expira ?? null, def.permisos],
   );
 }
 
@@ -263,7 +267,12 @@ export async function integracionRoutes(app: FastifyInstance, db: Pool) {
     if (!c) return;
 
     const estado = limpiar(c.state, 300);
-    if (!verificarEstado(def.red, estado, u.business_id)) {
+    // El `state` ES OBLIGATORIO en las redes que autorizan por OAuth: es lo que ata la respuesta a este
+    // negocio. Antes, si venía vacío, se saltaba la comprobación y se guardaba el token de la cuenta que
+    // fuera. En las redes por token (el token ya vive en el servidor y no hay pantalla de autorización) no
+    // aplica, pero igualmente se comprueba cuando viene.
+    const exigeEstado = def.tipo === 'oauth';
+    if (exigeEstado ? !verificarEstado(def.red, estado, u.business_id) : (estado && !verificarEstado(def.red, estado, u.business_id))) {
       return reply.status(400).send({ error: 'la respuesta no corresponde a este negocio', codigo: 'state_invalido' });
     }
 
@@ -467,7 +476,7 @@ export async function integracionRoutes(app: FastifyInstance, db: Pool) {
       if (nuevo.token) {
         await db.query(
           `UPDATE cuentas_conectadas SET token = $3, token_expira = $4, actualizado = now() WHERE business_id = $1 AND red = $2`,
-          [u.business_id, def.red, nuevo.token, nuevo.expira ?? null]);
+          [u.business_id, def.red, cifrar(nuevo.token), nuevo.expira ?? null]);
         token = nuevo.token;
         cuenta = { ...cuenta, token };
         r = await leerSeguro(def, token, cuenta);
@@ -612,7 +621,9 @@ export async function integracionRoutes(app: FastifyInstance, db: Pool) {
     const c = exigirCuerpo<{ codigo?: string; state?: string; external_id?: string; nombre?: string }>(req.body, ['codigo'], reply);
     if (!c) return;
     const estado = limpiar(c.state, 300);
-    if (estado && !verificarEstado('instagram', estado, u.business_id)) {
+    // El `state` es obligatorio: es lo único que ata esta respuesta a ESTE negocio (ver la nota en
+    // `/api/integraciones/:red/volver`).
+    if (!verificarEstado('instagram', estado, u.business_id)) {
       return reply.status(400).send({ error: 'la respuesta no corresponde a este negocio', codigo: 'state_invalido' });
     }
     const r = await REDES.instagram.canjearCodigo(String(c.codigo));
@@ -622,7 +633,7 @@ export async function integracionRoutes(app: FastifyInstance, db: Pool) {
        VALUES ($1, $2, $3, $4, $5, $6, $7)
        ON CONFLICT (business_id, red) DO UPDATE
          SET token = $5, token_expira = $6, external_id = $3, nombre = $4, estado = 'conectada'`,
-      [u.business_id, 'instagram', limpiar(c.external_id, 60), limpiar(c.nombre, 120), r.token, r.expira ?? null, ['instagram_basic', 'instagram_manage_insights']],
+      [u.business_id, 'instagram', limpiar(c.external_id, 60), limpiar(c.nombre, 120), cifrar(r.token), r.expira ?? null, ['instagram_basic', 'instagram_manage_insights']],
     );
     await db.query(`INSERT INTO sincronizaciones (business_id, red, que, ok, detalle) VALUES ($1, $2, 'conexion', true, 'cuenta conectada')`, [u.business_id, 'instagram']);
     // La respuesta confirma sin mostrar el token nunca.

@@ -21,7 +21,12 @@ export function quiereHtml(req: FastifyRequest): boolean {
 }
 
 const escapar = (t: string) =>
-  String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  String(t ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 
 /**
  * La página del enlace. `formulario` agrega el campo del PIN nuevo con su botón (es la pantalla de
@@ -44,11 +49,14 @@ export function paginaDeEnlace(d: {
          <label for="v" style="display:block;margin-bottom:6px;font-weight:bold">PIN nuevo (6 dígitos)</label>
          <input id="v" inputmode="numeric" autocomplete="off" maxlength="6" required
                 style="width:100%;box-sizing:border-box;padding:11px;border:1px solid #c9c9cf;border-radius:8px;font-size:16px">
+         <input id="t" type="hidden" value="${escapar(d.formulario.token)}">
          <button type="submit" style="margin-top:12px;background:#111114;color:#fff;border:0;padding:11px 18px;border-radius:8px;font-weight:bold">Guardar el PIN nuevo</button>
          <p id="m" style="margin:14px 0 0;font-size:14px"></p>
        </form>
        <script>
          (function () {
+           // El token se lee de un campo escondido, no de un texto metido dentro del script: así el valor
+           // queda dentro de un atributo bien escapado y no puede romper el script ni inyectar HTML.
            var f = document.getElementById('pin');
            f.addEventListener('submit', function (e) {
              e.preventDefault();
@@ -57,7 +65,7 @@ export function paginaDeEnlace(d: {
              fetch(location.pathname, {
                method: 'POST',
                headers: { 'content-type': 'application/json' },
-               body: JSON.stringify({ token: ${JSON.stringify(d.formulario.token)}, pin: document.getElementById('v').value })
+               body: JSON.stringify({ token: document.getElementById('t').value, pin: document.getElementById('v').value })
              }).then(function (r) { return r.json().then(function (c) { return { ok: r.ok, c: c }; }); })
                .then(function (r) { m.textContent = r.c.detalle || r.c.error || (r.ok ? 'listo' : 'no se pudo'); })
                .catch(function () { m.textContent = 'no se pudo hablar con el servidor: intente otra vez'; });

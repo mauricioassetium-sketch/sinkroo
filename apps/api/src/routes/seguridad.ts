@@ -3,8 +3,8 @@ import { claveCorrecta, exigirSesion } from '../lib/auth.js';
 import { query } from '../lib/db.js';
 import { responderEnlace } from '../lib/paginas.js';
 import {
-  AVISO_SIN_PIN, INTENTOS_MAXIMOS, MINUTOS_BLOQUEO, estadoDePin, exigirPin,
-  guardarPin, pinCorrecto, porqueNoSirve, registrarIntento,
+  AVISO_SIN_PIN, INTENTOS_MAXIMOS, MINUTOS_BLOQUEO, bloquearPorIntentos, estadoDePin, exigirPin,
+  guardarPin, pinCorrecto, porqueNoSirve, reclamarIntento, registrarIntento,
 } from '../lib/pin.js';
 import { pasarElFreno } from '../lib/seguridad.js';
 import {
@@ -101,27 +101,31 @@ export async function seguridadRoutes(app: FastifyInstance) {
       const conPin = String(b.pin_actual ?? '').trim();
       let autorizado = false;
       if (conPin) {
+        // Mismo cuidado que en `exigirPin`: el intento se reserva ANTES de comparar, para que el tope de
+        // intentos no se pueda saltar mandando varias peticiones a la vez.
+        const usados = await reclamarIntento(u.business_id);
+        if (usados === null) {
+          const est = await estadoDePin(u.business_id);
+          return reply.status(429).send({
+            error: 'el PIN de seguridad está bloqueado por intentos fallidos', codigo: 'pin_bloqueado',
+            bloqueado_hasta: est.bloqueado_hasta, minutos_restantes: est.minutos_restantes,
+            detalle: `no se puede cambiar el PIN mientras esté bloqueado: faltan ${est.minutos_restantes} minuto${est.minutos_restantes === 1 ? '' : 's'}, o restablézcalo con el enlace del correo`,
+          });
+        }
         const filas = await query<{ pin_hash: string }>('SELECT pin_hash FROM pines WHERE business_id = $1', [u.business_id]);
         autorizado = pinCorrecto(conPin, filas[0]?.pin_hash);
         if (!autorizado) {
           // Un PIN actual que no sirve es un intento fallido: cuenta para el bloqueo y queda auditado.
           await registrarIntento(u.business_id, false);
-          const filasFallo = await query<{ intentos_fallidos: number; bloqueado_hasta: Date | null }>(
-            `UPDATE pines SET intentos_fallidos = intentos_fallidos + 1,
-                bloqueado_hasta = CASE WHEN intentos_fallidos + 1 >= $2 THEN now() + ($3 || ' minutes')::interval ELSE bloqueado_hasta END,
-                actualizado = now()
-              WHERE business_id = $1 RETURNING intentos_fallidos, bloqueado_hasta`,
-            [u.business_id, INTENTOS_MAXIMOS, String(MINUTOS_BLOQUEO)],
-          );
-          const restantes = Math.max(0, INTENTOS_MAXIMOS - Number(filasFallo[0]?.intentos_fallidos ?? 0));
-          if (filasFallo[0]?.bloqueado_hasta) {
+          if (usados >= INTENTOS_MAXIMOS) {
+            const hasta = await bloquearPorIntentos(u.business_id);
             return reply.status(429).send({
               error: 'el PIN actual no es correcto y se acabaron los intentos', codigo: 'pin_bloqueado',
-              bloqueado_hasta: new Date(filasFallo[0].bloqueado_hasta).toISOString(),
-              minutos_restantes: MINUTOS_BLOQUEO, intentos_restantes: 0,
+              bloqueado_hasta: hasta, minutos_restantes: MINUTOS_BLOQUEO, intentos_restantes: 0,
               detalle: `el PIN queda bloqueado ${MINUTOS_BLOQUEO} minutos`,
             });
           }
+          const restantes = Math.max(0, INTENTOS_MAXIMOS - usados);
           return reply.status(401).send({
             error: 'el PIN actual no es correcto', codigo: 'pin_malo', intentos_restantes: restantes,
             detalle: `le quedan ${restantes} intento${restantes === 1 ? '' : 's'}; también puede cambiarlo con la clave de su cuenta`,

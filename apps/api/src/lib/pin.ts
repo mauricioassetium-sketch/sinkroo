@@ -124,25 +124,39 @@ export async function registrarIntento(businessId: string, ok: boolean): Promise
 }
 
 /**
- * Anota un intento fallido y, si llega al tope, deja el PIN bloqueado por 15 minutos.
- * El conteo y el bloqueo se resuelven en una sola sentencia: no hay dos procesos que puedan quedar
- * con la cuenta a medias entre «contar» y «bloquear».
+ * Reclama un intento EN UNA SOLA SENTENCIA y devuelve cuántos van (1..INTENTOS_MAXIMOS), o `null` si no
+ * había derecho a intentarlo: está bloqueado, o ya se agotaron.
+ *
+ * POR QUÉ ASÍ
+ *   Antes se leía el contador con `estadoDePin`, se comparaba el PIN y RECIÉN DESPUÉS se anotaba el
+ *   fallo. Entre la lectura y la escritura caben decenas de peticiones simultáneas, todas viendo el
+ *   contador en cero: el bloqueo de 5 intentos se quedaba corto y los intentos de más llegaban a
+ *   compararse. Ahora el intento se reserva antes de comparar, así que el que no consigue su reserva no
+ *   llega ni a probar el PIN. Un bloqueo vencido se levanta en la misma sentencia (vuelve a contar de 1).
  */
-export async function anotarFallo(businessId: string): Promise<{ intentos_fallidos: number; bloqueado_hasta: string | null }> {
-  const filas = await query<{ intentos_fallidos: number; bloqueado_hasta: Date | null }>(
+export async function reclamarIntento(businessId: string): Promise<number | null> {
+  const filas = await query<{ intentos_fallidos: number }>(
     `UPDATE pines
-        SET intentos_fallidos = intentos_fallidos + 1,
-            bloqueado_hasta = CASE WHEN intentos_fallidos + 1 >= $2 THEN now() + ($3 || ' minutes')::interval ELSE bloqueado_hasta END,
+        SET intentos_fallidos = CASE WHEN bloqueado_hasta IS NOT NULL THEN 1 ELSE intentos_fallidos + 1 END,
+            bloqueado_hasta   = CASE WHEN bloqueado_hasta IS NOT NULL THEN NULL ELSE bloqueado_hasta END,
             actualizado = now()
       WHERE business_id = $1
-      RETURNING intentos_fallidos, bloqueado_hasta`,
-    [businessId, INTENTOS_MAXIMOS, String(MINUTOS_BLOQUEO)],
+        AND (bloqueado_hasta IS NULL OR bloqueado_hasta <= now())
+        AND (bloqueado_hasta IS NOT NULL OR intentos_fallidos < $2)
+      RETURNING intentos_fallidos`,
+    [businessId, INTENTOS_MAXIMOS],
   );
-  const f = filas[0];
-  return {
-    intentos_fallidos: Number(f?.intentos_fallidos ?? 0),
-    bloqueado_hasta: f?.bloqueado_hasta ? new Date(f.bloqueado_hasta).toISOString() : null,
-  };
+  return filas.length ? Number(filas[0].intentos_fallidos) : null;
+}
+
+/** Deja el PIN bloqueado por los minutos que manda la regla. Devuelve hasta cuándo. */
+export async function bloquearPorIntentos(businessId: string): Promise<string | null> {
+  const filas = await query<{ bloqueado_hasta: Date }>(
+    `UPDATE pines SET bloqueado_hasta = now() + ($2 || ' minutes')::interval, actualizado = now()
+      WHERE business_id = $1 RETURNING bloqueado_hasta`,
+    [businessId, String(MINUTOS_BLOQUEO)],
+  );
+  return filas[0]?.bloqueado_hasta ? new Date(filas[0].bloqueado_hasta).toISOString() : null;
 }
 
 /** El intento salió bien: se limpia el contador (y un bloqueo que hubiera quedado de antes). */
@@ -224,26 +238,42 @@ export async function exigirPin(
     return { permite: false, pin_requerido: true, estado };
   }
 
+  // El intento se reserva ANTES de comparar: si no se puede reservar, no se prueba el PIN. Es lo que
+  // cierra la carrera (ver `reclamarIntento`).
+  const usados = await reclamarIntento(businessId);
+  if (usados === null) {
+    const est = await estadoDePin(businessId);
+    reply.status(429).send({
+      error: 'el PIN de seguridad está bloqueado por intentos fallidos',
+      codigo: 'pin_bloqueado',
+      bloqueado_hasta: est.bloqueado_hasta,
+      minutos_restantes: est.minutos_restantes,
+      detalle: `vuelva a intentarlo en ${est.minutos_restantes} minuto${est.minutos_restantes === 1 ? '' : 's'}, o restablezca el PIN con el enlace que le llega al correo`,
+    });
+    return { permite: false, pin_requerido: true, estado: est };
+  }
+
   const filas = await query<{ pin_hash: string }>('SELECT pin_hash FROM pines WHERE business_id = $1', [businessId]);
   if (!pinCorrecto(pin, filas[0]?.pin_hash)) {
     await registrarIntento(businessId, false);
-    const fallo = await anotarFallo(businessId);
-    if (fallo.bloqueado_hasta) {
+    if (usados >= INTENTOS_MAXIMOS) {
+      const hasta = await bloquearPorIntentos(businessId);
       reply.status(429).send({
         error: 'el PIN no es correcto y se acabaron los intentos',
         codigo: 'pin_bloqueado',
-        bloqueado_hasta: fallo.bloqueado_hasta,
+        bloqueado_hasta: hasta,
         minutos_restantes: MINUTOS_BLOQUEO,
         intentos_restantes: 0,
         detalle: `el PIN queda bloqueado ${MINUTOS_BLOQUEO} minutos: vuelva a intentarlo en ${MINUTOS_BLOQUEO} minutos o restablezca el PIN con el enlace que le llega al correo`,
       });
       return { permite: false, pin_requerido: true, estado: await estadoDePin(businessId) };
     }
+    const restantes = Math.max(0, INTENTOS_MAXIMOS - usados);
     reply.status(401).send({
       error: 'el PIN de seguridad no es correcto',
       codigo: 'pin_malo',
-      intentos_restantes: Math.max(0, INTENTOS_MAXIMOS - fallo.intentos_fallidos),
-      detalle: `le quedan ${Math.max(0, INTENTOS_MAXIMOS - fallo.intentos_fallidos)} intento${INTENTOS_MAXIMOS - fallo.intentos_fallidos === 1 ? '' : 's'} antes de que el PIN quede bloqueado ${MINUTOS_BLOQUEO} minutos`,
+      intentos_restantes: restantes,
+      detalle: `le quedan ${restantes} intento${restantes === 1 ? '' : 's'} antes de que el PIN quede bloqueado ${MINUTOS_BLOQUEO} minutos`,
     });
     return { permite: false, pin_requerido: true };
   }

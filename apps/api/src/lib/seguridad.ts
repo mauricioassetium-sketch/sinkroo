@@ -47,8 +47,17 @@ setInterval(() => {
   for (const [k, v] of registros) if (ahora > v.reinicia) registros.delete(k);
 }, 60_000).unref?.();
 
-const ipDe = (req: FastifyRequest) =>
-  String((req.headers['cf-connecting-ip'] as string) || (req.headers['x-forwarded-for'] as string || '').split(',')[0] || req.ip || 'sin-ip');
+/**
+ * La IP que se usa para los frenos: la del socket, resuelta por Fastify con `trustProxy` (sólo se cree
+ * al proxy local, ver index.ts).
+ *
+ * POR QUÉ NO SE LEEN CABECERAS
+ *   `cf-connecting-ip` y `X-Forwarded-For` las escribe quien pide: basta mandarlas distintas en cada
+ *   intento para estrenar un cubo de freno cada vez y probar claves a la loca. La IP real la resuelve
+ *   `req.ip` — y como nginx reenvía desde 127.0.0.1, `trustProxy` toma la última dirección de la cadena,
+ *   que es la que agregó el proxy, no la que inventó el cliente.
+ */
+const ipDe = (req: FastifyRequest) => req.ip || 'sin-ip';
 
 /**
  * Los frenos: las rutas de entrada tienen el suyo (por IP) y las que escriben datos otro (por usuario).

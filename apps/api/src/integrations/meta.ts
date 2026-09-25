@@ -1,5 +1,6 @@
 import type { Pool } from 'pg';
 import type { SegmentoPeso } from '../services/calibracion.js';
+import { descifrar } from '../lib/cifrado.js';
 
 // =============================================================================================
 // EL CONECTOR DE META — de dónde sale la audiencia real para calibrar el público.
@@ -163,5 +164,9 @@ export async function tokenDe(db: Pool, businessId: string, red = 'instagram') {
   const r = await db.query(
     'SELECT token, refresh_token, external_id, nombre, estado, permisos, extra FROM cuentas_conectadas WHERE business_id = $1 AND red = $2',
     [businessId, red]);
-  return r.rows[0] ?? null;
+  const fila = r.rows[0];
+  if (!fila) return null;
+  // Los secretos se guardan cifrados en la base (lib/cifrado.ts) y se abren acá, en el único lugar donde
+  // se leen. Lo que quedó de antes en texto plano se devuelve tal cual: no hay que migrar nada.
+  return { ...fila, token: descifrar(fila.token), refresh_token: descifrar(fila.refresh_token) };
 }

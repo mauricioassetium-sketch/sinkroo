@@ -17,14 +17,30 @@ const CLAVE_API = 'sinkroo-api';
 /** De dónde sale la dirección del back: la dirección, lo guardado, o nada (modo demostración). */
 export function baseApi(): string {
   try {
+    const host = window.location.hostname;
+
+    // EL DOMINIO PROPIO ES LO ÚNICO QUE NO ACEPTA `?api=`, y es justo donde no hace falta: ahí el back
+    // vive en el mismo origen (el servidor web pasa /api/ al motor), así que nadie tiene que decirle la
+    // dirección. Y es el único sitio donde hay cuentas de clientes de verdad con la sesión abierta.
+    //
+    //   Antes se aceptaba en cualquier parte: un enlace como
+    //   `https://panel.sinkroo.com/?api=https://sitio-del-atacante` quedaba GUARDADO en el navegador y,
+    //   desde ahí, todas las peticiones del panel —con el token de la sesión en la cabecera— salían hacia
+    //   ese sitio. Bastaba con que la persona abriera el enlace una vez.
+    const esDominioPropio = host === 'sinkroo.com' || host.endsWith('.sinkroo.com');
+    if (esDominioPropio) {
+      // Lo que haya quedado guardado de antes se borra: si alguien alcanzó a dejar una dirección puesta,
+      // deja de tener efecto.
+      window.localStorage.removeItem(CLAVE_API);
+      return window.location.origin;
+    }
+
+    // Fuera del dominio propio, el `?api=` SIGUE SIRVIENDO para probar el panel contra un back: en las
+    // pruebas locales, en la maqueta publicada y en el túnel. Ahí no hay cuentas de clientes a las que
+    // robarles la sesión.
     const deUrl = new URLSearchParams(window.location.search).get('api');
     if (deUrl) { window.localStorage.setItem(CLAVE_API, deUrl); return deUrl.replace(/\/$/, ''); }
-    // En el dominio propio (sinkroo.com) la API vive en el MISMO dominio: el servidor web pasa /api/
-    // al motor, asi que el panel no necesita que le digan la direccion. Solo en las pruebas locales
-    // (127.0.0.1) hace falta el ?api=, porque ahi el panel y el motor van por puertos distintos.
-    const host = window.location.hostname;
-    const esLocal = host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0' || host === '';
-    if (!esLocal) return window.location.origin;
+
     const guardada = window.localStorage.getItem(CLAVE_API);
     if (guardada) return guardada.replace(/\/$/, '');
   } catch { /* sin navegador */ }
