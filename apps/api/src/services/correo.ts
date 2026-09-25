@@ -38,7 +38,7 @@ export type Envio = {
 
 export type ResultadoEnvio = { ok: boolean; motivo?: string; proveedor?: string; plantilla: string };
 
-const VERSION_RESEND = 'https://api.resend.com/emails';
+const URL_RESEND = 'https://api.resend.com/emails';
 
 /** ¿Hay con qué enviar? (proveedor + remitente). Sin esto no se manda nada y se dice qué falta. */
 export function correoConfigurado(): boolean {
@@ -207,7 +207,30 @@ export function avisoConexion(d: { negocio: string; red: string; cuando: string 
   return { asunto, texto, html };
 }
 
-/** 5 · El resumen de la semana: lo que quedó registrado, sin estimaciones de adorno. */
+/** 5 · Restablecer el PIN: es el camino cuando el PIN se olvidó. No hay pregunta secreta, hay enlace. */
+export function restablecerPin(d: { negocio: string; enlace: string }): Carta {
+  const asunto = `Restablezca el PIN de seguridad de ${d.negocio}`;
+  const texto = [
+    `Hola, ${d.negocio}:`,
+    '',
+    'Pedimos este enlace para que pueda elegir un PIN de seguridad nuevo:',
+    d.enlace,
+    '',
+    'El enlace vence en 24 horas y sirve una sola vez.',
+    'Si no fue usted, ignore este mensaje: su PIN actual sigue funcionando y sin abrir el enlace no se cambia nada.',
+    '',
+    'Sinkroo · pre-validación de anuncios con agentes',
+  ].join('\n');
+  const html = conMarco('Elija un PIN de seguridad nuevo', [
+    'Pedimos este enlace para que pueda elegir un PIN de seguridad nuevo:',
+    boton('Elegir un PIN nuevo', d.enlace),
+    'El enlace vence en 24 horas y sirve una sola vez.',
+    'Si no fue usted, ignore este mensaje: su PIN actual sigue funcionando y sin abrir el enlace no se cambia nada.',
+  ]);
+  return { asunto, texto, html };
+}
+
+/** 6 · El resumen de la semana: lo que quedó registrado, sin estimaciones de adorno. */
 export function resumenSemanal(d: {
   negocio: string; desde: string; hasta: string;
   hallazgos: number; piezas: number; evaluaciones: number; creditos: number;
@@ -250,7 +273,7 @@ async function registrar(envio: Envio, ok: boolean, motivo: string) {
 async function enviarPorResend(envio: Envio): Promise<{ ok: boolean; motivo?: string }> {
   const apiKey = process.env.RESEND_API_KEY || '';
   try {
-    const r = await fetch(VERSION_RESEND, {
+    const r = await fetch(URL_RESEND, {
       method: 'POST',
       headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({

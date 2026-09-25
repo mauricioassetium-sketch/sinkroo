@@ -1,10 +1,13 @@
 import { useState } from 'react';
 import { Button, Badge } from '../components/ui';
 import {
-  SinkrooMark, I_Mail, I_Lock, I_Check, I_ArrowRight, I_User, I_Shield, I_Sparkle,
+  SinkrooMark, I_Mail, I_Lock, I_Check, I_ArrowRight, I_User, I_Shield, I_Sparkle, I_Clock,
 } from '../components/icons';
 import { TENANT } from '../data/demo';
-import { crearCuenta, entrar as entrarApi, hayApi } from '../api/cliente';
+import { crearCuenta, entrar as entrarApi, hayApi, leerSeguridad, type ErrorApi, type EstadoSeguridad } from '../api/cliente';
+// La vuelta del correo de bienvenida vive en App.tsx (es la misma vuelta de siempre, la de
+// `VueltaDeConexion`): acá sólo se dice cómo salió, con las palabras de `textoDeVuelta`.
+import { textoDeVuelta, type VueltaCorreo } from '../lib/seguridad';
 
 // =============================================================================================
 // LA ENTRADA — la primera pantalla del producto, y la primera impresión.
@@ -40,7 +43,7 @@ const CUENTAS_REGISTRADAS = CUENTAS_DEMO.map(c => ({ email: c.email, nombre: c.n
 const cuentaDe = (email: string) =>
   CUENTAS_REGISTRADAS.find(c => c.email.toLowerCase() === email.trim().toLowerCase());
 
-export function PantallaLogin({ onEntrar }: { onEntrar: (s: Sesion) => void }) {
+export function PantallaLogin({ onEntrar, vuelta }: { onEntrar: (s: Sesion) => void; vuelta?: VueltaCorreo }) {
   const [modo, setModo] = useState<'entrar' | 'crear'>('entrar');
   const [nombre, setNombre] = useState('');
   const [email, setEmail] = useState('');
@@ -48,6 +51,13 @@ export function PantallaLogin({ onEntrar }: { onEntrar: (s: Sesion) => void }) {
   const [entrando, setEntrando] = useState<'' | 'email' | 'google' | 'nueva'>('');
   const [recuperar, setRecuperar] = useState('');
   const [error, setError] = useState('');
+  // LA ENTRADA CON EL BACK ENCENDIDO TIENE DOS PASOS: los datos y, después, el correo. Nada de esto
+  // existe sin back: en la demostración el formulario es el de siempre, tal cual estaba.
+  const conBack = hayApi();
+  const [paso, setPaso] = useState<'form' | 'correo'>('form');
+  const [cuentaCreada, setCuentaCreada] = useState<{ nombre: string; email: string } | null>(null);
+  /** Lo que el back dice del correo recién creado: si está configurado y si la dirección ya está confirmada. */
+  const [correoNuevo, setCorreoNuevo] = useState<{ leido: boolean; estado: EstadoSeguridad | null; fallo: string } | null>(null);
 
   /** Entrar se ve: el botón pasa a «Entrando…» y sólo después aparece el panel con el asistente. */
   const entrarCon = (via: Sesion['via'], quien: { nombre: string; email: string }) => {
@@ -63,7 +73,20 @@ export function PantallaLogin({ onEntrar }: { onEntrar: (s: Sesion) => void }) {
       const usuario = crear
         ? await crearCuenta(nombre.trim(), email.trim(), clave)
         : await entrarApi(email.trim(), clave);
-      onEntrar({ nombre: usuario.nombre || nombre.trim(), email: usuario.email, via: crear ? 'nueva' : 'email' });
+      // CREAR CUENTA NO ENTRA DIRECTO: primero se dice qué pasó con el correo de bienvenida. Con el
+      // correo sin configurar en el servidor, aquí NO se puede decir «le enviamos un correo»: se dice
+      // lo que falta. La sesión ya quedó abierta (el token está guardado); el panel entra cuando la
+      // persona toca «Entrar a mi panel».
+      if (crear) {
+        setCuentaCreada({ nombre: usuario.nombre || nombre.trim(), email: usuario.email });
+        setCorreoNuevo({ leido: false, estado: null, fallo: '' });
+        setPaso('correo');
+        leerSeguridad()
+          .then(e => setCorreoNuevo({ leido: true, estado: e, fallo: '' }))
+          .catch((err: ErrorApi) => setCorreoNuevo({ leido: true, estado: null, fallo: err.message }));
+        return;
+      }
+      onEntrar({ nombre: usuario.nombre || nombre.trim(), email: usuario.email, via: 'email' });
     } catch (e) {
       const err = e as Error & { codigo?: string };
       setError(
@@ -162,10 +185,50 @@ export function PantallaLogin({ onEntrar }: { onEntrar: (s: Sesion) => void }) {
 
         {/* ---------- ENTRAR ---------- */}
         <div className="login-form">
+          {/* LA VUELTA DEL CORREO DE BIENVENIDA: sólo aparece cuando esta dirección trae el enlace de
+              confirmación. Sale con las palabras de `textoDeVuelta`, el mismo texto que usa el aviso
+              del panel, y va arriba de todo porque es lo primero que hay que leer. */}
+          {vuelta && <AvisoVueltaDeCorreo vuelta={vuelta} />}
+
+          {paso === 'correo' && cuentaCreada ? (
+            /* ---------- SEGUNDO PASO: QUÉ PASÓ CON EL CORREO DE BIENVENIDA ----------
+               No se promete un correo: se dice lo que el servidor respondió sobre su correo apenas se
+               creó la cuenta. Con el correo sin configurar, la pantalla dice qué falta. */
+            <>
+              <div className="login-form-head">
+                <div className="login-form-t">Su cuenta quedó creada</div>
+                <Badge tone="green">paso 1 de 2</Badge>
+              </div>
+
+              <AvisoCorreoDeBienvenida email={cuentaCreada.email} correo={correoNuevo} />
+
+              <Button className="login-btn" title="Abre el panel con la cuenta que acaba de crear"
+                onClick={() => onEntrar({ nombre: cuentaCreada.nombre, email: cuentaCreada.email, via: 'nueva' })}>
+                Entrar a mi panel <I_ArrowRight size={14} />
+              </Button>
+
+              <div className="login-legal">
+                Confirmar la dirección se puede hacer cuando quiera y desde donde quiera: el enlace lo
+                trae de vuelta a este panel. El panel funciona igual mientras no esté confirmada.
+              </div>
+            </>
+          ) : (<>
           <div className="login-form-head">
             <div className="login-form-t">{modo === 'entrar' ? 'Entre a su panel' : 'Cree su cuenta'}</div>
             <Badge tone="purple">{modo === 'entrar' ? 'tiene una cuenta' : 'nueva'}</Badge>
           </div>
+
+          {/* QUÉ PASA DESPUÉS, dicho antes de crear nada. Es condicional de verdad: la segunda línea
+              («le enviamos el correo») sólo se puede escribir cuando el servidor tiene el correo
+              configurado, y eso se sabe en el paso siguiente. Por eso acá no se promete ningún correo. */}
+          {modo === 'crear' && conBack && (
+            <div className="login-ok">
+              <I_Shield size={13} /> Al crear la cuenta, su negocio nace con el correo sin confirmar: le
+              pedimos confirmar su dirección desde el enlace que le llega por correo. Si el servidor todavía
+              no tiene el correo configurado, se lo decimos en el paso siguiente — sin prometerle un correo
+              que no va a salir.
+            </div>
+          )}
 
           {modo === 'crear' && (
             <div className="login-campo">
@@ -239,6 +302,7 @@ export function PantallaLogin({ onEntrar }: { onEntrar: (s: Sesion) => void }) {
             Al entrar acepta que el motor publique en sus cuentas según la autonomía que le dé. Puede revocar
             cada conexión cuando quiera. Un correo es una cuenta.
           </div>
+          </>)}
         </div>
       </div>
 
