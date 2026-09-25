@@ -114,7 +114,82 @@ export async function migrate(db: Pool): Promise<void> {
       created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
     );
 
+
+    -- ---------------------------------- FASE 1: cuentas y onboarding ----------------------------------
+    -- Un correo es una cuenta, para siempre: lo pidió el dueño. El correo va en minúsculas y con UNIQUE.
+    CREATE TABLE IF NOT EXISTS users (
+      id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      email       TEXT NOT NULL UNIQUE,
+      nombre      TEXT NOT NULL DEFAULT '',
+      clave_hash  TEXT,
+      via         TEXT NOT NULL DEFAULT 'email',
+      business_id UUID REFERENCES businesses(id) ON DELETE SET NULL,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE TABLE IF NOT EXISTS sessions (
+      token      TEXT PRIMARY KEY,
+      user_id    UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      expira_at  TIMESTAMPTZ NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
+
+    -- El onboarding vive en una sola fila por negocio y con JSONB: los campos son abiertos (el dueño los
+    -- escribe con sus palabras), así que agregar una pregunta no puede costar una migración.
+    CREATE TABLE IF NOT EXISTS onboarding (
+      business_id  UUID PRIMARY KEY REFERENCES businesses(id) ON DELETE CASCADE,
+      datos        JSONB NOT NULL DEFAULT '{}'::jsonb,
+      hechos       INT[] NOT NULL DEFAULT '{}',
+      arrancado    BOOLEAN NOT NULL DEFAULT false,
+      arrancado_at TIMESTAMPTZ,
+      actualizado  TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    -- Cada paso de la ingesta, con lo que el motor entendió. Se guarda el archivo como referencia.
+    CREATE TABLE IF NOT EXISTS archivos (
+      id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+      nombre      TEXT NOT NULL,
+      tipo        TEXT NOT NULL DEFAULT 'otro',
+      peso        BIGINT NOT NULL DEFAULT 0,
+      ruta        TEXT,
+      extracto    TEXT,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_archivos_business ON archivos(business_id);
+
     CREATE INDEX IF NOT EXISTS idx_conversations_lead ON conversations(lead_phone);
     CREATE INDEX IF NOT EXISTS idx_messages_conversation ON conversation_messages(conversation_id, created_at);
   `);
+}
+
+// ---------------------------------- FASE 1: cuentas y onboarding ----------------------------------
+
+export interface User {
+  id: string;
+  email: string;
+  nombre: string;
+  via: 'email' | 'google';
+  business_id: string | null;
+  created_at: Date;
+}
+
+export interface Session {
+  token: string;
+  user_id: string;
+  expira_at: Date;
+}
+
+export interface Onboarding {
+  business_id: string;
+  /** Los campos abiertos del onboarding, tal como los escribió el negocio. */
+  datos: Record<string, unknown>;
+  /** Los pasos que el negocio dio por hechos (1 a 5). */
+  hechos: number[];
+  arrancado: boolean;
+  arrancado_at: Date | null;
+  actualizado: Date;
 }

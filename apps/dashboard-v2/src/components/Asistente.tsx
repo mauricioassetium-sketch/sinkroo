@@ -28,9 +28,11 @@ export function Asistente({ sesion, setVista }: { sesion: Sesion; setVista: (v: 
   // cuerpo del render: abrir el asistente cambia el estado del proveedor, y hacerlo mientras se
   // renderiza este componente hace que React descarte la actualización (y el asistente no abre).
   const abrir = onb.abrirAsistente;
+  // Se abre la primera vez. Si el negocio ya arrancó el motor, no se le vuelve a mostrar la bienvenida:
+  // entra directo a su panel, que es lo que espera alguien que ya hizo el trabajo.
   useEffect(() => {
-    if (sesion && !autoHecho) { setAutoHecho(true); abrir(0); }
-  }, [sesion, autoHecho, abrir]);
+    if (sesion && !autoHecho) { setAutoHecho(true); if (!onb.arrancado) abrir(0); }
+  }, [sesion, autoHecho, abrir, onb.arrancado]);
 
   if (!onb.asistente.abierto) return null;
 

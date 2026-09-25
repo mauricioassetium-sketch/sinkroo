@@ -1,5 +1,6 @@
-import { createContext, useContext, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { PASOS_ONB, siguientePaso, CONEXIONES_ONB } from '../data/onboarding';
+import { arrancarMotor, guardarOnboarding, hayApi, leerOnboarding, token } from '../api/cliente';
 
 // =============================================================================================
 // EL ESTADO DE LOS PRIMEROS PASOS
@@ -70,8 +71,40 @@ export function OnboardingProvider({ children, avisar }: { children: ReactNode; 
   const [paso, setPaso] = useState(1);
   const [hechos, setHechos] = useState<number[]>([]);
   const [arrancado, setArrancado] = useState(false);
-  // El asistente de entrada: fase 0 la bienvenida, 1 el tipo de cuenta, 2..6 los cinco pasos.
+  // El asistente de entrada: fase 0 la bienvenida, 2..6 los cinco pasos.
   const [asistente, setAsistente] = useState({ abierto: false, fase: 0 });
+  // Con la API encendida, esto dice si ya se leyó lo guardado. No se escribe en el back antes de leer:
+  // si no, el primer guardado pisaría lo que había.
+  const [cargado, setCargado] = useState(false);
+  const guardadoPendiente = useRef<number | null>(null);
+
+  // Al abrir el panel, se trae lo que hay guardado. Es lo que hace que cerrar el navegador y volver no
+  // pierda nada: el negocio sigue donde estaba.
+  useEffect(() => {
+    if (!hayApi() || !token()) { setCargado(true); return; }
+    let vivo = true;
+    leerOnboarding()
+      .then(r => {
+        if (!vivo) return;
+        if (r.datos && Object.keys(r.datos).length) setDatos(d => ({ ...d, ...(r.datos as DatosOnb) }));
+        if (Array.isArray(r.hechos)) setHechos(r.hechos);
+        if (r.arrancado) setArrancado(true);
+        setCargado(true);
+      })
+      .catch(() => setCargado(true));
+    return () => { vivo = false; };
+  }, []);
+
+  // Cada cambio se manda al back, con una pausa corta: mientras el negocio escribe no se dispara una
+  // petición por letra, y si cierra el navegador igual queda guardado.
+  useEffect(() => {
+    if (!hayApi() || !token() || !cargado) return;
+    if (guardadoPendiente.current) window.clearTimeout(guardadoPendiente.current);
+    guardadoPendiente.current = window.setTimeout(() => {
+      guardarOnboarding({ datos, hechos }).catch(() => { /* sin conexión: se reintenta al próximo cambio */ });
+    }, 700);
+    return () => { if (guardadoPendiente.current) window.clearTimeout(guardadoPendiente.current); };
+  }, [datos, hechos, cargado]);
 
   const escribir = (id: string, v: ValorOnb) => setDatos(d => ({ ...d, [id]: v }));
 
@@ -125,7 +158,7 @@ export function OnboardingProvider({ children, avisar }: { children: ReactNode; 
       cerrarAsistente: () => setAsistente(a => ({ ...a, abierto: false })),
       avisar,
       pasos: PASOS_ONB,
-      hechos, marcar, desmarcar, arrancado, arrancar: () => setArrancado(true),
+      hechos, marcar, desmarcar, arrancado, arrancar: () => { setArrancado(true); if (hayApi() && token()) arrancarMotor().catch(() => { /* queda en pantalla igual */ }); },
       completo, siguiente: siguientePaso(listos), listos,
     }}>
       {children}

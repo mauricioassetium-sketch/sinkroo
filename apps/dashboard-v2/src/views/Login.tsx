@@ -4,6 +4,7 @@ import {
   SinkrooMark, I_Mail, I_Lock, I_Check, I_ArrowRight, I_User, I_Shield, I_Sparkle,
 } from '../components/icons';
 import { TENANT } from '../data/demo';
+import { crearCuenta, entrar as entrarApi, hayApi } from '../api/cliente';
 
 // =============================================================================================
 // LA ENTRADA — la primera pantalla del producto, y la primera impresión.
@@ -55,7 +56,35 @@ export function PantallaLogin({ onEntrar }: { onEntrar: (s: Sesion) => void }) {
     window.setTimeout(() => onEntrar({ nombre: quien.nombre, email: quien.email, via }), via === 'google' ? 900 : 550);
   };
 
+  /** Con el back encendido, entrar y crear cuenta se resuelven contra la API de verdad. */
+  const entrarConBack = async (crear: boolean) => {
+    setError(''); setEntrando(crear ? 'nueva' : 'email');
+    try {
+      const usuario = crear
+        ? await crearCuenta(nombre.trim(), email.trim(), clave)
+        : await entrarApi(email.trim(), clave);
+      onEntrar({ nombre: usuario.nombre || nombre.trim(), email: usuario.email, via: crear ? 'nueva' : 'email' });
+    } catch (e) {
+      const err = e as Error & { codigo?: string };
+      setError(
+        err.codigo === 'correo_existe'
+          ? 'Ese correo ya tiene una cuenta: entre con ese correo, o cree la cuenta con uno distinto.'
+          : err.codigo === 'clave_mala'
+            ? 'El correo o la clave no son correctos.'
+            : `No se pudo conectar con el servidor (${err.message}). El panel sigue andando con los datos de demostración.`,
+      );
+    } finally {
+      setEntrando('');
+    }
+  };
+
   const entrar = () => {
+    if (hayApi()) {
+      if (!email.trim() || !clave.trim()) { setError('Necesitamos su correo y su clave para entrar.'); return; }
+      if (modo === 'crear' && clave.trim().length < 6) { setError('La clave necesita al menos 6 caracteres.'); return; }
+      void entrarConBack(modo === 'crear');
+      return;
+    }
     if (!email.trim() || !clave.trim()) {
       setError('Necesitamos su correo y su contraseña para entrar. Si quiere ver un panel ya cargado, entre con la cuenta de demostración.');
       return;
