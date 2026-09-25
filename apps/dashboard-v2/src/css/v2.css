@@ -1462,6 +1462,12 @@
 .asist-barra-t.act { background: var(--purple3); }
 .asist-cuerpo { padding: 14px 18px 4px; }
 .asist-hola { font-size: 20px; font-weight: 900; letter-spacing: -.4px; margin-bottom: 6px; }
+/* La bienvenida: un titular grande con la promesa, una línea de futuro y tres cosas que empiezan a pasar. */
+.asist-titular { font-size: 25px; font-weight: 900; letter-spacing: -.9px; line-height: 1.14; color: var(--txt); margin-top: 2px; }
+.asist-sub { font-size: 13.5px; line-height: 1.55; color: var(--purple3); font-weight: 700; }
+.asist-facil { display: flex; align-items: flex-start; gap: 8px; font-size: 12px; line-height: 1.55;
+  color: var(--muted); border-left: 3px solid var(--border2); padding-left: 10px; }
+.asist-facil svg { flex-shrink: 0; margin-top: 2px; color: var(--purple3); }
 .asist-que { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
 .asist-que-fila { display: flex; align-items: flex-start; gap: 11px; }
 .asist-que-n { display: grid; place-items: center; width: 22px; height: 22px; flex-shrink: 0; border-radius: 8px;

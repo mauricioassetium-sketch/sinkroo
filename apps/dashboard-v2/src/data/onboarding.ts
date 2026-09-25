@@ -249,16 +249,24 @@ export const siguientePaso = (hechos: number[]) =>
 
 export const BIENVENIDA = {
   titulo: 'Bienvenido a Sinkroo',
-  sub: 'Un equipo de marketing que trabaja solo, con un panel que le revisa todo antes de publicar.',
+  // El titular de la bienvenida. Es lo primero que se lee en todo el producto: tiene que emocionar en
+  // una línea y no pedir nada todavía. Se escribe en futuro y con el trabajo ya hecho, para que el
+  // cliente se vea del otro lado antes de empezar.
+  titular: 'Su equipo de marketing arranca hoy.',
+  sub: 'En 4 minutos. El lunes abre el panel y la semana ya está armada.',
+  // Tres cosas que empiezan a pasar. Una línea cada una, con su número: es lo que sostiene la promesa.
   queHace: [
-    { t: 'Investiga su mercado todos los días', s: '47 anuncios de sus competidores, los precios que cambiaron y el ángulo que hoy gana en su rubro.' },
-    { t: 'Escribe y arma las piezas', s: 'Textos, imágenes y videos con su material, su tono y sus precios. No de plantilla.' },
-    { t: 'Las pasa por el panel antes de publicar', s: '5 jueces las puntúan y 500 personas del público reaccionan. Las 3 mejores salen; si ninguna convence, no sale ninguna.' },
-    { t: 'Publica, mide y frena lo que no rinde', s: 'Mide el costo por venta, mueve el presupuesto a donde rinde y le avisa por WhatsApp cuando hay algo que decidir.' },
+    { t: 'Investiga su mercado cada mañana',
+      s: '47 anuncios de sus competidores leídos antes de que abra el negocio.' },
+    { t: 'Arma las piezas y las hace revisar',
+      s: '5 jueces y 500 personas del público las puntúan: sólo salen las que convencen.' },
+    { t: 'Publica, mide y frena lo que no rinde',
+      s: 'El costo por venta, el presupuesto y lo que no funciona se mueven solos.' },
   ],
+  // La confianza va en una línea, no en tres.
   reglas: [
-    'Nada se publica sin pasar por el panel.',
-    'Nada se publica en sus cuentas sin su permiso (según la autonomía que le dé).',
-    'Publicar es lo único que gasta dinero: investigar y el público no cuestan créditos.',
+    'Nada se publica sin pasar por el panel ni sin su permiso.',
   ],
+  // Lo fácil que es empezar, dicho antes de que lea un solo campo.
+  facil: 'Son cinco preguntas cortas: el nombre del negocio y qué vende. Todo lo demás lo saca el motor solo.',
 };

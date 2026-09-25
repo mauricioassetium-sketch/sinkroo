@@ -78,11 +78,14 @@ export function Asistente({ sesion, setVista }: { sesion: Sesion; setVista: (v: 
         </div>
 
         <div className="asist-cuerpo">
-          {/* ---------------- BIENVENIDA ---------------- */}
+          {/* ---------------- BIENVENIDA ----------------
+              Es la primera impresión: saluda por su nombre, promete el trabajo ya hecho, muestra las
+              tres cosas que empiezan a pasar y dice lo fácil que es empezar. Nada más. */}
           {fase === 0 && (
             <>
-              <div className="asist-hola">Hola{sesion.nombre ? ` ${sesion.nombre.split(' ')[0]}` : ''} 👋</div>
-              <div className="bs">{BIENVENIDA.sub}</div>
+              <div className="asist-hola">Hola{sesion.nombre ? `, ${sesion.nombre.split(' ')[0]}` : ''} 👋</div>
+              <div className="asist-titular">{BIENVENIDA.titular}</div>
+              <div className="asist-sub">{BIENVENIDA.sub}</div>
               <div className="asist-que">
                 {BIENVENIDA.queHace.map((q, i) => (
                   <div key={q.t} className="asist-que-fila">
@@ -97,9 +100,8 @@ export function Asistente({ sesion, setVista }: { sesion: Sesion; setVista: (v: 
               <div className="asist-reglas">
                 {BIENVENIDA.reglas.map(r => <div key={r} className="asist-regla"><I_Check size={12} /> {r}</div>)}
               </div>
-              <div className="acc-why">
-                El asistente que sigue tiene <b>cinco pasos cortos</b>. Se puede saltar entero: el motor
-                arranca igual y usted completa lo que falte cuando quiera.
+              <div className="asist-facil">
+                <I_Zap size={12} /> {BIENVENIDA.facil}
               </div>
             </>
           )}
@@ -162,25 +164,26 @@ export function Asistente({ sesion, setVista }: { sesion: Sesion; setVista: (v: 
             <Button variant="ghost" className="btn-sm" disabled={fase === 0} title="Vuelva a la pantalla anterior"
               onClick={atras}><I_ArrowLeft size={13} /> Atrás</Button>
             {fase === 0 && (
-              <Button className="btn-sm" title="Arranca el asistente: cinco pasos cortos y el motor queda trabajando"
-                onClick={siguiente}>Empezar <I_ArrowRight size={13} /></Button>
+              <Button className="btn-sm" title="Arranca: cinco preguntas cortas y el motor queda trabajando. Se puede saltar en cualquier momento."
+                onClick={siguiente}>Empezar ahora <I_ArrowRight size={13} /></Button>
             )}
           </div>
           <div className="row" style={{ gap: 10, flexWrap: 'wrap' }}>
             <span className="tiny muted">
-              <I_Clock size={11} /> 4 minutos · el motor arranca igual si lo salta
+              <I_Clock size={11} /> 4 minutos · se puede saltar y hacerlo después
             </span>
             <Button variant="ghost" className="btn-sm"
               title="Salta el asistente entero y le deja en el panel. Todo queda en Primeros pasos para completarlo cuando quieras."
               onClick={() => { cerrar('Asistente salteado: el panel ya está listo y lo que falta espera en Primeros pasos'); setVista('hoy'); }}>
-              Saltar todo
+              Empezar después
             </Button>
           </div>
         </div>
 
         {/* Lo que va a pasar al terminar. */}
         <div className="asist-pie-2">
-          <I_Rocket size={12} /> Al terminar, el motor arranca por el mercado y arma la primera semana: {plan.creditosMes.toLocaleString('es-CO')} créditos del plan {plan.nombre}, y publicar es aparte.
+          <I_Rocket size={12} /> Al terminar, el motor sale a investigar su mercado y arma la primera semana
+          con los {plan.creditosMes.toLocaleString('es-CO')} créditos del plan {plan.nombre}. Publicar es aparte.
         </div>
       </div>
     </div>
