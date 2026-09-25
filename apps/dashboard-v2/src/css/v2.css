@@ -2109,3 +2109,13 @@ html.marca-cliente .pers-flotante { color: var(--sobre-grad); }
    no se confunda con una acción. Nunca queda vacía: dice en qué moneda está lo que se ve. */
 .nota-moneda { margin-top: 10px; padding: 9px 11px; border-radius: 9px; border: 1px dashed var(--border2);
   background: var(--bg2); font-size: 11px; line-height: 1.5; color: var(--muted2); }
+
+/* =============================================================================================
+   EL ESTADO VACÍO — la cara de un panel conectado a un negocio que todavía no hizo nada.
+   ============================================================================================= */
+.vacio { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  text-align: center; padding: 34px 20px; border: 1px dashed var(--border2); border-radius: 14px;
+  background: var(--bg2); }
+.vacio-ic { font-size: 22px; color: var(--purple3); opacity: .85; }
+.vacio-t { font-size: 14.5px; font-weight: 800; color: var(--txt); }
+.vacio-s { font-size: 12.5px; line-height: 1.6; color: var(--muted); max-width: 46ch; }

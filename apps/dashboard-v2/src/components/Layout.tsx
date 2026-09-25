@@ -1,9 +1,10 @@
 import { useState, type ReactNode } from 'react';
 import { SinkrooMark, I_Home, I_Megaphone, I_Whatsapp, I_Globe, I_Settings, I_Bell, I_Sun, I_Moon, I_Zap, I_Clock, I_Vote, I_Robot, I_Credit, I_Gift, I_Shield, I_User, I_Palette, I_Menu, I_X, I_Rocket } from './icons';
-import { TENANT, AGENTES, ALARMAS, DECISIONES, MODOS, type Modo } from '../data/demo';
+import { TENANT, AGENTES, ALARMAS, DECISIONES, MODOS, PLANES, type Modo } from '../data/demo';
 import { Progress } from './ui';
 import { usePerfil, inicialesDe } from '../lib/perfil';
 import { usePlan } from '../lib/plan';
+import { useDatos } from '../api/datos';
 import { useOnboarding } from '../lib/onboarding';
 import { PerfilModal } from './PerfilModal';
 import { PersonalizarPanel } from './PersonalizarPanel';
@@ -57,20 +58,32 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
   const abrirPersonalizacion = () => { setPersAbierto(true); setPersSenal(s => s + 1); };
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [notif, setNotif] = useState(false);
-  const trabajando = AGENTES.filter(a => a.estado === 'trabajando').length;
-  const esperando = DECISIONES.length;
-  const criticas = ALARMAS.filter(a => a.severidad === 'critico').length;
   const nombreModo = MODOS.find(m => m.key === modo)?.nombre ?? '';
   const descModo = MODOS.find(m => m.key === modo)?.desc ?? '';
   // Los días de autonomía NO se escriben a mano: salen de los créditos que hay hoy, con el mismo
   // consumo del plan que usa la vista de Créditos (150 créditos por día, `Math.round(saldo / 150)`).
   // Si el saldo cambia, el menú y la vista dicen lo mismo; si el número estuviera fijo, se
   // desincronizaría en la primera recarga.
-  const dias = Math.max(0, Math.round(TENANT.creditos / 150));
+  // Con el back encendido, los créditos, el plan y el nombre salen del negocio real. Sin back, siguen
+  // saliendo de la demostración: son las dos únicas fuentes y no se mezclan nunca.
+  const datos = useDatos();
   const { plan } = usePlan();
+  const esReal = datos.real && !!datos.negocio;
+  const creditos = esReal ? (datos.negocio as any).creditos : TENANT.creditos;
+  const marca = esReal ? ((datos.negocio as any).name || perfil.marca) : perfil.marca;
+  const planDelNegocio = esReal ? PLANES.find((pl: { key: string }) => pl.key === (datos.negocio as any).plan) : undefined;
+  const planNombre = planDelNegocio?.nombre ?? plan.nombre;
+  const creditosMes = planDelNegocio?.creditosMes ?? plan.creditosMes;
+  const dias = Math.max(0, Math.round(creditos / 150));
   const onb = useOnboarding();
-  const todosLosDias = Math.round(plan.creditosMes / 150);
-  const pctCreditos = Math.min(100, Math.round((TENANT.creditos / plan.creditosMes) * 100));
+  const todosLosDias = Math.round(creditosMes / 150);
+  const pctCreditos = Math.min(100, Math.round((creditos / creditosMes) * 100));
+  // La barra de arriba: con el back encendido cuenta lo que hay de verdad (un negocio nuevo no tiene
+  // nada trabajando, ni decisiones, ni alarmas). Sin back, sigue contando la demostración.
+  const trabajando = esReal ? (datos.resumen ? (datos.resumen.corridas > 0 ? 1 : 0) : 0) : AGENTES.filter(a => a.estado === 'trabajando').length;
+  const esperando = esReal ? 0 : DECISIONES.length;
+  const criticas = esReal ? 0 : ALARMAS.filter(a => a.severidad === 'critico').length;
+  const conversacionesSinLeer = esReal ? (datos.resumen?.conversaciones ?? 0) : esperando;
   // Ir a una vista del menú y cerrar la bandeja en celular: el mismo gesto para la tarjeta de
   // plan y para los ítems de navegación.
   const irA = (v: Vista) => { setVista(v); setMenuAbierto(false); };
@@ -99,19 +112,19 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
             si muestra un dato tiene que poder ir a dónde se toca ese dato. */}
         <div className="sb-plan">
           <div className="sb-plan-top">
-            <div className="sb-plan-name" title={`${perfil.marca}: este panel es de su negocio`}>{perfil.marca}</div>
+            <div className="sb-plan-name" title={`${marca}: este panel es de su negocio`}>{marca}</div>
             <span className="badge badge-purple sb-plan-badge"
-              title={`Plan ${plan.nombre}: ${plan.creditosMes.toLocaleString('es-CO')} créditos por mes, unos ${todosLosDias} días de motor. Se cambia desde Créditos.`}>
-              Plan {plan.nombre}
+              title={`Plan ${planNombre}: ${creditosMes.toLocaleString('es-CO')} créditos por mes, unos ${todosLosDias} días de motor. Se cambia desde Créditos.`}>
+              Plan {planNombre}
             </span>
           </div>
 
           <div className="sb-plan-block" role="button" tabIndex={0}
             onClick={() => irA('creditos')}
             onKeyDown={e => { if (e.key === 'Enter') irA('creditos'); }}
-            title={`Créditos: le quedan ${TENANT.creditos.toLocaleString('es-CO')} de ${plan.creditosMes.toLocaleString('es-CO')} del plan del mes. Tóquelo para ver en qué se va cada crédito`}>
+            title={`Créditos: le quedan ${creditos.toLocaleString('es-CO')} de ${creditosMes.toLocaleString('es-CO')} del plan del mes. Tóquelo para ver en qué se va cada crédito`}>
             <div className="sb-plan-cred">
-              <span className="sb-plan-num">{TENANT.creditos.toLocaleString('es-CO')}</span>
+              <span className="sb-plan-num">{creditos.toLocaleString('es-CO')}</span>
               <span className="sb-plan-unit">créditos</span>
               <span className="sb-plan-dias"
                 title={`Autonomía: al consumo actual (150 créditos por día) al motor le quedan ${dias} días sin que recargue`}>
@@ -138,7 +151,7 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
             <n.Icon size={17} />
             <span className="nav-label">{n.nombre}</span>
             {n.key === 'conversaciones' && esperando > 0 && (
-              <span className="badge badge-amber" style={{ marginLeft: 'auto', fontSize: 9 }}>{esperando}</span>
+              <span className="badge badge-amber" style={{ marginLeft: 'auto', fontSize: 9 }}>{conversacionesSinLeer}</span>
             )}
           </div>
         ))}
@@ -222,7 +235,7 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
             <div className="ticker" style={{ marginLeft: 8 }}>
               <span className="ticker-label">MOTOR</span>
               <span className="ticker-text">
-                {AGENTES.find(a => a.estado === 'trabajando')?.accion} · {AGENTES[3].accion}
+                {(esReal ? 'Su negocio está conectado al motor: lo que hace aparece en Hoy' : `${AGENTES.find(a => a.estado === 'trabajando')?.accion} · ${AGENTES[3].accion}`)}
               </span>
             </div>
 
@@ -281,7 +294,7 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
               <div style={{ fontWeight: 800, fontSize: 13 }}>Lo que necesita su atención</div>
               <span className="badge badge-red" style={{ fontSize: 10 }}>{criticas} críticas</span>
             </div>
-            {ALARMAS.slice(0, 3).map(a => (
+            {ALARMAS.slice(0, esReal ? 0 : 3).map(a => (
               <div key={a.id} className="notif" onClick={() => { setNotif(false); setVista('hoy'); }} style={{ cursor: 'pointer' }}>
                 <div className="notif-ico" style={{ color: a.severidad === 'critico' ? 'var(--red)' : 'var(--amber)' }}>
                   {a.severidad === 'critico' ? '🔴' : '🟠'}

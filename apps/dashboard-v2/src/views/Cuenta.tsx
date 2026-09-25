@@ -2,13 +2,35 @@ import { useState } from 'react';
 import { Card, Badge, Button, Dinero, NotaMoneda } from '../components/ui';
 import { ViewHead, Gauge, BarRow } from '../components/viz';
 import { I_Settings, I_Check, I_Shield, I_Lock, I_Plus, I_Zap, I_Credit, I_Link, I_Clock, I_Sun, I_X } from '../components/icons';
-import { MODOS, EXCEPCIONES, FRENOS, CONEXIONES, CREDITOS_MOV, TENANT, INVESTIGACION_MERCADO, type Modo, type Conexion } from '../data/demo';
+import { MODOS, EXCEPCIONES, FRENOS, CONEXIONES, CREDITOS_MOV, TENANT, INVESTIGACION_MERCADO, PLANES, type Modo, type Conexion } from '../data/demo';
 import { useDetalle, type Bloque } from '../components/Detalle';
+// La capa de datos del panel: con el back encendido (`datos.real`), esta pantalla muestra el negocio
+// real, el estado del onboarding y el libro de créditos del back. Lo que es del negocio de ejemplo
+// (el historial de autonomía, los frenos y las conexiones de la demo) se muestra sólo sin back.
+import { useDatos } from '../api/datos';
+import { EstadoVacio } from '../components/EstadoVacio';
+import { PASOS_ONB } from '../data/onboarding';
 
 const NOMBRE: Record<Modo, string> = { auto: 'Automático', shared: 'Compartido', manual: 'Manual' };
 
 /** La hora real de cada movimiento: es lo que hace que el historial no sea un texto fijo. */
 const ahora = () => new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+
+/** La fecha del back, en corto: día, mes y año. Si no se puede leer, se muestra tal cual vino. */
+const diaDe = (iso?: string | null) => {
+  if (!iso) return '';
+  const f = new Date(iso);
+  return isNaN(f.getTime()) ? String(iso) : f.toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' });
+};
+
+/** La fecha y hora del back: para el libro de créditos, donde importa el orden de los movimientos. */
+const fechaHoraDe = (iso?: string | null) => {
+  if (!iso) return '';
+  const f = new Date(iso);
+  return isNaN(f.getTime())
+    ? String(iso)
+    : f.toLocaleString('es-CO', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+};
 
 const palabraCuenta = (n: number) => (n === 1 ? 'una cosa' : `${n} cosas`);
 
@@ -22,6 +44,8 @@ export function ViewCuenta({ setToast, modo, setModo }: { setToast: (t: string) 
 
 function ViewCuentaNegocio({ setToast, modo, setModo }: { setToast: (t: string) => void; modo: Modo; setModo: (m: Modo) => void }) {
   const detalle = useDetalle();
+  // La fuente de todo: con el back encendido (`datos.real`), esta pantalla lee del back y nada del demo.
+  const datos = useDatos();
   const [niveles, setNiveles] = useState<Record<string, Modo>>(
     Object.fromEntries(EXCEPCIONES.map(e => [e.key, e.nivel])),
   );
@@ -176,7 +200,22 @@ function ViewCuentaNegocio({ setToast, modo, setModo }: { setToast: (t: string) 
     ],
   });
 
-  const pctCreditos = Math.round((TENANT.creditos / TENANT.creditosMes) * 100);
+  // ---------------------------------------------------------------------------------------------
+  // DE DÓNDE SALEN LOS CRÉDITOS, EL PLAN Y LOS DÍAS — con el back encendido son los del negocio
+  // real; sin back, los del negocio de ejemplo. El plan se busca en el catálogo de planes (eso es
+  // producto, no datos del negocio) y los días salen del mismo consumo que usa el menú (150/día):
+  // así el menú y esta pantalla dicen siempre el mismo número.
+  // ---------------------------------------------------------------------------------------------
+  const saldoBack = datos.creditos?.saldo ?? datos.negocio?.creditos ?? 0;
+  const planBack = PLANES.find(p => p.key === (datos.negocio?.plan || ''));
+  const creditos = datos.real ? saldoBack : TENANT.creditos;
+  const creditosMes = datos.real ? (planBack?.creditosMes ?? TENANT.creditosMes) : TENANT.creditosMes;
+  const pctCreditos = creditosMes > 0 ? Math.min(100, Math.round((creditos / creditosMes) * 100)) : 0;
+  const diasAutonomia = datos.real ? Math.max(0, Math.round(creditos / 150)) : TENANT.diasAutonomia;
+  /** La fecha en que el motor se detendría: se calcula con los créditos de hoy, no se escribe a mano. */
+  const seDetieneEl = new Date(Date.now() + diasAutonomia * 24 * 60 * 60 * 1000)
+    .toLocaleDateString('es-CO', { day: 'numeric', month: 'long' });
+  const movimientosBack = datos.creditos?.movimientos ?? [];
   const conectadas = CONEXIONES.filter(c => c.estado === 'conectada').length;
   const porConectar = CONEXIONES.filter(c => c.estado !== 'conectada').length;
 
@@ -185,14 +224,97 @@ function ViewCuentaNegocio({ setToast, modo, setModo }: { setToast: (t: string) 
       <ViewHead
         icon={<I_Settings size={19} />}
         titulo="Cuenta y autonomía"
-        sub="Cuánto decide la IA y cuánto decide usted. Se puede cambiar cuando quiera, sin perder nada."
-        nums={[
+        sub={datos.real
+          ? 'Su negocio, sus créditos y cuánto decide la IA. Todo lo de acá sale del servidor, no de la demostración.'
+          : 'Cuánto decide la IA y cuánto decide usted. Se puede cambiar cuando quiera, sin perder nada.'}
+        nums={datos.real ? [
+          { v: NOMBRE[modo], l: 'modo actual', c: 'var(--purple3)' },
+          { v: creditos.toLocaleString('es-CO'), l: 'créditos disponibles' },
+          { v: String(diasAutonomia), l: 'días de autonomía', c: 'var(--amber)' },
+          { v: `${datos.onboarding?.hechos.length ?? 0}/5`, l: 'primeros pasos', c: 'var(--green)' },
+        ] : [
           { v: NOMBRE[modo], l: 'modo actual', c: 'var(--purple3)' },
           { v: TENANT.creditos.toLocaleString('es-CO'), l: 'créditos disponibles' },
           { v: String(TENANT.diasAutonomia), l: 'días de autonomía', c: 'var(--amber)' },
           { v: `${conectadas}/${CONEXIONES.length}`, l: 'conexiones activas', c: 'var(--green)' },
         ]}
       />
+
+      {/* ============ EL NEGOCIO REAL Y SUS PRIMEROS PASOS (sólo con el back encendido) ============
+          Estas dos tarjetas son la cara del negocio real: el nombre, el plan, la zona y los créditos
+          que devuelve el back, y el estado del onboarding guardado allí. Sin back no se muestran. */}
+      {datos.real && (
+        <div className="duo" style={{ marginTop: 16 }}>
+          <Card
+            title={<span className="row" style={{ gap: 8 }}><I_Settings size={14} style={{ color: 'var(--purple3)' }} /> Su negocio</span>}
+            action={<Badge tone="green">{datos.negocio?.plan || 'sin plan'}</Badge>}>
+            {!datos.negocio ? (
+              <EstadoVacio
+                titulo={datos.cargando ? 'Leyendo su negocio del back…' : 'No se pudo leer su negocio del servidor'}
+                texto={datos.cargando
+                  ? 'El panel está leyendo el negocio del servidor. Nada de lo que se ve acá sale de la demostración.'
+                  : (datos.error || 'El panel está conectado al back, pero la lectura del negocio no trajo datos. Lo que se vea acá nunca sale de la demostración.')}
+                accion={datos.cargando ? 'Leyendo…' : 'Volver a leer el back'}
+                onAccion={() => { if (!datos.cargando) void datos.refrescar(); }} />
+            ) : (
+              <>
+                <div className="datos-row">
+                  <div className="dato"><span className="dato-l">Nombre</span><span className="dato-v">{datos.negocio.name}</span></div>
+                  <div className="dato"><span className="dato-l">Plan</span><span className="dato-v">{datos.negocio.plan}</span></div>
+                  <div className="dato"><span className="dato-l">Zona</span><span className="dato-v">{datos.negocio.zona || 'sin zona'}</span></div>
+                  <div className="dato"><span className="dato-l">Créditos</span><span className="dato-v" style={{ color: 'var(--amber)' }}>{creditos.toLocaleString('es-CO')}</span></div>
+                </div>
+                <div className="bs" style={{ marginTop: 12 }}>{datos.negocio.description || 'Su negocio todavía no tiene descripción.'}</div>
+                <div className="tiny muted" style={{ marginTop: 6 }}>
+                  {datos.negocio.industry ? `${datos.negocio.industry} · ` : ''}cuenta creada el {diaDe(datos.negocio.created_at) || 'sin fecha'} · id {datos.negocio.id}
+                </div>
+                <div className="acc-why">
+                  Estos datos son suyos y salen del back: <b>no son la demostración</b>. El plan define
+                  cuántos créditos entran por mes y de ahí salen los días de autonomía.
+                </div>
+              </>
+            )}
+          </Card>
+
+          <Card
+            title={<span className="row" style={{ gap: 8 }}><I_Check size={14} style={{ color: 'var(--purple3)' }} /> Primeros pasos</span>}
+            action={<Badge tone={datos.onboarding?.arrancado ? 'green' : 'amber'}>
+              {datos.onboarding?.arrancado ? 'el motor está en marcha' : `${datos.onboarding?.hechos.length ?? 0} de 5 hechos`}
+            </Badge>}>
+            <div className="onb-datos">
+              {PASOS_ONB.map(p => (
+                <div key={p.n} className="dato">
+                  <span className="dato-l">{p.n}. {p.t}</span>
+                  <span className="dato-v" style={{ color: datos.onboarding?.hechos.includes(p.n) ? 'var(--green)' : 'var(--muted2)' }}>
+                    {datos.onboarding?.hechos.includes(p.n) ? 'hecho' : 'falta'}
+                  </span>
+                </div>
+              ))}
+            </div>
+            {datos.onboarding?.arrancado ? (
+              <div className="bs" style={{ marginTop: 12 }}>
+                El motor arrancó con lo que usted le puso. Lo que falte lo toma en la próxima vuelta: puede completarlo cuando quiera.
+              </div>
+            ) : (
+              <>
+                <div className="bs" style={{ marginTop: 12 }}>
+                  El motor todavía no arrancó. Se puede arrancar con lo que haya: lo que falte lo deduce de su negocio y de sus conversaciones.
+                </div>
+                <div className="row" style={{ gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+                  <Button className="btn-sm"
+                    title="Arranca el motor con lo que ya está cargado (POST /api/onboarding/arrancar). Desde ahí trabaja solo y lo que haga queda en Su día."
+                    onClick={() => void datos.arrancar()}>
+                    <I_Zap size={13} /> Arrancar el motor
+                  </Button>
+                </div>
+              </>
+            )}
+            <div className="acc-why">
+              El estado de los cinco pasos es el que quedó guardado en el back: no es una copia de esta visita.
+            </div>
+          </Card>
+        </div>
+      )}
 
       {/* ============ EL DIAL ============ */}
       <div className="csec" style={{ marginTop: 0 }}>
@@ -237,10 +359,14 @@ function ViewCuentaNegocio({ setToast, modo, setModo }: { setToast: (t: string) 
           <I_Credit size={22} style={{ color: 'var(--amber)' }} />
           <div style={{ flex: 1, minWidth: 220 }}>
             <Gauge pct={pctCreditos} label="Días de autonomía restantes"
-              detalle={`${TENANT.creditos.toLocaleString('es-CO')} de ${TENANT.creditosMes.toLocaleString('es-CO')} créditos`} />
+              detalle={`${creditos.toLocaleString('es-CO')} de ${creditosMes.toLocaleString('es-CO')} créditos`} />
             <div className="bs" style={{ marginTop: 8 }}>
-              Con el modo actual el motor trabaja <b style={{ color: 'var(--purple3)' }}>{TENANT.diasAutonomia} días más</b> y se detiene el 5 de octubre.
-              El modo Automático consume más: bajaría a 8 días.
+              {diasAutonomia === 0
+                ? <>Con los créditos de hoy el motor <b style={{ color: 'var(--amber)' }}>no tiene días de autonomía</b>: se detiene hasta que recargue.</>
+                : <>Con el modo actual el motor trabaja <b style={{ color: 'var(--purple3)' }}>{diasAutonomia} días más</b> y se detendría el {seDetieneEl}.</>}
+              {datos.real
+                ? ' El plan y los créditos son los que hay cargados en su cuenta hoy.'
+                : ' El modo Automático consume más: bajaría a 8 días.'}
             </div>
           </div>
           {autoRecarga && <Badge tone="green">auto-recarga activa</Badge>}
@@ -263,12 +389,16 @@ function ViewCuentaNegocio({ setToast, modo, setModo }: { setToast: (t: string) 
         {autoRecarga && (
           <div className="tiny" style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 12, color: 'var(--green)', fontWeight: 700 }}>
             <I_Check size={13} /> Auto-recarga activa desde las {autoRecargaDesde}: cuando los créditos bajen de 500
-            se paga el próximo paquete y el motor <b>no se detiene el 5 de octubre</b>. Se apaga con el mismo botón, sin perder nada del plan.
+            se paga el próximo paquete y el motor <b>no se detiene el {seDetieneEl}</b>. Se apaga con el mismo botón, sin perder nada del plan.
+            {datos.real ? ' Es una decisión de esta visita: el back todavía no guarda la auto-recarga.' : ''}
           </div>
         )}
       </Card>
 
-      {/* ============ EXCEPCIONES Y FRENOS ============ */}
+      {/* ============ EXCEPCIONES Y FRENOS ============
+          Las 7 excepciones y los 7 frenos son los del negocio de ejemplo: con el back encendido NO se
+          muestran, porque no hay nada de esto guardado en el back todavía. */}
+      {!datos.real && (<>
       <div className="duo" style={{ marginTop: 16 }}>
         <Card
           title={<span className="row" style={{ gap: 8 }}><I_Settings size={14} style={{ color: 'var(--purple3)' }} /> Excepciones por tipo de acción</span>}
@@ -330,9 +460,13 @@ function ViewCuentaNegocio({ setToast, modo, setModo }: { setToast: (t: string) 
           </div>
         </Card>
       </div>
+      </>)}
 
       {/* ============ CONEXIONES Y CRÉDITOS ============ */}
       <div className="duo" style={{ marginTop: 16 }}>
+        {/* Las conexiones que se ven acá son las del negocio de ejemplo: con el back encendido no se
+            muestran, porque el back todavía no administra las conexiones de la cuenta. */}
+        {!datos.real && (
         <Card
           title={<span className="row" style={{ gap: 8 }}><I_Link size={14} style={{ color: 'var(--green)' }} /> Conexiones</span>}
           action={<Badge tone={porConectar ? 'amber' : 'green'}>{conectadas} de {CONEXIONES.length}</Badge>}
@@ -427,33 +561,66 @@ function ViewCuentaNegocio({ setToast, modo, setModo }: { setToast: (t: string) 
             Si mañana cambia de herramienta, el motor sigue funcionando sin tocar una línea.
           </div>
         </Card>
+        )}
 
         <div className="col">
         <Card
           title={<span className="row" style={{ gap: 8 }}><I_Credit size={14} style={{ color: 'var(--amber)' }} /> Créditos</span>}
-          action={<Badge tone="amber">{TENANT.creditos.toLocaleString('es-CO')} disponibles</Badge>}
+          action={<Badge tone="amber">{creditos.toLocaleString('es-CO')} disponibles</Badge>}
         >
           <div style={{ marginBottom: 16 }}>
-            <Gauge pct={100 - pctCreditos} label="Consumo del mes" detalle={`${100 - pctCreditos}% usado`} color="var(--grad)" />
+            <Gauge pct={100 - pctCreditos} label="Consumo del mes"
+              detalle={`${100 - pctCreditos}% usado · ${creditosMes.toLocaleString('es-CO')} por mes`} color="var(--grad)" />
           </div>
+          {/* El desglose de consumo es del negocio de ejemplo: con el back encendido en su lugar van
+              los movimientos reales del libro de créditos (d.creditos.movimientos). */}
+          {!datos.real && (<>
           <div className="bs" style={{ marginBottom: 6 }}>Qué consume el motor, en claro:</div>
           <BarRow label="Campañas" valor={180} max={180} color="var(--purple2)" />
           <BarRow label="Análisis IA" valor={40} max={180} color="var(--green)" />
           <BarRow label="Conversaciones" valor={0} max={180} color="var(--muted)" />
           <div className="bs" style={{ marginTop: 8 }}>Las conversaciones no consumen créditos: están incluidas en el plan Pro.</div>
+          </>)}
+          {datos.real && (
+            <div className="bs" style={{ marginBottom: 6 }}>
+              El libro de créditos de su cuenta, con el saldo que quedó después de cada movimiento:
+            </div>
+          )}
 
           <div className="guards" style={{ marginTop: 16 }}>
-            {CREDITOS_MOV.map((m, i) => (
-              <div key={i} className="guard">
-                <span style={{ color: m.tipo === 'entrada' ? 'var(--green)' : 'var(--muted)', flexShrink: 0 }}>
-                  {m.tipo === 'entrada' ? <I_Plus size={14} /> : <I_Clock size={14} />}
-                </span>
-                <span className="guard-lb">{m.detalle}<small>{m.fecha}</small></span>
-                <span className="guard-val" style={{ color: m.tipo === 'entrada' ? 'var(--green)' : 'var(--muted)' }}>
-                  {m.cantidad > 0 ? '+' : ''}{m.cantidad}
-                </span>
-              </div>
-            ))}
+            {datos.real ? (
+              movimientosBack.length === 0 ? (
+                <EstadoVacio
+                  {...(datos.cargando
+                    ? { titulo: 'Leyendo el back…', texto: 'El panel está leyendo el libro de créditos del servidor: en un momento dice qué hay.' }
+                    : { titulo: 'Todavía no hay movimientos', texto: 'Cuando el motor gaste o reciba créditos, cada movimiento queda acá con su motivo, su detalle y el saldo que quedó. Todavía no hay ninguno.' })} />
+              ) : movimientosBack.map((m, i) => (
+                <div key={i} className="guard">
+                  <span style={{ color: m.delta > 0 ? 'var(--green)' : 'var(--muted)', flexShrink: 0 }}>
+                    {m.delta > 0 ? <I_Plus size={14} /> : <I_Clock size={14} />}
+                  </span>
+                  <span className="guard-lb">
+                    {m.motivo || 'movimiento de créditos'}
+                    <small>{m.detalle ? `${m.detalle} · ` : ''}saldo {m.saldo} · {fechaHoraDe(m.created_at)}</small>
+                  </span>
+                  <span className="guard-val" style={{ color: m.delta > 0 ? 'var(--green)' : 'var(--muted)' }}>
+                    {m.delta > 0 ? '+' : ''}{m.delta}
+                  </span>
+                </div>
+              ))
+            ) : (
+              CREDITOS_MOV.map((m, i) => (
+                <div key={i} className="guard">
+                  <span style={{ color: m.tipo === 'entrada' ? 'var(--green)' : 'var(--muted)', flexShrink: 0 }}>
+                    {m.tipo === 'entrada' ? <I_Plus size={14} /> : <I_Clock size={14} />}
+                  </span>
+                  <span className="guard-lb">{m.detalle}<small>{m.fecha}</small></span>
+                  <span className="guard-val" style={{ color: m.tipo === 'entrada' ? 'var(--green)' : 'var(--muted)' }}>
+                    {m.cantidad > 0 ? '+' : ''}{m.cantidad}
+                  </span>
+                </div>
+              ))
+            )}
           </div>
           <div className="datos-row" style={{ marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--border)' }}>
             <div className="dato"><span className="dato-l">Se repone</span><span className="dato-v" style={{ color: autoRecarga ? 'var(--green)' : 'var(--amber)' }}>{autoRecarga ? 'automático' : 'manual'}</span></div>
@@ -471,6 +638,10 @@ function ViewCuentaNegocio({ setToast, modo, setModo }: { setToast: (t: string) 
           </div>
         </Card>
 
+        {/* ============ LA AUTONOMÍA DE ESTA VISITA (demo) ============
+            El historial de autonomía y sus movimientos son del negocio de ejemplo: con el back
+            encendido no se muestran, porque ese historial no se guarda en el servidor todavía. */}
+        {!datos.real && (
         <div className="card" style={{ background: 'linear-gradient(120deg, rgba(168,85,247,.09), transparent)' }}>
           <div className="row" style={{ gap: 12, alignItems: 'flex-start' }}>
             <I_Sun size={20} style={{ color: 'var(--purple3)', flexShrink: 0 }} />
@@ -499,6 +670,7 @@ function ViewCuentaNegocio({ setToast, modo, setModo }: { setToast: (t: string) 
             <Badge tone="green">Puede volver cuando quiera</Badge>
           </div>
         </div>
+        )}
         </div>
       </div>
     </div>

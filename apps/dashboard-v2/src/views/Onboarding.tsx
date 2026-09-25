@@ -6,6 +6,7 @@ import { useDetalle } from '../components/Detalle';
 import type { Vista } from '../components/Layout';
 import { usePlan } from '../lib/plan';
 import { useOnboarding } from '../lib/onboarding';
+import { useDatos } from '../api/datos';
 import { CamposPaso, BloqueConexiones, BloqueArranque, AvisoVerificacion } from '../components/PasoOnboarding';
 import { COSTO_ARRANQUE } from '../data/onboarding';
 
@@ -21,10 +22,17 @@ export function ViewOnboarding({ setToast, setVista }: { setToast: (t: string) =
   const onb = useOnboarding();
   const detalle = useDetalle();
   const { plan } = usePlan();
+  const datos = useDatos();
   const [pendiente, setPendiente] = useState(false);
   const paso = onb.pasos.find(p => p.n === onb.paso)!;
   const ultimo = paso.n === onb.pasos.length;
-  const esteListo = onb.listos.includes(paso.n);
+  // De dónde salen los pasos hechos y el arranque: con el back encendido, del negocio real (lo que el
+  // negocio tiene guardado en el servidor); sin back, del estado de la demostración. Son las dos únicas
+  // fuentes y no se mezclan: el contador «N de 5» sale de la misma que el resto de la pantalla.
+  const conBack = datos.real && !!datos.onboarding;
+  const listos = conBack ? (datos.onboarding as { hechos: number[] }).hechos : onb.listos;
+  const arrancado = conBack ? (datos.onboarding as { arrancado: boolean }).arrancado : onb.arrancado;
+  const esteListo = listos.includes(paso.n);
   const puesto = (id: string) => {
     const v = onb.datos[id];
     return Array.isArray(v) ? v.length > 0 : !!String(v || '').trim();
@@ -44,8 +52,8 @@ export function ViewOnboarding({ setToast, setVista }: { setToast: (t: string) =
         titulo="Primeros pasos"
         sub="Lo que el motor no puede deducir solo. Nada es obligatorio: lo que no ponga, lo saca de su cuenta y de sus conversaciones."
         nums={[
-          { v: `${onb.listos.length} de ${onb.pasos.length}`, l: 'pasos hechos', c: onb.listos.length === onb.pasos.length ? 'var(--green)' : 'var(--purple3)' },
-          { v: onb.arrancado ? 'En marcha' : 'Sin arrancar', l: 'el motor', c: onb.arrancado ? 'var(--green)' : 'var(--amber)' },
+          { v: `${listos.length} de ${onb.pasos.length}`, l: 'pasos hechos', c: listos.length === onb.pasos.length ? 'var(--green)' : 'var(--purple3)' },
+          { v: arrancado ? 'En marcha' : 'Sin arrancar', l: 'el motor', c: arrancado ? 'var(--green)' : 'var(--amber)' },
           { v: `Plan ${plan.nombre}`, l: `${plan.creditosMes.toLocaleString('es-CO')} créditos por mes` },
           { v: String(COSTO_ARRANQUE), l: 'créditos del arranque' },
         ]}
@@ -54,10 +62,10 @@ export function ViewOnboarding({ setToast, setVista }: { setToast: (t: string) =
       {/* El stepper: el mismo de Campañas, para que las dos etapas del producto se lean igual. */}
       <div className="pasos">
         {onb.pasos.map(p => (
-          <button key={p.n} className={`paso ${onb.paso === p.n ? 'on' : ''} ${onb.listos.includes(p.n) ? 'done' : ''}`}
-            title={`${p.t}: ${p.d}. ${onb.listos.includes(p.n) ? 'Ya está hecho: puede volver a cambiarlo.' : 'Falta.'}`}
+          <button key={p.n} className={`paso ${onb.paso === p.n ? 'on' : ''} ${listos.includes(p.n) ? 'done' : ''}`}
+            title={`${p.t}: ${p.d}. ${listos.includes(p.n) ? 'Ya está hecho: puede volver a cambiarlo.' : 'Falta.'}`}
             onClick={() => { onb.irA(p.n); setPendiente(false); }}>
-            <span className="paso-n">{onb.listos.includes(p.n) && onb.paso !== p.n ? <I_Check size={13} /> : p.icono}</span>
+            <span className="paso-n">{listos.includes(p.n) && onb.paso !== p.n ? <I_Check size={13} /> : p.icono}</span>
             <span style={{ minWidth: 0 }}>
               <span className="paso-t">{p.t}</span>
               <span className="paso-d">{p.d}</span>
@@ -84,7 +92,7 @@ export function ViewOnboarding({ setToast, setVista }: { setToast: (t: string) =
             <BloqueConexiones />
             <AvisoVerificacion ir={() => setVista('kyc')} />
             <BloqueArranque />
-            {onb.arrancado && (
+            {arrancado && (
               <div className="row" style={{ gap: 9, marginTop: 12, flexWrap: 'wrap' }}>
                 <Button className="btn-sm" title="Vaya a su panel: lo que el motor ya hizo le espera en Su día"
                   onClick={() => setVista('hoy')}><I_ArrowRight size={13} /> Ir a mi panel</Button>
@@ -159,7 +167,7 @@ export function ViewOnboarding({ setToast, setVista }: { setToast: (t: string) =
 
         <Card
           title={<span className="row" style={{ gap: 8 }}><I_Clock size={14} style={{ color: 'var(--green)' }} /> Cuánto tarda</span>}
-          action={<Badge tone="green">{onb.arrancado ? 'ya está en marcha' : 'unas 3 horas'}</Badge>}
+          action={<Badge tone="green">{arrancado ? 'ya está en marcha' : 'unas 3 horas'}</Badge>}
         >
           <div className="bs">
             Con las cuentas conectadas, el motor tarda <b>unas 3 horas</b> en tener el primer informe del mercado

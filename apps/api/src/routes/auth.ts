@@ -11,6 +11,9 @@ import { abrirSesion, claveCorrecta, correoNormal, exigirSesion, huellaDeClave }
 
 type Cuerpo = { nombre?: string; email?: string; clave?: string };
 
+/** Los créditos que trae el plan al empezar. El plan se cambia después desde Créditos. */
+const CREDITOS_PLAN = 2000;
+
 export async function authRoutes(app: FastifyInstance) {
   /** Crear cuenta. Crea también el negocio: el negocio es del usuario desde el primer momento. */
   app.post('/api/auth/registro', async (req, reply) => {
@@ -44,6 +47,14 @@ export async function authRoutes(app: FastifyInstance) {
     );
 
     await execute(`INSERT INTO onboarding (business_id) VALUES ($1) ON CONFLICT (business_id) DO NOTHING`, [negocioId]);
+
+    // Los créditos del plan del mes. Es la asignación del plan, no un dato de ejemplo: queda escrita en el
+    // libro con su motivo, así el saldo y su historia nunca se contradicen.
+    await execute(
+      `INSERT INTO movimientos_creditos (business_id, delta, motivo, detalle, saldo)
+       VALUES ($1, $2, 'plan', 'Créditos del plan del mes', $2)`,
+      [negocioId, CREDITOS_PLAN],
+    );
 
     const token = await abrirSesion(user[0].id);
     return reply.status(201).send({ token, usuario: { ...user[0], business_id: negocioId } });

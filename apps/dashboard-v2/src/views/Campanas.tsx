@@ -7,21 +7,102 @@ import { Stepper, IngestaManual, Galeria, PASOS_CAMPANA, type PasoCampana } from
 import { MotorEnVivo } from '../components/MotorEnVivo';
 import { EnLinea } from '../components/EnLinea';
 import { CampanaViva } from '../components/CampanaViva';
-import { I_Megaphone, I_Check, I_Refresh, I_Vote, I_File, I_Zap, I_Trend, I_Eye, I_Robot, I_Play, I_Upload, I_Pause } from '../components/icons';
+import { I_Megaphone, I_Check, I_Refresh, I_Vote, I_File, I_Zap, I_Trend, I_Eye, I_Robot, I_Play, I_Upload, I_Pause, I_Plus } from '../components/icons';
 import type { Vista } from '../components/Layout';
 import { CAMPANAS, TENANT, type Campana, type Modo } from '../data/demo';
 import { usePlan } from '../lib/plan';
 import { PERFILES, puntaje, ranking, objeciones, TARIFA } from '../data/mirofish';
 import { useDetalle } from '../components/Detalle';
 import { numeroConMiles } from '../lib/perfil';
+import { useDatos, type Campana as CampanaBack } from '../api/datos';
+import { EstadoVacio } from '../components/EstadoVacio';
+import { baseApi, token } from '../api/cliente';
 
-const GASTO_LB = CAMPANAS.map(c => c.nombre.split(' ')[0]);
+// =============================================================================================
+// DE DÓNDE SALEN LAS CAMPAÑAS DE ESTA PANTALLA
+//
+// Con el back encendido (`?api=…` y sesión) la lista sale de las campañas del negocio; sin back,
+// sigue la demo de siempre, que es el respaldo del link de revisión. La decisión se toma una sola
+// vez, en `fuente`, dentro de la pantalla: de ahí para abajo todo lee lo mismo.
+//
+// Lo que el back no manda todavía (el texto del anuncio, el alcance, el costo por venta) no se
+// inventa: queda en «—» o en cero y la pantalla lo dice. Mezclar campañas del back con las de
+// ejemplo sería mentir sobre lo que hay.
+// =============================================================================================
 
-// Las dos campañas que nombran las recomendaciones del panel: la que mejor devuelve (7,3x) y la que
-// va abajo del promedio (2,4x). Se leen de los datos, no se escriben a mano: si cambia el número,
-// cambia la recomendación.
-const PACK = CAMPANAS.find(c => c.roas === '7,3x') ?? CAMPANAS[CAMPANAS.length - 1];
-const MARCA = CAMPANAS.find(c => c.roas === '2,4x') ?? CAMPANAS[CAMPANAS.length - 1];
+/** El número detrás del ROAS como se lee en la pantalla: «7,3x» → 7.3. Sin dato, cero. */
+const roasNum = (r: string) => Number(String(r).replace('x', '').replace(',', '.')) || 0;
+
+/**
+ * Las dos campañas que nombran las recomendaciones del panel: la que mejor devuelve y la que va
+ * más abajo. Se leen de los datos, no se escriben a mano: si cambia el número, cambia la
+ * recomendación. Las que todavía no tienen retorno no entran; si ninguna lo tiene, la primera de
+ * la lista ocupa su lugar.
+ */
+const mejorYPeor = (cs: Campana[]) => {
+  const conDatos = cs.filter(c => c.roas !== '—');
+  const orden = [...(conDatos.length ? conDatos : cs)].sort((a, b) => roasNum(b.roas) - roasNum(a.roas));
+  return { pack: orden[0], marca: orden[orden.length - 1] };
+};
+
+/** La primera letra en mayúscula: la forma que guarda el back («ventas») se lee «Ventas». */
+const capitalizar = (t: string) => (t ? t.charAt(0).toUpperCase() + t.slice(1) : '');
+
+/**
+ * El estado del back, en el vocabulario de esta pantalla. El back guarda en minúscula y hoy sólo
+ * escribe «borrador»; lo que no reconoce queda en Borrador, que es el estado que no gasta nada.
+ */
+const estadoDeBack = (estado: string): Campana['estado'] => {
+  const e = (estado || '').toLowerCase();
+  if (e.startsWith('activ')) return 'Activa';
+  if (e.includes('pausa')) return 'En pausa';
+  if (e.includes('final') || e.includes('termin')) return 'Finalizada';
+  return 'Borrador';
+};
+
+/** El formato de la pieza que se ve en el marco de la tarjeta en vivo, leído de la forma de la campaña. */
+const formatoDeBack = (forma: string): Campana['formato'] => {
+  const f = (forma || '').toLowerCase();
+  if (f.includes('reel')) return 'Reel';
+  if (f.includes('video') || f.includes('historia')) return 'Video vertical';
+  if (f.includes('carrusel')) return 'Carrusel';
+  return 'Imagen';
+};
+
+/** La fecha del back, en corto: «creada el 12 de septiembre». */
+const fechaDeBack = (iso: string) => {
+  const f = new Date(iso);
+  return isNaN(f.getTime()) ? 'sin fecha' : f.toLocaleDateString('es-CO', { day: 'numeric', month: 'long' });
+};
+
+/**
+ * Una campaña del back, con la forma que ya usa esta pantalla: nombre, forma, estado, presupuesto,
+ * destinos, piezas, ROAS y gasto son los del back, tal como vienen.
+ */
+const campanaDeBack = (c: CampanaBack): Campana => ({
+  id: c.id,
+  nombre: c.nombre,
+  tipo: capitalizar(c.forma) || 'Campaña',
+  emoji: '📣',
+  estado: estadoDeBack(c.estado),
+  roas: Number(c.roas) > 0 ? `${Number(c.roas).toFixed(1).replace('.', ',')}x` : '—',
+  presupuesto: `$${Math.round(Number(c.presupuesto) || 0)}/día`,
+  alcance: '—',
+  conversiones: 0,
+  pct: 0,
+  score: 0,
+  artefactos: Number(c.piezas) || 0,
+  formato: formatoDeBack(c.forma),
+  medida: c.forma || 'sin definir',
+  copy: c.objetivo || 'Todavía no hay una pieza publicada para esta campaña.',
+  cta: '—',
+  color: '#4A7C59',
+  plataforma: (c.destinos || []).join(' + ') || 'sin destinos cargados',
+  publico: '—',
+  fechas: `creada el ${fechaDeBack(c.created_at)}`,
+  gastado: `$${Math.round(Number(c.gasto) || 0)}`,
+  costo: '—',
+});
 
 /** Lo que una campaña tiene asignado por día, leído de sus propios datos: '$40/día' → 40. */
 const presuDelTexto = (presupuesto: string) => Number(presupuesto.replace(/[^0-9]/g, ''));
@@ -34,6 +115,23 @@ type EstadoCamp = Campana['estado'];
 export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: string) => void; modo: Modo; setVista: (v: Vista) => void }) {
   const detalle = useDetalle();
   const { plan } = usePlan();
+  const d = useDatos();
+  // --- La fuente de esta pantalla: el back si hay sesión, la demo si no. De aquí salen la lista,
+  // el gasto por día, el conteo de artefactos y las dos campañas que nombran las recomendaciones.
+  // El demo queda intacto para cuando no hay back: es el respaldo del link de revisión.
+  const fuente: Campana[] = d.real ? d.campanas.map(campanaDeBack) : CAMPANAS;
+  // Un negocio conectado que todavía no tiene campañas no muestra la demo: muestra su estado vacío.
+  const sinNada = d.real && fuente.length === 0;
+  const { pack: PACK, marca: MARCA } = mejorYPeor(fuente);
+  const gastoLb = fuente.map(c => c.nombre.split(' ')[0]);
+  // El ROAS que corona la cabecera: en la demo es el 3,8x del negocio de ejemplo; con el back es el
+  // promedio de las campañas que ya devuelven algo, y «—» mientras ninguna lo mida.
+  const conRetorno = fuente.filter(c => c.roas !== '—');
+  const roasMes = !d.real
+    ? '3,8x'
+    : conRetorno.length
+      ? `${(conRetorno.reduce((s, c) => s + roasNum(c.roas), 0) / conRetorno.length).toFixed(1).replace('.', ',')}x`
+      : '—';
   const [paso, setPaso] = useState<PasoCampana>(1);
   const [manual, setManual] = useState(false);
   // --- Lo que un botón cambia en la pantalla. Nada de avisos que se van solos: la campaña se muda
@@ -46,6 +144,12 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
   const [publicadas, setPublicadas] = useState<string[]>([]);
   const [corregidas, setCorregidas] = useState<string[]>([]);
   const [aviso, setAviso] = useState<{ t: string; tono: 'green' | 'amber' } | null>(null);
+  // --- Crear una campaña de verdad. Sólo existe con el panel conectado (`d.real`): sin back no hay
+  // servidor al que mandarla, así que el botón no se muestra y la demo crea sus campañas como hasta hoy.
+  const [nueva, setNueva] = useState(false);
+  const [borradorNuevo, setBorradorNuevo] = useState({ nombre: '', forma: 'ventas', presupuesto: '20', destinos: 'Instagram', objetivo: '' });
+  const [creando, setCreando] = useState(false);
+  const [errorCrear, setErrorCrear] = useState('');
   const listos = PASOS_CAMPANA.filter(p => p.n < paso).map(p => p.n) as PasoCampana[];
   // --- Última fila del paso 5: LISTA + DETALLE con una sola fuente de datos.
   // Las piezas y los jueces salen de mirofish.ts: las mismas 5 opciones de la galería del paso 3
@@ -68,19 +172,19 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
     : s >= 60
       ? `Vuelve con la objeción: entre 60 y 80 no gasta un peso hasta corregir eso. El promedio dio ${s}.`
       : `No se lanza: abajo de 60 no se gasta. El promedio de los ${PERFILES.length} jueces dio ${s}.`;
-  const artefactos = CAMPANAS.reduce((s, c) => s + c.artefactos, 0);
+  const artefactos = fuente.reduce((s, c) => s + c.artefactos, 0);
 
   // --- Las campañas, con el estado y el presupuesto que tienen AHORA (no los de la data original).
   // Así lo que hace un botón se ve en la misma pantalla: la fila, la tarjeta en vivo, el contador y
   // el gráfico del día salen todos de aquí. La data original queda intacta para poder volver atrás.
   const estadoDe = (c: Campana): EstadoCamp => estados[c.id] ?? c.estado;
   const presuDia = (c: Campana) => {
-    const base = CAMPANAS.find(o => o.id === c.id);
+    const base = fuente.find(o => o.id === c.id);
     return (base ? presuDelTexto(base.presupuesto) : presuDelTexto(c.presupuesto)) + (presuExtra[c.id] ?? 0);
   };
   const conLoDeAhora = (c: Campana): Campana => ({ ...c, estado: estadoDe(c), presupuesto: `$${presuDia(c)}/día` });
-  const campanas = CAMPANAS.map(conLoDeAhora);
-  const gasto = CAMPANAS.map(presuDia);                 // lo asignado por día, campaña por campaña
+  const campanas = fuente.map(conLoDeAhora);
+  const gasto = fuente.map(presuDia);                 // lo asignado por día, campaña por campaña
   const diario = gasto.reduce((s, v) => s + v, 0);
   const vivas = campanas.filter(c => c.estado === 'Activa');
   const otras = campanas.filter(c => c.estado !== 'Activa');
@@ -183,9 +287,9 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
         { k: 'Le queda', v: `$${numeroConMiles(techo - invertido)}`, s: `${quedaTecho}% del techo por gastar`, tono: quedaTecho <= 15 ? 'red' : quedaTecho <= 25 ? 'amber' : 'green' },
         { k: 'Cierre proyectado', v: `$${numeroConMiles(cierreProyectado)}`, s: 'a dónde llega el mes si todo sigue igual' },
         { k: 'Días que quedan', v: '8', s: 'hasta el cierre del mes' },
-        { k: 'Campañas que lo comparten', v: String(CAMPANAS.length), s: `$${numeroConMiles(diario)} por día entre todas` },
+        { k: 'Campañas que lo comparten', v: String(fuente.length), s: `$${numeroConMiles(diario)} por día entre todas` },
       ] },
-      { tipo: 'texto', texto: `Cada campaña tiene su presupuesto por día y el motor los reparte según lo que rinde: hoy son $${numeroConMiles(diario)} por día entre las ${CAMPANAS.length}.` },
+      { tipo: 'texto', texto: `Cada campaña tiene su presupuesto por día y el motor los reparte según lo que rinde: hoy son $${numeroConMiles(diario)} por día entre las ${fuente.length}.` },
       { tipo: 'aviso', tono: techo < cierreProyectado ? 'amber' : 'green', texto: techoAviso },
     ],
     fuente: 'Sale de lo invertido por sus campañas del mes y del techo que tiene configurado.',
@@ -203,7 +307,7 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
   /** En qué se va cada peso del día, campaña por campaña, con lo que cada una devuelve. */
   const verDetalleGasto = () => detalle({
     titulo: 'En qué se va cada peso del día',
-    sub: `Son $${diario} por día repartidos entre sus ${CAMPANAS.length} campañas. El reparto no es fijo: el motor lo mueve todos los días hacia la que mejor devuelve.`,
+    sub: `Son $${diario} por día repartidos entre sus ${fuente.length} campañas. El reparto no es fijo: el motor lo mueve todos los días hacia la que mejor devuelve.`,
     bloques: [
       { tipo: 'filas', items: campanas.map(c => ({
         t: c.nombre,
@@ -250,6 +354,37 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
   });
 
 
+  /**
+   * Crea la campaña en el back y la deja en borrador: queda en la lista del negocio, sin salir a sus
+   * redes y sin gastar un peso. Si el back no responde, lo que escribió no se pierde y la pantalla lo dice.
+   */
+  const crearCampana = async () => {
+    const nombre = borradorNuevo.nombre.trim();
+    if (!nombre) { setToast('Póngale un nombre a la campaña: con ese nombre la reconoce después en la lista'); return; }
+    setCreando(true); setErrorCrear('');
+    try {
+      const r = await fetch(baseApi() + '/api/campanas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token() },
+        body: JSON.stringify({
+          nombre,
+          forma: borradorNuevo.forma,
+          presupuesto: Number(borradorNuevo.presupuesto) || 0,
+          destinos: borradorNuevo.destinos.split(',').map(x => x.trim()).filter(Boolean),
+          objetivo: borradorNuevo.objetivo.trim(),
+        }),
+      });
+      if (!r.ok) throw new Error(`error ${r.status}`);
+      await d.refrescar();
+      setNueva(false);
+      setBorradorNuevo({ nombre: '', forma: 'ventas', presupuesto: '20', destinos: 'Instagram', objetivo: '' });
+      setToast(`«${nombre}» quedó creada en borrador: ya está en la lista y no gasta un peso hasta que la publique`);
+    } catch {
+      setErrorCrear('No se pudo crear la campaña en el servidor. Lo que escribió sigue acá: vuelva a intentar cuando el back esté en línea.');
+      setToast('No se pudo crear la campaña: el servidor no respondió');
+    } finally { setCreando(false); }
+  };
+
   return (
     <div className="dash">
       <ViewHead
@@ -257,9 +392,9 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
         titulo="Campañas"
         sub="Es un flujo por etapas: usted sube lo que tiene, Sinkroo crea, MiroFish vota y usted decide mirando las piezas."
         nums={[
-          { v: String(CAMPANAS.length), l: 'campañas' },
+          { v: String(fuente.length), l: 'campañas' },
           { v: <Dinero monto={diario} />, l: 'invertido por día', c: 'var(--green)' },
-          { v: '3,8x', l: 'ROAS del mes' },
+          { v: roasMes, l: d.real ? 'ROAS promedio de sus campañas' : 'ROAS del mes' },
           { v: String(artefactos), l: 'artefactos producidos', c: 'var(--purple3)' },
         ]}
       />
@@ -321,8 +456,75 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
         <span className="csec-n">5</span>
         <span className="csec-t">Sus campañas y el panel</span>
         <span className="csec-s">Primero lo que está corriendo ahora, después los gráficos del mes y al final el veredicto de la última pieza</span>
+        {/* Con el panel conectado la campaña se crea de verdad: nace en el back, en borrador. Sin back
+            no hay servidor al que mandarla, así que el botón no está y la demo queda como estaba. */}
+        {d.real && (
+          <Button variant="outline" className="btn-sm csec-act" onClick={() => setNueva(n => !n)}
+            title="Crea una campaña nueva en el servidor y la deja en borrador: aparece en esta pantalla y no sale a sus redes ni gasta un peso hasta que usted la publique.">
+            <I_Plus size={13} /> {nueva ? 'Cancelar' : 'Nueva campaña'}
+          </Button>
+        )}
       </div>
 
+      {nueva && d.real && (
+        <Card
+          title={<span className="row" style={{ gap: 8 }}><I_Plus size={14} style={{ color: 'var(--purple3)' }} /> Nueva campaña</span>}
+          action={<Badge tone="muted">queda en borrador</Badge>}
+        >
+          <div className="row" style={{ gap: 9, flexWrap: 'wrap' }}>
+            <input className="input" style={{ flex: '2 1 220px', minWidth: 0 }} placeholder="Nombre: «Serum · septiembre»"
+              value={borradorNuevo.nombre} onChange={e => setBorradorNuevo({ ...borradorNuevo, nombre: e.target.value })} />
+            <select className="input" style={{ flex: '1 1 150px', minWidth: 0 }} value={borradorNuevo.forma}
+              title="El tipo de campaña: es la forma con la que el motor la arma y la que después se lee en la fila."
+              onChange={e => setBorradorNuevo({ ...borradorNuevo, forma: e.target.value })}>
+              <option value="ventas">Ventas</option>
+              <option value="mensajes">Mensajes (WhatsApp)</option>
+              <option value="marca">Marca</option>
+              <option value="retargeting">Retargeting</option>
+              <option value="lanzamiento">Lanzamiento</option>
+            </select>
+            <input className="input" style={{ flex: '1 1 130px', minWidth: 0 }} inputMode="numeric" placeholder="Por día: 20"
+              value={borradorNuevo.presupuesto} onChange={e => setBorradorNuevo({ ...borradorNuevo, presupuesto: e.target.value })} />
+          </div>
+          <div className="row" style={{ gap: 9, flexWrap: 'wrap', marginTop: 9 }}>
+            <input className="input" style={{ flex: '1 1 220px', minWidth: 0 }} placeholder="Dónde sale: Instagram, Facebook…"
+              value={borradorNuevo.destinos} onChange={e => setBorradorNuevo({ ...borradorNuevo, destinos: e.target.value })} />
+            <input className="input" style={{ flex: '2 1 260px', minWidth: 0 }} placeholder="Qué quiere lograr con esta campaña"
+              value={borradorNuevo.objetivo} onChange={e => setBorradorNuevo({ ...borradorNuevo, objetivo: e.target.value })} />
+          </div>
+          <div className="row" style={{ gap: 9, marginTop: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+            <Button className="btn-sm" disabled={creando} onClick={crearCampana}
+              title="Crea la campaña en el servidor y la deja en borrador. No gasta nada: el gasto arranca el día que usted la publique.">
+              <I_Check size={13} /> {creando ? 'Creando…' : 'Crear la campaña'}
+            </Button>
+            <Button variant="ghost" className="btn-sm" onClick={() => setNueva(false)}
+              title="Cierra el formulario sin crear nada: lo que escribió no llega al servidor.">Cancelar</Button>
+            <span className="tiny muted">Queda en borrador: no sale a sus redes ni gasta hasta que usted la publique.</span>
+          </div>
+          {errorCrear && <div className="tiny" style={{ marginTop: 9, color: 'var(--red)', fontWeight: 700 }}>{errorCrear}</div>}
+        </Card>
+      )}
+
+
+      {d.real && d.cargando && fuente.length === 0 ? (
+        /* El panel está trayendo lo que hay en el back: todavía no se sabe si hay campañas o no, así
+           que no se muestra ni el estado vacío ni una campaña de ejemplo. */
+        <EstadoVacio
+          titulo="Leyendo sus campañas…"
+          texto="Un segundo: el panel está trayendo del servidor lo que este negocio tiene creado, con sus presupuestos y sus destinos."
+          icono={<I_Megaphone size={22} />}
+        />
+      ) : sinNada ? (
+        /* Un negocio conectado que todavía no tiene campañas: acá no va ni una campaña de ejemplo.
+           Dice qué hacer para tener la primera, que es lo único que le sirve al dueño. */
+        <EstadoVacio
+          titulo="Todavía no hay campañas"
+          texto="El motor arma la primera cuando usted sube el material: elige el tipo de campaña, el ángulo y el público, crea las piezas y las pasa por los 5 jueces antes de gastar un peso. Empiece por Primeros pasos y en la próxima corrida aparece acá, con su presupuesto y sus destinos."
+          accion="Ir a Primeros pasos" onAccion={() => setVista('onboarding')}
+          icono={<I_Megaphone size={22} />}
+        />
+      ) : (
+      <>
       {/* ============ 1. LAS QUE ESTÁN EN VIVO — la pieza, el texto del anuncio y el resultado ============ */}
       <div className="csec" style={{ marginTop: 6 }}>
         <span className="csec-n">1</span>
@@ -333,6 +535,12 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
       <div className="cv-grid">
         {vivas.map(c => <CampanaViva key={c.id} c={c} setToast={setToast} />)}
       </div>
+      {vivas.length === 0 && (
+        <div className="bs">
+          Todavía no hay ninguna campaña corriendo: las de abajo están en borrador o en pausa.
+          <b> Una campaña sale a sus redes sólo cuando usted la publica</b>: ninguna arranca sola.
+        </div>
+      )}
 
       {/* ============ 2. LAS QUE NO ESTÁN CORRIENDO — en fila compacta, sin ocupar media pantalla ============ */}
       <div className="csec">
@@ -341,6 +549,7 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
         <span className="csec-c amber">{otras.length} sin correr</span>
         <span className="csec-s">No gastan nada y no pierden el historial: las reactiva cuando quiera</span>
       </div>
+
       <Card
         title={<span className="row" style={{ gap: 8 }}><I_Pause size={14} style={{ color: 'var(--amber)' }} /> El resto de sus campañas</span>}
         action={<Badge tone="muted">{otras.length} esperando</Badge>}
@@ -351,7 +560,7 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
           </div>
         )}
         {otras.length === 0 && (
-          <div className="bs">No quedó ninguna esperando: sus {CAMPANAS.length} campañas están corriendo y comparten el techo del mes.</div>
+          <div className="bs">No quedó ninguna esperando: sus {fuente.length} campañas están corriendo y comparten el techo del mes.</div>
         )}
         {otras.map(c => (
           <div key={c.id} className="cv-fila">
@@ -373,6 +582,10 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
               <span className="dato" title="Piezas que el motor ya creó para esta campaña">
                 <span className="dato-l">Piezas</span>
                 <span className="dato-v" style={{ color: 'var(--purple3)' }}>{c.artefactos}</span>
+              </span>
+              <span className="dato" title="Lo que lleva gastado la campaña desde que arrancó">
+                <span className="dato-l">Gastado</span>
+                <span className="dato-v"><Dinero monto={c.gastado} /></span>
               </span>
             </span>
             <Button variant="ghost" className="btn-sm" title={titleAccion(c.estado)}
@@ -507,7 +720,7 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
         action={<Badge tone="green"><Dinero monto={diario} equivalente={false} />/día</Badge>}
       >
         <div className="graf-ancho">
-          <Bars data={gasto} labels={GASTO_LB} color="#a855f7" fmt={v => <Dinero monto={v} equivalente={false} />} />
+          <Bars data={gasto} labels={gastoLb} color="#a855f7" fmt={v => <Dinero monto={v} equivalente={false} />} />
           <div className="col-stack">
             <div className="datos-row">
               <div className="dato"><span className="dato-l">Por semana</span><span className="dato-v"><Dinero monto={diario * 7} /></span></div>
@@ -667,6 +880,8 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
           </div>
         </Card>
       </div>
+      </>
+      )}
       </>)}
     </div>
   );

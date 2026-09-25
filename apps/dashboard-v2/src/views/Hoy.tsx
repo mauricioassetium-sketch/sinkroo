@@ -3,11 +3,16 @@ import { Card, Badge, Button, Dinero, NotaMoneda } from '../components/ui';
 import { EquipoInvestigando } from '../components/EquipoInvestigando';
 import { Bars, Ring, BarRow, MetricaAnillo } from '../components/viz';
 import { usePerfil, nombreDePila } from '../lib/perfil';
-import { SinkrooMark, I_Check, I_ArrowRight, I_Wallet, I_Eye, I_Vote, I_Star, I_Sun, I_Zap, I_Trend, I_Clock, I_Rocket } from '../components/icons';
+import { SinkrooMark, I_Check, I_ArrowRight, I_Wallet, I_Eye, I_Vote, I_Star, I_Sun, I_Zap, I_Trend, I_Clock, I_Rocket, I_Users } from '../components/icons';
 import type { Vista } from '../components/Layout';
 import { useDetalle, type Bloque } from '../components/Detalle';
 import { useOnboarding } from '../lib/onboarding';
 import { PASOS_ONB } from '../data/onboarding';
+// La capa de datos del panel: con el back encendido (`d.real`), esta pantalla lee de ahí y no toca
+// ni un dato de la demostración. Sin back, sigue como hasta hoy. Las dos fuentes no se mezclan.
+import { useDatos } from '../api/datos';
+import { EstadoVacio } from '../components/EstadoVacio';
+import { baseApi, token } from '../api/cliente';
 import {
   ALARMAS, DECISIONES, NUMEROS, MIENTRAS_NO_ESTABAS, BITACORA, MODOS, CONSECUENCIA,
   MES, PANEL_PIEZAS, INVESTIGACION_MERCADO,
@@ -51,6 +56,46 @@ type Plan = { meta: number; hueco: number; ventaDia: number; gastoDia: number; a
 
 /** El día en que vuelve una alarma silenciada: se calcula, no se escribe a mano. */
 const enUnaSemana = () => new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('es-CO', { day: 'numeric', month: 'long' });
+
+// =============================================================================================
+// LO QUE VIENE DEL BACK — la hora real de cada cosa y el resultado de cada tarea del motor.
+// Nada de esto se inventa: es lo que devolvió el servidor, escrito como se lee en el panel.
+// =============================================================================================
+
+/** La hora del servidor, en corto: día, mes, hora y minutos. Si no se puede leer, se muestra tal cual vino. */
+const horaDe = (iso?: string | null) => {
+  if (!iso) return '';
+  const f = new Date(iso);
+  return isNaN(f.getTime())
+    ? String(iso)
+    : f.toLocaleString('es-CO', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+};
+
+/** El resultado que dejó una tarea del motor, en una línea: «clave: valor · clave: valor». */
+const resultadoTxt = (r: Record<string, unknown>) => {
+  try {
+    const partes = Object.entries(r || {})
+      .filter(([, v]) => v !== null && v !== undefined && v !== '')
+      .map(([k, v]) => `${k}: ${typeof v === 'object' ? JSON.stringify(v) : String(v)}`);
+    return partes.length ? partes.slice(0, 4).join(' · ') : 'sin detalle cargado';
+  } catch { return 'sin detalle cargado'; }
+};
+
+/** El máximo de una lista, para escalar las barras: nunca cero, que rompería la proporción. */
+const maxDe = (xs: number[]) => Math.max(1, ...xs);
+
+/** La hora del historial de una conversación, en corto. */
+const haceTxt = (iso?: string | null) => {
+  if (!iso) return '';
+  const f = new Date(iso);
+  if (isNaN(f.getTime())) return String(iso);
+  const min = Math.round((Date.now() - f.getTime()) / 60000);
+  if (min < 1) return 'hace un instante';
+  if (min < 60) return `hace ${min} min`;
+  if (min < 1440) return `hace ${Math.floor(min / 60)} h`;
+  const d = Math.floor(min / 1440);
+  return `hace ${d} ${d === 1 ? 'día' : 'días'}`;
+};
 
 // =============================================================================================
 // LO QUE HAY DETRÁS DE CADA BOTÓN
@@ -220,6 +265,36 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
   const [paso, setPaso] = useState<number | null>(null);
   const [tourVisto, setTourVisto] = useState(false);
 
+  // -------------------------------------------------------------------------------------------
+  // LA FUENTE DE TODO: con el back encendido (`d.real`), esta pantalla lee del back y NADA de la
+  // demostración. La decisión vive en un solo lugar (src/api/datos.tsx); acá sólo se pregunta.
+  // -------------------------------------------------------------------------------------------
+  const datos = useDatos();
+  /** La corrida que se pide desde el estado vacío o desde el bloque del motor: POST /api/agentes/correr. */
+  const [corriendo, setCorriendo] = useState(false);
+  const correr = async () => {
+    setCorriendo(true);
+    try {
+      await fetch(baseApi() + '/api/agentes/correr', { method: 'POST', headers: { Authorization: 'Bearer ' + token() } });
+    } catch { /* si no responde, el refresco de abajo muestra lo que haya: acá no se inventa nada */ }
+    await datos.refrescar();
+    setCorriendo(false);
+  };
+  /** Lo que el motor dejó, según el back. */
+  const resumen = datos.resumen;
+  const totalResumen = resumen
+    ? resumen.piezas + resumen.evaluaciones + resumen.hallazgos + resumen.conversaciones + resumen.publico + resumen.corridas
+    : 0;
+  /** El negocio arrancó el motor y todavía no hay nada: ahí va el estado vacío, con la corrida a mano. */
+  const sinNadaReal = datos.real && !datos.cargando && totalResumen === 0 && datos.corridas.length === 0;
+  /**
+   * Mientras el back está respondiendo NO se afirma que no hay nada: se dice que se está leyendo.
+   * Un «todavía no hay» que dura un segundo es una afirmación falsa, y esta pantalla no hace eso.
+   */
+  const vacio = (titulo: string, texto: string) => datos.cargando
+    ? { titulo: 'Leyendo el back…', texto: 'El panel está leyendo lo que hay en el servidor. Si no hay nada, lo dice enseguida; mientras tanto no se muestra ninguna cifra inventada.' }
+    : { titulo, texto };
+
   const visibles = ALARMAS.filter(a => !silenciadas.includes(a.id));
   const alarmas = alarmasExtra ? visibles : visibles.slice(0, 3);
   const pendientes = DECISIONES.filter(d => !hechas.includes(d.id));
@@ -366,14 +441,18 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
             </span>
             <div className="hero-txt">
               <div className="hero-live" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span className="dot-live" /> Su AGENTE DE MARKETING ESTÁ ACTIVO
-                <button className="tour-start-btn"
+                <span className="dot-live" /> {datos.real
+                  ? (datos.onboarding?.arrancado ? 'Su motor está activo · datos del back' : 'El motor todavía no arrancó · datos del back')
+                  : 'Su AGENTE DE MARKETING ESTÁ ACTIVO'}
+                {/* El tour explica los números de la demostración: con el back encendido no se ofrece,
+                    porque hablaría de datos que esta pantalla no está mostrando. */}
+                {!datos.real && <button className="tour-start-btn"
                   title={tourVisto
                     ? 'Vuelva a recorrer Su día desde la primera parada, con los números de hoy. Se cierra con Escape o tocando afuera.'
                     : 'Recorrido de 5 paradas por Su día: qué mirar, en qué orden y con qué números. Se cierra con Escape o tocando afuera.'}
                   onClick={() => { setPaso(0); setTourVisto(true); }}>
                   {tourVisto ? '↻ Repetir el tour' : '▶ Iniciar tour'}
-                </button>
+                </button>}
               </div>
               <div className="hdr-t hero-title">
                 Hola {nombreDePila(perfil.nombre)}, soy <span className="grad-text">Sinkroo</span> 👋
@@ -386,9 +465,21 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
           </div>
         </div>
         <div className="hero-metrics">
-          <div className="hero-metric"><div className="metric" style={{ color: 'var(--green)' }}>47</div><div className="m-label">Ventas</div><div className="m-desc">concretadas hoy</div></div>
-          <div className="hero-metric"><div className="metric" style={{ color: 'var(--green)' }}>3.8x</div><div className="m-label">ROAS</div><div className="m-desc">retorno por cada $1 invertido</div></div>
-          <div className="hero-metric"><div className="metric grad-text">83</div><div className="m-label">Score</div><div className="m-desc">calidad del creativo aprobado</div></div>
+          {/* Con el back encendido, las tres cifras del hero son las del negocio real (piezas,
+              evaluaciones y conversaciones). Sin back, las tres de la demostración de siempre. */}
+          {datos.real ? (
+            <>
+              <div className="hero-metric"><div className="metric" style={{ color: 'var(--green)' }}>{resumen?.piezas ?? 0}</div><div className="m-label">Piezas</div><div className="m-desc">produjo el motor</div></div>
+              <div className="hero-metric"><div className="metric" style={{ color: 'var(--green)' }}>{resumen?.evaluaciones ?? 0}</div><div className="m-label">Evaluaciones</div><div className="m-desc">pasaron el panel</div></div>
+              <div className="hero-metric"><div className="metric grad-text">{resumen?.conversaciones ?? 0}</div><div className="m-label">Conversaciones</div><div className="m-desc">atiende el motor</div></div>
+            </>
+          ) : (
+            <>
+              <div className="hero-metric"><div className="metric" style={{ color: 'var(--green)' }}>47</div><div className="m-label">Ventas</div><div className="m-desc">concretadas hoy</div></div>
+              <div className="hero-metric"><div className="metric" style={{ color: 'var(--green)' }}>3.8x</div><div className="m-label">ROAS</div><div className="m-desc">retorno por cada $1 invertido</div></div>
+              <div className="hero-metric"><div className="metric grad-text">83</div><div className="m-label">Score</div><div className="m-desc">calidad del creativo aprobado</div></div>
+            </>
+          )}
         </div>
         <div className="hero-start">
           <div className="hero-ad-tag">Empiece Aquí</div>
@@ -454,22 +545,175 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
         </Card>
       )}
 
-      {/* ============== LA INVESTIGACIÓN DEL MERCADO (los 6 agentes, en vivo) ============== */}
+      {/* ============================== EL MOTOR ==============================
+          Con el back encendido, este bloque muestra lo que el motor hizo DE VERDAD: `d.resumen`,
+          que sale del servidor. Si el negocio arrancó y todavía no hay nada, va el estado vacío con
+          la corrida a mano (POST /api/agentes/correr). Sin back, sigue la investigación de ejemplo
+          de los 6 agentes, como hasta hoy: son dos fuentes y nunca se mezclan. */}
       <div id="motor">
-        <EquipoInvestigando setToast={setToast}
-          irAGaleria={() => {
-            setVista('campanas');
-            setToast('En Campañas, entre al paso «Galería»: ahí están las piezas que MiroFish ya puntuó');
-          }} />
+        {datos.real ? (
+          <div className="eq-wrap">
+            <div className="eq-head">
+              <div className="eq-head-top">
+                <span className="eq-live"><span className="dot-live" /> DATOS DEL BACK</span>
+                <span className="eq-head-t">El motor trabajando{datos.negocio ? ` en ${datos.negocio.name}` : ''}</span>
+                <Badge tone={resumen?.corridas ? 'green' : 'amber'}>{resumen?.corridas ?? 0} corridas</Badge>
+                {datos.error ? <Badge tone="red">{datos.error}</Badge> : null}
+              </div>
+              <div className="eq-arranque">
+                Todo lo de abajo sale del servidor de Sinkroo, no de la demostración{datos.negocio
+                  ? <>{': '}<b>{datos.negocio.name}</b>, plan {datos.negocio.plan}, zona {datos.negocio.zona}</>
+                  : ''}. El motor queda trabajando solo: lo que deja aparece acá sin refrescar nada a mano.
+              </div>
+              <div className="row" style={{ gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+                <Button variant="ghost" className="btn-sm" disabled={corriendo}
+                  title="Vuelva a leer el back: lo que haya ahora es lo que se muestra. No cambia nada del negocio."
+                  onClick={() => void datos.refrescar()}>{corriendo ? 'Leyendo el back…' : 'Volver a leer el back'}</Button>
+              </div>
+            </div>
+
+            {datos.cargando ? (
+              <Card action={<Badge tone="purple">leyendo</Badge>}>
+                <EstadoVacio
+                  titulo="Leyendo el back…"
+                  texto="El panel está leyendo lo que hay en el servidor. En un momento dice qué hay: si no hay nada, lo dice, y si hay, lo muestra con sus números." />
+              </Card>
+            ) : datos.error ? (
+              <Card action={<Badge tone="red">sin respuesta</Badge>}>
+                <EstadoVacio
+                  titulo="No se pudo leer lo que hizo el motor"
+                  texto={datos.error}
+                  accion="Volver a leer el back"
+                  onAccion={() => void datos.refrescar()} />
+              </Card>
+            ) : sinNadaReal ? (
+              <Card
+                title={<span className="row" style={{ gap: 8 }}><I_Rocket size={14} style={{ color: 'var(--purple3)' }} /> El motor ya está trabajando</span>}
+                action={<Badge tone="amber">todavía sin resultados</Badge>}>
+                <EstadoVacio
+                  {...vacio(
+                    'No hay nada que mostrar todavía',
+                    'Su negocio quedó configurado y el motor está en marcha. Todavía no dejó piezas, evaluaciones, hallazgos ni conversaciones, así que no hay números para mostrar: no le vamos a inventar ninguno. Pídale una corrida y vuelva a mirar en un momento.',
+                  )}
+                  accion={corriendo ? 'Corriendo el motor…' : 'Correr el motor ahora'}
+                  onAccion={() => { if (!corriendo) void correr(); }} />
+              </Card>
+            ) : (
+              <Card className="eq-card"
+                title={<span className="row" style={{ gap: 8 }}><I_Trend size={14} style={{ color: 'var(--green)' }} /> Lo que dejó el motor</span>}
+                action={
+                  <span className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+                    <Badge tone="purple">datos del back</Badge>
+                    <Button variant="ghost" className="btn-sm" disabled={corriendo}
+                      title="Pídale una corrida al motor ahora (POST /api/agentes/correr). Cuando termina, esta pantalla vuelve a leer el back."
+                      onClick={() => { if (!corriendo) void correr(); }}>{corriendo ? 'Corriendo…' : 'Pedir una corrida'}</Button>
+                  </span>
+                }>
+                <div className="datos-row">
+                  <div className="dato"><span className="dato-l">Piezas</span><span className="dato-v">{resumen?.piezas ?? 0}</span></div>
+                  <div className="dato"><span className="dato-l">Evaluaciones</span><span className="dato-v">{resumen?.evaluaciones ?? 0}</span></div>
+                  <div className="dato"><span className="dato-l">Hallazgos</span><span className="dato-v">{resumen?.hallazgos ?? 0}</span></div>
+                  <div className="dato"><span className="dato-l">Conversaciones</span><span className="dato-v">{resumen?.conversaciones ?? 0}</span></div>
+                  <div className="dato"><span className="dato-l">Público</span><span className="dato-v">{resumen?.publico ?? 0}</span></div>
+                  <div className="dato"><span className="dato-l">Corridas</span><span className="dato-v" style={{ color: 'var(--green)' }}>{resumen?.corridas ?? 0}</span></div>
+                </div>
+                <div className="acc-why">
+                  Estos seis números son los del back, tal como están hoy: si alguno está en cero, es
+                  porque todavía no hay nada de eso, no porque falte mostrarlo.
+                  {datos.desvioPct !== 0 ? <> El desvío actual del panel es <b>{datos.desvioPct}%</b>.</> : null}
+                </div>
+              </Card>
+            )}
+          </div>
+        ) : (
+          <EquipoInvestigando setToast={setToast}
+            irAGaleria={() => {
+              setVista('campanas');
+              setToast('En Campañas, entre al paso «Galería»: ahí están las piezas que MiroFish ya puntuó');
+            }} />
+        )}
       </div>
 
-      {/* ====================== FILA 1: ACCIÓN ====================== */}
+      {/* ====================== FILA 1: ACCIÓN ======================
+          Con el back encendido, esta fila muestra lo que el motor encontró de verdad (hallazgos) y
+          las conversaciones que atiende: las alarmas y las decisiones del negocio de ejemplo NO se
+          muestran, porque son de otro negocio. Sin back, la fila queda como hasta hoy. */}
       <div className="csec">
         <span className="csec-n">1</span>
         <span className="csec-t">Lo que necesita su atención</span>
-        <span className="csec-c">{criticas}</span>
-        <span className="csec-s">Cada botón dice qué hace antes de que lo toque</span>
+        <span className="csec-c">{datos.real ? datos.hallazgos.length : criticas}</span>
+        <span className="csec-s">{datos.real
+          ? 'Lo que el motor encontró en su mercado y las conversaciones que está atendiendo'
+          : 'Cada botón dice qué hace antes de que lo toque'}</span>
       </div>
+      {datos.real ? (
+        <div className="duo">
+          <Card
+            title={<span className="row" style={{ gap: 8 }}><I_Eye size={14} style={{ color: 'var(--amber)' }} /> Hallazgos del motor</span>}
+            action={<Badge tone={datos.hallazgos.length ? 'amber' : 'muted'}>{datos.hallazgos.length}</Badge>}>
+            {datos.hallazgos.length === 0 ? (
+              <EstadoVacio
+                {...vacio(
+                  'Todavía no encontró nada',
+                  'Los hallazgos son lo que el motor ve en su mercado: competencia, precios y demanda. Cuando encuentre algo aparece acá, con su dato y su fuente. No hay nada inventado esperando.',
+                )}
+                accion={corriendo ? 'Corriendo el motor…' : 'Correr el motor ahora'}
+                onAccion={() => { if (!corriendo) void correr(); }} />
+            ) : (
+              <div className="col-stack">
+                {datos.hallazgos.map(h => (
+                  <div key={h.id} className="alarm oportunidad">
+                    <div className="alarm-head">
+                      <span className="alarm-sev oportunidad">{String(h.tipo || 'hallazgo').toUpperCase()}</span>
+                      <span className="alarm-when">{horaDe(h.created_at)}</span>
+                    </div>
+                    <div className="alarm-title" style={{ minWidth: 0 }}>{h.titulo}</div>
+                    <div className="alarm-money">
+                      <span className="ico" style={{ color: 'var(--amber)' }}><I_Wallet size={14} /></span>
+                      <span><b style={{ color: 'var(--amber)' }}>El dato: </b>{h.dato}</span>
+                    </div>
+                    <div className="alarm-sug"><b>Por qué importa: </b>{h.porque}</div>
+                    <div className="tiny muted">Fuente: {h.fuente}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="acc-why">
+              Cada hallazgo trae el dato, por qué importa y de dónde salió. <b>Todo esto sale del back</b>:
+              en esta pantalla no hay alarmas ni decisiones del negocio de ejemplo.
+            </div>
+          </Card>
+
+          <Card
+            title={<span className="row" style={{ gap: 8 }}><I_Users size={14} style={{ color: 'var(--purple3)' }} /> Conversaciones</span>}
+            action={<Badge tone={datos.conversaciones.length ? 'green' : 'muted'}>{datos.conversaciones.length}</Badge>}>
+            {datos.conversaciones.length === 0 ? (
+              <EstadoVacio
+                {...vacio(
+                  'Todavía no hay conversaciones',
+                  'Acá aparecen los clientes que el motor atiende por WhatsApp, con su etapa, su estado y su puntaje. Cuando entre la primera, la ve en esta tarjeta, sin salir de Su día.',
+                )} />
+            ) : (
+              <div className="col-stack">
+                {datos.conversaciones.slice(0, 6).map(c => (
+                  <div key={c.id} className="dec">
+                    <div className="dec-head">
+                      <span className="dec-agent">{c.lead_phone}</span>
+                      <span className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+                        <Badge tone="purple">{c.stage}</Badge>
+                        <Badge tone={c.status === 'abierta' || c.status === 'open' ? 'green' : 'muted'}>{c.status}</Badge>
+                        <span className="tiny muted">puntaje {c.lead_score}</span>
+                      </span>
+                    </div>
+                    <div className="dec-det">{c.ultimo || 'Sin mensajes todavía.'}</div>
+                    <div className="acc-why">Último mensaje {haceTxt(c.last_message_at)}.</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+        </div>
+      ) : (
       <div className="duo">
         <Card tour="alarmas"
           title={<span className="row" style={{ gap: 8 }}><I_Zap size={14} style={{ color: 'var(--red)' }} /> Alarmas</span>}
@@ -563,13 +807,103 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
           )}
         </Card>
       </div>
+      )}
 
-      {/* ====================== FILA 2: LOS NÚMEROS DEL MES Y LA CALIDAD ====================== */}
+      {/* ====================== FILA 2: LOS NÚMEROS DEL MES Y LA CALIDAD ======================
+          Con el back encendido no se muestran las cifras de venta del negocio de ejemplo: en su
+          lugar van las piezas que el panel puntuó de verdad y el público que votó, tal como los
+          devuelve el servidor. */}
       <div className="csec">
         <span className="csec-n">2</span>
         <span className="csec-t">Los números del mes y la calidad de lo que produjo</span>
-        <span className="csec-s">Cómo van las métricas del modelo y qué tan buenas salieron las piezas</span>
+        <span className="csec-s">{datos.real
+          ? 'Las piezas que puntuó el panel y el público que votó, tal como están en el back'
+          : 'Cómo van las métricas del modelo y qué tan buenas salieron las piezas'}</span>
       </div>
+      {datos.real ? (
+        <div className="duo">
+          <Card
+            title={<span className="row" style={{ gap: 8 }}><I_Star size={14} style={{ color: 'var(--purple3)' }} /> La calidad de sus piezas</span>}
+            action={<Badge tone={datos.evaluaciones.length ? 'green' : 'muted'}>{datos.evaluaciones.length} evaluadas</Badge>}>
+            {datos.evaluaciones.length === 0 ? (
+              <EstadoVacio
+                {...vacio(
+                  'Todavía no hay piezas evaluadas',
+                  'Cuando el motor produzca una pieza, los 5 jueces la puntúan antes de que salga y el puntaje aparece acá, con cuánta gente del público la votó.',
+                )}
+                accion={corriendo ? 'Corriendo el motor…' : 'Correr el motor ahora'}
+                onAccion={() => { if (!corriendo) void correr(); }} />
+            ) : (
+              <>
+                <div className="row" style={{ gap: 20, marginBottom: 16 }}>
+                  <Ring valor={Math.round(datos.evaluaciones.reduce((s, e) => s + (e.puntaje || 0), 0) / datos.evaluaciones.length)}
+                    label="SCORE" color="var(--green)" sub="promedio de sus piezas" />
+                  <div className="dato" style={{ flex: 1 }}>
+                    <span className="dato-l">Qué significa</span>
+                    <span className="bs">
+                      Es el puntaje que el panel le puso a cada pieza. Arriba de <b style={{ color: 'var(--green)' }}>80</b> se publica,
+                      entre 60 y 80 se revisa, abajo de 60 se descarta.
+                    </span>
+                  </div>
+                </div>
+                {datos.evaluaciones.map(e => {
+                  const c = e.puntaje >= 80 ? 'var(--green)' : e.puntaje >= 60 ? 'var(--amber)' : 'var(--red)';
+                  return (
+                    <div key={e.id} style={{ padding: '9px 0', borderBottom: '1px solid var(--border)' }}>
+                      <div className="row spread" style={{ marginBottom: 6 }}>
+                        <span className="bt" style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.titulo}</span>
+                        <span style={{ fontWeight: 900, fontSize: 14, color: c, flexShrink: 0 }}>{e.puntaje}</span>
+                      </div>
+                      <BarRow valor={e.puntaje} max={100} color={c} />
+                      <div className="tiny muted" style={{ marginTop: 4 }}>
+                        {e.total_publico > 0 ? `${e.total_publico} personas del público la votaron` : 'sin votos del público cargados'}
+                        {e.orden ? ` · orden ${e.orden}` : ''}
+                        {e.created_at ? ` · ${horaDe(e.created_at)}` : ''}
+                      </div>
+                    </div>
+                  );
+                })}
+              </>
+            )}
+            <div className="acc-why">
+              <b>Una pieza que no pasa a los jueces nunca se publica.</b> Los puntajes de acá son los que
+              hay en el servidor, con la fecha en que se evaluó cada una.
+            </div>
+          </Card>
+
+          <Card
+            title={<span className="row" style={{ gap: 8 }}><I_Vote size={14} style={{ color: 'var(--green)' }} /> El público que votó</span>}
+            action={<Badge tone={datos.publico?.total ? 'green' : 'muted'}>{datos.publico?.total ?? 0} personas</Badge>}>
+            {!datos.publico || datos.publico.total === 0 ? (
+              <EstadoVacio
+                {...vacio(
+                  'Todavía no hay público',
+                  'Acá se ve quién votó sus piezas, por estilo y por edad. Cuando haya votos, aparecen agrupados en esta tarjeta: es el mismo público que decide si una pieza sale.',
+                )} />
+            ) : (
+              <>
+                <div className="bs" style={{ marginBottom: 8 }}>Por estilo:</div>
+                {(datos.publico.por_estilo ?? []).slice(0, 6).map((e, i) => (
+                  <BarRow key={i} label={e.estilo} valor={e.n} max={maxDe((datos.publico?.por_estilo ?? []).map(x => x.n))} color="var(--purple2)" formato={String(e.n)} />
+                ))}
+                <div className="bs" style={{ marginTop: 14, marginBottom: 8 }}>Por edad:</div>
+                {(datos.publico.por_edad ?? []).slice(0, 6).map((e, i) => (
+                  <BarRow key={i} label={e.rango} valor={e.n} max={maxDe((datos.publico?.por_edad ?? []).map(x => x.n))} color="var(--green)" formato={String(e.n)} />
+                ))}
+                {datos.publico.muestra?.length > 0 && (
+                  <div className="tiny muted" style={{ marginTop: 10 }}>
+                    {datos.publico.muestra.length} {datos.publico.muestra.length === 1 ? 'persona' : 'personas'} en la muestra que dejó el motor.
+                  </div>
+                )}
+              </>
+            )}
+            <div className="acc-why">
+              El público es lo que hace que un puntaje no sea una opinión: <b>son personas de verdad las que
+              votan</b> antes de que la pieza gaste un peso.
+            </div>
+          </Card>
+        </div>
+      ) : (
       <div className="duo">
         <Card
           title={<span className="row" style={{ gap: 8 }}><I_Trend size={14} style={{ color: 'var(--green)' }} /> El modelo en números</span>}
@@ -631,8 +965,12 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
           </div>
         </Card>
       </div>
+      )}
 
-      {/* ====================== FILA 3: AUTONOMÍA Y MEMORIA ====================== */}
+      {/* ====================== FILA 3: AUTONOMÍA Y MEMORIA ======================
+          Las ventas por mes y «mientras no estaba» son del negocio de ejemplo: el back todavía no
+          expone esas series, así que con el back encendido esta fila NO se muestra. */}
+      {!datos.real && (<>
       <div className="csec">
         <span className="csec-n">3</span>
         <span className="csec-t">Cómo viene el mes y qué hizo solo</span>
@@ -659,23 +997,77 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
           <MientrasNoEstabas modo={modo} />
         </Card>
       </div>
+      </>)}
 
-      {/* ====================== FILA 4: CIERRE ====================== */}
+      {/* ====================== FILA 4: CIERRE ======================
+          La bitácora sale de las corridas del back (`d.corridas`): cada corrida con lo que hizo cada
+          agente. Sin back, sigue la bitácora de ejemplo. Las metas del mes son del negocio de
+          ejemplo, así que con el back encendido no se muestran. */}
       <div className="csec">
         <span className="csec-n">4</span>
         <span className="csec-t">Memoria y cierre</span>
-        <span className="csec-s">Todo lo que hizo el motor y cómo va contra sus metas</span>
+        <span className="csec-s">{datos.real
+          ? 'Todo lo que hizo el motor, corrida por corrida, tal como quedó en el back'
+          : 'Todo lo que hizo el motor y cómo va contra sus metas'}</span>
       </div>
       <div className="duo">
         <Card
           title={<span className="row" style={{ gap: 8 }}><I_Clock size={14} style={{ color: 'var(--purple3)' }} /> La bitácora</span>}
           action={
-            <Button variant="ghost" className="btn-sm" title={`Muestre todo lo que hizo el motor en la semana (${BITACORA.length} líneas). No cambia nada.`}
+            <Button variant="ghost" className="btn-sm"
+              title={datos.real
+                ? `Muestre todas las corridas del motor (${datos.corridas.length}). No cambia nada.`
+                : `Muestre todo lo que hizo el motor en la semana (${BITACORA.length} líneas). No cambia nada.`}
               onClick={() => setBitacoraCompleta(!bitacoraCompleta)}>
               {bitacoraCompleta ? 'Ver menos' : 'Ver la semana'}
             </Button>
           }
         >
+          {datos.real ? (
+            <>
+            {datos.corridas.length === 0 ? (
+              <EstadoVacio
+                {...vacio(
+                  'El motor todavía no dejó corridas',
+                  'Cada vez que el motor trabaja, queda una corrida acá con lo que hizo cada agente: qué corrió, en qué terminó y cuántos créditos usó. Todavía no hay ninguna.',
+                )}
+                accion={corriendo ? 'Corriendo el motor…' : 'Correr el motor ahora'}
+                onAccion={() => { if (!corriendo) void correr(); }} />
+            ) : (
+              <div className="tl">
+                {(bitacoraCompleta ? datos.corridas : datos.corridas.slice(0, 5)).map(c => (
+                  <div key={c.id} className="tl-item">
+                    <span className="tl-dot" style={{ background: c.estado === 'ok' || c.estado === 'terminada' ? 'var(--green)' : 'var(--amber)' }} />
+                    <span className="tl-time">{horaDe(c.empezada_at)}</span>
+                    <div className="tl-body">
+                      <div className="tl-text">
+                        <b style={{ color: 'var(--purple3)' }}>El motor</b> corrió {c.motivo || 'sin motivo cargado'}
+                        <span className="tiny muted"> · {c.estado || 'en curso'}{typeof c.creditos === 'number' ? ` · ${c.creditos} créditos` : ''}</span>
+                      </div>
+                      {!c.tareas || c.tareas.length === 0 ? (
+                        <div className="tiny muted">Esta corrida no dejó tareas cargadas.</div>
+                      ) : (
+                        (c.tareas ?? []).slice().sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0)).map((t, i) => (
+                          <div key={i} className="tl-anchor" style={{ display: 'block' }}>
+                            <b style={{ color: 'var(--purple3)' }}>{t.agente}</b> {t.que}
+                            {t.resultado && Object.keys(t.resultado).length > 0
+                              ? <span className="tiny muted"> · {resultadoTxt(t.resultado)}</span>
+                              : null}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="acc-why">
+              Cada línea es una corrida del motor, con lo que hizo cada agente. <b>Sale del back</b>: la
+              hora, el estado y los créditos son los que quedaron registrados.
+            </div>
+            </>
+          ) : (
+          <>
           <div className="tl">
             {(bitacoraCompleta ? BITACORA : BITACORA.slice(0, 5)).map(b => (
               <div key={b.id} className="tl-item">
@@ -713,8 +1105,12 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
             <b>Deshacer</b> aparece solo en las acciones reversibles y dura 24 h. Es lo que hace seguro el modo Automático:
             si el motor se equivoca, el costo es un clic.
           </div>
+          </>
+          )}
         </Card>
 
+        {/* Las metas del mes son del negocio de ejemplo: con el back encendido no se muestran. */}
+        {!datos.real && (
         <Card tour="metas"
           title={<span className="row" style={{ gap: 8 }}><I_Star size={14} style={{ color: 'var(--green)' }} /> Sus metas del mes</span>}
           action={<Badge tone={P.alcanza ? 'green' : 'amber'}>{metasOk} de 3 en camino</Badge>}
@@ -836,6 +1232,7 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
             y le avisa cuando el objetivo deja de ser alcanzable con el presupuesto actual.
           </div>
         </Card>
+        )}
       </div>
 
       {/* ============== EL TOUR GUIADO: overlay con foco, parada por parada ============== */}

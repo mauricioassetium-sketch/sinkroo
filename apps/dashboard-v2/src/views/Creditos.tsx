@@ -5,6 +5,9 @@ import { I_Credit, I_Wallet, I_Zap, I_Download, I_Shield, I_Plus, I_ArrowRight }
 import { TENANT, CREDITOS_MOV, PLANES } from '../data/demo';
 import { useDetalle } from '../components/Detalle';
 import { usePlan } from '../lib/plan';
+import { useDatos } from '../api/datos';
+import { baseApi, token } from '../api/cliente';
+import { EstadoVacio } from '../components/EstadoVacio';
 
 // Paquetes de recarga. El precio por crédito baja cuanto más grande el paquete.
 const PAQUETES = [
@@ -30,6 +33,37 @@ const ORIGEN_MOV: Record<string, string> = {
   'Referido: Valeria Gómez': 'el premio por referida: 250 créditos por cada una que paga su primer mes',
   'Campaña: Retargeting': 'los anuncios para quienes miraron y no compraron',
 };
+
+// Qué es cada movimiento que llega del back: su nombre para la lista y qué lo generó para el historial.
+// Los motivos son los códigos que escribe el back (`plan`, `evaluacion`, `recarga`…), no texto para mostrar.
+const MOTIVOS: Record<string, { nombre: string; origen: string }> = {
+  plan: { nombre: 'plan del mes', origen: 'la carga de su plan del mes: entra completa y el motor la descuenta a medida que trabaja' },
+  evaluacion: { nombre: 'evaluación', origen: 'cada pieza que pasa por los 5 jueces y los 500 del público cuesta 48 créditos' },
+  campana: { nombre: 'campaña', origen: 'los días que estuvieron publicando sus campañas' },
+  recarga: { nombre: 'recarga', origen: 'una recarga de créditos que se cargó desde esta pantalla' },
+  referido: { nombre: 'referido', origen: 'el premio por un referido que pagó su primer mes' },
+  ajuste: { nombre: 'ajuste', origen: 'un ajuste del saldo hecho por Sinkroo' },
+};
+
+// Un movimiento con la forma que muestra la pantalla: qué fue, cuándo, cuánto sumó (o restó) y su motivo.
+// Los del back llegan como { motivo, detalle, delta, saldo, created_at } y los de la demostración como
+// { detalle, fecha, cantidad, tipo }: acá los dos quedan iguales y la pantalla no sabe de dónde vinieron.
+type MovCredito = { detalle: string; fecha: string; cantidad: number; tipo: 'entrada' | 'salida'; motivo?: string };
+
+/** La fecha del libro del back, en corto y en hora local («24 de sept»). */
+const fechaCorta = (iso: string) => {
+  const f = new Date(iso);
+  return isNaN(+f) ? '' : f.toLocaleDateString('es-CO', { day: 'numeric', month: 'short' });
+};
+
+const movsDelBack = (movs: { delta: number; motivo: string; detalle: string; created_at: string }[]): MovCredito[] =>
+  movs.map(m => ({
+    detalle: m.detalle || m.motivo,
+    fecha: fechaCorta(m.created_at),
+    cantidad: m.delta,
+    tipo: m.delta >= 0 ? 'entrada' as const : 'salida' as const,
+    motivo: m.motivo,
+  }));
 
 // En qué se van los créditos del mes. Cada rubro es una porción del anillo y su `costo` es el
 // precio por unidad: es el dato que permite decidir si el rubro vale la pena, así que va visible
@@ -73,22 +107,51 @@ export function ViewCreditos({ setToast }: { setToast: (t: string) => void }) {
 
 function ViewCreditosNegocio({ setToast }: { setToast: (t: string) => void }) {
   const detalle = useDetalle();
-  const { plan, cambiarPlan } = usePlan();
+  // De dónde salen los datos: del back cuando hay back, de la demostración cuando no. Nunca de los dos.
+  const d = useDatos();
+  const esReal = d.real;
+  const { plan: planDelPanel, cambiarPlan } = usePlan();
+  // El plan del negocio según el back (el mismo que pinta el menú) y el que se elige desde acá: con el
+  // back encendido manda el del negocio hasta que el usuario cambie de plan, y desde ahí el elegido.
+  const planDelBack = esReal ? PLANES.find(p => p.key === d.negocio?.plan) : undefined;
+  const [planElegido] = useState<typeof PLANES[number] | null>(null);
+  const plan = planElegido ?? planDelBack ?? planDelPanel;
   // El plan recién cambiado: la tarjeta lo deja a la vista con lo que cambió, no en un aviso.
   const [avisoPlan, setAvisoPlan] = useState<{ de: string; a: string; creditos: number } | null>(null);
-  const [saldo, setSaldo] = useState(TENANT.creditos);
+  const [saldoDemo, setSaldoDemo] = useState(TENANT.creditos);
+  const [movsDemo, setMovsDemo] = useState<MovCredito[]>(CREDITOS_MOV);
   const [autoRecarga, setAutoRecarga] = useState(true);
   const [metodo, setMetodo] = useState('Visa ···· 4242');
-  const [movs, setMovs] = useState(CREDITOS_MOV);
   const [facturas, setFacturas] = useState(FACTURAS);
 
-  const pct = Math.min(100, Math.round((saldo / plan.creditosMes) * 100));
+  // El saldo y el libro que se ven: los del back cuando hay back, los de la demostración cuando no.
+  const saldo = esReal ? (d.creditos?.saldo ?? 0) : saldoDemo;
+  const movs = esReal ? movsDelBack(d.creditos?.movimientos ?? []) : movsDemo;
+  // Un negocio nuevo tiene la carga del plan y nada más: mientras no haya consumo, la tarjeta de
+  // movimientos dice qué hay y qué hacer, en vez de quedar con la lista pelada.
+  const sinConsumo = esReal && !d.cargando && !movs.some(m => m.tipo === 'salida');
+
+  const pct = Math.min(100, Math.round((saldo / (plan.creditosMes || 1)) * 100));
   const usados = Math.max(0, plan.creditosMes - saldo);
   const dias = Math.max(0, Math.round(saldo / 150));
 
   const recargar = (p: typeof PAQUETES[number]) => {
-    setSaldo(s => s + p.creditos);
-    setMovs(prev => [{ detalle: `Recarga · paquete ${p.nombre}`, fecha: 'Hoy', cantidad: p.creditos, tipo: 'entrada' as const }, ...prev]);
+    // Con el back encendido la recarga se escribe en el libro del negocio y el saldo se vuelve a leer
+    // del servidor: el número que queda en pantalla es el del back, no uno de esta tarjeta.
+    if (esReal) {
+      void fetch(baseApi() + '/api/creditos/cargar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token() },
+        body: JSON.stringify({ monto: p.creditos, motivo: 'recarga' }),
+      })
+        .then(r => (r.ok ? d.refrescar() : Promise.reject(new Error(`error ${r.status}`))))
+        .then(() => setToast(`${p.creditos.toLocaleString('es-CO')} créditos cargados con ${metodo}`))
+        .catch(() => setToast('No se pudo cargar: el servidor no respondió'));
+      return;
+    }
+    // Sin back, la recarga se suma al saldo de la demostración, como hasta hoy.
+    setSaldoDemo(s => s + p.creditos);
+    setMovsDemo(prev => [{ detalle: `Recarga · paquete ${p.nombre}`, fecha: 'Hoy', cantidad: p.creditos, tipo: 'entrada' as const, motivo: 'recarga' }, ...prev]);
     setToast(`${p.creditos.toLocaleString('es-CO')} créditos cargados con ${metodo}`);
   };
 
@@ -157,15 +220,15 @@ function ViewCreditosNegocio({ setToast }: { setToast: (t: string) => void }) {
     sub: 'Todo lo que entró y todo lo que consumió el motor, uno por uno, con la fecha y qué lo generó. El saldo de arriba es la suma de esta lista: ningún crédito queda sin explicar.',
     bloques: [
       { tipo: 'datos', filas: [
-        { k: 'Movimientos registrados', v: String(movs.length), s: `el más viejo es del ${movs[movs.length - 1].fecha}` },
+        { k: 'Movimientos registrados', v: String(movs.length), s: movs.length ? `el más viejo es del ${movs[movs.length - 1].fecha}` : 'el libro todavía no tiene movimientos' },
         { k: 'Créditos que entraron', v: `+${entradas.toLocaleString('es-CO')}`, tono: 'green', s: 'el plan, los referidos y las recargas que haga desde aquí' },
         { k: 'Créditos que consumió el motor', v: `−${salidas.toLocaleString('es-CO')}`, tono: 'amber', s: 'campañas y análisis: trabajo hecho, no tiempo de uso' },
         { k: 'Saldo disponible hoy', v: saldo.toLocaleString('es-CO'), s: 'el mismo número de la tarjeta de arriba' },
         { k: 'Autonomía al ritmo de hoy', v: `${dias} días`, s: 'a 150 créditos por día' },
       ] },
       { tipo: 'filas', items: movs.map(m => ({
-        t: m.detalle,
-        s: `${m.fecha} · ${ORIGEN_MOV[m.detalle] || (m.tipo === 'entrada' ? 'créditos que entraron a su saldo' : 'créditos que consumió el motor')}`,
+        t: `${m.detalle}${m.motivo ? ` · ${MOTIVOS[m.motivo]?.nombre ?? m.motivo}` : ''}`,
+        s: `${m.fecha} · ${MOTIVOS[m.motivo ?? '']?.origen || ORIGEN_MOV[m.detalle] || (m.tipo === 'entrada' ? 'créditos que entraron a su saldo' : 'créditos que consumió el motor')}`,
         etiqueta: `${m.cantidad > 0 ? '+' : '−'}${Math.abs(m.cantidad).toLocaleString('es-CO')}`,
         tono: m.tipo === 'entrada' ? 'green' as const : 'muted' as const,
       })) },
@@ -433,13 +496,23 @@ function ViewCreditosNegocio({ setToast }: { setToast: (t: string) => void }) {
                 <span style={{ color: m.tipo === 'entrada' ? 'var(--green)' : 'var(--muted)', flexShrink: 0 }}>
                   <I_ArrowRight size={14} style={{ transform: m.tipo === 'entrada' ? 'rotate(90deg)' : 'rotate(-90deg)' }} />
                 </span>
-                <span className="guard-lb">{m.detalle}<small>{m.fecha}</small></span>
+                <span className="guard-lb">{m.detalle}<small>{m.fecha}{m.motivo ? ` · ${MOTIVOS[m.motivo]?.nombre ?? m.motivo}` : ''}</small></span>
                 <span className="guard-val" style={{ color: m.tipo === 'entrada' ? 'var(--green)' : 'var(--muted)' }}>
                   {m.cantidad > 0 ? '+' : ''}{m.cantidad.toLocaleString('es-CO')}
                 </span>
               </div>
             ))}
           </div>
+          {/* Un negocio nuevo arranca con la carga de su plan y nada más: mientras el motor no consuma,
+              la tarjeta dice qué hay en el libro y cuál es el paso siguiente. */}
+          {sinConsumo && (
+            <EstadoVacio
+              titulo="Su libro todavía no tiene consumo"
+              texto={`Su negocio arranca con los ${saldo.toLocaleString('es-CO')} créditos de su plan y esa carga es lo único que hay: el motor todavía no gastó ninguno. Cada análisis, pieza o campaña que corra queda aquí, con su motivo, su delta y su fecha.`}
+              accion={`Recargar ${PAQUETES[2].creditos.toLocaleString('es-CO')} créditos`}
+              onAccion={() => recargar(PAQUETES[2])}
+            />
+          )}
           <div>
             <div className="bs" style={{ marginBottom: 9 }}>Facturas del plan:</div>
             <div className="guards">

@@ -11,6 +11,8 @@ import {
   type Modo, type Mensaje, type Conversacion,
   type TipoConversacion, type EstadoColaboracion,
 } from '../data/demo';
+import { useDatos, type Conversacion as ConversacionBack } from '../api/datos';
+import { EstadoVacio } from '../components/EstadoVacio';
 
 // =============================================================================================
 // CONVERSACIONES, SEGÚN LA PIEL DE LA CUENTA — el mismo bloque del motor, con dos idiomas.
@@ -49,9 +51,9 @@ const AYUDA_ETAPA: Record<EstadoColaboracion, string> = {
 
 
 /** Arma un mapa id-de-conversación → valor, sin trucos de tipos. */
-function porConversacion<T>(f: (c: Conversacion) => T): Record<string, T> {
+function porConversacion<T>(cs: Conversacion[], f: (c: Conversacion) => T): Record<string, T> {
   const out: Record<string, T> = {};
-  for (const c of CONVERSACIONES) out[c.id] = f(c);
+  for (const c of cs) out[c.id] = f(c);
   return out;
 }
 
@@ -70,20 +72,79 @@ const sinComillas = (t: string) => t.replace(/^«\s*/, '').replace(/\s*»$/, '')
 
 const horaAhora = () => new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
 
+// =============================================================================================
+// LA BANDEJA DEL BACK — de dónde salen las conversaciones de esta pantalla
+//
+// Con el back encendido (`?api=…` y sesión), la bandeja lee las conversaciones del negocio y NADA
+// más: ni un renglón de ejemplo. Sin back, sigue la demo de siempre, que es el respaldo del link de
+// revisión. La decisión se toma una sola vez, en `bandeja`, dentro de la pantalla.
+//
+// Lo que el back todavía no manda (el historial de compras, quién atiende, el canal) no se inventa:
+// la fila y el detalle muestran el teléfono, la etapa, el estado, el puntaje y el último mensaje,
+// que es lo que hay. Mezclarlos con datos de ejemplo sería mentir sobre lo que hay.
+// =============================================================================================
+
+/** Los colores de la bandeja para las conversaciones del back, que no traen uno propio. */
+const COLORES_BANDEJA = ['#22c55e', '#c084fc', '#f59e0b', '#06b6d4', '#ec4899'];
+
+/**
+ * Cuándo fue el último mensaje, en corto: la hora si fue hoy, la fecha si fue antes. Es lo que
+ * necesita el dueño para saber si esa conversación es de ahora o de la semana pasada.
+ */
+const cuandoDe = (iso: string) => {
+  const f = new Date(iso);
+  if (isNaN(f.getTime())) return '—';
+  return f.toDateString() === new Date().toDateString()
+    ? f.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })
+    : f.toLocaleDateString('es-CO', { day: 'numeric', month: 'short' });
+};
+
+/**
+ * Una conversación del back, con la forma que ya usa la bandeja. El teléfono hace de nombre —es todo
+ * lo que el back sabe del lead— y el último mensaje es el que muestra la fila. La etapa, el estado y
+ * el puntaje no se aplanan acá: la fila los lee del dato original, así se ven tal como vienen.
+ */
+function conversacionDeBack(c: ConversacionBack, i: number): Conversacion {
+  const cuando = cuandoDe(c.last_message_at);
+  return {
+    id: c.id,
+    nombre: c.lead_phone || 'sin número',
+    tag: c.stage || 'sin etapa',
+    color: COLORES_BANDEJA[i % COLORES_BANDEJA.length],
+    canal: 'wa',
+    // El back todavía no dice quién atiende cada conversación ni cuáles esperan a una persona: la
+    // bandeja no lo inventa, y por eso las conversaciones del back no entran en la cola de humanos.
+    cola: 'ia',
+    hora: cuando,
+    esperando: '',
+    msgs: c.ultimo ? [{ de: 'ellos', txt: c.ultimo, hora: cuando }] : [],
+    tipo: 'cliente',
+  };
+}
+
 export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) => void; modo: Modo }) {
+  const d = useDatos();
+  // --- La fuente de la bandeja: las conversaciones del back si hay sesión, la demo si no. Todo lo
+  // que se lee de aquí para abajo sale de `bandeja`; la demo queda intacta para el link de revisión.
+  const bandeja: Conversacion[] = d.real ? d.conversaciones.map(conversacionDeBack) : CONVERSACIONES;
+  /** El dato original del back detrás de cada fila: de acá salen la etapa, el estado y el puntaje. */
+  const delBack: Record<string, ConversacionBack> = {};
+  if (d.real) for (const c of d.conversaciones) delBack[c.id] = c;
+  // Un negocio conectado que todavía no tiene conversaciones no muestra la demo: muestra su estado vacío.
+  const sinNada = d.real && bandeja.length === 0;
   // La bandeja de clientes del negocio (y los creadores que le producen una pieza): Rumi contesta
   // su propia vista —Comunidad— y el corte está arriba, en `ViewConversaciones`.
-  const [sel, setSel] = useState(CONVERSACIONES[0].id);
+  const [sel, setSel] = useState(bandeja[0]?.id ?? '');
   // Quién atiende cada conversación. Las que llegaron a la cola de humanos arrancan en sus manos:
   // Rumi ya se corrió y nadie contestó.
   const [control, setControl] = useState<Record<string, Control>>(
-    () => porConversacion<Control>(c => (c.cola === 'humano' ? 'humano' : 'ia')));
+    () => porConversacion<Control>(bandeja, c => (c.cola === 'humano' ? 'humano' : 'ia')));
   // Cuánto hace que esperan a un humano. null = ya no esperan (les contestó o volvió Rumi).
   const [espera, setEspera] = useState<Record<string, string | null>>(
-    () => porConversacion<string | null>(c => (c.cola === 'humano' ? c.esperando : null)));
+    () => porConversacion<string | null>(bandeja, c => (c.cola === 'humano' ? c.esperando : null)));
   // El hilo de cada conversación, con lo que usted ya agregó.
   const [hilos, setHilos] = useState<Record<string, Mensaje[]>>(
-    () => porConversacion<Mensaje[]>(c => c.msgs));
+    () => porConversacion<Mensaje[]>(bandeja, c => c.msgs));
   // Lo que hay escrito en el compositor de cada conversación (no se pierde al cambiar de chat).
   const [borrador, setBorrador] = useState<Record<string, string>>({});
   const [filtro, setFiltro] = useState<'todas' | 'esperan'>('todas');
@@ -94,7 +155,7 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
   // la tarjeta La colaboración del detalle.
   const [etapas, setEtapas] = useState<Record<string, EstadoColaboracion>>(() => {
     const out: Record<string, EstadoColaboracion> = {};
-    for (const c of CONVERSACIONES) if (c.colab) out[c.id] = c.colab.estado;
+    for (const c of bandeja) if (c.colab) out[c.id] = c.colab.estado;
     return out;
   });
   const [ignoradas, setIgnoradas] = useState<string[]>([]);
@@ -183,25 +244,29 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
     setBorrados([]);
   };
 
-  const conv = CONVERSACIONES.find(c => c.id === sel) ?? CONVERSACIONES[0];
+  const conv = bandeja.find(c => c.id === sel) ?? bandeja[0];
   /** La cola de trabajo: las conversaciones que esperan a un humano. Sólo un cliente espera:
    *  con un creador no se contesta, se negocia. */
-  const cola = CONVERSACIONES.filter(c => espera[c.id]);
+  const cola = bandeja.filter(c => espera[c.id]);
   // Las que esperan van primero: la bandeja es una cola de trabajo, no un archivo.
-  const orden = [...CONVERSACIONES].sort((a, b) => Number(!!espera[b.id]) - Number(!!espera[a.id]));
+  const orden = [...bandeja].sort((a, b) => Number(!!espera[b.id]) - Number(!!espera[a.id]));
   /** Los dos filtros de la bandeja juntos: quién le escribe y quién espera a una persona. */
   const pasaFiltros = (c: Conversacion, t = tipoFiltro, f = filtro) =>
     (t === 'todas' || c.tipo === t) && (f === 'todas' || !!espera[c.id]);
   const visibles = orden.filter(c => pasaFiltros(c));
-  const nClientes = CONVERSACIONES.filter(c => c.tipo === 'cliente').length;
-  const nCreadores = CONVERSACIONES.filter(c => c.tipo === 'creador').length;
-  const enNegociacion = CONVERSACIONES.filter(c => etapas[c.id] === 'negociando').length;
-  const acordadas = CONVERSACIONES.filter(c => etapas[c.id] === 'acordado').length;
-  const msgs = hilos[conv.id] ?? conv.msgs;
-  const atiende = control[conv.id] ?? 'ia';
-  const texto = borrador[conv.id] ?? '';
+  const nClientes = bandeja.filter(c => c.tipo === 'cliente').length;
+  const nCreadores = bandeja.filter(c => c.tipo === 'creador').length;
+  const enNegociacion = bandeja.filter(c => etapas[c.id] === 'negociando').length;
+  const acordadas = bandeja.filter(c => etapas[c.id] === 'acordado').length;
+  // La conversación abierta puede no existir todavía: con el back encendido y la bandeja vacía, estas
+  // lecturas quedan en vacío en vez de romper la pantalla. El detalle no se monta en ese caso.
+  const msgs = hilos[conv?.id ?? ''] ?? conv?.msgs ?? [];
+  const atiende = control[conv?.id ?? ''] ?? 'ia';
+  const texto = borrador[conv?.id ?? ''] ?? '';
   /** La etapa de la colaboración abierta: sólo tiene sentido si el que escribe es un creador. */
-  const etapa = etapas[conv.id] ?? 'invitado';
+  const etapa = etapas[conv?.id ?? ''] ?? 'invitado';
+  /** El dato del back de la conversación abierta: sin él, la pantalla muestra la demo. */
+  const cruda = conv ? delBack[conv.id] : undefined;
 
   /**
    * Cambia un filtro y, si la conversación abierta queda fuera de la lista, abre la primera que
@@ -222,7 +287,7 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
     const i = ETAPAS.indexOf(etapas[id] ?? 'invitado');
     const siguiente = ETAPAS[Math.min(ETAPAS.length - 1, Math.max(0, i + paso))];
     setEtapas(p => ({ ...p, [id]: siguiente }));
-    const nombre = (CONVERSACIONES.find(c => c.id === id)?.nombre ?? 'el creador').split(' ')[0];
+    const nombre = (bandeja.find(c => c.id === id)?.nombre ?? 'el creador').split(' ')[0];
     setToast(paso === 1
       ? `La colaboración con ${nombre} quedó en «${textoEtapa(siguiente)}». No le salió ningún mensaje: el acuerdo se cuenta desde el compositor`
       : `Volviste la colaboración con ${nombre} a «${textoEtapa(siguiente)}»: no cambia nada de lo ya hablado`);
@@ -265,7 +330,7 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
       compositor.current?.focus();
       return;
     }
-    const quien = CONVERSACIONES.find(c => c.id === id)?.nombre ?? 'el cliente';
+    const quien = bandeja.find(c => c.id === id)?.nombre ?? 'el cliente';
     setHilos(p => ({ ...p, [id]: [...(p[id] ?? []), { de: 'yo', txt: t, hora: horaAhora() }] }));
     setBorrador(p => ({ ...p, [id]: '' }));
     setControl(p => ({ ...p, [id]: 'humano' }));
@@ -280,8 +345,10 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
         titulo="Conversaciones"
         sub="Todo su WhatsApp y Messenger en un solo lugar. Aquí caen dos cosas distintas y se ven distintas: los clientes que le quieren comprar y los creadores que le producen una pieza. Rumi contesta sola y usted entra sólo cuando hace falta."
         nums={[
-          { v: '128', l: 'mensajes de clientes hoy' },
-          { v: '94%', l: 'de esos, los contestó la IA', c: 'var(--green)' },
+          // Con el back encendido la bandeja cuenta conversaciones, que es lo que el back tiene. Los
+          // 128 mensajes y el 94% de la demo no se muestran: no hay de dónde sacarlos todavía.
+          { v: String(bandeja.length), l: d.real ? 'conversaciones en la bandeja' : 'mensajes de clientes hoy' },
+          ...(d.real ? ([] as { v: string; l: string; c?: string }[]) : [{ v: '94%', l: 'de esos, los contestó la IA', c: 'var(--green)' }]),
           { v: String(cola.length), l: 'clientes esperan a un humano', c: cola.length ? 'var(--red)' : 'var(--green)' },
           { v: String(nCreadores), l: `colaboraciones con creadores${enNegociacion ? ` · ${enNegociacion} en negociación` : acordadas ? ` · ${acordadas} acordada${acordadas === 1 ? '' : 's'}` : ''}`, c: 'var(--purple4)' },
           { v: String(flujos.filter(f => f.estado === 'Activo').length), l: `de ${flujos.length} automatizaciones de clientes`, c: 'var(--purple3)' },
@@ -289,6 +356,23 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
       />
 
       {/* ============ LA BANDEJA Y EL CHAT ============ */}
+      {d.real && d.cargando && bandeja.length === 0 ? (
+        /* El panel está trayendo la bandeja del back: todavía no se sabe si hay conversaciones o no,
+           así que no se muestra ni el estado vacío ni una conversación de ejemplo. */
+        <EstadoVacio
+          icono={<I_Whatsapp size={22} />}
+          titulo="Leyendo sus conversaciones…"
+          texto="Un segundo: el panel está trayendo del servidor lo que este negocio tiene en la bandeja."
+        />
+      ) : sinNada ? (
+        /* Un negocio conectado que todavía no tiene conversaciones: acá no va ni una de ejemplo.
+           Dice de dónde caen y qué hacer para tener la primera. */
+        <EstadoVacio
+          icono={<I_Whatsapp size={22} />}
+          titulo="Todavía no hay conversaciones"
+          texto="Acá van a caer las de WhatsApp y Messenger de su negocio, y también las de los creadores que le producen una pieza: con ellos se negocia el precio, el plazo y lo que entregan, todo en esta misma conversación. Conecte su WhatsApp, que está aquí abajo en esta pantalla, y escríbale al número del negocio: la primera aparece sola."
+        />
+      ) : (
       <div className="duo">
         <Card
           title={<span className="row" style={{ gap: 8 }}><I_Chat size={14} style={{ color: 'var(--purple3)' }} /> La bandeja</span>}
@@ -307,8 +391,8 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
                 title={`Muestra sólo las conversaciones de creadores (${nCreadores}): gente que le produce una pieza. No le compran nada: con ellos se negocia precio, plazo y entrega. Es sólo la vista.`}
                 onClick={() => filtrar('creador', filtro)}>Creadores ({nCreadores})</span>
               <span className={`seg ${tipoFiltro === 'todas' ? 'on' : ''}`} role="button"
-                title={`Muestra las ${CONVERSACIONES.length} conversaciones de la bandeja: clientes y creadores juntos. Puede volver a este filtro cuando quiera.`}
-                onClick={() => filtrar('todas', filtro)}>Todas ({CONVERSACIONES.length})</span>
+                title={`Muestra las ${bandeja.length} conversaciones de la bandeja: clientes y creadores juntos. Puede volver a este filtro cuando quiera.`}
+                onClick={() => filtrar('todas', filtro)}>Todas ({bandeja.length})</span>
             </div>
             <span className="bt">Cola</span>
             <div className="seg-group">
@@ -332,12 +416,14 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
           ) : visibles.map(c => {
             const hilo = hilos[c.id] ?? c.msgs;
             const quien = control[c.id] ?? 'ia';
+            /** El dato del back de esta fila: si existe, la fila se lee del back y nada más. */
+            const cruda = delBack[c.id];
             return (
               <div key={c.id} className="notif" onClick={() => setSel(c.id)}
                 style={{ cursor: 'pointer', background: c.id === sel ? 'var(--bg3)' : 'transparent', borderRadius: 10 }}
                 title={`Abra la conversación de ${c.nombre} en el panel de la derecha`}>
                 <div className="pv-av" style={{ background: c.color, width: 34, height: 34, fontSize: 12 }}>
-                  {c.nombre.split(' ').map(w => w[0]).slice(0, 2).join('')}
+                  {cruda ? <I_Whatsapp size={14} /> : c.nombre.split(' ').map(w => w[0]).slice(0, 2).join('')}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div className="row spread">
@@ -345,9 +431,32 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
                     <span className="tiny muted">{c.hora}</span>
                   </div>
                   <div className="tiny muted" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {hilo[hilo.length - 1].txt}
+                    {hilo.length > 0 ? hilo[hilo.length - 1].txt : 'Todavía no hay mensajes en esta conversación.'}
                   </div>
                   <div className="row" style={{ gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
+                    {cruda ? (
+                      /* Una conversación del back se lee como viene: teléfono, etapa, estado y puntaje.
+                         Nada de insignias de la demo (cliente/creador, canal, quién atiende), que el
+                         back todavía no distingue. */
+                      <>
+                        <span className="badge badge-green" style={{ fontSize: 9 }}
+                          title="Le escribió a su WhatsApp: es de donde entran las conversaciones al motor.">
+                          <I_Whatsapp size={9} /> WhatsApp
+                        </span>
+                        <span className="badge badge-purple" style={{ fontSize: 9 }}
+                          title="En qué etapa va el lead, tal como la tiene el motor.">
+                          {cruda.stage || 'sin etapa'}
+                        </span>
+                        <span className="badge badge-muted" style={{ fontSize: 9 }}
+                          title="El estado de la conversación en el back.">
+                          {cruda.status || 'sin estado'}
+                        </span>
+                        <span className={`badge ${cruda.lead_score >= 70 ? 'badge-green' : cruda.lead_score >= 40 ? 'badge-amber' : 'badge-muted'}`} style={{ fontSize: 9 }}
+                          title="Qué tan caliente está el lead: lo puntúa el motor con lo que escribió, de 0 a 100.">
+                          {cruda.lead_score} de 100
+                        </span>
+                      </>
+                    ) : (<>
                     <span className={`badge ${c.tipo === 'creador' ? 'tg-creador' : 'tg-cliente'}`} style={{ fontSize: 9 }}
                       title={c.tipo === 'creador'
                         ? 'Es un creador: le produce una pieza, no le compra. Rumi negocia con él el precio, el plazo y qué entrega.'
@@ -375,18 +484,23 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
                       </span>
                     )}
                     <span className="badge badge-muted" style={{ fontSize: 9 }}>{c.tag}</span>
+                    </>)}
                   </div>
                 </div>
               </div>
             );
           })}
 
-          <div style={{ marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--border)' }}>
-            <div className="tiny muted" style={{ marginBottom: 7 }}>De dónde vinieron los 128 mensajes de clientes de hoy</div>
-            <BarRow label="WhatsApp" valor={78} max={128} color="var(--green)" />
-            <BarRow label="Messenger" valor={34} max={128} color="var(--purple2)" />
-            <BarRow label="Instagram" valor={16} max={128} color="#e11d48" />
-          </div>
+          {/* De dónde vinieron los 128 mensajes de hoy es de la demo: con el back encendido sólo se
+              muestra lo que el back tiene, que es la lista de arriba. */}
+          {!d.real && (
+            <div style={{ marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--border)' }}>
+              <div className="tiny muted" style={{ marginBottom: 7 }}>De dónde vinieron los 128 mensajes de clientes de hoy</div>
+              <BarRow label="WhatsApp" valor={78} max={128} color="var(--green)" />
+              <BarRow label="Messenger" valor={34} max={128} color="var(--purple2)" />
+              <BarRow label="Instagram" valor={16} max={128} color="#e11d48" />
+            </div>
+          )}
           <div className="acc-why">
             El motor no escribe de <b>22:00 a 08:00</b>: es un freno duro que no se puede desactivar.
           </div>
@@ -400,6 +514,19 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
           }
           action={
             <span className="row" style={{ gap: 7, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+              {cruda ? (
+                /* Lo que el back sabe de esta conversación, tal como viene: etapa, estado, puntaje y
+                   cuándo llegó el último mensaje. Sin insignias de la demo. */
+                <>
+                  <span className="badge badge-green" title="Le escribió a su WhatsApp."><I_Whatsapp size={11} /> WhatsApp</span>
+                  <span className="badge badge-purple" title="En qué etapa va el lead, tal como la tiene el motor.">{cruda.stage || 'sin etapa'}</span>
+                  <span className="badge badge-muted" title="El estado de la conversación en el back.">{cruda.status || 'sin estado'}</span>
+                  <Badge tone={cruda.lead_score >= 70 ? 'green' : cruda.lead_score >= 40 ? 'amber' : 'muted'}>
+                    puntaje {cruda.lead_score} de 100
+                  </Badge>
+                  <Badge tone="muted">último mensaje {conv.hora}</Badge>
+                </>
+              ) : (<>
               <span className={`badge ${conv.tipo === 'creador' ? 'tg-creador' : 'tg-cliente'}`}
                 title={conv.tipo === 'creador'
                   ? 'Esta conversación es de un creador: le produce una pieza. No hay compra ni historial de cliente: lo que importa es qué le pide, a qué precio y para cuándo.'
@@ -411,6 +538,7 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
               <Badge tone={atiende === 'ia' ? 'green' : 'amber'}>
                 {atiende === 'ia' ? 'Atiende Rumi (IA)' : 'Atiende usted'}
               </Badge>
+              </>)}
             </span>
           }
         >
@@ -434,7 +562,23 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
             })}
           </div>
 
-          {conv.tipo === 'creador' && conv.colab ? (
+          {cruda ? (
+            /* Una conversación del back no trae historial de compras ni ticket promedio: lo que hay
+               es el teléfono, la etapa, el estado, el puntaje y la fecha del último mensaje. */
+            <>
+              <div className="datos-row" style={{ marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--border)' }}>
+                <div className="dato"><span className="dato-l">Teléfono</span><span className="dato-v">{cruda.lead_phone || conv.nombre}</span></div>
+                <div className="dato"><span className="dato-l">Etapa</span><span className="dato-v">{cruda.stage || '—'}</span></div>
+                <div className="dato"><span className="dato-l">Estado</span><span className="dato-v">{cruda.status || '—'}</span></div>
+                <div className="dato"><span className="dato-l">Puntaje del lead</span>
+                  <span className="dato-v" style={{ color: cruda.lead_score >= 70 ? 'var(--green)' : 'var(--amber)' }}>{cruda.lead_score} de 100</span></div>
+              </div>
+              <div className="bs">
+                Esto es lo que el motor sabe de esta conversación: el teléfono del lead, en qué etapa va
+                y cuánto lo puntuó. Todavía no hay historial de compras ni ticket promedio que mostrar acá.
+              </div>
+            </>
+          ) : conv.tipo === 'creador' && conv.colab ? (
             /* Un creador no tiene compras ni ticket promedio: tiene una pieza que entregar, un
                precio y una fecha. Por eso el contexto de abajo es otro, no el del cliente. */
             <div className="colab">
@@ -496,7 +640,21 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
             </>
           )}
 
-          {ignoradas.includes(conv.id) ? (
+          {cruda ? (
+            /* El texto que propone Rumi es de la demo: con el back encendido no hay ninguna propuesta
+               escrita, y la pantalla no la inventa. */
+            <div className="alarm" style={{ borderLeft: '3px solid var(--purple2)', background: 'rgba(168,85,247,.05)' }}>
+              <div className="alarm-head">
+                <span className="alarm-sev oportunidad">LO QUE PROPONE EL AGENTE</span>
+                <span className="alarm-when">el motor todavía no la escribió</span>
+              </div>
+              <div className="alarm-sug" style={{ color: 'var(--txt)' }}>
+                Esta conversación viene del back: acá no hay un borrador escrito por Rumi y la pantalla
+                no lo inventa. Cuando el motor escriba la propuesta, aparece en este mismo lugar, lista
+                para bajar al compositor.
+              </div>
+            </div>
+          ) : ignoradas.includes(conv.id) ? (
             <div className="composer-hint" style={{ padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 10, background: 'var(--bg2)' }}>
               Descartó el borrador que había escrito Rumi en esta conversación. {conv.tipo === 'creador' ? 'El creador' : 'El cliente'} sigue sin
               respuesta: escriba usted abajo, o pida el borrador otra vez.
@@ -576,6 +734,7 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
           </div>
         </Card>
       </div>
+      )}
 
       {/* ============ ESCALADOS Y CANAL ============ */}
       <div className="duo" style={{ marginTop: 16 }}>
@@ -585,8 +744,9 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
         >
           {cola.length === 0 ? (
             <div className="bs">
-              Nadie está esperando a una persona ahora mismo: Rumi está contestando todo. Cuando detecte
-              un cliente enojado o que quiere cancelar, frena y aparece aquí.
+              {d.real
+                ? 'El back todavía no marca cuáles conversaciones están esperando a una persona: cuando lo haga, las urgentes aparecen acá.'
+                : 'Nadie está esperando a una persona ahora mismo: Rumi está contestando todo. Cuando detecte un cliente enojado o que quiere cancelar, frena y aparece aquí.'}
             </div>
           ) : cola.map(c => (
             <div key={c.id} className="alarm critico" style={{ marginBottom: 10, borderLeft: '3px solid var(--red)' }}>
@@ -595,7 +755,7 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
                 <span className="alarm-when">espera hace {c.esperando}</span>
               </div>
               <div className="alarm-title" style={{ minWidth: 0 }}>{c.nombre}: {c.tag}</div>
-              <div className="alarm-sug">{(hilos[c.id] ?? c.msgs).slice(-1)[0].txt.slice(0, 110)}</div>
+              <div className="alarm-sug">{((hilos[c.id] ?? c.msgs).slice(-1)[0]?.txt ?? '').slice(0, 110)}</div>
               <div className="alarm-acts">
                 <Button className="btn-sm" title="Abra la conversación y tome el control, con el cursor en el compositor. Rumi no contesta hasta que se la devuelva."
                   onClick={() => { setSel(c.id); setControl(p => ({ ...p, [c.id]: 'humano' })); setTimeout(() => compositor.current?.focus(), 0); }}>

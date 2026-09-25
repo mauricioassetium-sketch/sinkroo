@@ -4,11 +4,21 @@ import { ViewHead, BarRow, Ring } from '../components/viz';
 import { I_Globe, I_Trend, I_Star, I_Eye, I_Zap, I_Check, I_ArrowRight, I_Plus, I_Users } from '../components/icons';
 import { COMPETIDORES, ANGULOS, TENDENCIAS } from '../data/demo';
 import { useDetalle } from '../components/Detalle';
+import { useDatos } from '../api/datos';
+import { baseApi, token } from '../api/cliente';
+import { EstadoVacio } from '../components/EstadoVacio';
 import type { Vista } from '../components/Layout';
 
 /** El día en que vuelve un hallazgo silenciado 7 días: se calcula, no se escribe a mano. */
 const enUnaSemana = () =>
   new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('es-CO', { day: 'numeric', month: 'long' });
+
+/** La fecha de un hallazgo o de una corrida, en corto («24 de sept»). Vacía si no se puede leer. */
+const fechaCorta = (iso?: string) => {
+  if (!iso) return '';
+  const f = new Date(iso);
+  return isNaN(+f) ? '' : f.toLocaleDateString('es-CO', { day: 'numeric', month: 'short' });
+};
 
 const OFERTA = [
   { k: 'Precio', usted: '$34', ellos: '$29 el más bajo', gana: false, nota: 'Va 17% arriba. Se compensa con envío y garantía.' },
@@ -22,6 +32,11 @@ const OFERTA = [
 
 export function ViewMercado({ setToast, setVista }: { setToast: (t: string) => void; setVista?: (v: Vista) => void }) {
   const detalle = useDetalle();
+  // De dónde salen los datos: del back cuando hay back (los hallazgos del motor y el desvío del modelo
+  // predictivo), de la demostración cuando no. Nunca de los dos.
+  const d = useDatos();
+  const esReal = d.real;
+  const hallazgos = d.hallazgos;
   const maxAnuncios = Math.max(...COMPETIDORES.map(c => c.anuncios));
   const maxLeads = Math.max(...COMPETIDORES.map(c => c.leads));
   // Lo que el motor quedó haciendo: se ve en la pantalla, no en un aviso que se va solo.
@@ -30,7 +45,30 @@ export function ViewMercado({ setToast, setVista }: { setToast: (t: string) => v
   const [borradorCreado, setBorradorCreado] = useState(false);
   // Silenciar el hallazgo es reversible: vuelve a los 7 días o cuando lo destildes.
   const [silenciado, setSilenciado] = useState(false);
+  // El motor saliendo a investigar de verdad, disparado desde el estado vacío.
+  const [investigando, setInvestigando] = useState(false);
   const oro = ANGULOS[0];
+
+  /** Corre la investigación del mercado en el back (investigar no cuesta créditos) y relee los hallazgos. */
+  const investigar = async () => {
+    setInvestigando(true);
+    try {
+      const r = await fetch(baseApi() + '/api/agentes/correr', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token() },
+      });
+      if (!r.ok) {
+        const e = await r.json().catch(() => ({} as { error?: string; detalle?: string }));
+        setToast(e?.detalle || e?.error || `No se pudo investigar (error ${r.status})`);
+      } else {
+        setToast('El equipo salió a investigar su mercado');
+      }
+    } catch {
+      setToast('No se pudo investigar: el servidor no respondió');
+    }
+    await d.refrescar();
+    setInvestigando(false);
+  };
 
   // La misma vista, dos pieles: un creador no ve el mercado de una empresa (competidores, anuncios,
   // precios propios), ve su nicho. Es la entrada «mercado» del Centro de Mando con el idioma de la
@@ -42,7 +80,12 @@ export function ViewMercado({ setToast, setVista }: { setToast: (t: string) => v
         icon={<I_Globe size={19} />}
         titulo="Mercado"
         sub="Qué está haciendo su competencia y por dónde conviene ir. Datos de la biblioteca pública de anuncios de Meta."
-        nums={[
+        nums={esReal ? [
+          { v: String(hallazgos.length), l: hallazgos.length === 1 ? 'hallazgo de su mercado' : 'hallazgos de su mercado' },
+          { v: `${d.desvioPct.toLocaleString('es-CO')}%`, l: 'desvío del modelo predictivo', c: 'var(--purple3)' },
+          { v: String(d.corridas.length), l: 'veces que el equipo investigó' },
+          { v: fechaCorta(d.corridas[0]?.empezada_at) || 'todavía no', l: 'última investigación' },
+        ] : [
           { v: '47', l: 'anuncios analizados hoy' },
           { v: String(COMPETIDORES.length), l: 'competidores vigilados' },
           { v: '+32%', l: 'demanda de su producto', c: 'var(--green)' },
@@ -53,9 +96,57 @@ export function ViewMercado({ setToast, setVista }: { setToast: (t: string) => v
       {/* ============ EL HALLAZGO Y LA COMPETENCIA ============ */}
       <div className="duo">
         <Card
-          title={<span className="row" style={{ gap: 8 }}><I_Zap size={14} style={{ color: 'var(--purple3)' }} /> Lo que encontró Lux hoy</span>}
-          action={<Badge tone="purple">hace 12 min</Badge>}
+          title={<span className="row" style={{ gap: 8 }}><I_Zap size={14} style={{ color: 'var(--purple3)' }} /> {esReal ? 'Lo que encontró el motor en su mercado' : 'Lo que encontró Lux hoy'}</span>}
+          action={esReal ? <Badge tone="purple">{hallazgos.length === 1 ? '1 hallazgo' : `${hallazgos.length} hallazgos`}</Badge> : <Badge tone="purple">hace 12 min</Badge>}
         >
+          {esReal ? (
+            /* ---------- LOS HALLAZGOS REALES DEL BACK ----------
+               Cada uno con su dato, su porqué y SU FUENTE a la vista: la fuente no se esconde. */
+            hallazgos.length === 0 ? (
+              investigando ? (
+                <div className="tiny" style={{ display: 'flex', alignItems: 'center', gap: 7, color: 'var(--purple3)', fontWeight: 700 }}>
+                  <I_Zap size={13} /> El equipo salió a investigar su mercado: los hallazgos aparecen aquí en cuanto termine.
+                </div>
+              ) : d.cargando ? (
+                <div className="tiny muted">Leyendo lo que investigó el motor…</div>
+              ) : (
+                <EstadoVacio
+                  titulo="El motor todavía no investigó su mercado"
+                  texto="Todavía no hay ningún hallazgo: el equipo sale a mirar qué está haciendo su competencia y qué está funcionando en su rubro. Lo que encuentra queda aquí con el dato, su porqué y de dónde salió."
+                  accion="Que el motor investigue ahora"
+                  onAccion={investigar}
+                />
+              )
+            ) : (
+              <>
+                {hallazgos.map(h => (
+                  <div key={h.id} className="alarm oportunidad">
+                    <div className="alarm-head">
+                      <span className="alarm-sev oportunidad">{h.tipo}</span>
+                      <span className="tiny muted">{fechaCorta(h.created_at)}</span>
+                    </div>
+                    <div className="alarm-title" style={{ minWidth: 0 }}>{h.titulo}</div>
+                    <div className="alarm-money">
+                      <span className="ico" style={{ color: 'var(--purple3)' }}><I_Trend size={14} /></span>
+                      <span><b style={{ color: 'var(--purple3)' }}>El dato: </b>{h.dato}</span>
+                    </div>
+                    <div className="alarm-sug"><b>Por qué importa: </b>{h.porque}</div>
+                    <div className="acc-why"><b>Fuente: </b>{h.fuente}</div>
+                  </div>
+                ))}
+                <div className="datos-row" style={{ marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--border)' }}>
+                  <div className="dato"><span className="dato-l">Hallazgos de su mercado</span><span className="dato-v">{hallazgos.length}</span></div>
+                  <div className="dato"><span className="dato-l">El más reciente</span><span className="dato-v">{fechaCorta(hallazgos[0].created_at)}</span></div>
+                  <div className="dato"><span className="dato-l">Desvío del modelo</span><span className="dato-v" style={{ color: d.desvioPct <= 10 ? 'var(--green)' : 'var(--amber)' }}>{d.desvioPct.toLocaleString('es-CO')}%</span></div>
+                </div>
+                <div className="acc-why">
+                  Cada hallazgo sale de <b>una fuente concreta</b>: si la fuente no se puede mostrar, el hallazgo no se muestra.
+                  El desvío de <b>{d.desvioPct.toLocaleString('es-CO')}%</b> es la diferencia entre lo que predijo el modelo y lo que pasó de verdad: con eso corrige la próxima estimación.
+                </div>
+              </>
+            )
+          ) : (
+            <>
           <div className="alarm oportunidad">
             <div className="alarm-head">
               <span className="alarm-sev oportunidad">MOVIMIENTO DETECTADO</span>
@@ -139,6 +230,8 @@ export function ViewMercado({ setToast, setVista }: { setToast: (t: string) => v
             Lux lee la biblioteca pública de anuncios de sus competidores <b>todos los días</b>.
             No adivina: compara anuncios reales que están corriendo ahora.
           </div>
+            </>
+          )}
         </Card>
 
         <Card

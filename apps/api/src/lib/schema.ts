@@ -94,6 +94,13 @@ export async function migrate(db: Pool): Promise<void> {
 
     CREATE INDEX IF NOT EXISTS idx_products_business ON products(business_id);
 
+    -- El plan y los créditos del negocio. Arranca en cero y en el plan más chico: nadie tiene créditos
+    -- que no haya cargado, y ningún negocio de prueba puede gastar de más.
+    ALTER TABLE businesses ADD COLUMN IF NOT EXISTS plan TEXT NOT NULL DEFAULT 'base';
+    ALTER TABLE businesses ADD COLUMN IF NOT EXISTS creditos INT NOT NULL DEFAULT 0;
+    ALTER TABLE businesses ADD COLUMN IF NOT EXISTS zona TEXT NOT NULL DEFAULT '';
+    ALTER TABLE businesses ADD COLUMN IF NOT EXISTS rubro TEXT NOT NULL DEFAULT '';
+
     CREATE TABLE IF NOT EXISTS conversations (
       id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       business_id     UUID REFERENCES businesses(id) ON DELETE CASCADE,
@@ -160,6 +167,155 @@ export async function migrate(db: Pool): Promise<void> {
     );
 
     CREATE INDEX IF NOT EXISTS idx_archivos_business ON archivos(business_id);
+
+    -- ------------------------------ EL MOTOR: corridas, piezas y evaluación ------------------------------
+    -- Una corrida es una vuelta del equipo de agentes sobre el negocio. Cada tarea es lo que hizo uno.
+    CREATE TABLE IF NOT EXISTS corridas (
+      id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+      motivo      TEXT NOT NULL DEFAULT 'investigacion',
+      estado      TEXT NOT NULL DEFAULT 'corriendo',
+      creditos    INT NOT NULL DEFAULT 0,
+      empezada_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      terminada_at TIMESTAMPTZ
+    );
+
+    CREATE TABLE IF NOT EXISTS tareas_corrida (
+      id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      corrida_id  UUID NOT NULL REFERENCES corridas(id) ON DELETE CASCADE,
+      agente      TEXT NOT NULL,
+      que         TEXT NOT NULL,
+      resultado   JSONB NOT NULL DEFAULT '{}'::jsonb,
+      creditos    INT NOT NULL DEFAULT 0,
+      orden       INT NOT NULL DEFAULT 0
+    );
+
+    -- Los hallazgos del mercado, con su fuente: sin fuente, un hallazgo es una opinión.
+    CREATE TABLE IF NOT EXISTS hallazgos (
+      id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+      tipo        TEXT NOT NULL DEFAULT 'mercado',
+      titulo      TEXT NOT NULL,
+      dato        TEXT NOT NULL DEFAULT '',
+      porque      TEXT NOT NULL DEFAULT '',
+      fuente      TEXT NOT NULL DEFAULT '',
+      corrida_id  UUID REFERENCES corridas(id) ON DELETE SET NULL,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_hallazgos_business ON hallazgos(business_id, created_at DESC);
+
+    -- Las piezas: lo que el motor escribe. La generación de video y de imagen entra por 'generacion'.
+    CREATE TABLE IF NOT EXISTS piezas (
+      id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+      titulo      TEXT NOT NULL DEFAULT '',
+      formato     TEXT NOT NULL DEFAULT 'imagen',
+      texto       TEXT NOT NULL DEFAULT '',
+      guion       TEXT NOT NULL DEFAULT '',
+      estado      TEXT NOT NULL DEFAULT 'borrador',
+      generacion  JSONB NOT NULL DEFAULT '{}'::jsonb,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_piezas_business ON piezas(business_id, created_at DESC);
+
+    -- EL PÚBLICO: 500 agentes por negocio, con su perfil. Es el panel que evalúa cada pieza.
+    CREATE TABLE IF NOT EXISTS publico_agentes (
+      id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      business_id  UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+      numero       INT NOT NULL,
+      nombre       TEXT NOT NULL,
+      edad         INT NOT NULL,
+      zona         TEXT NOT NULL,
+      interes      TEXT NOT NULL,
+      sensibilidad TEXT NOT NULL,
+      estilo       TEXT NOT NULL,
+      created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+      UNIQUE (business_id, numero)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_publico_business ON publico_agentes(business_id);
+
+    -- Una evaluación de MiroFish: los 5 jueces y el público sobre una pieza.
+    CREATE TABLE IF NOT EXISTS evaluaciones (
+      id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      business_id  UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+      pieza_id     UUID REFERENCES piezas(id) ON DELETE CASCADE,
+      titulo       TEXT NOT NULL DEFAULT '',
+      puntaje      NUMERIC(5,2) NOT NULL DEFAULT 0,
+      orden        INT,
+      total_publico INT NOT NULL DEFAULT 0,
+      resumen      JSONB NOT NULL DEFAULT '{}'::jsonb,
+      creditos     INT NOT NULL DEFAULT 0,
+      created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE TABLE IF NOT EXISTS votos_jueces (
+      id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      evaluacion_id UUID NOT NULL REFERENCES evaluaciones(id) ON DELETE CASCADE,
+      juez          TEXT NOT NULL,
+      criterio      TEXT NOT NULL,
+      voto          INT NOT NULL,
+      opinion       TEXT NOT NULL DEFAULT ''
+    );
+
+    CREATE TABLE IF NOT EXISTS opiniones_publico (
+      id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      evaluacion_id UUID NOT NULL REFERENCES evaluaciones(id) ON DELETE CASCADE,
+      agente_numero INT NOT NULL,
+      voto          INT NOT NULL,
+      reaccion      TEXT NOT NULL DEFAULT 'indiferente',
+      comentario    TEXT NOT NULL DEFAULT ''
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_opiniones_evaluacion ON opiniones_publico(evaluacion_id);
+
+    -- LA PREDICCIÓN Y SU CORRECCIÓN: lo que el modelo dijo antes, lo que pasó después y el desvío.
+    -- Es lo que permite decir «predijo 84, pasó 79: la próxima estima más cerca» con datos, no con relato.
+    CREATE TABLE IF NOT EXISTS predicciones (
+      id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      business_id   UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+      evaluacion_id UUID REFERENCES evaluaciones(id) ON DELETE CASCADE,
+      predicho      NUMERIC(6,2) NOT NULL,
+      observado     NUMERIC(6,2),
+      desvio_pct    NUMERIC(6,2),
+      detalle       JSONB NOT NULL DEFAULT '{}'::jsonb,
+      created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_predicciones_business ON predicciones(business_id, created_at DESC);
+
+    -- Las campañas: lo que el negocio arma y el motor publica.
+    CREATE TABLE IF NOT EXISTS campanas (
+      id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      business_id  UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+      nombre       TEXT NOT NULL DEFAULT '',
+      forma        TEXT NOT NULL DEFAULT 'ventas',
+      estado       TEXT NOT NULL DEFAULT 'borrador',
+      presupuesto  NUMERIC(10,2) NOT NULL DEFAULT 0,
+      destinos     TEXT[] NOT NULL DEFAULT '{}',
+      objetivo     TEXT NOT NULL DEFAULT '',
+      piezas       INT NOT NULL DEFAULT 0,
+      roas         NUMERIC(6,2),
+      gasto        NUMERIC(12,2) NOT NULL DEFAULT 0,
+      created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_campanas_business ON campanas(business_id, created_at DESC);
+
+    -- El libro de créditos: cada consumo con su motivo. Nada se descuenta sin quedar escrito.
+    CREATE TABLE IF NOT EXISTS movimientos_creditos (
+      id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+      delta       INT NOT NULL,
+      motivo      TEXT NOT NULL,
+      detalle     TEXT NOT NULL DEFAULT '',
+      saldo       INT NOT NULL DEFAULT 0,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_creditos_business ON movimientos_creditos(business_id, created_at DESC);
 
     CREATE INDEX IF NOT EXISTS idx_conversations_lead ON conversations(lead_phone);
     CREATE INDEX IF NOT EXISTS idx_messages_conversation ON conversation_messages(conversation_id, created_at);

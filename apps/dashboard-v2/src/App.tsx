@@ -8,6 +8,7 @@ import { OnboardingProvider } from './lib/onboarding';
 import { ViewOnboarding } from './views/Onboarding';
 import { PantallaLogin, type Sesion } from './views/Login';
 import { hayApi, quienSoy, token } from './api/cliente';
+import { ProveedorDatos } from './api/datos';
 import { Asistente } from './components/Asistente';
 import { ViewHoy } from './views/Hoy';
 import { ViewCampanas } from './views/Campanas';
@@ -46,7 +47,10 @@ export default function App() {
   // Sin sesión, la única pantalla es la entrada.
   if (!sesion) return <PantallaLogin onEntrar={setSesion} />;
 
+  // Desde acá para adentro, todo el panel tiene los datos del back (o los del demo si no hay back).
+
   return (
+    <ProveedorDatos>
     <PerfilProvider>
     <OnboardingProvider avisar={avisar}>
     <PlanProvider>
@@ -68,5 +72,6 @@ export default function App() {
     </PlanProvider>
     </OnboardingProvider>
     </PerfilProvider>
+    </ProveedorDatos>
   );
 }

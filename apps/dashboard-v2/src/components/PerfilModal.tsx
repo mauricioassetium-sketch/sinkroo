@@ -5,6 +5,8 @@ import {
   usePerfil, inicialesDe, ZONAS, MONEDAS, COLORES_AVATAR, buscarLugares, monedaDe, conversionDelDia,
   type Perfil, type Lugar,
 } from '../lib/perfil';
+import { useDatos } from '../api/datos';
+import { PLANES } from '../data/demo';
 
 // =============================================================================================
 // Su PERFIL — los datos de la cuenta: cómo le llamás, su negocio, su email, su WhatsApp, la zona
@@ -22,6 +24,13 @@ import {
 
 export function PerfilModal({ abierto, cerrar, avisar }: { abierto: boolean; cerrar: () => void; avisar?: (t: string) => void }) {
   const { perfil, guardar } = usePerfil();
+  // De dónde salen el nombre del negocio, su plan y sus créditos: con el back encendido, del negocio real
+  // (`neg`); sin back, `neg` es null y todo queda como hasta hoy, con los valores de ejemplo. Las dos
+  // fuentes no se mezclan.
+  const d = useDatos();
+  const neg = d.real ? d.negocio : null;
+  const planNegocio = neg ? PLANES.find(p => p.key === neg.plan)?.nombre ?? neg.plan : '';
+  const creditosNegocio = d.creditos?.saldo ?? neg?.creditos ?? 0;
   const [borrador, setBorrador] = useState<Perfil>(perfil);
   const [guardado, setGuardado] = useState(false);
   const [sinEspacio, setSinEspacio] = useState(false);
@@ -30,10 +39,13 @@ export function PerfilModal({ abierto, cerrar, avisar }: { abierto: boolean; cer
   const [buscoAhora, setBuscoAhora] = useState(false);
   const [aplicado, setAplicado] = useState<Lugar | null>(null);
 
-  // Cada vez que se abre, se parte de lo que hay guardado
+  // Cada vez que se abre, se parte de lo que hay guardado. Con el back encendido, el nombre del negocio
+  // y la zona salen del negocio real: lo que el servidor tiene, no el ejemplo.
   const [abiertoAntes, setAbiertoAntes] = useState(false);
   if (abierto && !abiertoAntes) {
-    setAbiertoAntes(true); setBorrador(perfil); setGuardado(false); setSinEspacio(false);
+    setAbiertoAntes(true);
+    setBorrador(neg ? { ...perfil, marca: neg.name || perfil.marca, zona: neg.zona || perfil.zona } : perfil);
+    setGuardado(false); setSinEspacio(false);
     setBusqueda(''); setBuscoAhora(false); setAplicado(null);
   }
   if (!abierto && abiertoAntes) setAbiertoAntes(false);
@@ -113,6 +125,16 @@ export function PerfilModal({ abierto, cerrar, avisar }: { abierto: boolean; cer
           Zona horaria <b>{borrador.zona}</b> · Moneda <b>{mon.nombre} ({mon.codigo})</b>
         </span>
       </div>
+
+      {/* Con el back encendido, acá se ve lo que hay en el servidor y no un ejemplo: el negocio, su plan
+          y sus créditos. Sin back (modo demostración) este bloque no existe y todo queda igual que hoy. */}
+      {neg && (
+        <div className="datos-row" style={{ marginTop: 12, paddingTop: 11, borderTop: '1px solid var(--border)' }}>
+          <div className="dato"><span className="dato-l">Negocio</span><span className="dato-v">{neg.name}</span></div>
+          <div className="dato"><span className="dato-l">Plan</span><span className="dato-v">Plan {planNegocio}</span></div>
+          <div className="dato"><span className="dato-l">Créditos</span><span className="dato-v">{creditosNegocio.toLocaleString('es-CO')}</span></div>
+        </div>
+      )}
 
       {/* ================= ZONA HORARIA ================= */}
       <label className="label" style={{ marginTop: 16 }}>Zona horaria</label>

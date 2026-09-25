@@ -4,6 +4,8 @@ import { ViewHead } from '../components/viz';
 import { I_Shield, I_Check, I_ArrowRight, I_Camera, I_Lock, I_Zap, I_Credit, I_Globe, I_Eye, I_Qr, I_Refresh, I_Sun, I_User } from '../components/icons';
 import { usePerfil } from '../lib/perfil';
 import { useDetalle } from '../components/Detalle';
+import { useDatos } from '../api/datos';
+import { EstadoVacio } from '../components/EstadoVacio';
 import { FRENOS } from '../data/demo';
 
 // =============================================================================================
@@ -157,6 +159,7 @@ function CapturaCamara({ captura, foto, setFoto }: { captura: Captura; foto: str
 }
 
 export function ViewKyc({ setToast }: { setToast: (t: string) => void }) {
+  const datos = useDatos();
   const { perfil } = usePerfil();
   const [paso, setPaso] = useState(1);
   const [fotos, setFotos] = useState<Record<string, string>>({});
@@ -270,6 +273,10 @@ export function ViewKyc({ setToast }: { setToast: (t: string) => void }) {
       { label: 'Cerrar', onClick: () => {} },
     ],
   });
+
+  // Con el back encendido la pantalla NO usa el asistente de la demostración: muestra el estado real
+  // (ver `ViewKycReal`). Sin back, todo queda como está hoy.
+  if (datos.real) return <ViewKycReal setToast={setToast} />;
 
   return (
     <div className="dash">
@@ -470,6 +477,156 @@ export function ViewKyc({ setToast }: { setToast: (t: string) => void }) {
           </div>
         </Card>
       </div>
+    </div>
+  );
+}
+
+// =============================================================================================
+// LA VERIFICACIÓN CON EL BACK ENCENDIDO — el estado REAL, y nada inventado.
+//
+// El back todavía no tiene verificación de identidad: no hay dónde cargar el documento ni cómo comparar
+// la selfie. Así que esta pantalla dice la verdad de hoy: para qué es obligatoria, qué queda apagado
+// mientras no esté y qué falta. La carga del documento y la selfie se habilitan cuando se conecte el
+// proveedor de verificación. Nunca se muestra «verificado»: una cuenta sin verificar se ve como lo que es.
+// =============================================================================================
+function ViewKycReal({ setToast }: { setToast: (t: string) => void }) {
+  const datos = useDatos();
+  const detalle = useDetalle();
+  const neg = datos.negocio;
+  const arrancado = !!datos.onboarding?.arrancado;
+  const hechos = datos.onboarding?.hechos ?? [];
+  const creditos = datos.creditos?.saldo ?? neg?.creditos ?? 0;
+
+  /** El detalle del botón «Qué me va a pedir»: lo que va a pedir la verificación y en qué va hoy. */
+  const queVaAPedir = () => detalle({
+    titulo: 'Qué le va a pedir la verificación',
+    sub: 'Todavía no hay dónde cargar nada: el proveedor de verificación no está conectado. Esto es lo que le vamos a pedir cuando lo esté, para que no haya sorpresas.',
+    bloques: [
+      { tipo: 'filas', items: PASOS.map(p => ({
+          t: `Paso ${p.id} · ${p.nombre} · ${p.desc}`,
+          s: `${p.pide} Con esto se desbloquea: ${p.desbloquea.toLowerCase()}.`,
+          etiqueta: 'pendiente',
+          tono: 'muted' as const,
+        })) },
+      { tipo: 'datos', filas: [
+        { k: 'Estado de su verificación', v: 'Sin verificar', tono: 'amber' as const, s: 'no hay ninguna revisión en curso' },
+        { k: 'Documento y selfie', v: 'sin habilitar', tono: 'amber' as const, s: 'se habilitan cuando se conecte el proveedor' },
+        { k: 'Requisito', v: 'obligatorio', tono: 'amber' as const, s: 'no se publica a nombre de alguien sin verificar' },
+        { k: 'Lo que sí funciona hoy', v: 'todo menos el dinero', s: 'el panel puntúa piezas, el motor vigila el mercado y Rumi contesta sus chats' },
+      ] },
+      { tipo: 'aviso', tono: 'amber', texto: 'No damos por verificada una cuenta que no verificamos: hasta que el proveedor esté conectado y usted cargue el documento y la selfie, esta pantalla va a seguir diciendo «sin verificar».' },
+    ],
+    fuente: 'Estado real del negocio en el servidor: la verificación de identidad todavía no tiene proveedor conectado, así que no hay nada enviado ni en revisión.',
+    acciones: [{ label: 'Cerrar', onClick: () => {} }],
+  });
+
+  return (
+    <div className="dash">
+      <ViewHead
+        icon={<I_Shield size={19} />}
+        titulo="Verificación de identidad"
+        sub="Es un requisito legal para publicar anuncios y mover dinero. Aquí ve el estado real de su cuenta: la carga del documento y la selfie se habilitan cuando se conecte el proveedor de verificación."
+        nums={[
+          { v: 'Sin verificar', l: 'el estado de su cuenta', c: 'var(--amber)' },
+          { v: `${hechos.length} de 5`, l: 'primeros pasos hechos', c: 'var(--purple3)' },
+          { v: arrancado ? 'En marcha' : 'Sin arrancar', l: 'el motor', c: arrancado ? 'var(--green)' : 'var(--amber)' },
+          { v: creditos.toLocaleString('es-CO'), l: 'créditos', c: 'var(--purple3)' },
+        ]}
+      />
+
+      {/* Sin negocio no hay estado que mostrar: mientras el back responde se dice que está leyendo, y si de
+          verdad no se pudo leer, se dice eso y se ofrece volver a intentarlo. */}
+      {!neg ? (
+        <Card>
+          {datos.cargando ? (
+            <EstadoVacio
+              icono={<I_Shield size={22} />}
+              titulo="Leyendo el estado de su cuenta…"
+              texto="Estamos trayendo los datos del servidor. En un momento le mostramos en qué va su verificación de identidad."
+            />
+          ) : (
+            <EstadoVacio
+              icono={<I_Shield size={22} />}
+              titulo="Todavía no pudimos leer su negocio"
+              texto={datos.error || 'El panel no pudo traer los datos de su cuenta del servidor. Vuelva a intentarlo: en cuanto los lea, aquí le mostramos en qué va su verificación de identidad.'}
+              accion="Volver a intentar"
+              onAccion={() => { void datos.refrescar(); setToast('Leyendo su negocio otra vez…'); }}
+            />
+          )}
+        </Card>
+      ) : (
+        <div className="duo">
+          <Card
+            title={<span className="row" style={{ gap: 8 }}><I_Shield size={14} style={{ color: 'var(--amber)' }} /> Estado de su verificación</span>}
+            action={<Badge tone="amber">sin verificar</Badge>}
+          >
+            <div className="bs">
+              La verificación de identidad de <b>{neg.name}</b> todavía no está hecha, y todavía no se puede
+              hacer: el proveedor de verificación no está conectado.
+            </div>
+
+            <div className="alarm" style={{ borderLeft: '3px solid var(--amber)', background: 'rgba(245,158,11,.06)' }}>
+              <div className="alarm-head"><span className="alarm-sev atencion">TODAVÍA NO SE PUEDE CARGAR</span></div>
+              <div className="alarm-sug">
+                La carga del documento y la selfie se habilitan cuando <b>se conecte el proveedor de
+                verificación</b>. Hasta entonces esta cuenta queda <b>sin verificar</b>: no damos por
+                verificada una cuenta que no verificamos.
+              </div>
+            </div>
+
+            <div className="datos-row" style={{ marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--border)' }}>
+              <div className="dato"><span className="dato-l">Negocio</span><span className="dato-v">{neg.name}</span></div>
+              <div className="dato"><span className="dato-l">Estado</span><span className="dato-v" style={{ color: 'var(--amber)' }}>sin verificar</span></div>
+              <div className="dato"><span className="dato-l">Proveedor de verificación</span><span className="dato-v" style={{ color: 'var(--amber)' }}>no conectado</span></div>
+            </div>
+
+            <div className="row" style={{ gap: 9, flexWrap: 'wrap' }}>
+              <Button variant="ghost" className="btn-sm"
+                title="Le muestra qué le va a pedir la verificación cuando el proveedor esté conectado"
+                onClick={queVaAPedir}>Qué me va a pedir</Button>
+              <Button variant="ghost" className="btn-sm"
+                title="Vuelve a leer el estado de su cuenta en el servidor"
+                onClick={() => { void datos.refrescar(); setToast('Leyendo el estado de su cuenta otra vez…'); }}>
+                <I_Refresh size={13} /> Actualizar
+              </Button>
+            </div>
+          </Card>
+
+          <Card
+            title={<span className="row" style={{ gap: 8 }}><I_Lock size={14} style={{ color: 'var(--purple3)' }} /> Para qué es obligatoria</span>}
+            action={<Badge tone="amber">qué falta</Badge>}
+          >
+            <div className="bs" style={{ marginBottom: 9 }}>
+              Por una sola razón: <b>no se publica a nombre de una persona sin verificar quién es</b>.
+              Mientras no esté, esto queda apagado:
+            </div>
+            <div className="guards">
+              <div className="guard"><span style={{ color: 'var(--amber)', flexShrink: 0 }}><I_Zap size={14} /></span>
+                <span className="guard-lb">Publicar en sus redes<small>Anuncios, posts e historias salen con su cuenta</small></span></div>
+              <div className="guard"><span style={{ color: 'var(--amber)', flexShrink: 0 }}><I_Credit size={14} /></span>
+                <span className="guard-lb">Mover presupuesto y cobrar<small>Y facturar a nombre de su negocio</small></span></div>
+              <div className="guard"><span style={{ color: 'var(--green)', flexShrink: 0 }}><I_Check size={14} /></span>
+                <span className="guard-lb">Lo que sí funciona hoy<small>El motor investiga, escribe piezas, el panel las puntúa y Rumi contesta sus chats</small></span></div>
+            </div>
+
+            <div className="bs" style={{ marginTop: 14, marginBottom: 9 }}><b>Qué falta para que se habilite:</b></div>
+            <div className="guards">
+              <div className="guard"><span style={{ color: 'var(--purple3)', flexShrink: 0 }}><span style={{ fontWeight: 900, fontSize: 13 }}>1</span></span>
+                <span className="guard-lb">Que conectemos el proveedor de verificación<small>Es trabajo nuestro, no suyo: todavía no está</small></span></div>
+              <div className="guard"><span style={{ color: 'var(--purple3)', flexShrink: 0 }}><span style={{ fontWeight: 900, fontSize: 13 }}>2</span></span>
+                <span className="guard-lb">Que usted cargue el documento y la selfie<small>Es una vez: 2 minutos con el documento a mano</small></span></div>
+              <div className="guard"><span style={{ color: 'var(--purple3)', flexShrink: 0 }}><span style={{ fontWeight: 900, fontSize: 13 }}>3</span></span>
+                <span className="guard-lb">Que pase la revisión<small>Es automática; si algo no cierra, lo mira una persona</small></span></div>
+            </div>
+
+            <div className="datos-row" style={{ marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--border)' }}>
+              <div className="dato"><span className="dato-l">Primeros pasos</span><span className="dato-v">{hechos.length} de 5</span></div>
+              <div className="dato"><span className="dato-l">El motor</span><span className="dato-v" style={{ color: arrancado ? 'var(--green)' : 'var(--amber)' }}>{arrancado ? 'en marcha' : 'sin arrancar'}</span></div>
+              <div className="dato"><span className="dato-l">Créditos</span><span className="dato-v">{creditos.toLocaleString('es-CO')}</span></div>
+            </div>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

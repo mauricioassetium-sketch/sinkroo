@@ -6,9 +6,15 @@ import { TENANT } from '../data/demo';
 import { usePerfil, inicialesDe } from '../lib/perfil';
 import { useDetalle } from '../components/Detalle';
 import { usePlan } from '../lib/plan';
+import { useDatos } from '../api/datos';
+import { EstadoVacio } from '../components/EstadoVacio';
 
 const LINK = 'https://sinkroo.ai/r/skincare-natural';
 const PREMIO = 250;
+
+/** El código del link de referido sale del nombre del negocio: no se escribe a mano ni queda uno de ejemplo. */
+const codigoDe = (nombre: string) =>
+  nombre.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
 /** La hora del envío: se calcula cuando manda, no se escribe a mano. */
 const horaAhora = () => new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
@@ -34,7 +40,8 @@ const mensajeRecordatorio = (nombre: string, de: string) =>
   `Hola ${nombre.split(' ')[0]}, soy ${de}, de ${TENANT.cuenta}. Le dejé la invitación a Sinkroo y todavía no la ha aprovechado: son ${PREMIO} créditos para probar el motor de marketing con IA, sin tarjeta y sin compromiso. La puede retomar aquí: ${LINK}`;
 
 type Nodo = { nombre: string; estado: string; pago: boolean; nivel: 1 | 2; };
-const RED: Nodo[] = [
+// La red de la demostración: queda como respaldo del link de revisión, no se muestra con el back encendido.
+const RED_DEMO: Nodo[] = [
   { nombre: 'Valeria Gómez', estado: 'pagó su primer mes · +250', pago: true, nivel: 1 },
   { nombre: 'Julián Díaz', estado: 'pagó su primer mes · +250', pago: true, nivel: 1 },
   { nombre: 'Camila Torres', estado: 'invitación enviada, todavía no entró', pago: false, nivel: 1 },
@@ -46,6 +53,14 @@ export function ViewReferidos({ setToast }: { setToast: (t: string) => void }) {
   const detalle = useDetalle();
   const { perfil } = usePerfil();
   const { plan } = usePlan();
+  // De dónde salen los datos: del back cuando hay back, de la demostración cuando no. Nunca de los dos.
+  const d = useDatos();
+  const esReal = d.real;
+  // Con el back encendido la red y los créditos ganados son los del negocio: un negocio nuevo tiene
+  // 0 referidos y 0 créditos ganados, y eso es lo que se muestra, sin cifras de ejemplo.
+  const RED: Nodo[] = esReal ? [] : RED_DEMO;
+  const link = esReal ? `https://sinkroo.ai/r/${codigoDe(d.negocio?.name || '') || 'mi-negocio'}` : LINK;
+  const saldoHoy = esReal ? (d.creditos?.saldo ?? 0) : TENANT.creditos;
   const [copiado, setCopiado] = useState(false);
   // Lo que se mandó por cada canal: queda a la vista con el texto, el destinatario y la hora,
   // y se puede volver a mandar. Un aviso que se va solo no sirve: el envío tiene que quedar.
@@ -61,8 +76,8 @@ export function ViewReferidos({ setToast }: { setToast: (t: string) => void }) {
   const faltan = Math.max(0, proximoHito - pagados);
 
   const copiar = async () => {
-    try { await navigator.clipboard.writeText(LINK); setCopiado(true); setToast('Link copiado'); }
-    catch { setToast(LINK); }
+    try { await navigator.clipboard.writeText(link); setCopiado(true); setToast('Link copiado'); }
+    catch { setToast(link); }
   };
 
   const nombreCanal = (c: Canal) => (c === 'whatsapp' ? 'WhatsApp' : 'correo');
@@ -161,11 +176,14 @@ export function ViewReferidos({ setToast }: { setToast: (t: string) => void }) {
             no cuando se registra: así nadie llena la red de cuentas vacías.
           </div>
           <div className="row link-row" style={{ gap: 8 }}>
-            <input className="input" value={LINK} readOnly style={{ fontFamily: 'ui-monospace, monospace', fontSize: 12 }} />
+            <input className="input" value={link} readOnly style={{ fontFamily: 'ui-monospace, monospace', fontSize: 12 }} />
             <Button className="btn-sm" title="Copie el link al portapapeles" onClick={copiar}>
               <I_Copy size={14} /> {copiado ? 'Copiado' : 'Copiar'}
             </Button>
           </div>
+          {/* Mandar la invitación a un contacto concreto sólo tiene sentido con la agenda de la
+              demostración: con el back encendido no se inventa un destinatario. */}
+          {!esReal && (
           <div className="row" style={{ gap: 9, flexWrap: 'wrap' }}>
             <Button variant="outline" className="btn-sm"
               title="Le muestra el mensaje exacto que sale por su WhatsApp, con su link adentro, antes de enviarlo. Reversible: si no lo confirma, no se envía nada."
@@ -174,6 +192,7 @@ export function ViewReferidos({ setToast }: { setToast: (t: string) => void }) {
               title="Le muestra el correo con la invitación escrita, con su link adentro, antes de enviarlo. Reversible: si no lo confirma, no se envía nada."
               onClick={() => abrirInvitacion('email')}><I_Mail size={13} /> Por correo</Button>
           </div>
+          )}
 
           {/* El envío no se va solo: queda el mensaje, el destinatario, la hora y el botón para repetirlo. */}
           {(Object.keys(envios) as Canal[]).map(c => {
@@ -237,8 +256,11 @@ export function ViewReferidos({ setToast }: { setToast: (t: string) => void }) {
               {recordatorio && <span className="tiny" style={{ color: 'var(--amber)', fontWeight: 700 }}>recordados hoy {recordatorio.cuando}</span>}
             </div>
             <div className="dato"><span className="dato-l">Créditos ganados</span><span className="dato-v" style={{ color: 'var(--green)' }}>+{ganados.toLocaleString('es-CO')}</span></div>
-            <div className="dato"><span className="dato-l">Su saldo hoy</span><span className="dato-v">{TENANT.creditos.toLocaleString('es-CO')}</span></div>
+            <div className="dato"><span className="dato-l">Su saldo hoy</span><span className="dato-v">{saldoHoy.toLocaleString('es-CO')}</span></div>
           </div>
+          {/* El recordatorio sólo tiene sentido si hay a quién recordarle: sin invitados sin pagar,
+              el botón no se muestra. */}
+          {pendientes > 0 && (
           <div className="row" style={{ gap: 9, flexWrap: 'wrap' }}>
             <Button variant="outline" className="btn-sm"
               title="Le muestra el recordatorio que les llega a los que no pagaron, con el mensaje y a quiénes, antes de enviarlo. Reversible: queda el registro de cuándo salió y se puede volver a enviar."
@@ -247,6 +269,7 @@ export function ViewReferidos({ setToast }: { setToast: (t: string) => void }) {
               {recordatorio ? 'Volver a recordarles' : 'Recordarles a los que no pagaron'}
             </Button>
           </div>
+          )}
 
           {/* El registro del recordatorio: quiénes, cuándo, cuántas veces y cuándo sale el próximo. */}
           {recordatorio && (
@@ -275,6 +298,14 @@ export function ViewReferidos({ setToast }: { setToast: (t: string) => void }) {
           title={<span className="row" style={{ gap: 8 }}><I_Users size={14} style={{ color: 'var(--purple3)' }} /> Su red</span>}
           action={<Badge tone="purple">{RED.length} personas</Badge>}
         >
+          {esReal && RED.length === 0 ? (
+            <EstadoVacio
+              titulo="Su red está en cero"
+              texto="Todavía no trajo a nadie: 0 referidos que hayan pagado y 0 créditos ganados. Los créditos entran cuando la otra persona paga su primer mes, no cuando se registra, y el que llega empieza con 250 créditos. Pase su link y el primero que pague le devuelve 250."
+              accion="Copiar mi link"
+              onAccion={copiar}
+            />
+          ) : (
           <div className="reftree">
             <div className="ref-node root">
               <div className="av" style={{ width: 36, height: 36, background: `linear-gradient(135deg, ${perfil.color}, ${perfil.color}bb)` }}>{inicialesDe(perfil.nombre)}</div>
@@ -327,9 +358,11 @@ export function ViewReferidos({ setToast }: { setToast: (t: string) => void }) {
               </div>
             ))}
           </div>
+          )}
           <div className="acc-why">
-            Los de segundo nivel <b>son los que trajeron sus invitados</b>. También suman:
-            así funciona una red, no una lista.
+            {esReal && RED.length === 0
+              ? <>Su primer referido aparece aquí con su estado: <b>si ya pagó, si todavía no</b> y los créditos que dejó.</>
+              : <>Los de segundo nivel <b>son los que trajeron sus invitados</b>. También suman: así funciona una red, no una lista.</>}
           </div>
         </Card>
 
