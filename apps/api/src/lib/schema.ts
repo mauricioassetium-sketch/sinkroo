@@ -246,6 +246,37 @@ export async function migrate(db: Pool): Promise<void> {
 
     CREATE INDEX IF NOT EXISTS idx_publico_business ON publico_agentes(business_id);
 
+    -- LAS CUENTAS CONECTADAS: el token de Meta vive acá, del lado del servidor, y nunca sale en una
+    -- respuesta ni viaja al navegador. Una fila por negocio y red.
+    CREATE TABLE IF NOT EXISTS cuentas_conectadas (
+      id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      business_id  UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+      red          TEXT NOT NULL,
+      external_id  TEXT NOT NULL DEFAULT '',
+      nombre       TEXT NOT NULL DEFAULT '',
+      token        TEXT NOT NULL DEFAULT '',
+      token_expira TIMESTAMPTZ,
+      permisos     TEXT[] NOT NULL DEFAULT '{}',
+      estado       TEXT NOT NULL DEFAULT 'conectada',
+      created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+      UNIQUE (business_id, red)
+    );
+
+    -- Cada lectura de datos de la plataforma queda registrada: qué se pidió, si salió bien y qué se hizo
+    -- con eso. Es la trazabilidad de la calibración automática.
+    CREATE TABLE IF NOT EXISTS sincronizaciones (
+      id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+      red         TEXT NOT NULL,
+      que         TEXT NOT NULL DEFAULT 'insights',
+      ok          BOOLEAN NOT NULL DEFAULT false,
+      detalle     TEXT NOT NULL DEFAULT '',
+      datos       JSONB NOT NULL DEFAULT '{}'::jsonb,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_sincro_business ON sincronizaciones(business_id, created_at DESC);
+
     -- Cada calibración queda guardada: qué distribuciones se cargaron, de dónde salieron y cuándo. Es la
     -- trazabilidad del panel: si mañana cambia, se sabe con qué dato se armó el de hoy.
     CREATE TABLE IF NOT EXISTS calibraciones (

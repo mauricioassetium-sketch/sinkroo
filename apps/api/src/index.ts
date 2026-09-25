@@ -9,6 +9,7 @@ import { piezaRoutes } from './routes/piezas.js';
 import { negocioRoutes } from './routes/negocio.js';
 import { campanaRoutes } from './routes/campanas.js';
 import { calibracionRoutes } from './routes/calibracion.js';
+import { integracionRoutes } from './routes/integraciones.js';
 import { hooksSeguridad } from './lib/seguridad.js';
 import { swarmRoutes } from './routes/swarm.js';
 import { businessRoutes } from './routes/businesses.js';
@@ -64,6 +65,7 @@ export async function buildApp() {
   negocioRoutes(app, db);
   campanaRoutes(app, db);
   calibracionRoutes(app, db);
+  integracionRoutes(app, db);
   swarmRoutes(app);
   businessRoutes(app, db);
   productRoutes(app, db);
