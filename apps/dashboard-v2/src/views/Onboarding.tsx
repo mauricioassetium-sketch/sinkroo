@@ -114,9 +114,9 @@ export function ViewOnboarding({ setToast, setVista }: { setToast: (t: string) =
                   onClick={() => onb.irA(paso.n - 1)}><I_ArrowLeft size={13} /> Atrás</Button>
               )}
               <Button className="btn-sm"
-                title={onb.completo(paso.n) ? 'Queda anotado y pasa al paso siguiente' : 'Pasa al siguiente; este queda pendiente y el motor usa lo que haya'}
+                title={onb.completo(paso.n) ? 'Queda anotado como hecho y pasa al paso siguiente.' : 'El paso queda anotado como hecho con lo que puso: el motor usa lo que haya y completa el resto.'}
                 onClick={() => irAlSiguiente(true)}>
-                {onb.completo(paso.n) ? <>Continuar <I_ArrowRight size={13} /></> : <>Seguir después <I_ArrowRight size={13} /></>}
+                {onb.completo(paso.n) ? <>Continuar <I_ArrowRight size={13} /></> : <>Darlo por hecho y seguir <I_ArrowRight size={13} /></>}
               </Button>
               <Button variant="ghost" className="btn-sm" title="Muestre qué hace el motor con lo de este paso y de dónde saca el resto"
                 onClick={() => detalle({

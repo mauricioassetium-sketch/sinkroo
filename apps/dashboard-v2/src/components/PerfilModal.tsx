@@ -126,7 +126,7 @@ export function PerfilModal({ abierto, cerrar, avisar }: { abierto: boolean; cer
         </span>
       </div>
 
-      {/* Con el back encendido, acá se ve lo que hay en el servidor y no un ejemplo: el negocio, su plan
+      {/* Con el back encendido, aquí se ve lo que hay en el servidor y no un ejemplo: el negocio, su plan
           y sus créditos. Sin back (modo demostración) este bloque no existe y todo queda igual que hoy. */}
       {neg && (
         <div className="datos-row" style={{ marginTop: 12, paddingTop: 11, borderTop: '1px solid var(--border)' }}>

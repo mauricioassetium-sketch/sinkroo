@@ -127,7 +127,7 @@ export function bienvenida(d: { negocio: string; enlace: string }): Carta {
     d.enlace,
     '',
     'El enlace vence en 24 horas y sirve una sola vez.',
-    'Cuando lo abra, puede crear su PIN de seguridad de 6 dígitos: con ese PIN usted autoriza las acciones delicadas de la cuenta, como desconectar una red o arrancar una evaluación que gasta créditos.',
+    'Cuando lo abra, puede crear su PIN de seguridad de 6 dígitos: con ese PIN usted autoriza las acciones delicadas de la cuenta, como desconectar una red o evaluar una pieza con el público (esa evaluación cuesta 48 créditos).',
     'Si usted no creó esta cuenta, ignore este mensaje: sin abrir el enlace no queda nada confirmado.',
     '',
     'Sinkroo · pre-validación de anuncios con agentes',
@@ -137,7 +137,7 @@ export function bienvenida(d: { negocio: string; enlace: string }): Carta {
     'Para confirmar que el correo es suyo, abra este enlace:',
     boton('Confirmar mi correo', d.enlace),
     'El enlace vence en 24 horas y sirve una sola vez.',
-    'Cuando lo abra, puede crear su PIN de seguridad de 6 dígitos: con ese PIN usted autoriza las acciones delicadas de la cuenta, como desconectar una red o arrancar una evaluación que gasta créditos.',
+    'Cuando lo abra, puede crear su PIN de seguridad de 6 dígitos: con ese PIN usted autoriza las acciones delicadas de la cuenta, como desconectar una red o evaluar una pieza con el público (esa evaluación cuesta 48 créditos).',
     'Si usted no creó esta cuenta, ignore este mensaje: sin abrir el enlace no queda nada confirmado.',
   ]);
   return { asunto, texto, html };
@@ -174,15 +174,15 @@ export function pinDeSeguridad(d: { negocio: string; cuando: string; cambiado: b
     `Hola, ${d.negocio}:`,
     '',
     `El PIN de seguridad de su cuenta ${que} el ${d.cuando}.`,
-    'Con ese PIN usted autoriza las acciones delicadas: desconectar una cuenta conectada, cambiar el plan, borrar datos y arrancar una evaluación que gasta créditos.',
-    'Si no fue usted, entre a Sinkroo, cambie la clave de su cuenta y vuelva a crear el PIN.',
+    'Con ese PIN usted autoriza las acciones delicadas: desconectar una cuenta conectada y las que gastan créditos, como evaluar una pieza con el público (48 créditos).',
+    'Si no fue usted, entre a Sinkroo, desconecte esa red y cambie la contraseña de su cuenta.',
     '',
     'Sinkroo · pre-validación de anuncios con agentes',
   ].join('\n');
   const html = conMarco(`PIN de seguridad ${d.cambiado ? 'cambiado' : 'creado'}`, [
     `El PIN de seguridad de su cuenta ${que} el ${d.cuando}.`,
-    'Con ese PIN usted autoriza las acciones delicadas: desconectar una cuenta conectada, cambiar el plan, borrar datos y arrancar una evaluación que gasta créditos.',
-    'Si no fue usted, entre a Sinkroo, cambie la clave de su cuenta y vuelva a crear el PIN.',
+    'Con ese PIN usted autoriza las acciones delicadas: desconectar una cuenta conectada y las que gastan créditos, como evaluar una pieza con el público (48 créditos).',
+    'Si no fue usted, entre a Sinkroo y cambie la contraseña de su cuenta.',
   ]);
   return { asunto, texto, html };
 }
@@ -195,14 +195,14 @@ export function avisoConexion(d: { negocio: string; red: string; cuando: string 
     '',
     `Su cuenta de ${d.red} quedó conectada a Sinkroo el ${d.cuando}.`,
     'Desde ahora el motor puede leer los datos que esa cuenta entrega. Esas credenciales viven en el servidor y no salen en ninguna respuesta.',
-    'Si no fue usted, entre a su cuenta, desconecte esa red y cambie la clave de su cuenta.',
+    'Si no fue usted, entre a su cuenta, desconecte esa red y cambie la contraseña de su cuenta.',
     '',
     'Sinkroo · pre-validación de anuncios con agentes',
   ].join('\n');
   const html = conMarco(`Se conectó ${d.red}`, [
     `Su cuenta de ${d.red} quedó conectada a Sinkroo el ${d.cuando}.`,
     'Desde ahora el motor puede leer los datos que esa cuenta entrega. Esas credenciales viven en el servidor y no salen en ninguna respuesta.',
-    'Si no fue usted, entre a su cuenta, desconecte esa red y cambie la clave de su cuenta.',
+    'Si no fue usted, entre a su cuenta, desconecte esa red y cambie la contraseña de su cuenta.',
   ]);
   return { asunto, texto, html };
 }

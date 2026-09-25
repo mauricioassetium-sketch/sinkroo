@@ -51,8 +51,8 @@ export function TarjetaSeguridad({ seg }: { seg: VistaSeguridad }) {
               PIN de seguridad
               <small>
                 {e.tiene_pin
-                  ? 'Está puesto: el panel le pide sus seis dígitos antes de desconectar una cuenta o de arrancar el motor.'
-                  : 'Todavía no tiene: hoy se puede desconectar una cuenta o arrancar el motor sin que el panel le pida nada.'}
+                  ? 'Está puesto: el panel le pide sus seis dígitos antes de desconectar una cuenta conectada. Sin el PIN, esa cuenta no se desconecta.'
+                  : 'Todavía no tiene: hoy se puede desconectar una cuenta sin que el panel le pida nada.'}
               </small>
             </span>
             <span className="guard-val" style={{ color: e.tiene_pin ? 'var(--green)' : 'var(--amber)' }}>
@@ -92,7 +92,7 @@ export function TarjetaSeguridad({ seg }: { seg: VistaSeguridad }) {
                   ? 'El servidor todavía no tiene configurado el correo, así que no sale ningún correo: ni el de bienvenida ni el de confirmación de la dirección.'
                   : e.correo_verificado
                     ? 'Su dirección quedó confirmada: el motor puede avisarle por correo.'
-                    : 'Su dirección todavía no está confirmada. Mientras no lo esté, el panel se lo recuerda acá.'}
+                    : 'Su dirección todavía no está confirmada. Mientras no lo esté, el panel se lo recuerda aquí.'}
               </small>
             </span>
             <span className="guard-val" style={{ color: !hayCorreo ? 'var(--red)' : e.correo_verificado ? 'var(--green)' : 'var(--amber)' }}>
@@ -124,7 +124,7 @@ export function TarjetaSeguridad({ seg }: { seg: VistaSeguridad }) {
           {hayCorreo && !e.correo_verificado && (
             <div className="row" style={{ gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
               <Button className="btn-sm" disabled={seg.pidiendoCorreo}
-                title={`Vuelve a pedir el correo de confirmación${cuentaDeCorreo ? ` a ${cuentaDeCorreo}` : ''} (POST /api/auth/verificar/reenviar). Si el envío no está configurado, el servidor lo dice y acá no se promete ningún correo.`}
+                title={`Vuelve a pedir el correo de confirmación${cuentaDeCorreo ? ` a ${cuentaDeCorreo}` : ''} (POST /api/auth/verificar/reenviar). Si el envío no está configurado, el servidor lo dice y aquí no se promete ningún correo.`}
                 onClick={() => seg.pedirOtroCorreo()}>
                 <I_Mail size={13} /> {seg.pidiendoCorreo ? 'Pidiendo…' : 'Pedir otro correo'}
               </Button>

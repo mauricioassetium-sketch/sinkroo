@@ -380,7 +380,7 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
       setBorradorNuevo({ nombre: '', forma: 'ventas', presupuesto: '20', destinos: 'Instagram', objetivo: '' });
       setToast(`«${nombre}» quedó creada en borrador: ya está en la lista y no gasta un peso hasta que la publique`);
     } catch {
-      setErrorCrear('No se pudo crear la campaña en el servidor. Lo que escribió sigue acá: vuelva a intentar cuando el back esté en línea.');
+      setErrorCrear('No se pudo crear la campaña en el servidor. Lo que escribió sigue aquí: vuelva a intentar cuando el back esté en línea.');
       setToast('No se pudo crear la campaña: el servidor no respondió');
     } finally { setCreando(false); }
   };
@@ -515,11 +515,11 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
           icono={<I_Megaphone size={22} />}
         />
       ) : sinNada ? (
-        /* Un negocio conectado que todavía no tiene campañas: acá no va ni una campaña de ejemplo.
+        /* Un negocio conectado que todavía no tiene campañas: aquí no va ni una campaña de ejemplo.
            Dice qué hacer para tener la primera, que es lo único que le sirve al dueño. */
         <EstadoVacio
           titulo="Todavía no hay campañas"
-          texto="El motor arma la primera cuando usted sube el material: elige el tipo de campaña, el ángulo y el público, crea las piezas y las pasa por los 5 jueces antes de gastar un peso. Empiece por Primeros pasos y en la próxima corrida aparece acá, con su presupuesto y sus destinos."
+          texto="El motor arma la primera cuando usted sube el material: elige el tipo de campaña, el ángulo y el público, crea las piezas y las pasa por los 5 jueces antes de gastar un peso. Empiece por Primeros pasos y en la próxima corrida aparece aquí, con su presupuesto y sus destinos."
           accion="Ir a Primeros pasos" onAccion={() => setVista('onboarding')}
           icono={<I_Megaphone size={22} />}
         />

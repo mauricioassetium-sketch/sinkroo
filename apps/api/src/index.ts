@@ -60,7 +60,7 @@ export async function buildApp() {
 
   healthRoutes(app);
   authRoutes(app);
-  onboardingRoutes(app);
+  onboardingRoutes(app, db);
   motorRoutes(app, db);
   piezaRoutes(app, db);
   negocioRoutes(app, db);

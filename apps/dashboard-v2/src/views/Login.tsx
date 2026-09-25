@@ -10,7 +10,7 @@ import {
   type AvisoDeCorreo, type ErrorApi, type EstadoSeguridad,
 } from '../api/cliente';
 // La vuelta del correo la atiende App.tsx con el mismo mecanismo de `VueltaDeConexion` (llamar al
-// back una sola vez y dejar limpia la dirección). Acá sólo se dice cómo salió, con `textoDeVuelta`.
+// back una sola vez y dejar limpia la dirección). Aquí sólo se dice cómo salió, con `textoDeVuelta`.
 import { textoDeVuelta, type VueltaCorreo } from '../lib/seguridad';
 
 // =============================================================================================
@@ -106,7 +106,7 @@ export function PantallaLogin({ onEntrar, vuelta }: { onEntrar: (s: Sesion) => v
         err.codigo === 'correo_existe'
           ? 'Ese correo ya tiene una cuenta: entre con ese correo, o cree la cuenta con uno distinto.'
           : err.codigo === 'clave_mala'
-            ? 'El correo o la clave no son correctos.'
+            ? 'El correo o la contraseña no son correctos.'
             : `No se pudo conectar con el servidor (${err.message}). El panel sigue andando con los datos de demostración.`,
       );
     } finally {
@@ -116,8 +116,8 @@ export function PantallaLogin({ onEntrar, vuelta }: { onEntrar: (s: Sesion) => v
 
   const entrar = () => {
     if (hayApi()) {
-      if (!email.trim() || !clave.trim()) { setError('Necesitamos su correo y su clave para entrar.'); return; }
-      if (modo === 'crear' && clave.trim().length < 6) { setError('La clave necesita al menos 6 caracteres.'); return; }
+      if (!email.trim() || !clave.trim()) { setError('Necesitamos su correo y su contraseña para entrar.'); return; }
+      if (modo === 'crear' && clave.trim().length < 6) { setError('La contraseña necesita al menos 6 caracteres.'); return; }
       void entrarConBack(modo === 'crear');
       return;
     }
@@ -150,7 +150,7 @@ export function PantallaLogin({ onEntrar, vuelta }: { onEntrar: (s: Sesion) => v
       <div className="login-panel">
         {/* ---------- QUÉ ES SINKROO: cuatro líneas, nada más ----------
              El dueño fue claro: «nadie se va a quedar pegado viendo eso, debe ser muy corto y preciso
-             para que se sepa a lo que el sistema [sirve] nada más». Acá no se explica el producto: se
+             para que se sepa a lo que el sistema [sirve] nada más». Aquí no se explica el producto: se
              dice qué es, qué hace y qué lo hace distinto. Todo lo demás vive adentro del panel. */}
         <div className="login-lado">
           <div className="login-intro">
@@ -231,14 +231,13 @@ export function PantallaLogin({ onEntrar, vuelta }: { onEntrar: (s: Sesion) => v
             <Badge tone="purple">{modo === 'entrar' ? 'tiene una cuenta' : 'nueva'}</Badge>
           </div>
 
-          {/* QUÉ PASA DESPUÉS, dicho antes de crear nada. La frase es la del producto, pero no promete
-              entrega: acá arriba todavía no hay sesión y el back no tiene ruta pública que diga si el
-              correo está configurado, así que la verdad sobre ese envío se dice en el paso siguiente,
-              que es donde el registro contesta si el correo salió o no. */}
+          {/* QUÉ PASA DESPUÉS, dicho antes de crear nada. No se promete la entrega: se dice qué va a
+              intentar el servidor y que la verdad sobre ese envío se dice en el paso siguiente, que es
+              donde el registro contesta si el correo salió o no. */}
           {modo === 'crear' && conBack && (
             <div className="login-ok">
-              <I_Shield size={13} /> Después de crearla le mandamos el correo de bienvenida para confirmar
-              su dirección. En el paso siguiente el panel le dice si ese correo salió de verdad: si el
+              <I_Shield size={13} /> Al crear la cuenta, el panel le pide al servidor el correo de bienvenida
+              para confirmar su dirección. En el paso siguiente le dice si ese correo salió de verdad: si el
               servidor todavía no tiene el envío configurado, se lo dice tal cual — no se lo promete.
             </div>
           )}
@@ -274,10 +273,21 @@ export function PantallaLogin({ onEntrar, vuelta }: { onEntrar: (s: Sesion) => v
 
           {error && <div className="login-error">{error}</div>}
           {recuperar && (
-            <div className="login-ok">
-              <I_Check size={13} /> Le enviamos el enlace para cambiar la contraseña a <b>{email}</b>. En la
-              demostración no se envía ningún correo: entre con la cuenta que ya está cargada.
-            </div>
+            conBack ? (
+              /* CON EL BACK ENCENDIDO NO HAY RUTA DE «OLVIDÉ MI CONTRASEÑA»: el servidor tiene el
+                 restablecimiento del PIN, no el de la contraseña de la cuenta. Antes aquí se decía «le
+                 enviamos el enlace» sin que saliera ningún correo; ahora se dice lo que pasa. */
+              <div className="login-error">
+                <b>Cambiar la contraseña todavía no se puede hacer desde el panel.</b> El servidor no tiene esa
+                ruta, así que no se envió ningún correo y su contraseña sigue siendo la misma. Anote la que use
+                para entrar: su correo <b>{email}</b> ya tiene el negocio adentro, no hace falta crear otra cuenta.
+              </div>
+            ) : (
+              <div className="login-ok">
+                <I_Check size={13} /> Le enviamos el enlace para cambiar la contraseña a <b>{email}</b>. En la
+                demostración no se envía ningún correo: entre con la cuenta que ya está cargada.
+              </div>
+            )
           )}
 
           <Button className="login-btn" title="Entre al panel y abra el asistente de bienvenida: lo puede omitir y completarlo después."
@@ -303,7 +313,10 @@ export function PantallaLogin({ onEntrar, vuelta }: { onEntrar: (s: Sesion) => v
           ))}
 
           <div className="login-pie">
-            <button className="login-link" title="Le envía el enlace para cambiar la contraseña al correo que escribió"
+            <button className="login-link"
+              title={conBack
+                ? 'Cambiar la contraseña todavía no se puede hacer desde el panel: al tocarlo no se envía ningún correo'
+                : 'Le envía el enlace para cambiar la contraseña al correo que escribió'}
               onClick={() => { setRecuperar(email); setError(''); }}>Olvidé mi contraseña</button>
             <button className="login-link" title={modo === 'entrar' ? 'Cambie al formulario para crear una cuenta nueva' : 'Vuelva al formulario de siempre'}
               onClick={() => { setModo(modo === 'entrar' ? 'crear' : 'entrar'); setError(''); setRecuperar(''); }}>
@@ -329,7 +342,7 @@ export function PantallaLogin({ onEntrar, vuelta }: { onEntrar: (s: Sesion) => v
 // =============================================================================================
 // LA VUELTA DEL CORREO DE BIENVENIDA — cómo salió el enlace de confirmación que trajo esta dirección.
 // Lo atiende App.tsx (la misma vuelta de siempre: se llama al back una sola vez y se limpia la
-// dirección); acá sólo se dice el resultado, con las palabras de `textoDeVuelta`.
+// dirección); aquí sólo se dice el resultado, con las palabras de `textoDeVuelta`.
 // =============================================================================================
 export function AvisoVueltaDeCorreo({ vuelta }: { vuelta: VueltaCorreo }) {
   const t = textoDeVuelta(vuelta);
@@ -393,7 +406,7 @@ export function AvisoCorreoDeBienvenida({ email, correo }: {
     );
   }
 
-  // SIN CORREO CONFIGURADO: ni el registro pudo mandarlo ni el servidor lo tiene montado. Acá NO se
+  // SIN CORREO CONFIGURADO: ni el registro pudo mandarlo ni el servidor lo tiene montado. Aquí NO se
   // escribe «le enviamos un correo»: se dice lo que falta.
   if (!configurado) {
     return (
@@ -403,8 +416,9 @@ export function AvisoCorreoDeBienvenida({ email, correo }: {
         {aviso?.motivo && <> El servidor respondió: «{aviso.motivo}».</>}
         {falta.length > 0 && <> Falta cargar {falta.join(', ')}.</>}
         {' '}Su cuenta ya está creada — su correo <b>{email}</b> quedó guardado — y el panel funciona
-        completo: puede entrar y trabajar. En cuanto el envío quede configurado, le llega el enlace para
-        confirmar la dirección.
+        completo: puede entrar y trabajar. Cuando el servidor tenga el envío configurado, en Cuenta y
+        autonomía → Seguridad de la cuenta aparece el botón para pedir el enlace de confirmación: ese
+        correo no se manda solo.
       </div>
     );
   }

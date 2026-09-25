@@ -116,7 +116,7 @@ export function Asistente({ sesion, setVista }: { sesion: Sesion; setVista: (v: 
               </div>
 
               <div className="asist-cta">
-                <Button className="btn-lg" title="Empieza a llenar los datos del negocio: cinco preguntas cortas que el motor usa para arrancar."
+                <Button className="btn-lg" title="Empiece a llenar los datos del negocio: son cinco preguntas cortas que el motor usa para arrancar."
                   onClick={siguiente}>Continuar <I_ArrowRight size={14} /></Button>
                 <span className="tiny muted"><I_Clock size={11} /> se puede saltar y hacerlo después</span>
               </div>
@@ -151,13 +151,17 @@ export function Asistente({ sesion, setVista }: { sesion: Sesion; setVista: (v: 
 
               <div className="row asist-acciones">
                 <Button className="btn-sm"
-                  title="Queda anotado y pasa al paso siguiente"
+                  title={ultimo
+                    ? 'Arranca el motor con lo que haya y deja el paso de cierre anotado como hecho.'
+                    : onb.completo(paso.n)
+                      ? 'Queda anotado como hecho y pasa al paso siguiente.'
+                      : 'El paso queda anotado como hecho con lo que puso: el motor usa lo que haya y completa el resto.'}
                   onClick={() => { onb.marcar(paso.n); ultimo ? onb.arrancar() : siguiente(); }}>
-                  {ultimo ? <><I_Play size={13} /> Terminar y arrancar</> : <>{onb.completo(paso.n) ? 'Continuar' : 'Seguir después'} <I_ArrowRight size={13} /></>}
+                  {ultimo ? <><I_Play size={13} /> Terminar y arrancar</> : <>{onb.completo(paso.n) ? 'Continuar' : 'Darlo por hecho y seguir'} <I_ArrowRight size={13} /></>}
                 </Button>
                 <Button variant="ghost" className="btn-sm" title="Pasa al paso siguiente sin marcarlo: queda pendiente y el motor usa lo que haya"
                   onClick={siguiente}>Saltar</Button>
-                <Button variant="ghost" className="btn-sm" title={`Para qué se lo pido: ${paso.paraQue} — acá ve qué hace el motor con cada dato y de dónde saca el resto.`}
+                <Button variant="ghost" className="btn-sm" title={`Para qué se lo pido: ${paso.paraQue} — aquí ve qué hace el motor con cada dato y de dónde saca el resto.`}
                   onClick={() => detalle({
                     titulo: `${paso.t}: qué hace el motor con esto`,
                     sub: paso.paraQue,

@@ -9,7 +9,7 @@ import { usePlan } from '../lib/plan';
 import { useDatos, type IntegracionRed } from '../api/datos';
 import { baseApi, recordarRed, token } from '../api/cliente';
 import {
-  CONEXIONES_ONB, CONEXIONES_BACK, PRIMERA_SEMANA, COSTO_ARRANQUE, TIPOS_ARCHIVO, ARCHIVOS_ACEPTADOS,
+  CONEXIONES_ONB, CONEXIONES_BACK, ARRANQUE, COSTO_ARRANQUE, TIPOS_ARCHIVO, ARCHIVOS_ACEPTADOS,
   type CampoOnb, type ConexionOnb, type PasoOnb,
 } from '../data/onboarding';
 
@@ -472,11 +472,12 @@ export function BloqueArranque({ enAsistente, alCerrar }: { enAsistente?: boolea
       <>
         <div className="onb-arrancado">
           <I_Zap size={15} />
-          <span><b>El motor está trabajando.</b> Arrancó por el mercado: en unas horas va a tener el primer
-            informe y las primeras piezas listas. Nada de esto gasta dinero hasta que la pieza pasa el panel.</span>
+          <span><b>El motor está trabajando.</b> Ya quedaron sus 500 del público y arrancó por el mercado: en unas
+            horas va a tener el primer informe y las primeras piezas listas. Nada de esto gasta dinero hasta que
+            la pieza pasa el panel.</span>
         </div>
         <div className="onb-semana">
-          {PRIMERA_SEMANA.map(d => (
+          {ARRANQUE.map(d => (
             <div key={d.paso} className="onb-etapa">
               <span className="onb-etapa-n">{d.paso}</span>
               <span className="onb-etapa-quien">{d.quien}</span>
@@ -502,8 +503,8 @@ export function BloqueArranque({ enAsistente, alCerrar }: { enAsistente?: boolea
   return (
     <div className="row" style={{ gap: 9, marginTop: 14, flexWrap: 'wrap' }}>
       <Button className="btn-sm"
-        title={`Arranca el motor ahora: investiga su mercado y prepara las piezas de la semana. Cuesta ${COSTO_ARRANQUE} créditos y no gasta dinero hasta que las piezas pasan el panel.`}
-        onClick={() => { onb.arrancar(); onb.marcar(5); onb.avisar('El motor arrancó: empieza por el mercado, no gasta nada hasta publicar'); }}>
+        title={`Arranca el motor ahora: arma su público de 500 personas, investiga su mercado y prepara las primeras piezas. Cuesta ${COSTO_ARRANQUE} créditos y no gasta dinero hasta que las piezas pasan el panel.`}
+        onClick={() => { onb.arrancar(); onb.marcar(5); onb.avisar('El motor arrancó: quedaron sus 500 del público y empieza por el mercado; no gasta nada hasta publicar'); }}>
         <I_Play size={13} /> Arrancar el motor
       </Button>
       {!enAsistente && (

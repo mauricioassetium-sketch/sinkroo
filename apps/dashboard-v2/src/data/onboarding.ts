@@ -12,9 +12,9 @@
 //     no cambia nada de lo que el motor hace, no se pregunta.
 //  4. Ningún paso es obligatorio: todos tienen salida. «El motor arranca igual» es la verdad del
 //     producto y el onboarding no puede contradecirla.
-//  5. El último paso no termina en un «listo»: arranca el motor y muestra el plan de la primera
-//     semana, con lo que va a pasar cada día y lo que cuesta. La primera cosa que el cliente ve es
-//     trabajo del motor, no una pantalla de bienvenida.
+//  5. El último paso no termina en un «listo»: arranca el motor y muestra el plan de la secuencia, con
+//     lo que va a pasar en cada etapa y lo que cuesta. La primera cosa que el cliente ve es trabajo del
+//     motor, no una pantalla de bienvenida.
 // =============================================================================================
 
 // ---------------------------------------------------------------------------------------------
@@ -83,7 +83,7 @@ export const DETALLE_PRESUPUESTO: Record<string, string> = {
 };
 
 // ---------------------------------------------------------------------------------------------
-// LA PRIMERA SEMANA — lo que hace el motor desde que se aprieta «Arrancar». No es una promesa
+// LA SECUENCIA DE ARRANQUE — lo que hace el motor desde que se aprieta «Arrancar». No es una promesa
 // vaga: es el trabajo de cada día, con lo que cuesta en créditos. Los 500 del público no cuestan
 // y la investigación del mercado tampoco: lo único que gasta dinero de verdad es publicar.
 // ---------------------------------------------------------------------------------------------
@@ -94,18 +94,18 @@ export const DETALLE_PRESUPUESTO: Record<string, string> = {
 // tarda una semana. El trabajo del motor es una secuencia, no un calendario: el mismo día que arranca ya
 // tiene el mercado leído y las primeras piezas escritas. Lo único que cuesta créditos es escribir y pasar
 // por el panel; investigar, publicar y medir no gastan.
-export const PRIMERA_SEMANA: { paso: string; quien: string; que: string; creditos: string }[] = [
+export const ARRANQUE: { paso: string; quien: string; que: string; creditos: string }[] = [
   { paso: '1', quien: 'Lux', que: 'Lee los anuncios de sus 5 competidores y le dice con qué ángulo gana el rubro hoy.', creditos: '0 créditos' },
   { paso: '2', quien: 'Nia', que: 'Escribe 6 variantes de la primera pieza con ese ángulo, en su tono y con sus precios.', creditos: '96 créditos' },
   { paso: '3', quien: 'El panel', que: 'Los 5 jueces las puntúan y los 500 del público reaccionan: quedan ordenadas y las 3 primeras pasan.', creditos: '48 créditos' },
   { paso: '4', quien: 'Kai', que: 'Publica las 3 mejores en sus cuentas y empieza a medir el costo por venta.', creditos: '0 créditos' },
-  { paso: '5', quien: 'Kai', que: 'Ajusta la puja con lo que volvió el primer día y frena lo que no rinde.', creditos: '0 créditos' },
+  { paso: '5', quien: 'Kai', que: 'Ajusta la puja con los primeros resultados que vuelven y frena lo que no rinde.', creditos: '0 créditos' },
   { paso: '6', quien: 'Rex', que: 'Mueve el presupuesto al público que está comprando y le avisa por qué.', creditos: '0 créditos' },
   { paso: '7', quien: 'Sol', que: 'Le da el informe: qué se vendió, cuánto costó cada venta y qué conviene hacer.', creditos: '0 créditos' },
 ];
 
 /** Lo que cuesta el arranque en créditos, sumando la lista de arriba. */
-export const COSTO_ARRANQUE = PRIMERA_SEMANA.reduce((a, d) => a + Number((d.creditos.match(/\d+/) || ['0'])[0]), 0);
+export const COSTO_ARRANQUE = ARRANQUE.reduce((a, d) => a + Number((d.creditos.match(/\d+/) || ['0'])[0]), 0);
 
 // ---------------------------------------------------------------------------------------------
 // LAS CONEXIONES — de dónde publica y por dónde pregunta. Cada una declara qué habilita: sin la
@@ -170,7 +170,7 @@ export const PASOS_ONB: PasoOnb[] = [
         ayuda: 'El que usan al recomendarlo.' },
       { id: 'descripcion', etiqueta: 'Cuéntenos qué hace', tipo: 'texto-largo',
         ayuda: 'Qué ofrece y para quién.' },
-      // De acá para abajo, todo se elige: son categorías que sirven para cualquier negocio, no rubros.
+      // De aquí para abajo, todo se elige: son categorías que sirven para cualquier negocio, no rubros.
       { id: 'negocio_que', etiqueta: 'Qué vende', tipo: 'chips-multi', ayuda: 'Puede marcar más de una.',
         opciones: ['Productos', 'Servicios', 'Cursos', 'Alquiler'] },
       { id: 'negocio_publico', etiqueta: 'A quién le vende', tipo: 'chips-multi', ayuda: 'Puede marcar más de una.',
@@ -178,7 +178,7 @@ export const PASOS_ONB: PasoOnb[] = [
       { id: 'negocio_zona', etiqueta: 'Dónde vende', tipo: 'chips-multi', ayuda: 'Define a quién se pauta.',
         opciones: ['Su zona', 'El país', 'Al exterior', 'Por internet'] },
     ],
-    nota: 'Sólo el nombre y la descripción son obligatorios.',
+    nota: 'Con el nombre y la descripción alcanza: lo demás se puede agregar después.',
   },
   {
     n: 2, t: 'Qué vende', d: 'Productos y precios', icono: '💵',
@@ -237,7 +237,7 @@ export const PASOS_ONB: PasoOnb[] = [
   {
     n: 5, t: 'Conectar', d: 'Dónde publica', icono: '🔌',
     titular: 'Dónde publica y con qué',
-    paraQue: 'El motor publica en sus cuentas, no en las nuestras. Cada conexión declara qué habilita: sin la cuenta, no publica ahí.',
+    paraQue: 'El motor publica en las cuentas del negocio, nunca en las de Sinkroo. Cada conexión declara qué habilita: sin la cuenta conectada, no publica ahí.',
     infiere: 'Si ya usa el mismo email en su tienda y en Instagram, el motor reconoce la marca y avisa antes de conectar nada.',
     // El resultado de este paso no es tener las cuentas conectadas (eso ya estaba): es que el motor
     // arranque. Si no, el contador diría «2 de 5» antes de que el cliente toque nada.

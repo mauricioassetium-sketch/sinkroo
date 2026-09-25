@@ -223,7 +223,7 @@ function ViewCuentaNegocio({ setToast, modo, setModo }: { setToast: (t: string) 
 
   // ---------------------------------------------------------------------------------------------
   // LAS CONEXIONES REALES, CON EL BACK ENCENDIDO — el estado de cada red y sus tres acciones.
-  // El back manda la lista de redes conectables (con su nombre, su rol y qué aporta cada una): acá se
+  // El back manda la lista de redes conectables (con su nombre, su rol y qué aporta cada una): aquí se
   // recorre tal cual llega, sin fijar a mano cuántas son. El token vive en el servidor: esta pantalla
   // no lo pide ni lo muestra, sólo dice si hay uno guardado. Las tres acciones llaman a la ruta de ESA
   // red y, salvo la de conectar (que se lleva al navegador al proveedor), releen el estado para que la
@@ -310,7 +310,7 @@ function ViewCuentaNegocio({ setToast, modo, setModo }: { setToast: (t: string) 
   };
 
   /** Desconectar: el back borra el token guardado. Volver a conectar es el mismo paso de autorización.
-   *  Es una de las acciones sensibles: si el negocio tiene PIN, el back lo pide y acá se pide y se
+   *  Es una de las acciones sensibles: si el negocio tiene PIN, el back lo pide y aquí se pide y se
    *  reintenta sola con el PIN ya verificado. */
   const desconectarRed = async (red: string, nombre: string) => {
     setTrabajando({ red, accion: 'desconectar' });
@@ -371,7 +371,7 @@ function ViewCuentaNegocio({ setToast, modo, setModo }: { setToast: (t: string) 
         icon={<I_Settings size={19} />}
         titulo="Cuenta y autonomía"
         sub={datos.real
-          ? 'Su negocio, sus créditos y cuánto decide la IA. Todo lo de acá sale del servidor, no de la demostración.'
+          ? 'Su negocio, sus créditos y cuánto decide la IA. Todo lo de aquí sale del servidor, no de la demostración.'
           : 'Cuánto decide la IA y cuánto decide usted. Se puede cambiar cuando quiera, sin perder nada.'}
         nums={datos.real ? [
           { v: NOMBRE[modo], l: 'modo actual', c: 'var(--purple3)' },
@@ -398,8 +398,8 @@ function ViewCuentaNegocio({ setToast, modo, setModo }: { setToast: (t: string) 
               <EstadoVacio
                 titulo={datos.cargando ? 'Leyendo su negocio del back…' : 'No se pudo leer su negocio del servidor'}
                 texto={datos.cargando
-                  ? 'El panel está leyendo el negocio del servidor. Nada de lo que se ve acá sale de la demostración.'
-                  : (datos.error || 'El panel está conectado al back, pero la lectura del negocio no trajo datos. Lo que se vea acá nunca sale de la demostración.')}
+                  ? 'El panel está leyendo el negocio del servidor. Nada de lo que se ve aquí sale de la demostración.'
+                  : (datos.error || 'El panel está conectado al back, pero la lectura del negocio no trajo datos. Lo que se vea aquí nunca sale de la demostración.')}
                 accion={datos.cargando ? 'Leyendo…' : 'Volver a leer el back'}
                 onAccion={() => { if (!datos.cargando) void datos.refrescar(); }} />
             ) : (
@@ -723,8 +723,8 @@ function ViewCuentaNegocio({ setToast, modo, setModo }: { setToast: (t: string) 
             La misma fila de la demo —ícono, nombre, rol, estado y botones—, repetida para CADA red que
             devuelva el back, en el orden en que llegan: si la app de esa red está configurada en el
             servidor (o si la cubre bundle.social, que va con `viaBundle`), si hay cuenta conectada y
-            cuándo se sincronizó. El token vive en el servidor: acá no se pide ni se muestra, sólo se dice
-            si hay uno guardado. Los nombres y los roles son los que manda el back: acá no hay una lista de
+            cuándo se sincronizó. El token vive en el servidor: aquí no se pide ni se muestra, sólo se dice
+            si hay uno guardado. Los nombres y los roles son los que manda el back: aquí no hay una lista de
             redes escrita a mano. */}
         {datos.real && (
         <Card
@@ -734,8 +734,10 @@ function ViewCuentaNegocio({ setToast, modo, setModo }: { setToast: (t: string) 
           </Badge>}
         >
           <div className="bs" style={{ marginBottom: 12 }}>
-            Todo lo externo es suyo: conecta su propia cuenta, no la nuestra. Lo que se ve acá es el estado
-            que tiene hoy en el servidor, no una copia de esta visita.
+            Conecte sus propias cuentas: el motor publica en lo suyo, nunca en las cuentas de Sinkroo. Cada fila
+            dice hoy si se puede conectar —las que van por bundle.social o con la app de Sinkroo cargada en el
+            servidor traen su botón— y cuáles todavía dicen «falta configurar», con la variable que falta. Lo que
+            se ve aquí es el estado del servidor, no una copia de esta visita.
           </div>
 
           {!ig ? (
@@ -743,12 +745,12 @@ function ViewCuentaNegocio({ setToast, modo, setModo }: { setToast: (t: string) 
             <EstadoVacio
               {...(datos.cargando
                 ? { titulo: 'Leyendo las conexiones del back…', texto: 'El panel está leyendo el estado de sus conexiones en el servidor. Mientras lee no afirma nada: si no hay nada, lo dice enseguida.' }
-                : { titulo: 'No se pudo leer el estado de las conexiones', texto: 'Acá se ve, red por red, si la app de cada red está configurada en el servidor, si hay una cuenta conectada y cuándo se sincronizó por última vez. El servidor no respondió; vuelva a leerlo y aparece tal como está.' })}
+                : { titulo: 'No se pudo leer el estado de las conexiones', texto: 'Aquí se ve, red por red, si la app de cada red está configurada en el servidor, si hay una cuenta conectada y cuándo se sincronizó por última vez. El servidor no respondió; vuelva a leerlo y aparece tal como está.' })}
               {...(datos.cargando ? {} : { accion: 'Volver a leer', onAccion: () => void datos.refrescar() })} />
           ) : ig.redes.length === 0 ? (
             /* El back respondió y no mandó ninguna red: se dice eso, sin dibujar filas inventadas. */
             <EstadoVacio titulo="El servidor todavía no mandó redes para conectar"
-              texto="Cuando el back devuelva sus redes conectables, cada una aparece acá con su nombre, su rol y su estado. Devolvió la lista vacía."
+              texto="Cuando el back devuelva sus redes conectables, cada una aparece aquí con su nombre, su rol y su estado. Devolvió la lista vacía."
               accion="Volver a leer" onAccion={() => void datos.refrescar()} />
           ) : (
           ig.redes.map(r => {
@@ -925,7 +927,7 @@ function ViewCuentaNegocio({ setToast, modo, setModo }: { setToast: (t: string) 
                 <EstadoVacio
                   {...(datos.cargando
                     ? { titulo: 'Leyendo el back…', texto: 'El panel está leyendo el libro de créditos del servidor: en un momento dice qué hay.' }
-                    : { titulo: 'Todavía no hay movimientos', texto: 'Cuando el motor gaste o reciba créditos, cada movimiento queda acá con su motivo, su detalle y el saldo que quedó. Todavía no hay ninguno.' })} />
+                    : { titulo: 'Todavía no hay movimientos', texto: 'Cuando el motor gaste o reciba créditos, cada movimiento queda aquí con su motivo, su detalle y el saldo que quedó. Todavía no hay ninguno.' })} />
               ) : movimientosBack.map((m, i) => (
                 <div key={i} className="guard">
                   <span style={{ color: m.delta > 0 ? 'var(--green)' : 'var(--muted)', flexShrink: 0 }}>

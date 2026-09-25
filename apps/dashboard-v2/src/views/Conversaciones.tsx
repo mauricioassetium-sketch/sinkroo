@@ -102,7 +102,7 @@ const cuandoDe = (iso: string) => {
 /**
  * Una conversación del back, con la forma que ya usa la bandeja. El teléfono hace de nombre —es todo
  * lo que el back sabe del lead— y el último mensaje es el que muestra la fila. La etapa, el estado y
- * el puntaje no se aplanan acá: la fila los lee del dato original, así se ven tal como vienen.
+ * el puntaje no se aplanan aquí: la fila los lee del dato original, así se ven tal como vienen.
  */
 function conversacionDeBack(c: ConversacionBack, i: number): Conversacion {
   const cuando = cuandoDe(c.last_message_at);
@@ -127,7 +127,7 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
   // --- La fuente de la bandeja: las conversaciones del back si hay sesión, la demo si no. Todo lo
   // que se lee de aquí para abajo sale de `bandeja`; la demo queda intacta para el link de revisión.
   const bandeja: Conversacion[] = d.real ? d.conversaciones.map(conversacionDeBack) : CONVERSACIONES;
-  /** El dato original del back detrás de cada fila: de acá salen la etapa, el estado y el puntaje. */
+  /** El dato original del back detrás de cada fila: de aquí salen la etapa, el estado y el puntaje. */
   const delBack: Record<string, ConversacionBack> = {};
   if (d.real) for (const c of d.conversaciones) delBack[c.id] = c;
   // Un negocio conectado que todavía no tiene conversaciones no muestra la demo: muestra su estado vacío.
@@ -365,12 +365,12 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
           texto="Un segundo: el panel está trayendo del servidor lo que este negocio tiene en la bandeja."
         />
       ) : sinNada ? (
-        /* Un negocio conectado que todavía no tiene conversaciones: acá no va ni una de ejemplo.
+        /* Un negocio conectado que todavía no tiene conversaciones: aquí no va ni una de ejemplo.
            Dice de dónde caen y qué hacer para tener la primera. */
         <EstadoVacio
           icono={<I_Whatsapp size={22} />}
           titulo="Todavía no hay conversaciones"
-          texto="Acá van a caer las de WhatsApp y Messenger de su negocio, y también las de los creadores que le producen una pieza: con ellos se negocia el precio, el plazo y lo que entregan, todo en esta misma conversación. Conecte su WhatsApp, que está aquí abajo en esta pantalla, y escríbale al número del negocio: la primera aparece sola."
+          texto="Aquí van a caer las de WhatsApp y Messenger de su negocio, y también las de los creadores que le producen una pieza: con ellos se negocia el precio, el plazo y lo que entregan, todo en esta misma conversación. Conecte su WhatsApp, que está aquí abajo en esta pantalla, y escríbale al número del negocio: la primera aparece sola."
         />
       ) : (
       <div className="duo">
@@ -575,7 +575,7 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
               </div>
               <div className="bs">
                 Esto es lo que el motor sabe de esta conversación: el teléfono del lead, en qué etapa va
-                y cuánto lo puntuó. Todavía no hay historial de compras ni ticket promedio que mostrar acá.
+                y cuánto lo puntuó. Todavía no hay historial de compras ni ticket promedio que mostrar aquí.
               </div>
             </>
           ) : conv.tipo === 'creador' && conv.colab ? (
@@ -649,7 +649,7 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
                 <span className="alarm-when">el motor todavía no la escribió</span>
               </div>
               <div className="alarm-sug" style={{ color: 'var(--txt)' }}>
-                Esta conversación viene del back: acá no hay un borrador escrito por Rumi y la pantalla
+                Esta conversación viene del back: aquí no hay un borrador escrito por Rumi y la pantalla
                 no lo inventa. Cuando el motor escriba la propuesta, aparece en este mismo lugar, lista
                 para bajar al compositor.
               </div>
@@ -745,7 +745,7 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
           {cola.length === 0 ? (
             <div className="bs">
               {d.real
-                ? 'El back todavía no marca cuáles conversaciones están esperando a una persona: cuando lo haga, las urgentes aparecen acá.'
+                ? 'El back todavía no marca cuáles conversaciones están esperando a una persona: cuando lo haga, las urgentes aparecen aquí.'
                 : 'Nadie está esperando a una persona ahora mismo: Rumi está contestando todo. Cuando detecte un cliente enojado o que quiere cancelar, frena y aparece aquí.'}
             </div>
           ) : cola.map(c => (

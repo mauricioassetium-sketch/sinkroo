@@ -1,6 +1,8 @@
 import type { FastifyInstance } from 'fastify';
+import type { Pool } from 'pg';
 import { execute, query } from '../lib/db.js';
 import { exigirSesion } from '../lib/auth.js';
+import { crearPublico } from '../services/mirofish.js';
 
 // =============================================================================================
 // ONBOARDING — los cinco pasos guardados de verdad.
@@ -12,7 +14,7 @@ import { exigirSesion } from '../lib/auth.js';
 // estaba. Eso es lo que hace que el asistente de entrada sirva de verdad.
 // =============================================================================================
 
-export async function onboardingRoutes(app: FastifyInstance) {
+export async function onboardingRoutes(app: FastifyInstance, db: Pool) {
   /** Lo que hay guardado. Si el negocio no tiene fila todavía, se le crea vacía. */
   app.get('/api/onboarding', async (req, reply) => {
     const u = await exigirSesion(req, reply);
@@ -62,7 +64,16 @@ export async function onboardingRoutes(app: FastifyInstance) {
     return { ok: true, ...filas[0] };
   });
 
-  /** Arrancar el motor: es el resultado del último paso, no un botón decorativo. */
+  /**
+   * Arrancar el motor: es el resultado del último paso, no un botón decorativo.
+   *
+   * Y arrancar el motor es TODO el motor: acá se crean los 500 agentes del público del negocio, que es
+   * lo que el paso 5 promete («los 500 del público reaccionan»). Sin esto, un negocio nuevo quedaba con
+   * el público en 0 y la primera evaluación se caía con «el público todavía no está creado» (409): el
+   * único camino que los creaba era `POST /api/publico/crear`, al que no llama ninguna pantalla.
+   * `crearPublico` es idempotente —si ya están los 500, no toca nada— y no cuesta créditos: es una
+   * muestra estadística, no 500 llamadas al modelo.
+   */
   app.post('/api/onboarding/arrancar', async (req, reply) => {
     const u = await exigirSesion(req, reply);
     if (!u || !u.business_id) return;
@@ -71,6 +82,9 @@ export async function onboardingRoutes(app: FastifyInstance) {
        ON CONFLICT (business_id) DO UPDATE SET arrancado = true, arrancado_at = now(), actualizado = now()`,
       [u.business_id],
     );
-    return { ok: true, arrancado: true };
+    // El público del negocio, con la zona que tenga cargada: la misma que usa el resto del motor.
+    const zona = await query<{ zona: string }>('SELECT zona FROM businesses WHERE id = $1', [u.business_id]);
+    const publico = await crearPublico(db, u.business_id, zona[0]?.zona || 'Medellín');
+    return { ok: true, arrancado: true, publico };
   });
 }

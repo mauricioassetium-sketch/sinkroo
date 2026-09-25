@@ -82,17 +82,9 @@ export async function motorRoutes(app: FastifyInstance, db: Pool) {
   /** Cuántos son y quiénes: el panel muestra el público con el que trabaja. */
   app.get('/api/publico', async (req, reply) => {
     const u = await exigirSesion(req, reply); if (!u || !u.business_id) return;
-    // El saldo se mira ANTES de gastar: evaluar cuesta 48 créditos y nadie puede quedar en rojo.
-    const saldo = await db.query(
-      `SELECT COALESCE((SELECT saldo FROM movimientos_creditos WHERE business_id = $1 ORDER BY created_at DESC LIMIT 1), 0) AS s`,
-      [u.business_id]);
-    if (Number(saldo.rows[0].s) < 48) {
-      return reply.status(402).send({
-        error: 'no alcanzan los créditos para evaluar', codigo: 'sin_creditos',
-        detalle: `evaluar cuesta 48 y el saldo es ${saldo.rows[0].s}: cargue créditos o cambie de plan`,
-      });
-    }
-
+    // LEER NO CUESTA: acá no se mira el saldo. El guardia de créditos vive donde se cobra (evaluar), no
+    // en la consulta que muestra el público: con el saldo bajo, esta lectura contestaba 402 y el panel
+    // se quedaba sin poder mostrar los 500 que ya existen.
     const total = await db.query('SELECT count(*)::int AS n FROM publico_agentes WHERE business_id = $1', [u.business_id]);
     const perfiles = await db.query(
       `SELECT estilo, count(*)::int AS n FROM publico_agentes WHERE business_id = $1 GROUP BY estilo ORDER BY n DESC`,
@@ -142,11 +134,20 @@ export async function motorRoutes(app: FastifyInstance, db: Pool) {
       });
     }
 
-    const total = await db.query('SELECT count(*)::int AS n FROM publico_agentes WHERE business_id = $1', [u.business_id]);
+    // El público del negocio: si todavía no está, se crea AHORA y la evaluación sigue. Antes acá se
+    // cortaba con 409 «el público todavía no está creado» y el negocio quedaba sin salida desde el
+    // panel (ninguna pantalla llama a `POST /api/publico/crear`). Crearlos es gratis e idempotente, así
+    // que no hay nada que ganar frenando: la única razón para no tenerlos es que el motor nunca arrancó.
+    let total = await db.query('SELECT count(*)::int AS n FROM publico_agentes WHERE business_id = $1', [u.business_id]);
+    if (total.rows[0].n < 500) {
+      const ctx = await contexto(db, u.business_id);
+      await crearPublico(db, u.business_id, ctx.zona);
+      total = await db.query('SELECT count(*)::int AS n FROM publico_agentes WHERE business_id = $1', [u.business_id]);
+    }
     if (total.rows[0].n < 500) {
       return reply.status(409).send({
         error: 'el público todavía no está creado', codigo: 'sin_publico',
-        detalle: 'cree los 500 agentes del público antes de evaluar',
+        detalle: 'no se pudieron crear los 500 agentes del público: vuelva a intentarlo',
       });
     }
 

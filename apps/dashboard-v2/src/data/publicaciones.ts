@@ -277,7 +277,7 @@ export const FORMATOS: Formato[] = [
       { id: 'tipo_contenido_colab', etiqueta: 'Qué le entregó', tipo: 'opciones', multi: true, detalleVisible: true,
         ayuda: 'Elija todo lo que le haya dado: puede ser más de una cosa.',
         opciones: CONTENIDO_COLAB, detalle: DETALLE_CONTENIDO_COLAB },
-      { id: 'contenido_colab', etiqueta: 'El contenido del colaborador', tipo: 'media', ayuda: 'El archivo tal como le lo entregó: el video, las fotos o el carrusel completo. Puede subir varios y se suman a los que produce el motor para esta campaña.' },
+      { id: 'contenido_colab', etiqueta: 'El contenido del colaborador', tipo: 'media', ayuda: 'El archivo tal como se lo entregó el colaborador: el video, las fotos o el carrusel completo. Puede subir varios y se suman a los que produce el motor para esta campaña.' },
       { id: 'cuando_colab', etiqueta: 'Cuándo sale', tipo: 'opciones', diaHora: true, opcionDiaHora: 'Elija el día y la hora', opciones: ['Que lo recomiende el motor'], ayuda: 'Dos caminos: elija el día y la hora, o deje que el motor recomiende la mejor franja.' },
       { id: 'filtro_colab', etiqueta: 'Su contenido y el filtro de MiroFish', tipo: 'opciones',
         ayuda: 'El contenido de un colaborador no pasa por el filtro de MiroFish, porque no lo produjo el motor. Si no elige nada, se publica sin pasar.',

@@ -96,7 +96,7 @@ const motivoDeError = (e: unknown) => {
  *                       salió ni que no salió. Se dice lo único cierto: recibió el pedido.
  */
 const avisoDeReenvio = (r: { ok?: boolean; enviado?: boolean; detalle?: string; motivo?: string | null; falta?: string[]; para?: string }) => {
-  // Las frases del back vienen en minúscula: acá empiezan una oración, así que se pone la mayúscula.
+  // Las frases del back vienen en minúscula: aquí empiezan una oración, así que se pone la mayúscula.
   const dicho = (t?: string) => (t ? t.charAt(0).toUpperCase() + t.slice(1) : '');
   if (r?.enviado === true) {
     return dicho(r.detalle) || `Le mandamos el enlace de confirmación a ${r.para || 'su dirección'} (vence en 24 horas). Si no llega en unos minutos, mire en la carpeta de correo no deseado.`;
@@ -197,7 +197,7 @@ export function SeguridadProvider({ children }: { children: ReactNode }) {
 //
 // Es el mismo mecanismo de vuelta que ya existía para el proveedor (`VueltaDeConexion`, en App.tsx):
 // la dirección trae un dato, el panel llama al back UNA sola vez, dice cómo salió y limpia la
-// dirección. Lo único que cambia es qué se canjea: acá un `?token=…` por la confirmación de la
+// dirección. Lo único que cambia es qué se canjea: aquí un `?token=…` por la confirmación de la
 // dirección; allá un `code` por el token del proveedor.
 // ---------------------------------------------------------------------------------------------
 

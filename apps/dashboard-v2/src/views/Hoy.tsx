@@ -267,7 +267,7 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
 
   // -------------------------------------------------------------------------------------------
   // LA FUENTE DE TODO: con el back encendido (`d.real`), esta pantalla lee del back y NADA de la
-  // demostración. La decisión vive en un solo lugar (src/api/datos.tsx); acá sólo se pregunta.
+  // demostración. La decisión vive en un solo lugar (src/api/datos.tsx); aquí sólo se pregunta.
   // -------------------------------------------------------------------------------------------
   const datos = useDatos();
   /** La corrida que se pide desde el estado vacío o desde el bloque del motor: POST /api/agentes/correr. */
@@ -276,7 +276,7 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
     setCorriendo(true);
     try {
       await fetch(baseApi() + '/api/agentes/correr', { method: 'POST', headers: { Authorization: 'Bearer ' + token() } });
-    } catch { /* si no responde, el refresco de abajo muestra lo que haya: acá no se inventa nada */ }
+    } catch { /* si no responde, el refresco de abajo muestra lo que haya: aquí no se inventa nada */ }
     await datos.refrescar();
     setCorriendo(false);
   };
@@ -563,7 +563,7 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
               <div className="eq-arranque">
                 Todo lo de abajo sale del servidor de Sinkroo, no de la demostración{datos.negocio
                   ? <>{': '}<b>{datos.negocio.name}</b>, plan {datos.negocio.plan}, zona {datos.negocio.zona}</>
-                  : ''}. El motor queda trabajando solo: lo que deja aparece acá sin refrescar nada a mano.
+                  : ''}. El motor queda trabajando solo: lo que deja aparece aquí sin refrescar nada a mano.
               </div>
               <div className="row" style={{ gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
                 <Button variant="ghost" className="btn-sm" disabled={corriendo}
@@ -655,7 +655,7 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
               <EstadoVacio
                 {...vacio(
                   'Todavía no encontró nada',
-                  'Los hallazgos son lo que el motor ve en su mercado: competencia, precios y demanda. Cuando encuentre algo aparece acá, con su dato y su fuente. No hay nada inventado esperando.',
+                  'Los hallazgos son lo que el motor ve en su mercado: competencia, precios y demanda. Cuando encuentre algo aparece aquí, con su dato y su fuente. No hay nada inventado esperando.',
                 )}
                 accion={corriendo ? 'Corriendo el motor…' : 'Correr el motor ahora'}
                 onAccion={() => { if (!corriendo) void correr(); }} />
@@ -691,7 +691,7 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
               <EstadoVacio
                 {...vacio(
                   'Todavía no hay conversaciones',
-                  'Acá aparecen los clientes que el motor atiende por WhatsApp, con su etapa, su estado y su puntaje. Cuando entre la primera, la ve en esta tarjeta, sin salir de Su día.',
+                  'Aquí aparecen los clientes que el motor atiende por WhatsApp, con su etapa, su estado y su puntaje. Cuando entre la primera, la ve en esta tarjeta, sin salir de Su día.',
                 )} />
             ) : (
               <div className="col-stack">
@@ -829,7 +829,7 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
               <EstadoVacio
                 {...vacio(
                   'Todavía no hay piezas evaluadas',
-                  'Cuando el motor produzca una pieza, los 5 jueces la puntúan antes de que salga y el puntaje aparece acá, con cuánta gente del público la votó.',
+                  'Cuando el motor produzca una pieza, los 5 jueces la puntúan antes de que salga y el puntaje aparece aquí, con cuánta gente del público la votó.',
                 )}
                 accion={corriendo ? 'Corriendo el motor…' : 'Correr el motor ahora'}
                 onAccion={() => { if (!corriendo) void correr(); }} />
@@ -866,7 +866,7 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
               </>
             )}
             <div className="acc-why">
-              <b>Una pieza que no pasa a los jueces nunca se publica.</b> Los puntajes de acá son los que
+              <b>Una pieza que no pasa a los jueces nunca se publica.</b> Los puntajes de aquí son los que
               hay en el servidor, con la fecha en que se evaluó cada una.
             </div>
           </Card>
@@ -878,7 +878,7 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
               <EstadoVacio
                 {...vacio(
                   'Todavía no hay público',
-                  'Acá se ve quién votó sus piezas, por estilo y por edad. Cuando haya votos, aparecen agrupados en esta tarjeta: es el mismo público que decide si una pieza sale.',
+                  'Aquí se ve quién votó sus piezas, por estilo y por edad. Cuando haya votos, aparecen agrupados en esta tarjeta: es el mismo público que decide si una pieza sale.',
                 )} />
             ) : (
               <>
@@ -1029,7 +1029,7 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
               <EstadoVacio
                 {...vacio(
                   'El motor todavía no dejó corridas',
-                  'Cada vez que el motor trabaja, queda una corrida acá con lo que hizo cada agente: qué corrió, en qué terminó y cuántos créditos usó. Todavía no hay ninguna.',
+                  'Cada vez que el motor trabaja, queda una corrida aquí con lo que hizo cada agente: qué corrió, en qué terminó y cuántos créditos usó. Todavía no hay ninguna.',
                 )}
                 accion={corriendo ? 'Corriendo el motor…' : 'Correr el motor ahora'}
                 onAccion={() => { if (!corriendo) void correr(); }} />
