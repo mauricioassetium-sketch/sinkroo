@@ -12,3 +12,6 @@ dist/
 # Las claves del servidor nunca se suben
 .env.local
 .env
+
+# Los iconos que genera el script de favicons: los que valen son los que estan en apps/dashboard-v2/public
+scripts/favicons-generados/
