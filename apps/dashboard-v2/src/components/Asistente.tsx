@@ -61,11 +61,8 @@ export function Asistente({ sesion, setVista }: { sesion: Sesion; setVista: (v: 
               </div>
             </div>
           </div>
-          <div className="row" style={{ gap: 8, alignItems: 'center' }}>
-            <span className="tiny muted">se completa después en Primeros pasos</span>
-            <button className="icon-btn" title="Salir del asistente. El panel ya está listo y lo que falta queda en Primeros pasos."
-              onClick={() => cerrar('Asistente cerrado: sigue desde Primeros pasos cuando quiera')}><I_X size={15} /></button>
-          </div>
+          <button className="icon-btn" title="Salir del asistente. El panel ya está listo y lo que falta se completa después en Primeros pasos."
+            onClick={() => cerrar('Asistente cerrado: sigue desde Primeros pasos cuando quiera')}><I_X size={15} /></button>
         </div>
 
         {/* El avance, para saber cuánto falta. */}
@@ -127,8 +124,9 @@ export function Asistente({ sesion, setVista }: { sesion: Sesion; setVista: (v: 
           {/* ---------------- LOS CINCO PASOS ---------------- */}
           {paso && (
             <>
-              <div className="bs"><b style={{ color: 'var(--txt)' }}>Para qué se lo pido: </b>{paso.paraQue}</div>
-              {paso.infiere && (
+              {/* En el paso 1 no se dibuja: la pantalla tiene que entrar entera y lo que el motor
+                  saca solo ya vive en el botón «Qué hace con esto». */}
+              {paso.infiere && paso.n !== 1 && (
                 <div className="onb-infiere">
                   <span className="onb-infiere-ic"><I_Zap size={13} /></span>
                   <span><b>Lo que el motor saca solo: </b>{paso.infiere}</span>
@@ -155,8 +153,8 @@ export function Asistente({ sesion, setVista }: { sesion: Sesion; setVista: (v: 
                   {ultimo ? <><I_Rocket size={13} /> Terminar y arrancar</> : <>{onb.completo(paso.n) ? 'Continuar' : 'Seguir después'} <I_ArrowRight size={13} /></>}
                 </Button>
                 <Button variant="ghost" className="btn-sm" title="Pasa al paso siguiente sin marcarlo: queda pendiente y el motor usa lo que haya"
-                  onClick={siguiente}>Saltar este paso</Button>
-                <Button variant="ghost" className="btn-sm" title="Le muestra qué hace el motor con lo de este paso y de dónde saca el resto"
+                  onClick={siguiente}>Saltar</Button>
+                <Button variant="ghost" className="btn-sm" title={`Para qué se lo pido: ${paso.paraQue} — acá ve qué hace el motor con cada dato y de dónde saca el resto.`}
                   onClick={() => detalle({
                     titulo: `${paso.t}: qué hace el motor con esto`,
                     sub: paso.paraQue,
@@ -178,25 +176,29 @@ export function Asistente({ sesion, setVista }: { sesion: Sesion; setVista: (v: 
 
         {/* Pie: navegación y la salida clara, sin letra chica. */}
         <div className="asist-pie">
-          {fase > 0 && (
+          {fase > 1 && (
             <div className="row" style={{ gap: 9, flexWrap: 'wrap' }}>
               <Button variant="ghost" className="btn-sm" title="Vuelva a la pantalla anterior"
                 onClick={atras}><I_ArrowLeft size={13} /> Atrás</Button>
             </div>
           )}
-          <div className="row" style={{ gap: 10, flexWrap: 'wrap' }}>
-            <Button variant="ghost" className="btn-sm"
-              title="Cierra la bienvenida y le deja en el panel. Los datos quedan esperando en Primeros pasos para completarlos cuando quiera."
-              onClick={() => { cerrar('Bienvenida cerrada: el panel ya está listo y los datos esperan en Primeros pasos'); setVista('hoy'); }}>
-              Hacerlo después
-            </Button>
-          </div>
+          {/* La salida del asistente sólo se ofrece en la bienvenida: en los pasos ya está la X del
+              encabezado y el botón «Saltar», y repetirla era ruido en una pantalla que tiene que
+              entrar entera. */}
+          {fase === 0 && (
+            <div className="row" style={{ gap: 10, flexWrap: 'wrap' }}>
+              <Button variant="ghost" className="btn-sm"
+                title="Cierra la bienvenida y le deja en el panel. Los datos quedan esperando en Primeros pasos para completarlos cuando quiera."
+                onClick={() => { cerrar('Bienvenida cerrada: el panel ya está listo y los datos esperan en Primeros pasos'); setVista('hoy'); }}>
+                Hacerlo después
+              </Button>
+            </div>
+          )}
         </div>
 
-        {/* Lo que va a pasar al terminar. */}
-        <div className="asist-pie-2">
-          <I_Rocket size={12} /> Al terminar, el motor sale a investigar su mercado y arma la primera semana
-          con los {plan.creditosMes.toLocaleString('es-CO')} créditos del plan {plan.nombre}. Publicar es aparte.
+        {/* Lo que va a pasar al terminar: en la bienvenida, que tiene lugar. En los pasos, no. */}
+        <div className="asist-pie-2" style={fase > 0 ? { display: 'none' } : undefined}>
+          <I_Rocket size={12} /> Al terminar, el motor arma la primera semana con los {plan.creditosMes.toLocaleString('es-CO')} créditos del plan {plan.nombre}.
         </div>
       </div>
     </div>

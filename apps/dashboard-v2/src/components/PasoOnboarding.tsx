@@ -58,7 +58,7 @@ export function CamposPaso({ paso }: { paso: PasoOnb }) {
       const largo = ((v as string) || '').length;
       return (
         <>
-          <textarea className="input" rows={largo > 260 ? 8 : 5} placeholder="Escriba aquí, con sus palabras"
+          <textarea className="input" rows={largo > 260 ? 5 : 2} placeholder="Escriba aquí, con sus palabras"
             value={(v as string) || ''}
             onChange={e => onb.escribir(campo.id, e.target.value)} />
           {/* Sin texto no se dice nada: la ayuda del campo ya explica qué escribir. Con texto, se
@@ -85,9 +85,9 @@ export function CamposPaso({ paso }: { paso: PasoOnb }) {
               {activo(op) ? '✓ ' : ''}{op}
             </button>
           ))}
-          {marcadas.map(op => (
+          {marcadas.filter(op => campo.detalle?.[op]).map(op => (
             <div key={op} className="tiny onb-elegido">
-              <I_Check size={11} /> <b>{op}</b>{campo.detalle?.[op] ? ` — ${campo.detalle[op]}` : ''}
+              <I_Check size={11} /> <b>{op}</b> — {campo.detalle?.[op]}
             </div>
           ))}
         </div>
@@ -150,10 +150,13 @@ export function CamposPaso({ paso }: { paso: PasoOnb }) {
    */
   const campo = (c: CampoOnb) => (
     <div key={c.id} className="onb-campo">
-      <label className="label">{c.etiqueta}</label>
-      {c.ayuda && (c.tipo === 'texto' || c.tipo === 'texto-largo' || c.tipo === 'numero') && (
-        <div className="onb-ayuda">{c.ayuda}</div>
-      )}
+      <div className="onb-campo-head">
+        <label className="label">{c.etiqueta}</label>
+        {/* Lo que se elige no necesita renglón de ayuda: va al lado del nombre. */}
+        {c.ayuda && c.tipo !== 'docs' && c.tipo !== 'material' && (
+          <span className="onb-ayuda-inline">{c.ayuda}</span>
+        )}
+      </div>
       {control(c)}
     </div>
   );
@@ -167,11 +170,25 @@ export function CamposPaso({ paso }: { paso: PasoOnb }) {
     else filas.push([c]);
   });
 
+  // Los grupos de opciones van de a dos por fila: se elige más rápido y la pantalla entra sin
+  // desplazarse. Se separan en tandas para no mezclar dos preguntas distintas en la misma línea.
+  const filasFinales: ({ tipo: 'fila'; campos: CampoOnb[] } | { tipo: 'opciones'; campos: CampoOnb[] } | { tipo: 'suelto'; campos: CampoOnb[] })[] = [];
+  const esOpciones = (c: CampoOnb) => (c.tipo === 'chips' || c.tipo === 'chips-multi') && !c.fila;
+  filas.forEach(f => {
+    if (f.length > 1) { filasFinales.push({ tipo: 'fila', campos: f }); return; }
+    const c = f[0];
+    const ult = filasFinales[filasFinales.length - 1];
+    if (esOpciones(c) && ult && ult.tipo === 'opciones' && ult.campos.length < 2) ult.campos.push(c);
+    else filasFinales.push({ tipo: esOpciones(c) ? 'opciones' : 'suelto', campos: [c] });
+  });
+
   return (
     <div className="onb-campos">
-      {filas.map(f => f.length === 1
-        ? campo(f[0])
-        : <div key={f[0].id} className="onb-fila">{f.map(campo)}</div>)}
+      {filasFinales.map(g => g.tipo === 'fila'
+        ? <div key={g.campos[0].id} className="onb-fila">{g.campos.map(campo)}</div>
+        : g.tipo === 'opciones'
+          ? <div key={g.campos[0].id} className={`onb-opciones ${g.campos.length > 1 ? 'dos' : ''}`}>{g.campos.map(campo)}</div>
+          : campo(g.campos[0]))}
       {pegado && (
         <div className="tiny muted">Pegó un enlace: el motor lo lee solo y no hace falta que lo escriba.</div>
       )}
