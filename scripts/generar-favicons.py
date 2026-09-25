@@ -1,110 +1,71 @@
 #!/usr/bin/env python3
-"""Genera el juego de favicons (el icono de la pestaña) a partir del logo en SVG del panel.
+"""Genera el juego de favicons (el icono de la pestaña) a partir del LOGO de Sinkroo.
+
+El logo es `apps/dashboard-v2/public/67.png`: el búho morado con las cejas y el pico plateados, el mismo
+que el panel muestra en la pantalla (`SinkrooMark`). Viene con fondo transparente y con márgenes vacíos
+alrededor, así que acá se recorta el margen, se centra en un cuadrado con un respiro parejo y se sacan
+todos los tamaños.
 
 CÓMO SE USA (sólo hace falta si el logo cambia):
     python3 scripts/generar-favicons.py
-y después se reemplazan los archivos de apps/dashboard-v2/public/ con los que quedan en la carpeta de
-salida. Necesita Pillow (viene con el entorno de Hermes).
+y después se copian los archivos que quedan en `scripts/favicons-generados/` a
+`apps/dashboard-v2/public/`. Necesita Pillow (viene con el entorno de Hermes).
 
-El SVG usa sólo M, C, V, H y Z, así que se puede rasterizar sin herramientas externas: se aplana cada
-curva a una polilínea, se dibuja a 8x y se reduce (eso da el suavizado de bordes), y las dos figuras se
-combinan con la multiplicación que pide el SVG (`mix-blend-mode: multiply`).
+POR QUÉ SE REDUCE PASO A PASO
+    Bajar de 405 a 16 de una sola vez deja los bordes sucios. Se reduce a la mitad varias veces
+    (405 → 202 → 101 → 50 → 25 → 16), que es lo que hace el ojo al mirar de lejos: así el búho se
+    entiende hasta en el tamaño más chico.
 """
-import re
 from pathlib import Path
-from PIL import Image, ImageDraw
+from PIL import Image
 
-SVG = Path(__file__).resolve().parent.parent / 'apps/dashboard-v2/public/favicon.svg'
+RAIZ = Path(__file__).resolve().parent.parent
+LOGO = RAIZ / 'apps/dashboard-v2/public/67.png'
 SALIDA = Path(__file__).resolve().parent / 'favicons-generados'
-AZUL = (0x5D, 0x87, 0xFF)   # figura de abajo
-CELESTE = (0x49, 0xBE, 0xFF)  # figura de arriba (se multiplica con la otra)
-LADO = 32  # el viewBox del SVG
-SUPER = 8  # cuántas veces más grande se dibuja antes de reducir
-PASOS = 40  # segmentos por curva
+RESPIRO = 0.05              # aire alrededor del búho, en tanto por uno del lado
+FONDO_IOS = (0, 0, 0, 255)  # el fondo real del panel (iOS no respeta la transparencia)
 
 
-def numeros(texto):
-    return [float(x) for x in re.findall(r'[-+]?(?:\d+\.?\d*|\.\d+)', texto)]
+def cuadrado_del_logo():
+    """El búho, recortado del margen vacío y centrado en un cuadrado con respiro."""
+    logo = Image.open(LOGO).convert('RGBA')
+    caja = logo.getbbox()
+    buho = logo.crop(caja) if caja else logo
+    lado = round(max(buho.size) * (1 + RESPIRO * 2))
+    lienzo = Image.new('RGBA', (lado, lado), (0, 0, 0, 0))
+    lienzo.paste(buho, ((lado - buho.width) // 2, (lado - buho.height) // 2), buho)
+    return lienzo
 
 
-def curvas(d):
-    """Devuelve una lista de subcaminos, cada uno una lista de puntos (x, y)."""
-    subcaminos, actual, punto, inicio = [], [], None, None
-    for comando, argumentos in re.findall(r'([MmCcHhVvZz])([^MmCcHhVvZz]*)', d):
-        ns = numeros(argumentos)
-        if comando == 'M':
-            if actual:
-                subcaminos.append(actual)
-            punto = (ns[0], ns[1]); inicio = punto; actual = [punto]
-        elif comando == 'C':
-            x1, y1, x2, y2, x, y = ns[:6]
-            for i in range(1, PASOS + 1):
-                t = i / PASOS
-                u = 1 - t
-                bx = u**3 * punto[0] + 3 * u**2 * t * x1 + 3 * u * t**2 * x2 + t**3 * x
-                by = u**3 * punto[1] + 3 * u**2 * t * y1 + 3 * u * t**2 * y2 + t**3 * y
-                actual.append((bx, by))
-            punto = (x, y)
-        elif comando == 'V':
-            punto = (punto[0], ns[0]); actual.append(punto)
-        elif comando == 'H':
-            punto = (ns[0], punto[1]); actual.append(punto)
-        elif comando in 'Zz':
-            if inicio:
-                actual.append(inicio)
-    if actual:
-        subcaminos.append(actual)
-    return subcaminos
-
-
-def mascara(subcaminos, lado):
-    """Cobertura (0..255) de una figura, dibujada grande y reducida para suavizar los bordes."""
-    grande = lado * SUPER
-    img = Image.new('L', (grande, grande), 0)
-    dibujo = ImageDraw.Draw(img)
-    escala = grande / LADO
-    for camino in subcaminos:
-        if len(camino) >= 3:
-            dibujo.polygon([(x * escala, y * escala) for x, y in camino], fill=255)
-    return img.resize((lado, lado), Image.LANCZOS)
-
-
-def icono(lado):
-    texto = SVG.read_text()
-    trazados = [curvas(m) for m in re.findall(r'd="([^"]+)"', texto)]
-    figuras = [mascara(t, lado) for t in trazados]
-    colores = [AZUL, CELESTE][:len(figuras)]
-
-    # Se combinan a mano porque el SVG pide multiplicar la segunda figura sobre la primera.
-    salida = Image.new('RGBA', (lado, lado), (0, 0, 0, 0))
-    pxf, pxm = salida.load(), [f.load() for f in figuras]
-    for y in range(lado):
-        for x in range(lado):
-            coberturas = [m[x, y] / 255 for m in pxm]
-            a1 = coberturas[0]
-            a2 = coberturas[1] if len(coberturas) > 1 else 0.0
-            alfa = a1 + a2 - a1 * a2
-            if alfa <= 0.001:
-                continue
-            c1, c2 = colores[0], colores[1] if len(colores) > 1 else colores[0]
-            multiplicado = tuple(x * y / 255 for x, y in zip(c1, c2))
-            r = (c1[0] * a1 * (1 - a2) + c2[0] * a2 * (1 - a1) + multiplicado[0] * a1 * a2) / alfa
-            g = (c1[1] * a1 * (1 - a2) + c2[1] * a2 * (1 - a1) + multiplicado[1] * a1 * a2) / alfa
-            b = (c1[2] * a1 * (1 - a2) + c2[2] * a2 * (1 - a1) + multiplicado[2] * a1 * a2) / alfa
-            pxf[x, y] = (round(r), round(g), round(b), round(alfa * 255))
-    return salida
+def reducir(imagen, lado):
+    """Reduce a la mitad hasta quedar cerca del tamaño pedido y ahí cierra el ajuste."""
+    copia = imagen
+    while copia.width // 2 >= lado:
+        copia = copia.resize((copia.width // 2, copia.height // 2), Image.LANCZOS)
+    if copia.width != lado:
+        copia = copia.resize((lado, lado), Image.LANCZOS)
+    return copia
 
 
 SALIDA.mkdir(parents=True, exist_ok=True)
+maestro = cuadrado_del_logo()
+print(f'logo recortado y centrado: {maestro.size[0]}x{maestro.size[1]}')
+
 hechos = {}
-for lado in (16, 32, 48, 96, 180, 192, 512):
-    im = icono(lado)
+for lado in (16, 32, 48, 96, 180, 512):
+    im = reducir(maestro, lado)
     im.save(SALIDA / f'icono-{lado}.png')
     hechos[lado] = im
     print(f'{lado}x{lado} listo')
 
+# Para iOS, sobre el fondo del panel: iOS no respeta la transparencia y la deja negra igual, así que se
+# pone a propósito (y así el icono se ve igual en todos los teléfonos).
+ios = Image.new('RGBA', hechos[180].size, FONDO_IOS)
+ios.alpha_composite(hechos[180])
+ios.convert('RGB').save(SALIDA / 'apple-touch-icon.png')
+print('apple-touch-icon.png listo (180x180, sobre el fondo del panel)')
+
 # El .ico con los tres tamaños clásicos dentro del mismo archivo.
-hechos[48].save(SALIDA / 'favicon.ico', format='ICO',
-                sizes=[(16, 16), (32, 32), (48, 48)])
+hechos[48].save(SALIDA / 'favicon.ico', format='ICO', sizes=[(16, 16), (32, 32), (48, 48)])
 print('favicon.ico listo')
 print('archivos:', sorted(p.name for p in SALIDA.iterdir()))
