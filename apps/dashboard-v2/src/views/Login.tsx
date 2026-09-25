@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { Button, Badge } from '../components/ui';
 import {
-  SinkrooMark, I_Mail, I_Lock, I_Check, I_ArrowRight, I_User, I_Eye, I_Megaphone, I_Vote,
-  I_Upload, I_Chart, I_Chat, I_Shield, I_Sparkle,
+  SinkrooMark, I_Mail, I_Lock, I_Check, I_ArrowRight, I_User, I_Shield, I_Sparkle,
 } from '../components/icons';
 import { TENANT } from '../data/demo';
 
@@ -20,27 +19,14 @@ import { TENANT } from '../data/demo';
 
 export type Sesion = { nombre: string; email: string; via: 'email' | 'google' | 'nueva' };
 
-// CAPACIDADES: lo que el que entra va a poder hacer. Cortas, concretas y con su consecuencia.
-const CAPACIDADES: { icono: React.ReactNode; titulo: string; linea: string }[] = [
-  { icono: <I_Eye size={17} />, titulo: 'Investiga su mercado cada mañana',
-    linea: 'Lee los anuncios de sus competidores y encuentra el ángulo que hoy gana en su rubro, antes de que se levante.' },
-  { icono: <I_Megaphone size={17} />, titulo: 'Escribe y arma las piezas',
-    linea: 'Con su material, su tono y sus precios. Nada de plantillas: cada pieza se parece a su negocio.' },
-  { icono: <I_Vote size={17} />, titulo: 'Las revisa antes de que gaste un peso',
-    linea: '5 jueces las puntúan, 500 personas del público reaccionan y le dejan el rendimiento estimado antes de que gaste. Si ninguna convence, no sale ninguna.' },
-  { icono: <I_Upload size={17} />, titulo: 'Publica en sus cuentas',
-    linea: 'Instagram, Facebook y WhatsApp: publica donde ya tiene su gente, en la franja en la que le leen.' },
-  { icono: <I_Chart size={17} />, titulo: 'Mide lo que rinde y frena lo que no',
-    linea: 'Ve el costo por venta, mueve el presupuesto y frena solo lo que no funciona. Sin que se lo pida.' },
-  { icono: <I_Chat size={17} />, titulo: 'Le avisa sólo cuando hace falta',
-    linea: 'Una decisión por mensaje, con sus botones. La responde desde el chat, sin entrar a buscar nada.' },
+// LO QUE HACE, en cuatro líneas cortas: es lo único que se lee en la entrada.
+const CAPACIDADES = [
+  'Investiga su mercado cada mañana',
+  'Escribe las piezas con su material y sus precios',
+  'Las revisa con 5 jueces y 500 personas del público',
+  'Publica, mide el costo por venta y frena lo que no rinde',
 ];
 
-const REGLAS = [
-  'Nada se publica sin pasar por el panel.',
-  'Nada sale a sus cuentas sin su OK.',
-  'Publicar es lo único que gasta dinero: investigar no cuesta.',
-];
 
 const CUENTAS_DEMO: { nombre: string; email: string; clave: string; etiqueta: string; quien: string }[] = [
   { nombre: 'María Paula', email: 'maria@skincarenatural.com', clave: 'demo2026',
@@ -97,78 +83,50 @@ export function PantallaLogin({ onEntrar }: { onEntrar: (s: Sesion) => void }) {
   return (
     <div className="login">
       <div className="login-panel">
-        {/* ---------- LO QUE HACE SINKROO: para todos, sin rubros ni ejemplos ---------- */}
+        {/* ---------- QUÉ ES SINKROO: cuatro líneas, nada más ----------
+             El dueño fue claro: «nadie se va a quedar pegado viendo eso, debe ser muy corto y preciso
+             para que se sepa a lo que el sistema [sirve] nada más». Acá no se explica el producto: se
+             dice qué es, qué hace y qué lo hace distinto. Todo lo demás vive adentro del panel. */}
         <div className="login-lado">
-          <div className="login-marca">
-            <span className="login-logo"><SinkrooMark size={44} /></span>
-            <span className="login-marca-tx">
-              <b>Sinkroo</b>
-              <small>Marketing que trabaja solo</small>
-            </span>
-          </div>
-
           <div className="login-intro">
-          <div className="login-eyebrow">Su equipo de marketing, trabajando solo</div>
-          <h1 className="login-titulo">
-            Mientras usted duerme,<br />su marketing sigue trabajando.
-          </h1>
-          <p className="login-sub">
-            Sinkroo investiga su mercado, escribe y arma las piezas, las hace revisar por un panel de 5 jueces
-            y 500 personas del público, y las publica en sus cuentas. <b>Usted sólo aprueba.</b>
-          </p>
-          <p className="login-futuro">
-            Imagine abrir el panel el lunes y encontrar la semana ya armada: las piezas escritas, los números
-            medidos y una sola decisión esperándole.
-          </p>
+            <div className="login-marca">
+              <span className="login-logo"><SinkrooMark size={42} /></span>
+              <span className="login-marca-tx">
+                <b>Sinkroo</b>
+                <small>Marketing que trabaja solo</small>
+              </span>
+            </div>
 
-          {/* ---------- LA PREDICCIÓN: lo más importante del sistema, y por eso va destacado ---------- */}
-          <div className="login-pred">
-            <div className="login-pred-lb"><I_Sparkle size={10} /> Análisis predictivo</div>
-            <div className="login-pred-t">Vea el futuro de sus publicaciones antes de publicarlas.</div>
-            <div className="login-pred-p">
-              Sinkroo es la primera plataforma que le dice cómo va a rendir una pieza antes de sacarla:
-              cuántas personas la verán, cuántos clics va a traer y cuánto va a costar cada venta. Cuando la
-              campaña corre, compara lo que había predicho con lo que pasó de verdad y corrige el modelo con
-              el desvío.
-            </div>
-            <div className="login-pred-datos">
-              <span><b>Predijo 84</b><small>lo que iba a vender</small></span>
-              <span><b>Pasó 79</b><small>lo que vendió de verdad</small></span>
-              <span><b>Corrige 6%</b><small>la próxima estima más cerca</small></span>
-            </div>
-            <div className="login-pred-cierre">
-              Usted decide con el resultado a la vista, no a ciegas.
-            </div>
-          </div>
+            <h1 className="login-titulo">
+              Su marketing,<br />trabajando solo.
+            </h1>
+            <p className="login-linea">
+              Investiga su mercado, escribe las piezas, las publica y mide cada peso. <b>Usted sólo aprueba.</b>
+            </p>
 
+            <div className="login-pred">
+              <div className="login-pred-lb"><I_Sparkle size={10} /> Análisis predictivo</div>
+              <div className="login-pred-t">Sabe cómo va a rendir antes de publicar.</div>
+              <div className="login-pred-p">
+                Cuántas personas la verán, cuántos clics traerá y cuánto costará cada venta.
+                Predijo 84, pasó 79: la próxima estima 6% más cerca.
+              </div>
+            </div>
           </div>
 
           <div className="login-resto">
-          <div className="login-cap">
-            {CAPACIDADES.map(c => (
-              <div key={c.titulo} className="login-cap-fila">
-                <span className="login-cap-ic">{c.icono}</span>
-                <span style={{ minWidth: 0 }}>
-                  <b>{c.titulo}</b>
-                  <small>{c.linea}</small>
-                </span>
-              </div>
-            ))}
-          </div>
-
-          <div className="login-reglas">
-            {REGLAS.map(r => (
-              <div key={r} className="login-regla"><I_Shield size={12} /> {r}</div>
-            ))}
-          </div>
-
-          <div className="login-demo">
-            <span className="login-demo-lb"><I_Check size={12} /> {CUENTAS_DEMO[0].etiqueta}</span>
-            <div className="login-demo-tx">
-              {CUENTAS_DEMO[0].quien} Entre con <b>{CUENTAS_DEMO[0].email}</b> y mire el panel trabajando, o cree
-              su cuenta con su correo para empezar de cero.
+            <div className="login-hace">
+              {CAPACIDADES.map(c => (
+                <span key={c} className="login-hace-i"><I_Check size={12} /> {c}</span>
+              ))}
             </div>
-          </div>
+            <div className="login-ok-linea">
+              <I_Shield size={12} /> Nada sale a sus cuentas sin su OK.
+            </div>
+            <div className="login-demo">
+              <span className="login-demo-lb">{CUENTAS_DEMO[0].etiqueta}</span>
+              <span className="login-demo-tx">{CUENTAS_DEMO[0].email}</span>
+            </div>
           </div>
         </div>
 
