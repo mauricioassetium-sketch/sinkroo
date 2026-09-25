@@ -11,8 +11,6 @@ import {
   type Opcion, type CostoRonda, type Objecion,
 } from '../data/mirofish';
 import type { Modo } from '../data/demo';
-import { useDatos } from '../api/datos';
-import { MiroFishReal } from './MiroFishReal';
 
 // =============================================================================================
 // EL FLUJO DE MIROFISH — la cadena completa, en 4 etapas encadenadas:
@@ -52,11 +50,6 @@ interface ChipMejora { k: string; t: string; d: string; cr?: number; sub?: Objec
 export function FlujoMiroFish({ modo, setToast, esAnuncio }: {
   modo: Modo; setToast: (t: string) => void; esAnuncio: boolean;
 }) {
-  // Con el back encendido, MiroFish evalúa de verdad: los votos y las reacciones que se ven son los que
-  // existen. La animación queda para la demostración, que es donde tiene sentido.
-  const datos = useDatos();
-  if (datos.real) return <MiroFishReal setToast={setToast} />;
-
   const [etapa, setEtapa] = useState<Etapa>('inicio');
   const [abierta, setAbierta] = useState<string | null>('op1');
   const [publicado, setPublicado] = useState(false);
