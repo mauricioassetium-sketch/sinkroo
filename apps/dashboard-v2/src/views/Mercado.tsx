@@ -541,7 +541,7 @@ export function ViewMercado({ setToast, setVista }: { setToast: (t: string) => v
             ) : !d.calibracion.calibrada ? (
               /* Sin calibrar, el panel entero pesa igual en todos los segmentos: hay que decirlo tal cual. */
               <EstadoVacio
-                titulo="Su público está en reparto parejo"
+                titulo="Sus 500 agentes trabajan con su propio criterio"
                 texto={`Los ${d.calibracion.total} agentes del panel están repartidos en partes iguales: todavía no se calibró con su público real. Cuando el panel lea las proporciones de quienes interactúan con su cuenta, cada segmento empieza a pesar lo que pesa de verdad y esta tarjeta muestra su público, no un promedio.`}
               />
             ) : (

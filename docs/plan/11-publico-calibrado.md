@@ -1,4 +1,12 @@
-# 11 · El público calibrado — los 500 agentes aprenden del mercado real
+# 11 · El público calibrado con datos reales
+
+> **ESTADO: EN PAUSA POR DECISIÓN DEL DUEÑO (25/09/2026).**
+> Por ahora el modelo se mantiene **sin audiencia**: los 500 agentes trabajan con su propio
+> comportamiento simulado, sin clonar ni calibrar con la audiencia del negocio. Es más simple, no
+> depende de permisos de ninguna plataforma y el motor funciona igual. Lo construido (las rutas de
+> calibración y los conectores) queda disponible, sin usarse como promesa del producto, para retomarlo
+> cuando se decida. Textual del dueño: «mantengamos el modelo sin audiencia como estaba antes… ya
+> veremos cómo mejorar esto».
 
 Estado: **propuesta de diseño, nada construido**. Fecha: 25/09/2026.
 Pedido del dueño: «que los 6 analicen el mercado y le asignen el comportamiento del mercado del usuario

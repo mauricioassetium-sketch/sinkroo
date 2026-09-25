@@ -103,7 +103,7 @@ export async function leerCalibracion(db: Pool, businessId: string) {
     // calibró. Con el público sin calibrar, el panel lo dice.
     confianza: ult.rows.length
       ? (Number(ult.rows[0].agentes) >= 500 ? 'calibrado con datos del negocio' : 'calibrado con pocos datos: banda ancha')
-      : 'sin calibrar: reparto parejo (el panel no está cerca de su público real)',
+      : 'criterio propio: los 500 agentes trabajan con su comportamiento simulado, sin calibrar con su audiencia',
   };
 }
 
