@@ -62,11 +62,13 @@ const tieneValor = (v: ValorOnb | undefined) =>
   Array.isArray(v) ? v.length > 0 : !!String(v || '').trim();
 
 export function OnboardingProvider({ children, avisar }: { children: ReactNode; avisar: (t: string) => void }) {
-  const [datos, setDatos] = useState<DatosOnb>({
-    // Las cuentas que la cuenta YA tenía conectadas arrancan puestas: el paso 5 muestra el estado
-    // real del negocio, no una lista vacía. Lo que se destilda aquí no se desconecta solo: se marca.
-    conectadas: CONEXIONES_ONB.filter(c => c.habilitadoHoy).map(c => c.key),
-  });
+  const [datos, setDatos] = useState<DatosOnb>(() => ({
+    // Sin la API encendida, las cuentas del ejemplo arrancan puestas: el paso 5 muestra el estado del
+    // negocio, no una lista vacía, y lo que se destilda no se desconecta solo (se marca).
+    // CON LA API ENCENDIDA NO SE SIEMBRA NADA: el estado real lo lee el bloque del paso 5 del back.
+    // Sembrarlas desde el ejemplo era afirmar conexiones que no existen.
+    conectadas: hayApi() ? [] : CONEXIONES_ONB.filter(c => c.habilitadoHoy).map(c => c.key),
+  }));
   const [archivos, setArchivos] = useState<ArchivoIngesta[]>([]);
   const [paso, setPaso] = useState(1);
   const [hechos, setHechos] = useState<number[]>([]);

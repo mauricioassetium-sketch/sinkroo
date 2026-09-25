@@ -1,13 +1,16 @@
 import { useState } from 'react';
 import { Badge, Button } from '../components/ui';
+import { EstadoVacio } from '../components/EstadoVacio';
 import {
   I_Check, I_Upload, I_Image, I_Film, I_File, I_Shield, I_ArrowRight, I_X, I_Link, I_Plus, I_Play, I_Zap,
 } from '../components/icons';
 import { useOnboarding } from '../lib/onboarding';
 import { usePlan } from '../lib/plan';
+import { useDatos, type IntegracionRed } from '../api/datos';
+import { baseApi, recordarRed, token } from '../api/cliente';
 import {
-  CONEXIONES_ONB, PRIMERA_SEMANA, COSTO_ARRANQUE, TIPOS_ARCHIVO, ARCHIVOS_ACEPTADOS,
-  type CampoOnb, type PasoOnb,
+  CONEXIONES_ONB, CONEXIONES_BACK, PRIMERA_SEMANA, COSTO_ARRANQUE, TIPOS_ARCHIVO, ARCHIVOS_ACEPTADOS,
+  type CampoOnb, type ConexionOnb, type PasoOnb,
 } from '../data/onboarding';
 
 // =============================================================================================
@@ -245,9 +248,65 @@ export function CamposPaso({ paso }: { paso: PasoOnb }) {
   );
 }
 
+/**
+ * CÓMO SE VE UNA FILA DEL PASO 5 CON EL BACK ENCENDIDO — el estado REAL de esa red, nunca el del ejemplo.
+ *
+ * El back es el único que sabe: `conectada` sólo cuando devuelve la cuenta de esa red; `sin conectar`
+ * cuando la red está configurada y todavía no hay cuenta; y `falta configurar` —nombrando las variables
+ * que faltan— cuando la app de esa red no está cargada en el servidor. `habilitadoHoy` es del ejemplo y
+ * aquí NO se usa: decir «ya estaba conectada» sin que el back lo diga es lo que esta pantalla corregía.
+ */
+function estadoFila(c: ConexionOnb, r: IntegracionRed | null): {
+  tono: 'green' | 'amber' | 'red' | 'muted'; rotulo: string; texto: string;
+} {
+  const cuenta = r?.cuenta ?? null;
+  const ultima = r?.ultima_sincronizacion ?? null;
+  const falta = r?.falta?.length ? r.falta : [];
+
+  if (cuenta) return {
+    tono: 'green', rotulo: 'conectada',
+    texto: `Su cuenta está conectada: ${cuenta.nombre || cuenta.external_id || 'sin nombre'}. ${ultima
+      ? `Última sincronización (${ultima.que || 'datos'}): ${ultima.ok ? 'salió bien' : 'no salió'}${ultima.detalle ? ` · ${ultima.detalle}` : ''}.`
+      : 'Todavía no se sincronizó ninguna vez.'}`,
+  };
+
+  // La fila que no tiene red propia en el back (Facebook): lo dice y no ofrece conectar, porque
+  // conectar ahí conectaría otra cosa. El estado que se ve es el de la fila de Instagram.
+  if (!c.red) return {
+    tono: 'muted', rotulo: 'sin conectar',
+    texto: `No hay una conexión de ${c.nombre} aparte: la de Meta es la misma cuenta que Instagram, y aquí se ve el estado de esa fila.`,
+  };
+
+  // El back respondió, pero no mandó esta red: no se afirma nada de ella.
+  if (!r) return {
+    tono: 'muted', rotulo: 'sin conectar',
+    texto: `El back no mandó el estado de ${c.nombre}: esa red no vino en su lista, así que aquí no se puede decir si está conectada.`,
+  };
+
+  if (!r.configurado) return {
+    tono: 'red', rotulo: 'falta configurar',
+    texto: `${c.nombre} todavía no tiene su app configurada en el servidor${falta.length
+      ? `: falta cargar ${falta.length === 1 ? 'esta variable' : 'estas variables'} ${falta.join(', ')}` : ''}. Mientras falte, no hay permiso que pedir ni conexión que ofrecer.`,
+  };
+
+  // Las redes que van por clave no tienen pantalla de autorización: su clave ya está en el servidor.
+  if (r.tipo === 'token') return {
+    tono: 'amber', rotulo: 'sin conectar',
+    texto: 'Su clave ya está cargada en el servidor: no hay permiso que pedir, sólo falta la primera lectura para que sus datos entren al motor. El panel nunca la pide ni la muestra.',
+  };
+
+  return {
+    tono: 'amber', rotulo: 'sin conectar',
+    texto: `Su cuenta todavía no está conectada. Al conectar, el permiso se le pide a ${r.nombre} y el token queda guardado del lado del servidor: el panel nunca lo pide ni lo muestra.`,
+  };
+}
+
 /** Las cuentas y la verificación: es el paso 5, y se usa igual en los dos lados. */
 export function BloqueConexiones() {
   const onb = useOnboarding();
+  const datos = useDatos();
+  // La red que está trabajando: mientras el back responde, las filas se apagan para no disparar dos veces.
+  const [trabajando, setTrabajando] = useState<{ red: string; accion: string } | null>(null);
   const conectadas = (onb.datos['conectadas'] as string[] | undefined) || [];
 
   const alternar = (key: string) => {
@@ -257,25 +316,138 @@ export function BloqueConexiones() {
     onb.avisar(nuevas.includes(key) ? `${c.nombre} conectada: ${c.detalle}` : `${c.nombre} desconectada: el motor ya no publica ahí`);
   };
 
+  // ---------------------------------------------------------------------------------------------
+  // LAS ACCIONES REALES — el mismo camino que usa Cuenta.tsx, sin inventar otro: el POST va con el
+  // token de la sesión y conectar manda el navegador a la dirección que devuelve el back.
+  // ---------------------------------------------------------------------------------------------
+
+  /** Una llamada al back con el token de la sesión, siempre la misma forma de leer el error. */
+  const accionRed = async (red: string, accion: 'empezar' | 'sincronizar') => {
+    const r = await fetch(baseApi() + `/api/integraciones/${encodeURIComponent(red)}/${accion}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token() },
+    });
+    const cuerpo = await r.json().catch(() => ({})) as { url?: string; error?: string; detalle?: string; que_hizo?: string };
+    return { ok: r.ok, cuerpo };
+  };
+
+  /** Conectar una red: el back devuelve la dirección del proveedor y el navegador se va para allá. */
+  const conectarRed = async (red: string, nombre: string) => {
+    setTrabajando({ red, accion: 'conectar' });
+    try {
+      const { ok, cuerpo } = await accionRed(red, 'empezar');
+      if (ok && cuerpo.url) {
+        // La red queda anotada: es lo que hace que el paso de vuelta sepa a qué red pertenece el código.
+        recordarRed(red);
+        onb.avisar(`${nombre} le va a pedir el permiso: cuando autorice, su cuenta queda conectada`);
+        window.location.href = cuerpo.url;
+      } else {
+        onb.avisar(cuerpo.error || `No se pudo empezar la conexión con ${nombre}: el servidor respondió con un error`);
+      }
+    } catch { onb.avisar(`No se pudo hablar con el servidor: la conexión con ${nombre} no arrancó`); }
+    setTrabajando(null);
+  };
+
+  /** Sincronizar ahora: el back lee los datos de esa red y dice qué hizo. Después se relee el estado. */
+  const sincronizarRed = async (red: string, nombre: string) => {
+    setTrabajando({ red, accion: 'sincronizar' });
+    try {
+      const { ok, cuerpo } = await accionRed(red, 'sincronizar');
+      if (ok) onb.avisar([cuerpo.que_hizo, cuerpo.detalle].filter(Boolean).join(': ') || `${nombre} sincronizó con el servidor`);
+      else onb.avisar(cuerpo.error || `No se pudo sincronizar ${nombre}: el servidor respondió con un error`);
+    } catch { onb.avisar('No se pudo sincronizar: el servidor no respondió'); }
+    await datos.refrescar();
+    setTrabajando(null);
+  };
+
+  // ---------------------------------------------------------------------------------------------
+  // SIN BACK (el modo demostración): el bloque queda EXACTAMENTE como estaba —mismo HTML,
+  // `habilitadoHoy` incluido— porque es lo que se ve en el link de revisión. No se toca.
+  // ---------------------------------------------------------------------------------------------
+  if (!datos.real) {
+    return (
+      <div className="onb-conexiones">
+        {CONEXIONES_ONB.map(c => {
+          const activo = conectadas.includes(c.key);
+          return (
+            <div key={c.key} className="guard">
+              <span style={{ fontSize: 17, flexShrink: 0 }}>{c.icono}</span>
+              <span className="guard-lb">{c.nombre}
+                <small>{activo && c.habilitadoHoy ? `${c.detalle} Ya estaba conectada cuando entró: si la deja, el motor sigue publicando ahí.` : c.detalle}</small>
+              </span>
+              <Badge tone={activo ? 'green' : 'muted'}>{activo ? 'conectada' : 'sin conectar'}</Badge>
+              <Button variant={activo ? 'outline' : 'ghost'} className="btn-sm"
+                title={activo ? `Desconecta ${c.nombre}: el motor deja de publicar ahí al instante. Reversible desde aquí mismo.` : `Conecta ${c.nombre}: ${c.detalle}`}
+                onClick={() => alternar(c.key)}>
+                {activo ? 'Desconectar' : 'Conectar'}
+              </Button>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // CON EL BACK ENCENDIDO: las mismas filas del diseño, cada una con el estado real de SU red.
+  // ---------------------------------------------------------------------------------------------
+  const ig = datos.integraciones;
+  const porRed = new Map((ig?.redes ?? []).map(r => [r.red, r]));
+
+  // Lo que se dice cuando no hay nada que mostrar: mientras lee, lo dice; y si el servidor no
+  // respondió, lo dice con la puerta para volver a intentar. Nunca afirma que no haya conexiones.
+  const sinLeer = datos.cargando
+    ? { titulo: 'Leyendo sus conexiones en el servidor…', texto: 'El panel está leyendo, red por red, qué tiene configurado el servidor y qué cuentas hay conectadas. Mientras lee no afirma nada.' }
+    : !ig
+      ? { titulo: 'No se pudo leer el estado de sus conexiones', texto: 'Aquí se ve, canal por canal, si el servidor tiene configurada la app de esa red, si hay una cuenta conectada y cuándo se sincronizó. El servidor no respondió: vuelva a leerlo y aparece tal como está.' }
+      : { titulo: 'El servidor todavía no mandó las redes para conectar', texto: 'Cuando el back devuelva sus redes conectables, cada canal aparece aquí con su estado real. Devolvió la lista vacía.' };
+
   return (
     <div className="onb-conexiones">
-      {CONEXIONES_ONB.map(c => {
-        const activo = conectadas.includes(c.key);
-        return (
-          <div key={c.key} className="guard">
-            <span style={{ fontSize: 17, flexShrink: 0 }}>{c.icono}</span>
-            <span className="guard-lb">{c.nombre}
-              <small>{activo && c.habilitadoHoy ? `${c.detalle} Ya estaba conectada cuando entró: si la deja, el motor sigue publicando ahí.` : c.detalle}</small>
-            </span>
-            <Badge tone={activo ? 'green' : 'muted'}>{activo ? 'conectada' : 'sin conectar'}</Badge>
-            <Button variant={activo ? 'outline' : 'ghost'} className="btn-sm"
-              title={activo ? `Desconecta ${c.nombre}: el motor deja de publicar ahí al instante. Reversible desde aquí mismo.` : `Conecta ${c.nombre}: ${c.detalle}`}
-              onClick={() => alternar(c.key)}>
-              {activo ? 'Desconectar' : 'Conectar'}
-            </Button>
-          </div>
-        );
-      })}
+      {!ig || ig.redes.length === 0 ? (
+        <EstadoVacio {...sinLeer}
+          {...(datos.cargando ? {} : { accion: 'Volver a leer', onAccion: () => void datos.refrescar() })} />
+      ) : (
+        CONEXIONES_BACK.map(c => {
+          const r = c.red ? porRed.get(c.red) ?? null : null;
+          const { tono, rotulo, texto } = estadoFila(c, r);
+          const cuenta = r?.cuenta ?? null;
+          const enCurso = r && trabajando?.red === r.red ? trabajando.accion : '';
+          // Un botón por fila, como en el diseño: conectar (permiso del proveedor), probar la clave
+          // (las redes que van por token, que no tienen pantalla de autorización) o sincronizar (la
+          // que ya está conectada, que no vuelve a ofrecer conectar).
+          return (
+            <div key={c.key} className="guard">
+              <span style={{ fontSize: 17, flexShrink: 0 }}>{c.icono}</span>
+              <span className="guard-lb">{c.nombre}
+                <small>{texto}</small>
+              </span>
+              <Badge tone={tono}>{rotulo}</Badge>
+              {r && r.configurado && !cuenta && r.tipo !== 'token' && (
+                <Button variant="ghost" className="btn-sm" disabled={trabajando !== null}
+                  title={`Conecta ${r.nombre}: lo lleva a autorizar su cuenta y el token queda guardado en el servidor. Reversible: se desconecta desde Cuenta.`}
+                  onClick={() => void conectarRed(r.red, r.nombre)}>
+                  {enCurso === 'conectar' ? 'Abriendo…' : 'Conectar'}
+                </Button>
+              )}
+              {r && r.configurado && !cuenta && r.tipo === 'token' && (
+                <Button variant="ghost" className="btn-sm" disabled={trabajando !== null}
+                  title={`Lee los datos de ${r.nombre} con la clave que ya está cargada en el servidor. Si la clave no sirve, lo dice: no inventa datos.`}
+                  onClick={() => void sincronizarRed(r.red, r.nombre)}>
+                  {enCurso === 'sincronizar' ? 'Leyendo…' : 'Probar y sincronizar'}
+                </Button>
+              )}
+              {r && cuenta && (
+                <Button variant="outline" className="btn-sm" disabled={trabajando !== null}
+                  title={`Lee los datos de ${r.nombre} y con ellos calibra su público solo. No frena nada de lo que ya corre: al terminar dice qué hizo.`}
+                  onClick={() => void sincronizarRed(r.red, r.nombre)}>
+                  {enCurso === 'sincronizar' ? 'Sincronizando…' : 'Sincronizar ahora'}
+                </Button>
+              )}
+            </div>
+          );
+        })
+      )}
     </div>
   );
 }

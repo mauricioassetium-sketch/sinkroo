@@ -114,14 +114,44 @@ export const COSTO_ARRANQUE = PRIMERA_SEMANA.reduce((a, d) => a + Number((d.cred
 
 // Los canales donde el motor puede trabajar. No son sólo redes de productos: también sirven para un
 // negocio de servicios, una tienda o alguien que vende por WhatsApp.
-export const CONEXIONES_ONB: { key: string; nombre: string; icono: string; habilitadoHoy: boolean; detalle: string }[] = [
-  { key: 'instagram', nombre: 'Instagram', icono: '📸', habilitadoHoy: true, detalle: 'Publicar piezas y leer comentarios y mensajes.' },
+//
+// `red` es la red del BACK con la que esa fila se conecta de verdad (`POST /api/integraciones/:red/...`).
+// Es lo que deja de mentir el paso 5: con el back encendido, cada fila muestra el estado de SU red, no
+// el del ejemplo. Una fila sin `red` no tiene conexión propia en el back (ver Facebook).
+export type ConexionOnb = {
+  key: string; nombre: string; icono: string; habilitadoHoy: boolean; detalle: string;
+  /** La red del back de esta fila. Sin `red`, el back no tiene una conexión propia para esa fila. */
+  red?: string;
+};
+
+export const CONEXIONES_ONB: ConexionOnb[] = [
+  { key: 'instagram', nombre: 'Instagram', icono: '📸', habilitadoHoy: true, detalle: 'Publicar piezas y leer comentarios y mensajes.', red: 'instagram' },
+  // Facebook NO lleva `red`: la conexión con Meta es la MISMA cuenta que Instagram (misma app y mismas
+  // variables en el servidor) y el back sólo confirma la cuenta de Instagram. Si esta fila dijera
+  // «conectada» cuando Instagram está conectada, estaría afirmando algo que el back no dice — que es
+  // justo lo que el paso 5 viene a corregir. Con el back encendido, la fila lo explica y no ofrece
+  // conectar: para conectar Facebook se conecta Instagram.
   { key: 'facebook', nombre: 'Facebook', icono: '👍', habilitadoHoy: true, detalle: 'Publicar y pautar en la misma cuenta de Meta.' },
-  { key: 'whatsapp', nombre: 'WhatsApp de su negocio', icono: '💬', habilitadoHoy: true, detalle: 'Contestar solo, mandar la invitación a un referido y pedir la reseña.' },
-  { key: 'tiktok', nombre: 'TikTok', icono: '🎵', habilitadoHoy: false, detalle: 'Publicar piezas en video y leer los comentarios.' },
-  { key: 'email', nombre: 'Su email', icono: '✉️', habilitadoHoy: false, detalle: 'Mandar el informe semanal y las secuencias a sus clientes.' },
-  { key: 'tienda', nombre: 'Su tienda online', icono: '🛒', habilitadoHoy: false, detalle: 'Leer precios y stock, y saber qué se vendió sin que lo cargue.' },
-  { key: 'google', nombre: 'Su ficha de Google o sus anuncios', icono: '🔎', habilitadoHoy: false, detalle: 'Que lo encuentren en las búsquedas y publicar en la red de Google.' },
+  { key: 'whatsapp', nombre: 'WhatsApp de su negocio', icono: '💬', habilitadoHoy: true, detalle: 'Contestar solo, mandar la invitación a un referido y pedir la reseña.', red: 'whatsapp' },
+  { key: 'tiktok', nombre: 'TikTok', icono: '🎵', habilitadoHoy: false, detalle: 'Publicar piezas en video y leer los comentarios.', red: 'tiktok' },
+  { key: 'email', nombre: 'Su email', icono: '✉️', habilitadoHoy: false, detalle: 'Mandar el informe semanal y las secuencias a sus clientes.', red: 'email' },
+  { key: 'tienda', nombre: 'Su tienda online', icono: '🛒', habilitadoHoy: false, detalle: 'Leer precios y stock, y saber qué se vendió sin que lo cargue.', red: 'tienda' },
+  { key: 'google', nombre: 'Su ficha de Google o sus anuncios', icono: '🔎', habilitadoHoy: false, detalle: 'Que lo encuentren en las búsquedas y publicar en la red de Google.', red: 'google' },
+];
+
+/** YouTube, la red que el dueño pidió expresa: va junto a las demás redes de video. */
+const YOUTUBE_ONB: ConexionOnb = {
+  key: 'youtube', nombre: 'YouTube', icono: '▶️', habilitadoHoy: false,
+  detalle: 'Leer el público que ve sus videos y cómo rinde cada uno.', red: 'youtube',
+};
+
+/**
+ * Las filas del paso 5 CON EL BACK ENCENDIDO: son las mismas filas del diseño (su nombre, su ícono y su
+ * frase son las de `CONEXIONES_ONB`), más YouTube, que no existía en la lista. El modo demostración
+ * sigue dibujando `CONEXIONES_ONB` tal cual: el demo no se toca.
+ */
+export const CONEXIONES_BACK: ConexionOnb[] = [
+  ...CONEXIONES_ONB.slice(0, 4), YOUTUBE_ONB, ...CONEXIONES_ONB.slice(4),
 ];
 
 // ---------------------------------------------------------------------------------------------
