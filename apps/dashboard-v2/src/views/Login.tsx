@@ -4,9 +4,13 @@ import {
   SinkrooMark, I_Mail, I_Lock, I_Check, I_ArrowRight, I_User, I_Shield, I_Sparkle, I_Clock,
 } from '../components/icons';
 import { TENANT } from '../data/demo';
-import { crearCuenta, entrar as entrarApi, hayApi, leerSeguridad, type ErrorApi, type EstadoSeguridad } from '../api/cliente';
-// La vuelta del correo de bienvenida vive en App.tsx (es la misma vuelta de siempre, la de
-// `VueltaDeConexion`): acá sólo se dice cómo salió, con las palabras de `textoDeVuelta`.
+import {
+  crearCuenta, entrar as entrarApi, hayApi, leerSeguridad,
+  correoConfigurado, faltaDeCorreo, faltaEnlaces,
+  type AvisoDeCorreo, type ErrorApi, type EstadoSeguridad,
+} from '../api/cliente';
+// La vuelta del correo la atiende App.tsx con el mismo mecanismo de `VueltaDeConexion` (llamar al
+// back una sola vez y dejar limpia la dirección). Acá sólo se dice cómo salió, con `textoDeVuelta`.
 import { textoDeVuelta, type VueltaCorreo } from '../lib/seguridad';
 
 // =============================================================================================
@@ -56,8 +60,8 @@ export function PantallaLogin({ onEntrar, vuelta }: { onEntrar: (s: Sesion) => v
   const conBack = hayApi();
   const [paso, setPaso] = useState<'form' | 'correo'>('form');
   const [cuentaCreada, setCuentaCreada] = useState<{ nombre: string; email: string } | null>(null);
-  /** Lo que el back dice del correo recién creado: si está configurado y si la dirección ya está confirmada. */
-  const [correoNuevo, setCorreoNuevo] = useState<{ leido: boolean; estado: EstadoSeguridad | null; fallo: string } | null>(null);
+  /** Lo que el back dice del correo recién creado, tal cual lo respondió el registro. */
+  const [correoNuevo, setCorreoNuevo] = useState<{ leido: boolean; aviso: AvisoDeCorreo | null; estado: EstadoSeguridad | null; fallo: string } | null>(null);
 
   /** Entrar se ve: el botón pasa a «Entrando…» y sólo después aparece el panel con el asistente. */
   const entrarCon = (via: Sesion['via'], quien: { nombre: string; email: string }) => {
@@ -70,20 +74,29 @@ export function PantallaLogin({ onEntrar, vuelta }: { onEntrar: (s: Sesion) => v
   const entrarConBack = async (crear: boolean) => {
     setError(''); setEntrando(crear ? 'nueva' : 'email');
     try {
-      const usuario = crear
-        ? await crearCuenta(nombre.trim(), email.trim(), clave)
-        : await entrarApi(email.trim(), clave);
+      // El registro contesta, además del usuario, qué pasó con el correo de bienvenida (`correo`):
+      // si salió, para dónde iba y qué falta cuando no salió. Es la respuesta más fresca que hay.
+      let usuario: { nombre: string; email: string };
+      let correoDelRegistro: AvisoDeCorreo | null = null;
+      if (crear) {
+        const r = await crearCuenta(nombre.trim(), email.trim(), clave);
+        usuario = r.usuario; correoDelRegistro = r.correo;
+      } else {
+        usuario = await entrarApi(email.trim(), clave);
+      }
       // CREAR CUENTA NO ENTRA DIRECTO: primero se dice qué pasó con el correo de bienvenida. Con el
       // correo sin configurar en el servidor, aquí NO se puede decir «le enviamos un correo»: se dice
       // lo que falta. La sesión ya quedó abierta (el token está guardado); el panel entra cuando la
       // persona toca «Entrar a mi panel».
       if (crear) {
         setCuentaCreada({ nombre: usuario.nombre || nombre.trim(), email: usuario.email });
-        setCorreoNuevo({ leido: false, estado: null, fallo: '' });
+        setCorreoNuevo({ leido: false, aviso: correoDelRegistro, estado: null, fallo: '' });
         setPaso('correo');
+        // Y se pregunta el estado de seguridad para el resto del dato (el PIN y si la dirección quedó
+        // confirmada). Si no responde, el aviso del registro sigue siendo válido: no se borra.
         leerSeguridad()
-          .then(e => setCorreoNuevo({ leido: true, estado: e, fallo: '' }))
-          .catch((err: ErrorApi) => setCorreoNuevo({ leido: true, estado: null, fallo: err.message }));
+          .then(e => setCorreoNuevo({ leido: true, aviso: correoDelRegistro, estado: e, fallo: '' }))
+          .catch((err: ErrorApi) => setCorreoNuevo({ leido: true, aviso: correoDelRegistro, estado: null, fallo: err.message }));
         return;
       }
       onEntrar({ nombre: usuario.nombre || nombre.trim(), email: usuario.email, via: 'email' });
@@ -218,15 +231,15 @@ export function PantallaLogin({ onEntrar, vuelta }: { onEntrar: (s: Sesion) => v
             <Badge tone="purple">{modo === 'entrar' ? 'tiene una cuenta' : 'nueva'}</Badge>
           </div>
 
-          {/* QUÉ PASA DESPUÉS, dicho antes de crear nada. Es condicional de verdad: la segunda línea
-              («le enviamos el correo») sólo se puede escribir cuando el servidor tiene el correo
-              configurado, y eso se sabe en el paso siguiente. Por eso acá no se promete ningún correo. */}
+          {/* QUÉ PASA DESPUÉS, dicho antes de crear nada. La frase es la del producto, pero no promete
+              entrega: acá arriba todavía no hay sesión y el back no tiene ruta pública que diga si el
+              correo está configurado, así que la verdad sobre ese envío se dice en el paso siguiente,
+              que es donde el registro contesta si el correo salió o no. */}
           {modo === 'crear' && conBack && (
             <div className="login-ok">
-              <I_Shield size={13} /> Al crear la cuenta, su negocio nace con el correo sin confirmar: le
-              pedimos confirmar su dirección desde el enlace que le llega por correo. Si el servidor todavía
-              no tiene el correo configurado, se lo decimos en el paso siguiente — sin prometerle un correo
-              que no va a salir.
+              <I_Shield size={13} /> Después de crearla le mandamos el correo de bienvenida para confirmar
+              su dirección. En el paso siguiente el panel le dice si ese correo salió de verdad: si el
+              servidor todavía no tiene el envío configurado, se lo dice tal cual — no se lo promete.
             </div>
           )}
 
@@ -309,6 +322,102 @@ export function PantallaLogin({ onEntrar, vuelta }: { onEntrar: (s: Sesion) => v
       <div className="login-pie-legal">
         {TENANT.cuenta} · el panel que va a ver funciona con datos reales de un negocio de ejemplo.
       </div>
+    </div>
+  );
+}
+
+// =============================================================================================
+// LA VUELTA DEL CORREO DE BIENVENIDA — cómo salió el enlace de confirmación que trajo esta dirección.
+// Lo atiende App.tsx (la misma vuelta de siempre: se llama al back una sola vez y se limpia la
+// dirección); acá sólo se dice el resultado, con las palabras de `textoDeVuelta`.
+// =============================================================================================
+export function AvisoVueltaDeCorreo({ vuelta }: { vuelta: VueltaCorreo }) {
+  const t = textoDeVuelta(vuelta);
+  if (!t) return null;
+  const esOk = t.tono === 'ok';
+  return (
+    <div className={esOk ? 'login-ok' : 'login-error'}>
+      <span>
+        {esOk ? <I_Check size={13} style={{ marginRight: 6, verticalAlign: -2 }} /> : <I_Shield size={13} style={{ marginRight: 6, verticalAlign: -2 }} />}
+        <b>{t.titulo}</b> {t.detalle}
+        {/* El enlace vencido o inválido no deja a nadie sin salida: se puede pedir otro, que es lo
+            único que el panel puede hacer de verdad (llamar al back y decir cómo salió). */}
+        {!esOk && vuelta.estado !== 'error' && (
+          <button className="login-link" style={{ display: 'block', marginTop: 8 }}
+            title="Vuelve a pedirle al servidor el correo de confirmación para la dirección de la cuenta"
+            onClick={() => vuelta.pedirOtro()}>
+            {vuelta.pidiendo ? 'Pidiendo otro correo…' : 'Pedir otro correo'}
+          </button>
+        )}
+      </span>
+    </div>
+  );
+}
+
+// =============================================================================================
+// QUÉ PASÓ CON EL CORREO DE BIENVENIDA, apenas se creó la cuenta.
+//
+// LA REGLA: aquí NO se escribe «le enviamos un correo» si el servidor no tiene el correo configurado.
+// Se dice lo que el back respondió: si está configurado y si la dirección quedó confirmada; y si no
+// está configurado, se nombra lo que falta cargar. Sin back o sin respuesta, se dice eso mismo.
+// =============================================================================================
+export function AvisoCorreoDeBienvenida({ email, correo }: {
+  email: string;
+  correo: { leido: boolean; aviso: AvisoDeCorreo | null; estado: EstadoSeguridad | null; fallo: string } | null;
+}) {
+  // Lo que el servidor contestó al crear la cuenta, si lo contestó. El estado de seguridad viene aparte
+  // y sirve para el dato de la cuenta (configurado / confirmado) y para el listado de lo que falta.
+  const aviso = correo?.aviso ?? null;
+  const e = correo?.estado ?? null;
+  const falta = (aviso?.falta?.length ? aviso.falta : null) || faltaDeCorreo(e);
+  const configurado = aviso ? !!aviso.enviado || correoConfigurado(e) : correoConfigurado(e);
+
+  if (!correo || (!correo.leido && !aviso)) {
+    return (
+      <div className="login-ok">
+        <I_Clock size={13} /> Le estamos preguntando al servidor si el correo está configurado y si su
+        dirección quedó confirmada. Hasta que responda, el panel no le dice ni que sí ni que no.
+      </div>
+    );
+  }
+
+  // NINGUNA DE LAS DOS RESPUESTAS LLEGÓ: no se puede decir ni que sí ni que no. Se dice eso mismo,
+  // que es lo único cierto, y no se promete un correo que no se puede confirmar.
+  if (!aviso && !e) {
+    return (
+      <div className="login-error">
+        <b>No pudimos leer del servidor si el correo está configurado.</b> {correo.fallo || 'La consulta no respondió.'} Por eso no
+        le decimos que le enviamos un correo: no lo podemos confirmar. Su cuenta ya está creada y puede entrar;
+        el estado real del correo está en Cuenta y autonomía → Seguridad de la cuenta.
+      </div>
+    );
+  }
+
+  // SIN CORREO CONFIGURADO: ni el registro pudo mandarlo ni el servidor lo tiene montado. Acá NO se
+  // escribe «le enviamos un correo»: se dice lo que falta.
+  if (!configurado) {
+    return (
+      <div className="login-error">
+        <b>El correo todavía no está configurado en el servidor.</b> Por eso no le podemos decir que le
+        enviamos un correo de bienvenida: no hay por dónde mandarlo todavía.
+        {aviso?.motivo && <> El servidor respondió: «{aviso.motivo}».</>}
+        {falta.length > 0 && <> Falta cargar {falta.join(', ')}.</>}
+        {' '}Su cuenta ya está creada — su correo <b>{email}</b> quedó guardado — y el panel funciona
+        completo: puede entrar y trabajar. En cuanto el envío quede configurado, le llega el enlace para
+        confirmar la dirección.
+      </div>
+    );
+  }
+
+  // CON EL CORREO CONFIGURADO: ahora sí se puede decir, con el estado real al lado. La cuenta puede
+  // estar ya confirmada (entró desde el enlace) o pendiente.
+  return (
+    <div className="login-ok">
+      <I_Check size={13} /> Le enviamos el correo de bienvenida a <b>{email}</b>
+      {e?.correo_verificado
+        ? ' y su dirección ya quedó confirmada: no tiene que hacer nada más.'
+        : ' para confirmar su dirección. Ábralo y toque el enlace: lo trae de vuelta a este panel y ahí queda confirmada. Si no le llegó en unos minutos, revise la carpeta de correo no deseado.'}
+      {faltaEnlaces(e).length > 0 && <> Ojo: los enlaces todavía no apuntan al panel; falta cargar {faltaEnlaces(e).join(', ')}.</>}
     </div>
   );
 }

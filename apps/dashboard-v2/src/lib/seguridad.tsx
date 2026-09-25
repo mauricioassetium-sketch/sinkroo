@@ -64,27 +64,57 @@ const faltanMinutos = (iso?: string | null) => {
 /** Cómo se le dice a alguien que su PIN no sirvió, sin alarmismo y con el dato real. */
 const motivoDeError = (e: unknown) => {
   const err = e as ErrorApi;
-  const cuerpo = (err.cuerpo || {}) as { intentos_restantes?: number; bloqueado_hasta?: string | null };
-  if (err.codigo === 'pin_incorrecto') {
+  const cuerpo = (err.cuerpo || {}) as { intentos_restantes?: number; bloqueado_hasta?: string | null; minutos_restantes?: number; detalle?: string };
+  // `pin_malo` es el código del back; los otros son los del contrato corto. Los tres dicen lo mismo.
+  if (err.codigo === 'pin_malo' || err.codigo === 'pin_actual_malo' || err.codigo === 'pin_incorrecto') {
     const quedan = cuerpo.intentos_restantes;
     return typeof quedan === 'number' && quedan > 0
       ? `Ese no es su PIN de seguridad. Le quedan ${quedan} intento${quedan === 1 ? '' : 's'} antes de que quede bloqueado.`
-      : 'Ese no es su PIN de seguridad.';
+      : (cuerpo.detalle || 'Ese no es su PIN de seguridad.');
   }
   if (err.codigo === 'pin_bloqueado' || err.estado === 429) {
-    const cuando = faltanMinutos(cuerpo.bloqueado_hasta);
-    return `Por seguridad el PIN quedó bloqueado después de varios intentos fallidos. Puede volver a intentarlo ${cuando || 'más tarde'}.`;
+    const cuando = typeof cuerpo.minutos_restantes === 'number'
+      ? `en ${cuerpo.minutos_restantes} minuto${cuerpo.minutos_restantes === 1 ? '' : 's'}`
+      : faltanMinutos(cuerpo.bloqueado_hasta);
+    return `Por seguridad el PIN quedó bloqueado después de varios intentos fallidos. Puede volver a intentarlo ${cuando || 'más tarde'}${cuerpo.detalle ? `: ${cuerpo.detalle}` : '.'}`;
   }
-  if (err.codigo === 'pin_actual_malo') return 'El PIN que tiene hoy no es ese: escríbalo otra vez.';
-  if (err.codigo === 'pin_debil') return 'El PIN son seis dígitos: no puede repetir el mismo número ni ir en fila (123456).';
+  if (err.codigo === 'pin_invalido' || err.codigo === 'pin_debil') {
+    return cuerpo.detalle || 'El PIN no sirve: son seis dígitos y no puede repetir el mismo número ni ir en fila (123456).';
+  }
+  if (err.codigo === 'sin_autorizacion') return 'Para cambiar el PIN que ya tiene hace falta el PIN actual: escríbalo y vuelva a intentarlo.';
+  if (err.codigo === 'ya_verificado') return 'El correo de esta cuenta ya estaba confirmado: no hay nada que volver a mandar.';
+  if (err.codigo === 'frenado') return cuerpo.detalle || 'Pidió el enlace varias veces seguidas: espere unos minutos y vuelva a intentarlo.';
   return err.message || 'no se pudo hablar con el servidor';
+};
+
+/**
+ * Lo que el back respondió al pedir otro correo, en palabras honestas. Son TRES casos, no dos:
+ *   · `enviado:true`  → salió: se puede decir.
+ *   · `enviado:false` → el back dice que el enlace quedó creado pero el correo no salió (contesta 202):
+ *                       se dice eso, con el motivo y lo que falta.
+ *   · sin `enviado`   → el back contestó bien pero NO dice si salió: entonces tampoco se afirma que
+ *                       salió ni que no salió. Se dice lo único cierto: recibió el pedido.
+ */
+const avisoDeReenvio = (r: { ok?: boolean; enviado?: boolean; detalle?: string; motivo?: string | null; falta?: string[]; para?: string }) => {
+  // Las frases del back vienen en minúscula: acá empiezan una oración, así que se pone la mayúscula.
+  const dicho = (t?: string) => (t ? t.charAt(0).toUpperCase() + t.slice(1) : '');
+  if (r?.enviado === true) {
+    return dicho(r.detalle) || `Le mandamos el enlace de confirmación a ${r.para || 'su dirección'} (vence en 24 horas). Si no llega en unos minutos, mire en la carpeta de correo no deseado.`;
+  }
+  if (r?.enviado === false) {
+    const falta = r?.falta?.length ? ` Falta cargar ${r.falta.join(', ')}.` : '';
+    return `El enlace quedó creado, pero el correo NO salió todavía: ${r?.motivo || r?.detalle || 'el envío de correo no está configurado en el servidor'}.${falta} No le decimos que revise el correo porque no hay nada que revisar.`;
+  }
+  return `${r?.detalle ? `${dicho(r.detalle)} ` : ''}El panel no puede confirmar si el correo salió: el estado real está en Cuenta y autonomía → Seguridad de la cuenta.`;
 };
 
 type Solicitud = { motivo: string; resolver: (pin: string | null) => void };
 
 export function SeguridadProvider({ children }: { children: ReactNode }) {
   const [estado, setEstado] = useState<EstadoSeguridad | null>(null);
-  const [cargando, setCargando] = useState(false);
+  // Arranca diciendo que está leyendo cuando hay back y sesión: es la verdad del primer dibujo (ya se va
+  // a leer) y evita el parpadeo de un «no se pudo leer» antes de que la consulta salga.
+  const [cargando, setCargando] = useState(() => hayApi() && !!token());
   const [error, setError] = useState('');
   const [pidiendoCorreo, setPidiendoCorreo] = useState(false);
   const [avisoCorreo, setAvisoCorreo] = useState('');
@@ -129,13 +159,15 @@ export function SeguridadProvider({ children }: { children: ReactNode }) {
   const pedirOtroCorreo = async () => {
     setPidiendoCorreo(true); setAvisoCorreo('');
     try {
-      await reenviarVerificacion();
-      setAvisoCorreo('El servidor recibió el pedido: el correo de confirmación sale para su dirección. Si no llega en unos minutos, mire en la carpeta de correo no deseado.');
+      const r = await reenviarVerificacion();
+      setAvisoCorreo(avisoDeReenvio(r));
     } catch (e) {
       const err = e as ErrorApi;
-      setAvisoCorreo(err.estado === 404 || err.estado === 501
-        ? 'El servidor todavía no tiene habilitada la ruta para pedir otro correo. Cuando quede publicada, este botón la usa sin cambiar nada más.'
-        : `No se pudo pedir otro correo: ${err.message}.`);
+      setAvisoCorreo(err.codigo === 'ya_verificado'
+        ? 'El correo de su cuenta ya está confirmado: no hay nada que volver a mandar.'
+        : err.estado === 404 || err.estado === 501
+          ? 'El servidor todavía no tiene habilitada la ruta para pedir otro correo.'
+          : `No se pudo pedir otro correo: ${err.message}.`);
     }
     setPidiendoCorreo(false);
   };
@@ -180,7 +212,7 @@ export function quitarDeLaDireccion(claves: string[], ademas?: RegExp) {
   } catch { /* sin navegador */ }
 }
 
-export type EstadoVueltaCorreo = 'verificando' | 'verificado' | 'vencido' | 'invalido' | 'error' | 'pedido' | 'pedido_fallido';
+export type EstadoVueltaCorreo = 'verificando' | 'verificado' | 'vencido' | 'usado' | 'invalido' | 'error' | 'pedido' | 'pedido_dudoso' | 'pedido_fallido';
 
 export type VueltaCorreo = {
   /** null = esta dirección no trae ninguna vuelta de correo. */
@@ -200,11 +232,19 @@ export function textoDeVuelta(v: VueltaCorreo): { tono: 'ok' | 'mal'; titulo: st
     case 'verificado':
       return { tono: 'ok', titulo: 'Su dirección quedó confirmada.', detalle: 'Ya puede entrar con su correo y su clave: el panel no le vuelve a pedir esta confirmación.' };
     case 'vencido':
-      return { tono: 'mal', titulo: 'Ese enlace ya venció.', detalle: 'Los enlaces de confirmación caducan por seguridad. Pida otro y le llega uno nuevo a su dirección.' };
+      return { tono: 'mal', titulo: 'Ese enlace ya venció.', detalle: 'Los enlaces de confirmación caducan a las 24 horas por seguridad. Pida otro y le llega uno nuevo a su dirección.' };
+    case 'usado':
+      return { tono: 'mal', titulo: 'Ese enlace ya se usó.', detalle: 'Los enlaces sirven una sola vez. Si su correo ya quedó confirmado, no hay nada más que hacer; si no, pida otro.' };
     case 'invalido':
-      return { tono: 'mal', titulo: 'Ese enlace no sirve.', detalle: 'Puede que ya se haya usado, o que haya llegado incompleto. Pida otro y le llega uno nuevo a su dirección.' };
+      return { tono: 'mal', titulo: 'Ese enlace no sirve.', detalle: 'Puede que sea de otra cuenta o que haya llegado incompleto. Pida otro y le llega uno nuevo a su dirección.' };
     case 'pedido':
-      return { tono: 'ok', titulo: 'Le pedimos otro correo al servidor.', detalle: 'Si el correo del servidor está configurado, le llega en unos minutos. Mire también en la carpeta de correo no deseado.' };
+      // Dos casos honestos: el back dijo que salió (verde) o dijo que no salió (con `detalle`, en rojo).
+      return v.detalle
+        ? { tono: 'mal', titulo: 'El pedido llegó al servidor, pero el correo no salió.', detalle: v.detalle }
+        : { tono: 'ok', titulo: 'Le pedimos otro correo al servidor.', detalle: 'Le llega en unos minutos. Mire también en la carpeta de correo no deseado.' };
+    case 'pedido_dudoso':
+      // El back contestó bien pero no dijo si el correo salió: no se afirma ninguna de las dos cosas.
+      return { tono: 'ok', titulo: 'El servidor recibió el pedido.', detalle: v.detalle || 'El panel no puede confirmar si el correo salió: el estado real está en Cuenta y autonomía → Seguridad de la cuenta.' };
     case 'pedido_fallido':
       return { tono: 'mal', titulo: 'No se pudo pedir otro correo.', detalle: v.detalle || 'El servidor no respondió al pedido.' };
     case 'error':
@@ -235,7 +275,9 @@ export function useVueltaDeCorreo(): VueltaCorreo {
       .then(r => { setEstado(r?.correo_verificado === false ? 'invalido' : 'verificado'); })
       .catch((e: ErrorApi) => {
         setDetalle(e.message || '');
-        setEstado(e.codigo === 'token_vencido' ? 'vencido' : e.codigo === 'token_invalido' ? 'invalido' : 'error');
+        setEstado(e.codigo === 'token_vencido' ? 'vencido'
+          : e.codigo === 'token_usado' ? 'usado'
+            : e.codigo === 'token_invalido' || e.codigo === 'token_falta' ? 'invalido' : 'error');
       })
       .finally(() => quitarDeLaDireccion(['token', 'verificar']));
   }, [atendida]);
@@ -243,11 +285,18 @@ export function useVueltaDeCorreo(): VueltaCorreo {
   const pedirOtro = () => {
     setPidiendo(true);
     reenviarVerificacion()
-      .then(() => setEstado('pedido'))
+      .then(r => {
+        // Tres casos: salió (verde), no salió (con el detalle del back) o el back no lo dijo (dudoso).
+        if (r?.enviado === false) { setDetalle(avisoDeReenvio(r)); setEstado('pedido'); }
+        else if (r?.enviado === true) { setDetalle(''); setEstado('pedido'); }
+        else { setDetalle(avisoDeReenvio(r)); setEstado('pedido_dudoso'); }
+      })
       .catch((e: ErrorApi) => {
-        setDetalle(e.estado === 404 || e.estado === 501
-          ? 'El servidor todavía no tiene habilitada la ruta para pedir otro correo. Cuando quede publicada, este botón la usa sin cambiar nada más.'
-          : (e.message || ''));
+        setDetalle(e.codigo === 'ya_verificado'
+          ? 'El correo de su cuenta ya está confirmado: no hay nada que volver a mandar.'
+          : e.estado === 404 || e.estado === 501
+            ? 'El servidor todavía no tiene habilitada la ruta para pedir otro correo.'
+            : (e.message || ''));
         setEstado('pedido_fallido');
       })
       .finally(() => setPidiendo(false));
@@ -323,7 +372,8 @@ function ModalPinPedido({ solicitud, cerrar, listo }: {
         onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); void verificar(); } }} />
       <div className="tiny muted" style={{ marginTop: 6 }}>
         Se los pedimos sólo para esta acción y no se guardan en el navegador: viajan al servidor y se
-        verifican allá. Si no se acuerda, puede cerrar esto y cambiar el PIN desde Cuenta y autonomía.
+        verifican allá. Si no se acuerda del PIN, no insista: cada intento cuenta y el servidor lo frena
+        un rato. Sin el PIN, la acción no se ejecuta.
       </div>
 
       {aviso && <div className="alarm" style={{ marginTop: 12, borderLeft: '3px solid var(--amber)', background: 'rgba(245,158,11,.08)' }}>

@@ -5,6 +5,7 @@ import { useTheme } from './lib/theme';
 import { PerfilProvider } from './lib/perfil';
 import { PlanProvider } from './lib/plan';
 import { OnboardingProvider } from './lib/onboarding';
+import { quitarDeLaDireccion, SeguridadAlDia, SeguridadProvider, useVueltaDeCorreo } from './lib/seguridad';
 import { ViewOnboarding } from './views/Onboarding';
 import { PantallaLogin, type Sesion } from './views/Login';
 import { codigoDeMeta, confirmarRed, hayApi, olvidarRed, quienSoy, token, volverDeMeta } from './api/cliente';
@@ -56,13 +57,8 @@ function VueltaDeConexion({ avisar }: { avisar: (t: string) => void }) {
     // mandar la misma marca. Es lo mismo que ya se hacía con `code` y `state`.
     const limpiarDireccion = () => {
       olvidarRed();
-      try {
-        const url = new URL(window.location.href);
-        const sobran = [...url.searchParams.keys()].filter(k =>
-          ['code', 'state', 'red', 'error', 'error_description'].includes(k) || /-callback$|not-enough/.test(k));
-        sobran.forEach(k => url.searchParams.delete(k));
-        window.history.replaceState({}, '', url.toString());
-      } catch { /* sin navegador */ }
+      // El mismo limpiado que ya se hacía con `code` y `state`, ahora compartido con la vuelta del correo.
+      quitarDeLaDireccion(['code', 'state', 'red', 'error', 'error_description'], /-callback$|not-enough/);
     };
 
     // El error manda: no se confirma una conexión que el proveedor dijo que falló.
@@ -93,6 +89,12 @@ export default function App() {
   // La sesión arranca vacía: el panel no existe hasta que alguien entra.
   const [sesion, setSesion] = useState<Sesion | null>(null);
 
+  // LA VUELTA DEL CORREO DE BIENVENIDA: si esta dirección llega con el token de la confirmación
+  // (`?token=…`), se canjea contra el back una sola vez. Vive acá arriba, y no adentro del panel,
+  // porque el enlace del correo se abre sin sesión: la persona cae en la entrada y tiene que ver cómo
+  // salió. Adentro del panel el resultado se cuenta con el aviso de siempre.
+  const vueltaDeCorreo = useVueltaDeCorreo();
+
   // Con el back encendido, al abrir el panel se pregunta quién es: si la sesión sigue viva, entra directo
   // y sigue donde estaba, sin volver a escribir la clave. Eso es lo que hace que «volver» no cueste nada.
   useEffect(() => {
@@ -114,8 +116,8 @@ export default function App() {
     window.setTimeout(() => setToast(''), 2600);
   };
 
-  // Sin sesión, la única pantalla es la entrada.
-  if (!sesion) return <PantallaLogin onEntrar={setSesion} />;
+  // Sin sesión, la única pantalla es la entrada. Ahí también se ve cómo salió la vuelta del correo.
+  if (!sesion) return <PantallaLogin onEntrar={setSesion} vuelta={vueltaDeCorreo} />;
 
   // Desde acá para adentro, todo el panel tiene los datos del back (o los del demo si no hay back).
 
@@ -123,6 +125,11 @@ export default function App() {
     <ProveedorDatos>
     {/* La vuelta del proveedor: va dentro del proveedor de datos para poder releer las conexiones. */}
     <VueltaDeConexion avisar={avisar} />
+    {/* La seguridad de la cuenta (el PIN y el correo) envuelve al panel: el aviso del PIN se abre desde
+        cualquier acción sensible y la tarjeta de Cuenta lee el mismo estado. */}
+    <SeguridadProvider>
+    {/* Con sesión, la vuelta del correo se cuenta con el aviso del panel y la seguridad se relee. */}
+    <SeguridadAlDia vuelta={vueltaDeCorreo} avisar={avisar} />
     <PerfilProvider>
     <OnboardingProvider avisar={avisar}>
     <PlanProvider>
@@ -144,6 +151,7 @@ export default function App() {
     </PlanProvider>
     </OnboardingProvider>
     </PerfilProvider>
+    </SeguridadProvider>
     </ProveedorDatos>
   );
 }

@@ -10,7 +10,11 @@ import { useDetalle, type Bloque } from '../components/Detalle';
 import { useDatos, type IntegracionRed } from '../api/datos';
 // Las acciones de la conexión con Instagram (conectar, sincronizar, desconectar) van al back con el
 // token de la sesión: es el mismo cliente que usa la capa de datos, no una puerta nueva.
-import { baseApi, recordarRed, token } from '../api/cliente';
+import { arrancarMotor, baseApi, recordarRed, token } from '../api/cliente';
+// La seguridad de la cuenta (el PIN y el correo): la tarjeta de abajo lee el estado real y el aviso del
+// PIN se abre desde aquí, que es donde están las acciones que lo piden.
+import { useSeguridad } from '../lib/seguridad';
+import { TarjetaSeguridad } from '../components/Seguridad';
 import { EstadoVacio } from '../components/EstadoVacio';
 import { PASOS_ONB } from '../data/onboarding';
 
@@ -57,6 +61,9 @@ function ViewCuentaNegocio({ setToast, modo, setModo }: { setToast: (t: string) 
   const detalle = useDetalle();
   // La fuente de todo: con el back encendido (`datos.real`), esta pantalla lee del back y nada del demo.
   const datos = useDatos();
+  // La seguridad del negocio: el estado del PIN y del correo, y el aviso que le pide los seis dígitos
+  // antes de una acción sensible. Sin back, `estado` es null y no se muestra nada nuevo.
+  const seguridad = useSeguridad();
   const [niveles, setNiveles] = useState<Record<string, Modo>>(
     Object.fromEntries(EXCEPCIONES.map(e => [e.key, e.nivel])),
   );
@@ -230,16 +237,42 @@ function ViewCuentaNegocio({ setToast, modo, setModo }: { setToast: (t: string) 
    */
   const sePuedeConectar = (r: IntegracionRed) => r.configurado || !!r.viaBundle;
 
-  /** Una llamada al back con el token de la sesión, siempre la misma forma de leer el error. */
-  const accionRed = async (red: string, accion: 'empezar' | 'sincronizar' | 'desconectar') => {
+  /** Una llamada al back con el token de la sesión, siempre la misma forma de leer el error. El PIN va en
+   *  el cuerpo cuando la acción es sensible y el negocio ya lo tiene puesto. */
+  const accionRed = async (red: string, accion: 'empezar' | 'sincronizar' | 'desconectar', pin?: string) => {
     const r = await fetch(baseApi() + `/api/integraciones/${encodeURIComponent(red)}/${accion}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token() },
+      // Sin PIN el cuerpo va igual que siempre (ninguno): sólo las acciones sensibles lo mandan.
+      ...(pin ? { body: JSON.stringify({ pin }) } : {}),
     });
     const cuerpo = await r.json().catch(() => ({})) as {
       url?: string; error?: string; detalle?: string; codigo?: string; que_hizo?: string; red?: string;
+      /** El back pide el PIN de seguridad para dejar pasar esta acción. */
+      pin_requerido?: boolean;
     };
     return { ok: r.ok, cuerpo };
+  };
+
+  /** ¿El back está pidiendo el PIN de seguridad para dejar pasar esto? */
+  const pideElPin = (cuerpo: { codigo?: string; pin_requerido?: boolean }) =>
+    cuerpo.pin_requerido === true || cuerpo.codigo === 'pin_necesario';
+
+  /**
+   * UNA ACCIÓN SENSIBLE CON EL PIN ADELANTE: se intenta; si el back contesta que le hace falta el PIN,
+   * se le pide los seis dígitos (se verifican contra el servidor en ese mismo aviso) y se reintenta sola
+   * con el PIN puesto. Si la persona cierra el aviso, no se ejecuta nada y se dice.
+   */
+  const conElPin = async <T,>(
+    accion: (pin?: string) => Promise<T>,
+    esFaltaDePin: (r: T) => boolean,
+    motivo: string,
+  ): Promise<{ r: T; cancelado: boolean }> => {
+    const primero = await accion();
+    if (!esFaltaDePin(primero)) return { r: primero, cancelado: false };
+    const pin = await seguridad.pedirPin(motivo);
+    if (!pin) return { r: primero, cancelado: true };
+    return { r: await accion(pin), cancelado: false };
   };
 
   /** Conectar una red: el back devuelve la dirección del proveedor y el navegador se va para allá. */
@@ -276,17 +309,41 @@ function ViewCuentaNegocio({ setToast, modo, setModo }: { setToast: (t: string) 
     setTrabajando(null);
   };
 
-  /** Desconectar: el back borra el token guardado. Volver a conectar es el mismo paso de autorización. */
+  /** Desconectar: el back borra el token guardado. Volver a conectar es el mismo paso de autorización.
+   *  Es una de las acciones sensibles: si el negocio tiene PIN, el back lo pide y acá se pide y se
+   *  reintenta sola con el PIN ya verificado. */
   const desconectarRed = async (red: string, nombre: string) => {
     setTrabajando({ red, accion: 'desconectar' });
     try {
-      const { ok, cuerpo } = await accionRed(red, 'desconectar');
-      setToast(ok
-        ? `${nombre} quedó desconectado: el token se borró del servidor y no se frena nada de lo que ya corre`
-        : (cuerpo.error || `No se pudo desconectar ${nombre}: el servidor respondió con un error`));
+      const { r: { ok, cuerpo }, cancelado } = await conElPin(
+        pin => accionRed(red, 'desconectar', pin),
+        x => !x.ok && pideElPin(x.cuerpo),
+        `Para desconectar una cuenta le pedimos su PIN de seguridad. ${nombre} va a quedar desconectado del motor.`,
+      );
+      if (cancelado) setToast(`${nombre} sigue conectado: no se desconectó nada`);
+      else if (ok) setToast(`${nombre} quedó desconectado: el token se borró del servidor y no se frena nada de lo que ya corre`);
+      else setToast(cuerpo.error || `No se pudo desconectar ${nombre}: el servidor respondió con un error`);
     } catch { setToast('No se pudo desconectar: el servidor no respondió'); }
     await datos.refrescar();
     setTrabajando(null);
+  };
+
+  /** Arrancar el motor con lo que haya. Es la otra acción sensible: puede pedir el PIN y se reintenta sola. */
+  const arrancarConElPin = async () => {
+    try {
+      const { r: fallo, cancelado } = await conElPin<{ codigo?: string; message?: string } | null>(
+        async pin => {
+          try { await arrancarMotor(pin); return null; }
+          catch (e) { return e as { codigo?: string; message?: string }; }
+        },
+        x => !!x && (x.codigo === 'pin_necesario' || x.codigo === 'pin_requerido'),
+        'Para arrancar el motor le pedimos su PIN de seguridad: desde ahí el motor empieza a trabajar con lo que le puso.',
+      );
+      if (cancelado) setToast('El motor sigue detenido: no se arrancó nada');
+      else if (fallo) setToast(`No se pudo arrancar el motor: ${fallo.message || 'el servidor respondió con un error'}`);
+      else setToast('El motor arrancó: empieza por el mercado y no gasta nada hasta publicar');
+    } catch { setToast('No se pudo arrancar el motor: el servidor no respondió'); }
+    await datos.refrescar();
   };
 
   // ---------------------------------------------------------------------------------------------
@@ -391,8 +448,8 @@ function ViewCuentaNegocio({ setToast, modo, setModo }: { setToast: (t: string) 
                 </div>
                 <div className="row" style={{ gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
                   <Button className="btn-sm"
-                    title="Arranca el motor con lo que ya está cargado (POST /api/onboarding/arrancar). Desde ahí trabaja solo y lo que haga queda en Su día."
-                    onClick={() => void datos.arrancar()}>
+                    title="Arranca el motor con lo que ya está cargado (POST /api/onboarding/arrancar). Desde ahí trabaja solo y lo que haga queda en Su día. Si su negocio tiene PIN de seguridad, se lo pedimos antes."
+                    onClick={() => void arrancarConElPin()}>
                     <I_Zap size={13} /> Arrancar el motor
                   </Button>
                 </div>
@@ -402,6 +459,16 @@ function ViewCuentaNegocio({ setToast, modo, setModo }: { setToast: (t: string) 
               El estado de los cinco pasos es el que quedó guardado en el back: no es una copia de esta visita.
             </div>
           </Card>
+        </div>
+      )}
+
+      {/* ============ LA SEGURIDAD DE LA CUENTA (sólo con el back encendido) ============
+          El PIN y el correo de la cuenta, con el estado que tiene hoy el servidor: si el PIN está puesto
+          (y cuándo se puede volver a intentar), si la dirección está confirmada y si el servidor tiene
+          el correo configurado. Sin back esta tarjeta no se muestra: el modo demostración queda igual. */}
+      {datos.real && (
+        <div style={{ marginTop: 16 }}>
+          <TarjetaSeguridad seg={seguridad} />
         </div>
       )}
 

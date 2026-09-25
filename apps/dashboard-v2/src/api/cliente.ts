@@ -19,6 +19,12 @@ export function baseApi(): string {
   try {
     const deUrl = new URLSearchParams(window.location.search).get('api');
     if (deUrl) { window.localStorage.setItem(CLAVE_API, deUrl); return deUrl.replace(/\/$/, ''); }
+    // En el dominio propio (sinkroo.com) la API vive en el MISMO dominio: el servidor web pasa /api/
+    // al motor, asi que el panel no necesita que le digan la direccion. Solo en las pruebas locales
+    // (127.0.0.1) hace falta el ?api=, porque ahi el panel y el motor van por puertos distintos.
+    const host = window.location.hostname;
+    const esLocal = host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0' || host === '';
+    if (!esLocal) return window.location.origin;
     const guardada = window.localStorage.getItem(CLAVE_API);
     if (guardada) return guardada.replace(/\/$/, '');
   } catch { /* sin navegador */ }
@@ -64,10 +70,21 @@ async function pedir<T>(ruta: string, opciones: { metodo?: string; cuerpo?: unkn
 
 // ---------------- Cuentas ----------------
 
+/**
+ * Lo que el back responde sobre el correo de bienvenida al crear una cuenta: si SALIÓ, a dónde iba, qué
+ * falta cuando no salió y el motivo. Es la única verdad sobre ese correo: si `enviado` es false, la
+ * pantalla no puede decir «le enviamos un correo».
+ */
+export type AvisoDeCorreo = {
+  enviado: boolean; para?: string; motivo?: string | null; falta?: string[]; detalle?: string;
+};
+
 export async function crearCuenta(nombre: string, email: string, clave: string) {
-  const r = await pedir<{ token: string; usuario: Usuario }>('/api/auth/registro', { metodo: 'POST', cuerpo: { nombre, email, clave } });
+  const r = await pedir<{ token: string; usuario: Usuario; correo?: AvisoDeCorreo }>(
+    '/api/auth/registro', { metodo: 'POST', cuerpo: { nombre, email, clave } },
+  );
   guardarToken(r.token);
-  return r.usuario;
+  return { usuario: r.usuario, correo: r.correo ?? null };
 }
 
 export async function entrar(email: string, clave: string) {
@@ -99,12 +116,41 @@ export type EstadoSeguridad = {
   tiene_pin: boolean;
   correo_verificado: boolean;
   intentos_restantes: number;
+  intentos_maximos?: number;
+  /** ¿El PIN está frenado por intentos fallidos? Con cuántos minutos le quedan. */
+  bloqueado?: boolean;
   bloqueado_hasta: string | null;
-  correo_configurado: boolean;
-  falta: string[];
+  minutos_restantes?: number;
+  /** El contrato corto (el que se acordó primero): el correo en plano. */
+  correo_configurado?: boolean;
+  falta?: string[];
+  /** El back de hoy: el correo viene anidado, con quién lo manda y qué falta para los enlaces. */
+  correo?: {
+    configurado: boolean;
+    proveedor?: string | null;
+    remitente?: string;
+    falta?: string[];
+    /** Lo que falta para que los ENLACES de los correos apunten al panel (APP_URL). */
+    falta_enlaces?: string[];
+    /** El correo de la cuenta: a dónde salen los avisos y los enlaces. */
+    cuenta?: string;
+  };
+  /** La invitación del back cuando la cuenta todavía no tiene PIN. */
+  aviso?: string | null;
 };
 
 export const leerSeguridad = () => pedir<EstadoSeguridad>('/api/seguridad/estado');
+
+/** El correo del servidor, en plano: sirve con el contrato corto y con el back que anida `correo`. */
+export const correoConfigurado = (e: EstadoSeguridad | null) =>
+  !!(e && (e.correo?.configurado ?? e.correo_configurado));
+/** Qué falta para poder mandar correo: las variables de envío, vengan en plano o anidadas. */
+export const faltaDeCorreo = (e: EstadoSeguridad | null): string[] =>
+  e ? (e.correo?.falta?.length ? e.correo.falta : (e.falta ?? [])) : [];
+/** Qué falta para que los enlaces de los correos apunten al panel. */
+export const faltaEnlaces = (e: EstadoSeguridad | null): string[] => e?.correo?.falta_enlaces ?? [];
+/** El correo de la cuenta, si el back lo dice. */
+export const correoDeLaCuenta = (e: EstadoSeguridad | null): string => e?.correo?.cuenta ?? '';
 
 /** Crea el PIN del negocio (sin `pinActual`) o lo cambia (con el actual, que es lo que lo protege). */
 export const guardarPin = (pin: string, pinActual?: string) =>
@@ -115,25 +161,26 @@ export const guardarPin = (pin: string, pinActual?: string) =>
 
 /** Verifica el PIN contra el back antes de reintentar una acción sensible. */
 export const verificarPin = (pin: string) =>
-  pedir<{ ok: boolean; intentos_restantes: number }>('/api/seguridad/pin/verificar', {
-    metodo: 'POST',
-    cuerpo: { pin },
-  });
+  pedir<{ ok: boolean; valido?: boolean; tiene_pin?: boolean; intentos_restantes: number; aviso?: string }>(
+    '/api/seguridad/pin/verificar', { metodo: 'POST', cuerpo: { pin } },
+  );
 
 /** El paso de vuelta del correo de bienvenida: el enlace trae el token y esto confirma la dirección. */
 export const verificarCorreo = (tokenDeLaDireccion: string) =>
-  pedir<{ ok: boolean; correo_verificado: boolean }>('/api/auth/verificar', {
+  pedir<{ ok: boolean; correo_verificado: boolean; detalle?: string }>('/api/auth/verificar', {
     metodo: 'POST',
     cuerpo: { token: tokenDeLaDireccion },
   });
 
 /**
- * PEDIR OTRO CORREO DE CONFIRMACIÓN. El contrato del back todavía no tiene esta ruta: se llama a la
- * dirección que le corresponde por nombre y, si el servidor no la tiene, la pantalla lo dice tal cual
- * (no promete un correo que no va a salir). Cuando el back la publique, esto empieza a funcionar solo.
+ * PEDIR OTRO CORREO DE CONFIRMACIÓN. La ruta existe en el back y pide sesión. Ojo con una cosa: responde
+ * 202 cuando el enlace quedó creado pero el correo NO salió (el envío todavía no está configurado), así
+ * que `ok` no alcanza: la pantalla lee `enviado` y `detalle` antes de decir que le mandó algo.
  */
 export const reenviarVerificacion = () =>
-  pedir<{ ok: boolean }>('/api/auth/verificar/reenviar', { metodo: 'POST', cuerpo: {} });
+  pedir<{ ok: boolean; enviado?: boolean; para?: string; motivo?: string | null; falta?: string[]; detalle?: string }>(
+    '/api/auth/verificar/reenviar', { metodo: 'POST', cuerpo: {} },
+  );
 
 // ---------------- Onboarding ----------------
 

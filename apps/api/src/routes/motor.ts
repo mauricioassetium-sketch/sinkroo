@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import type { Pool } from 'pg';
 import { exigirSesion } from '../lib/auth.js';
 import { exigirCuerpo, limpiar } from '../lib/seguridad.js';
+import { conAvisoDePin, exigirPin } from '../lib/pin.js';
 import { correrInvestigacion, desvioActual } from '../services/agentes.js';
 import { crearPublico, evaluar } from '../services/mirofish.js';
 
@@ -111,8 +112,14 @@ export async function motorRoutes(app: FastifyInstance, db: Pool) {
   /** Evalúa una pieza: 5 jueces, 500 del público y la predicción con su desvío. Cuesta 48 créditos. */
   app.post('/api/mirofish/evaluar', async (req, reply) => {
     const u = await exigirSesion(req, reply); if (!u || !u.business_id) return;
-    const c = exigirCuerpo<{ titulo?: string; texto?: string; formato?: string; pieza_id?: string }>(req.body, [], reply);
+    const c = exigirCuerpo<{ titulo?: string; texto?: string; formato?: string; pieza_id?: string; pin?: string }>(req.body, [], reply);
     if (!c) return;
+
+    // ACCIÓN SENSIBLE: esto gasta 48 créditos y no se devuelve. Por eso pide el PIN de seguridad —y antes
+    // de tocar el saldo, para no dejar el cobro a medias—. Si el negocio todavía no tiene PIN, la
+    // evaluación sigue y la respuesta lo dice (no se le rompe el uso a quien nunca creó un PIN).
+    const pin = await exigirPin(req, reply, u.business_id, c.pin);
+    if (!pin.permite) return;
 
     let pieza = { id: undefined as string | undefined, titulo: limpiar(c.titulo, 160), texto: limpiar(c.texto, 4000), formato: limpiar(c.formato, 20) || 'imagen' };
     if (c.pieza_id) {
@@ -144,7 +151,9 @@ export async function motorRoutes(app: FastifyInstance, db: Pool) {
     }
 
     const r = await evaluar(db, u.business_id, pieza);
-    return reply.status(201).send(r);
+    // La evaluación ya quedó hecha y los 48 créditos cobrados: la respuesta dice si se pidió PIN o si
+    // todavía no hay uno creado (y en ese caso, invita a crearlo).
+    return reply.status(201).send(conAvisoDePin(r as unknown as Record<string, unknown>, pin));
   });
 
   /** El ranking del negocio: las evaluaciones ordenadas del 1 al 5 (o más, si hay más piezas). */

@@ -2,6 +2,9 @@ import type { FastifyInstance, FastifyReply } from 'fastify';
 import type { Pool } from 'pg';
 import { exigirSesion } from '../lib/auth.js';
 import { exigirCuerpo, limpiar } from '../lib/seguridad.js';
+import { conAvisoDePin, exigirPin } from '../lib/pin.js';
+import { avisoConexion, enviar, faltaCorreo, fechaEnLetras } from '../services/correo.js';
+import { negocioYCorreo } from '../services/verificaciones.js';
 import { calibrar, guardarMetricas } from '../services/calibracion.js';
 import {
   configurado as metaConfigurado, falta as metaFalta, tokenDe, urlDeAutorizacion as metaUrlDeAutorizacion,
@@ -380,6 +383,18 @@ export async function integracionRoutes(app: FastifyInstance, db: Pool) {
     const detalle = `${def.nombre} quedó conectada por bundle.social en el equipo ${equipo.nombre || 'del negocio'}`;
     await registrar(db, u.business_id, def.red, 'conexion', true, detalle, { equipos: equipo.id ? [extra.team_id] : [], plataformas: propias });
 
+    // El aviso por correo de que se conectó una cuenta. Misma regla que todo el correo: si el envío no
+    // está configurado NO se manda y queda anotado el intento con su motivo; y si el negocio no tiene
+    // correo de cuenta, no hay a quién avisarle. La conexión ya quedó hecha: el aviso no puede tumbarla.
+    const { negocio, correo } = await negocioYCorreo(u.business_id);
+    const carta = avisoConexion({ negocio, red: def.nombre, cuando: fechaEnLetras() });
+    const salio = correo
+      ? await enviar({
+        businessId: u.business_id, para: correo, asunto: carta.asunto, texto: carta.texto,
+        html: carta.html, plantilla: 'avisoConexion',
+      })
+      : { ok: false, motivo: 'la cuenta no tiene un correo al cual avisar' };
+
     return reply.status(201).send({
       ok: true,
       red: def.red,
@@ -387,6 +402,10 @@ export async function integracionRoutes(app: FastifyInstance, db: Pool) {
       nombre: def.nombre,
       via: 'bundle.social',
       detalle,
+      aviso_correo: {
+        enviado: salio.ok, para: correo, motivo: salio.motivo ?? null,
+        falta: salio.ok ? [] : faltaCorreo(),
+      },
     });
   });
 
@@ -525,6 +544,13 @@ export async function integracionRoutes(app: FastifyInstance, db: Pool) {
     const u = await exigirSesion(req, reply); if (!u || !u.business_id) return;
     const def = redDe((req.params as { red: string }).red, reply); if (!def) return;
 
+    // ACCIÓN SENSIBLE: desconectar una cuenta es de las que no se deshacen solas (hay que volver a
+    // autorizar, y en bundle.social el permiso se revoca desde su pantalla). Por eso pide el PIN de
+    // seguridad. Si el negocio todavía no creó su PIN, la desconexión no se bloquea y la respuesta lo dice.
+    const pidePin = (req.body || {}) as { pin?: string };
+    const pin = await exigirPin(req, reply, u.business_id, pidePin.pin);
+    if (!pin.permite) return;
+
     const fila = await tokenDe(db, u.business_id, def.red);
     const porBundle = cubiertaPorBundle(def) && bundleConfigurado() && !!fila && !String(fila.token || '');
     if (porBundle) {
@@ -533,13 +559,13 @@ export async function integracionRoutes(app: FastifyInstance, db: Pool) {
           WHERE business_id = $1 AND red = $2`, [u.business_id, def.red]);
       await registrar(db, u.business_id, def.red, 'desconexion', true,
         'cuenta desconectada en el panel (la autorización sigue dentro de bundle.social: se revoca desde su pantalla)');
-      return { ok: true, red: def.red, via: 'bundle.social' };
+      return conAvisoDePin({ ok: true, red: def.red, via: 'bundle.social' }, pin);
     }
 
     await db.query('DELETE FROM cuentas_conectadas WHERE business_id = $1 AND red = $2', [u.business_id, def.red]);
     await registrar(db, u.business_id, def.red, 'desconexion', true,
       def.tipo === 'token' ? 'cuenta desconectada (las credenciales del servidor siguen cargadas)' : 'cuenta desconectada');
-    return { ok: true, red: def.red };
+    return conAvisoDePin({ ok: true, red: def.red }, pin);
   });
 
   // ===========================================================================================

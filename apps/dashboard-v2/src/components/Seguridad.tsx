@@ -1,6 +1,7 @@
 import { Badge, Button, Card } from './ui';
 import { EstadoVacio } from './EstadoVacio';
 import { I_Lock, I_Mail, I_Shield } from './icons';
+import { correoConfigurado, correoDeLaCuenta, faltaDeCorreo, faltaEnlaces } from '../api/cliente';
 import type { Seguridad } from '../lib/seguridad';
 
 // =============================================================================================
@@ -21,6 +22,11 @@ export type VistaSeguridad = Pick<
 
 export function TarjetaSeguridad({ seg }: { seg: VistaSeguridad }) {
   const e = seg.estado;
+  // El correo del servidor puede venir en plano o anidado: se lee con los ayudantes del cliente.
+  const hayCorreo = correoConfigurado(e);
+  const faltaEnvio = faltaDeCorreo(e);
+  const faltaLink = faltaEnlaces(e);
+  const cuentaDeCorreo = correoDeLaCuenta(e);
 
   return (
     <Card
@@ -63,51 +69,62 @@ export function TarjetaSeguridad({ seg }: { seg: VistaSeguridad }) {
             </Button>
             {e.tiene_pin && (
               <span className="tiny muted" style={{ alignSelf: 'center' }}>
-                {e.bloqueado_hasta
-                  ? `Bloqueado por intentos fallidos hasta ${new Date(e.bloqueado_hasta).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}.`
+                {e.bloqueado || e.bloqueado_hasta
+                  ? `Bloqueado por intentos fallidos: ${typeof e.minutos_restantes === 'number' ? `faltan ${e.minutos_restantes} minuto${e.minutos_restantes === 1 ? '' : 's'}` : `hasta ${e.bloqueado_hasta ? new Date(e.bloqueado_hasta).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }) : 'más tarde'}`}.`
                   : typeof e.intentos_restantes === 'number'
                     ? `Le quedan ${e.intentos_restantes} intento${e.intentos_restantes === 1 ? '' : 's'} antes de que el servidor lo frene.`
                     : ''}
               </span>
             )}
           </div>
+          {/* El aviso del back cuando no hay PIN: se muestra tal cual lo dijo el servidor. */}
+          {!e.tiene_pin && e.aviso && (
+            <div className="tiny muted" style={{ marginTop: 9 }}>{e.aviso}</div>
+          )}
 
           {/* ---------- FILA 2: EL CORREO DE LA CUENTA ---------- */}
           <div className="guard" style={{ marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--border)' }}>
-            <I_Mail size={14} style={{ color: e.correo_configurado ? 'var(--green)' : 'var(--red)', flexShrink: 0 }} />
+            <I_Mail size={14} style={{ color: hayCorreo ? 'var(--green)' : 'var(--red)', flexShrink: 0 }} />
             <span className="guard-lb">
               Correo de la cuenta
               <small>
-                {!e.correo_configurado
+                {!hayCorreo
                   ? 'El servidor todavía no tiene configurado el correo, así que no sale ningún correo: ni el de bienvenida ni el de confirmación de la dirección.'
                   : e.correo_verificado
                     ? 'Su dirección quedó confirmada: el motor puede avisarle por correo.'
                     : 'Su dirección todavía no está confirmada. Mientras no lo esté, el panel se lo recuerda acá.'}
               </small>
             </span>
-            <span className="guard-val" style={{ color: !e.correo_configurado ? 'var(--red)' : e.correo_verificado ? 'var(--green)' : 'var(--amber)' }}>
-              {!e.correo_configurado ? 'no configurado' : e.correo_verificado ? 'verificado' : 'sin verificar'}
+            <span className="guard-val" style={{ color: !hayCorreo ? 'var(--red)' : e.correo_verificado ? 'var(--green)' : 'var(--amber)' }}>
+              {!hayCorreo ? 'no configurado' : e.correo_verificado ? 'verificado' : 'sin verificar'}
             </span>
           </div>
 
-          {!e.correo_configurado && (
+          {!hayCorreo && (
             <>
               <div className="bs" style={{ marginTop: 10 }}>
                 Mientras falte, este panel no le promete ningún correo: no hay por dónde mandarlo. Su cuenta
                 funciona igual — el correo hace falta para confirmar la dirección y para los avisos.
               </div>
-              {e.falta?.length > 0 && (
+              {faltaEnvio.length > 0 && (
                 <div className="row" style={{ gap: 7, marginTop: 9, flexWrap: 'wrap' }}>
-                  {e.falta.map(v => <span key={v} className="badge badge-muted" style={{ fontSize: 9.5 }}>{v}</span>)}
+                  {faltaEnvio.map(v => <span key={v} className="badge badge-muted" style={{ fontSize: 9.5 }}>{v}</span>)}
                 </div>
               )}
             </>
           )}
 
-          {e.correo_configurado && !e.correo_verificado && (
+          {hayCorreo && faltaLink.length > 0 && (
+            <div className="bs" style={{ marginTop: 10 }}>
+              El correo ya se puede mandar, pero los enlaces que van dentro todavía no apuntan al panel: falta
+              cargar {faltaLink.join(', ')}. Hasta entonces el enlace sale relativo y no sirve para confirmar.
+            </div>
+          )}
+
+          {hayCorreo && !e.correo_verificado && (
             <div className="row" style={{ gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
               <Button className="btn-sm" disabled={seg.pidiendoCorreo}
-                title="Vuelve a pedir el correo de confirmación para la dirección de la cuenta (POST /api/auth/verificar/reenviar)."
+                title={`Vuelve a pedir el correo de confirmación${cuentaDeCorreo ? ` a ${cuentaDeCorreo}` : ''} (POST /api/auth/verificar/reenviar). Si el envío no está configurado, el servidor lo dice y acá no se promete ningún correo.`}
                 onClick={() => seg.pedirOtroCorreo()}>
                 <I_Mail size={13} /> {seg.pidiendoCorreo ? 'Pidiendo…' : 'Pedir otro correo'}
               </Button>

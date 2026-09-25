@@ -209,15 +209,18 @@ export async function seguridadRoutes(app: FastifyInstance) {
     });
 
     // La respuesta dice la verdad de lo que pasó: enviado o el motivo exacto por el que no salió.
+    const falta = salio.ok ? [] : faltaCorreo();
     return reply.status(salio.ok ? 201 : 202).send({
       ok: salio.ok,
       enviado: salio.ok,
       para: correo,
       motivo: salio.motivo ?? null,
-      falta: salio.ok ? [] : faltaCorreo(),
+      falta,
       detalle: salio.ok
         ? `le mandamos el enlace a ${correo}: vence en 24 horas y sirve una sola vez`
-        : 'el enlace quedó creado, pero el correo no salió: sin un proveedor de correo configurado no hay forma de mandarlo',
+        : falta.length
+          ? 'el enlace quedó creado, pero el correo no salió: sin un proveedor de correo configurado no hay forma de mandarlo'
+          : `el enlace quedó creado, pero el correo no salió (${salio.motivo})`,
     });
   });
 

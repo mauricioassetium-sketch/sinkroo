@@ -576,9 +576,11 @@ const email: DefinicionRed = {
   identidadDelEntorno: () => ({ external_id: process.env.EMAIL_FROM || '', nombre: process.env.EMAIL_FROM || 'Correo de informes' }),
   faltan: () => {
     const f: string[] = [];
-    // Dos caminos: la API de Resend o un servidor SMTP propio. Con uno alcanza.
-    if (!process.env.RESEND_API_KEY && !(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS)) {
-      f.push('RESEND_API_KEY', 'SMTP_HOST', 'SMTP_USER', 'SMTP_PASS');
+    // Dos caminos: la API de Resend o un servidor SMTP propio. Con uno alcanza. En el SMTP, el usuario y la
+    // clave son opcionales (un relevo interno de la misma máquina no los pide): eso lo decide el servidor de
+    // correo, no este archivo. Es la misma regla que aplica el servicio de correo al enviar.
+    if (!process.env.RESEND_API_KEY && !process.env.SMTP_HOST) {
+      f.push('RESEND_API_KEY', 'SMTP_HOST');
     }
     if (!process.env.EMAIL_FROM) f.push('EMAIL_FROM');
     return f;
