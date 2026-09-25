@@ -8,3 +8,7 @@ dist/
 
 # Archivos temporales de las herramientas del agente
 .hermes-tmp.*
+
+# Las claves del servidor nunca se suben
+.env.local
+.env
