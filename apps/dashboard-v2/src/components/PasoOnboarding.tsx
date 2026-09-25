@@ -44,7 +44,7 @@ export function CamposPaso({ paso }: { paso: PasoOnb }) {
     if (campo.tipo === 'texto' || campo.tipo === 'numero') {
       return (
         <input className="input" style={campo.ancho ? { maxWidth: campo.ancho } : undefined}
-          placeholder={campo.ayuda} value={(v as string) || ''}
+          placeholder={campo.tipo === 'numero' ? '0' : 'Escriba aquí'} value={(v as string) || ''}
           onChange={e => onb.escribir(campo.id, e.target.value)}
           onPaste={e => {
             const txt = e.clipboardData?.getData('text') || '';
@@ -58,14 +58,16 @@ export function CamposPaso({ paso }: { paso: PasoOnb }) {
       const largo = ((v as string) || '').length;
       return (
         <>
-          <textarea className="input" rows={largo > 260 ? 8 : 5} placeholder={campo.ayuda}
+          <textarea className="input" rows={largo > 260 ? 8 : 5} placeholder="Escriba aquí, con sus palabras"
             value={(v as string) || ''}
             onChange={e => onb.escribir(campo.id, e.target.value)} />
-          <div className="tiny muted">
-            {largo === 0
-              ? 'Puede escribirlo como le salga: el motor ordena el resto.'
-              : `${largo} caracteres escritos · el motor lo lee y le devuelve qué entendió antes de escribir nada.`}
-          </div>
+          {/* Sin texto no se dice nada: la ayuda del campo ya explica qué escribir. Con texto, se
+              muestra cuánto lleva, que es lo único que le falta saber. */}
+          {largo > 0 && (
+            <div className="tiny muted">
+              {largo} caracteres escritos · el motor lo lee y le devuelve qué entendió antes de escribir nada.
+            </div>
+          )}
         </>
       );
     }
@@ -146,6 +148,12 @@ export function CamposPaso({ paso }: { paso: PasoOnb }) {
       {paso.campos.map(c => (
         <div key={c.id} className="onb-campo">
           <label className="label">{c.etiqueta}</label>
+          {/* En los campos que se escriben, la ayuda va a la vista y no en el placeholder: en el
+              teléfono el placeholder desaparece al primer toque, y es justo lo que hay que leer
+              cuando el motor todavía no sabe nada del negocio. */}
+          {c.ayuda && (c.tipo === 'texto' || c.tipo === 'texto-largo' || c.tipo === 'numero') && (
+            <div className="onb-ayuda">{c.ayuda}</div>
+          )}
           {control(c)}
         </div>
       ))}

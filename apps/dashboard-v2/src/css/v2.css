@@ -1252,6 +1252,7 @@
    (`.pasos`) para que las dos etapas del producto se lean igual; acá va sólo lo propio: los
    campos, el bloque de lo que el motor deduce solo y el plan de la primera semana.
    ============================================================================================= */
+.onb-ayuda { font-size: 11.5px; line-height: 1.55; color: var(--muted); margin: -3px 0 1px; max-width: 68ch; }
 .onb-campos { display: flex; flex-direction: column; gap: 14px; margin-top: 14px; }
 .onb-campo { display: flex; flex-direction: column; gap: 6px; }
 
