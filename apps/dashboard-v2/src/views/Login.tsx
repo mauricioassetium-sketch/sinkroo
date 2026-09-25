@@ -1,29 +1,50 @@
 import { useState } from 'react';
 import { Button, Badge } from '../components/ui';
-import { SinkrooMark, I_Mail, I_Lock, I_Check, I_ArrowRight, I_User, I_Shield } from '../components/icons';
+import {
+  SinkrooMark, I_Mail, I_Lock, I_Check, I_ArrowRight, I_User, I_Eye, I_Megaphone, I_Vote,
+  I_Upload, I_Chart, I_Chat, I_Shield,
+} from '../components/icons';
 import { TENANT } from '../data/demo';
 
 // =============================================================================================
-// LA ENTRADA — la primera pantalla del producto.
+// LA ENTRADA — la primera pantalla del producto, y la primera impresión.
 //
-// Va antes de todo: el panel no existe hasta que alguien entra. La cuenta de demostración viene
-// cargada y lista, así que se entra con un toque; el resto (Google, crear cuenta, recuperar la
-// contraseña) está para que el camino real se vea completo.
-//
-// Cada opción hace algo que se ve: entrar muestra el asistente de bienvenida; entrar con Google
-// muestra por quién está entrando y después entra; crear cuenta cambia el formulario; recuperar la
-// contraseña deja la línea de a dónde se mandó el link.
+// Reglas que la mandan:
+//   · FONDO BLANCO SIEMPRE: acá se fuerzan las variables del tema claro, así la entrada se ve igual
+//     para todos y no depende de qué tema tenga el navegador.
+//   · EL TEXTO ES PARA TODOS: nada de rubros ni de negocios de ejemplo. Dice qué hace Sinkroo y qué
+//     va a poder hacer el que entra, con las capacidades una por una.
+//   · SE HABLA EN SEGUNDA PERSONA Y EN PRESENTE: «mientras dormís», «imaginá abrir el panel el lunes».
+//     Cada línea tiene que poder leerse sola y decir una verdad que se sostiene.
 // =============================================================================================
 
 export type Sesion = { nombre: string; email: string; via: 'email' | 'google' | 'nueva' };
 
-// ---------------------------------------------------------------------------------------------
-// LAS CUENTAS DE DEMOSTRACIÓN — una por tipo, cada una con SU correo. Es la regla del producto: un
-// correo es un usuario y no se puede usar el mismo correo para dos cuentas.
-// ---------------------------------------------------------------------------------------------
+// CAPACIDADES: lo que el que entra va a poder hacer. Cortas, concretas y con su consecuencia.
+const CAPACIDADES: { icono: React.ReactNode; titulo: string; linea: string }[] = [
+  { icono: <I_Eye size={17} />, titulo: 'Investiga tu mercado cada mañana',
+    linea: 'Lee los anuncios de tus competidores y encuentra el ángulo que hoy gana en tu rubro, antes de que te levantes.' },
+  { icono: <I_Megaphone size={17} />, titulo: 'Escribe y arma las piezas',
+    linea: 'Con tu material, tu tono y tus precios. Nada de plantillas: cada pieza se parece a tu negocio.' },
+  { icono: <I_Vote size={17} />, titulo: 'Las revisa antes de que gastes un peso',
+    linea: '5 jueces las puntúan y 500 personas del público reaccionan. Si ninguna convence, no sale ninguna.' },
+  { icono: <I_Upload size={17} />, titulo: 'Publica en tus cuentas',
+    linea: 'Instagram, Facebook y WhatsApp: publica donde ya tenés tu gente, en la franja en la que te leen.' },
+  { icono: <I_Chart size={17} />, titulo: 'Mide lo que rinde y frena lo que no',
+    linea: 'Ve el costo por venta, mueve el presupuesto y frena solo lo que no funciona. Sin que se lo pidas.' },
+  { icono: <I_Chat size={17} />, titulo: 'Te avisa sólo cuando hace falta',
+    linea: 'Una decisión por mensaje, con sus botones. La respondés desde el chat, sin entrar a buscar nada.' },
+];
+
+const REGLAS = [
+  'Nada se publica sin pasar por el panel.',
+  'Nada sale a tus cuentas sin tu OK.',
+  'Publicar es lo único que gasta plata: investigar no cuesta.',
+];
+
 const CUENTAS_DEMO: { nombre: string; email: string; clave: string; etiqueta: string; quien: string }[] = [
   { nombre: 'María Paula', email: 'maria@skincarenatural.com', clave: 'demo2026',
-    etiqueta: 'Cuenta de demostración', quien: 'Skincare Natural: productos, campañas, publicaciones y ventas.' },
+    etiqueta: 'Cuenta de demostración', quien: 'Un negocio real de ejemplo, con campañas y ventas cargadas.' },
 ];
 
 /** El registro de correos que ya tienen cuenta. En producción esto lo responde el servidor. */
@@ -31,7 +52,6 @@ const CUENTAS_REGISTRADAS = CUENTAS_DEMO.map(c => ({ email: c.email, nombre: c.n
 
 const cuentaDe = (email: string) =>
   CUENTAS_REGISTRADAS.find(c => c.email.toLowerCase() === email.trim().toLowerCase());
-
 
 export function PantallaLogin({ onEntrar }: { onEntrar: (s: Sesion) => void }) {
   const [modo, setModo] = useState<'entrar' | 'crear'>('entrar');
@@ -51,7 +71,7 @@ export function PantallaLogin({ onEntrar }: { onEntrar: (s: Sesion) => void }) {
 
   const entrar = () => {
     if (!email.trim() || !clave.trim()) {
-      setError('Necesitamos tu email y tu contraseña para entrar. Si querés ver un panel ya cargado, entrá con una de las dos cuentas de demostración.');
+      setError('Necesitamos tu email y tu contraseña para entrar. Si querés ver un panel ya cargado, entrá con la cuenta de demostración.');
       return;
     }
     const cuenta = cuentaDe(email);
@@ -68,7 +88,7 @@ export function PantallaLogin({ onEntrar }: { onEntrar: (s: Sesion) => void }) {
     entrarCon(modo === 'crear' ? 'nueva' : 'email', { nombre: nombre.trim() || cuenta?.nombre || '', email });
   };
 
-  /** Las dos puertas de demostración: una cuenta por tipo, cada una con su correo. */
+  /** La puerta rápida: entra con la cuenta ya cargada, sin escribir nada. */
   const entrarDemo = (c: typeof CUENTAS_DEMO[number]) => {
     setNombre(c.nombre); setEmail(c.email); setClave(c.clave);
     entrarCon('email', { nombre: c.nombre, email: c.email });
@@ -77,33 +97,57 @@ export function PantallaLogin({ onEntrar }: { onEntrar: (s: Sesion) => void }) {
   return (
     <div className="login">
       <div className="login-panel">
-        {/* Lo que hay del otro lado, antes de entrar: sin promesas vagas. */}
+        {/* ---------- LO QUE HACE SINKROO: para todos, sin rubros ni ejemplos ---------- */}
         <div className="login-lado">
-          <span className="login-logo"><SinkrooMark size={64} /></span>
-          <div className="login-titulo">Tu equipo de marketing,<br />trabajando solo.</div>
-          <div className="login-sub">
-            Investiga tu mercado todos los días, arma las piezas, las pasa por un panel de 5 jueces y 500 personas
-            del público, y publica sólo las que convencen. <b>Nada sale a tus cuentas sin pasar por ahí.</b>
+          <div className="login-marca">
+            <span className="login-logo"><SinkrooMark size={44} /></span>
+            <span className="login-marca-tx">
+              <b>Sinkroo</b>
+              <small>Marketing que trabaja solo</small>
+            </span>
           </div>
-          <div className="login-puntos">
-            {[
-              'Investiga 47 anuncios de tus competidores por día',
-              'Escribe y arma las piezas con tu material y tus precios',
-              'Mide el costo por venta y frena lo que no rinde',
-            ].map(t => (
-              <div key={t} className="login-punto"><I_Check size={13} /> {t}</div>
+
+          <div className="login-eyebrow">Tu equipo de marketing, trabajando solo</div>
+          <h1 className="login-titulo">
+            Mientras dormís,<br />tu marketing sigue trabajando.
+          </h1>
+          <p className="login-sub">
+            Sinkroo investiga tu mercado, escribe y arma las piezas, las hace revisar por un panel de 5 jueces
+            y 500 personas del público, y las publica en tus cuentas. <b>Vos sólo aprobás.</b>
+          </p>
+          <p className="login-futuro">
+            Imaginá abrir el panel el lunes y encontrar la semana ya armada: las piezas escritas, los números
+            medidos y una sola decisión esperándote.
+          </p>
+
+          <div className="login-cap">
+            {CAPACIDADES.map(c => (
+              <div key={c.titulo} className="login-cap-fila">
+                <span className="login-cap-ic">{c.icono}</span>
+                <span style={{ minWidth: 0 }}>
+                  <b>{c.titulo}</b>
+                  <small>{c.linea}</small>
+                </span>
+              </div>
             ))}
           </div>
+
+          <div className="login-reglas">
+            {REGLAS.map(r => (
+              <div key={r} className="login-regla"><I_Shield size={12} /> {r}</div>
+            ))}
+          </div>
+
           <div className="login-demo">
-            <span className="login-demo-lb"><I_Shield size={12} /> Cuenta de demostración</span>
+            <span className="login-demo-lb"><I_Check size={12} /> {CUENTAS_DEMO[0].etiqueta}</span>
             <div className="login-demo-tx">
-              Podés mirar el panel ya cargado con <b>{CUENTAS_DEMO[0].email}</b>: {TENANT.cuenta}, con productos,
-              precios, campañas y ventas reales. Si querés arrancar de cero, creá tu cuenta con tu correo: el
-              asistente te pide tu negocio, tu descripción y tus archivos. Un correo es una cuenta.
+              {CUENTAS_DEMO[0].quien} Entrá con <b>{CUENTAS_DEMO[0].email}</b> y mirá el panel trabajando, o creá
+              tu cuenta con tu correo para arrancar de cero.
             </div>
           </div>
         </div>
 
+        {/* ---------- ENTRAR ---------- */}
         <div className="login-form">
           <div className="login-form-head">
             <div className="login-form-t">{modo === 'entrar' ? 'Entrá a tu panel' : 'Creá tu cuenta'}</div>
@@ -161,10 +205,9 @@ export function PantallaLogin({ onEntrar }: { onEntrar: (s: Sesion) => void }) {
             {entrando === 'google' ? 'Entrando con Google…' : <><span className="login-g">G</span> Entrar con Google</>}
           </Button>
 
-          {/* Las dos puertas de demostración: una cuenta por tipo, cada una con su correo. */}
           {CUENTAS_DEMO.map(c => (
             <Button key={c.email} variant="ghost" className="login-btn"
-              title={`${c.etiqueta}: ${c.quien} Entra con ${c.email} (correo propio de esta cuenta: no se comparte con la otra).`}
+              title={`${c.etiqueta}: ${c.quien} Entra con ${c.email}.`}
               onClick={() => entrarDemo(c)}>
               {entrando && email === c.email ? 'Entrando…' : `Ver el panel · ${c.etiqueta}`}
             </Button>
@@ -180,10 +223,14 @@ export function PantallaLogin({ onEntrar }: { onEntrar: (s: Sesion) => void }) {
           </div>
 
           <div className="login-legal">
-            Al entrar aceptás que el motor publique en tus cuentas según la autonomía que le des.
-            Podés revocar cada conexión cuando quieras desde Cuenta y autonomía.
+            Al entrar aceptás que el motor publique en tus cuentas según la autonomía que le des. Podés revocar
+            cada conexión cuando quieras. Un correo es una cuenta.
           </div>
         </div>
+      </div>
+
+      <div className="login-pie-legal">
+        {TENANT.cuenta} · el panel que vas a ver funciona con datos reales de un negocio de ejemplo.
       </div>
     </div>
   );
