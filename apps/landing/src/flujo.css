@@ -47,7 +47,9 @@
   --flujo-gris: #9a8fad;
   --flujo-verde: #22c55e;
   --flujo-panel: #12101c;
-  --flujo-borde: #3a2450;
+  /* El borde del marco. Antes era #3a2450 y sobre el negro casi no se veía: el marco no se leía.
+     Ahora es el violeta de la casa, bajado a la mitad. */
+  --flujo-borde: #9067d4;
   width: 100%;
   max-width: 900px;
   margin-inline: auto;
@@ -69,7 +71,7 @@
 .flujo-tablero {
   fill: var(--flujo-fondo);
   stroke: var(--flujo-borde);
-  stroke-width: 1;
+  stroke-width: 1.7;
 }
 
 /* El riel: el recorrido punteado por donde anda el búho. Las rayas corren solas, para que se lea
@@ -326,6 +328,9 @@
 /* ---------------------------------------------------------------------------------------------------
    LAS VENTANAS DE LAS SIETE ETAPAS (una animación de 13s por etapa, con su ventana en porcentajes).
    Se usan en dos lugares: en el grupo del contenido y en el rectángulo de luz del panel.
+   La etapa que NO está en su ventana no desaparece: queda en 0,22 (antes era 0). Con 0 el marco se
+   veía vacío entre ventana y ventana —parecía descentrado—, y con 0,22 el diagrama se lee entero
+   todo el tiempo y la etapa encendida igual salta. Es un solo número para subirlo o bajarlo.
    --------------------------------------------------------------------------------------------------- */
 .flujo-e1 { animation: flujoE1 13s infinite both; }
 .flujo-e2 { animation: flujoE2 13s infinite both; }
@@ -339,55 +344,55 @@
    12/13 = 0,923077 (el ciclo ahora dura 13 s en vez de 12). Por ejemplo, en flujoE1: 1,71 % pasa a
    1,58 %, 3,5 % a 3,23 %, 8,86 % a 8,18 % y 10,5 % a 9,69 %. */
 @keyframes flujoE1 {
-  0%, 1.58% { opacity: 0; }
+  0%, 1.58% { opacity: 0.22; }
   3.23% { opacity: 1; }
   8.18% { opacity: 1; }
-  9.69%, 100% { opacity: 0; }
+  9.69%, 100% { opacity: 0.22; }
 }
 
 @keyframes flujoE2 {
-  0%, 10.55% { opacity: 0; }
+  0%, 10.55% { opacity: 0.22; }
   12.46% { opacity: 1; }
   26.37% { opacity: 1; }
-  28.15%, 100% { opacity: 0; }
+  28.15%, 100% { opacity: 0.22; }
 }
 
 @keyframes flujoE3 {
-  0%, 29.01% { opacity: 0; }
+  0%, 29.01% { opacity: 0.22; }
   30.92% { opacity: 1; }
   40.88% { opacity: 1; }
-  42.92%, 100% { opacity: 0; }
+  42.92%, 100% { opacity: 0.22; }
 }
 
 @keyframes flujoE4 {
-  0%, 44.18% { opacity: 0; }
+  0%, 44.18% { opacity: 0.22; }
   46.15% { opacity: 1; }
   65.67% { opacity: 1; }
-  67.38%, 100% { opacity: 0; }
+  67.38%, 100% { opacity: 0.22; }
 }
 
 @keyframes flujoE5 {
-  0%, 66.19% { opacity: 0; }
+  0%, 66.19% { opacity: 0.22; }
   67.85% { opacity: 1; }
   72% { opacity: 1; }
-  74.77%, 100% { opacity: 0; }
+  74.77%, 100% { opacity: 0.22; }
 }
 
 @keyframes flujoE6 {
-  0%, 71.87% { opacity: 0; }
+  0%, 71.87% { opacity: 0.22; }
   73.85% { opacity: 1; }
   82.42% { opacity: 1; }
-  84%, 100% { opacity: 0; }
+  84%, 100% { opacity: 0.22; }
 }
 
 /* Etapa 7 (MIDE): la ventana se estiró. Antes 91,43 %-100 % de 12 s (10,97-12,00 s); ahora
    83,08 %-100 % de 13 s (10,80-13,00 s): 1,20 s de siempre + 1,00 s más. La forma no cambió: entra
    en 0,2 s, se mantiene y se apaga al cerrar el ciclo. */
 @keyframes flujoE7 {
-  0%, 83.08% { opacity: 0; }
+  0%, 83.08% { opacity: 0.22; }
   84.62% { opacity: 1; }
   98.85% { opacity: 1; }
-  100% { opacity: 0; }
+  100% { opacity: 0.22; }
 }
 
 /* ---------------------------------------------------------------------------------------------------

@@ -29,7 +29,7 @@
 //      import { FlujoAnimado } from './FlujoAnimado';
 //      <FlujoAnimado />
 //
-// Es responsive: `width: 100%` y `height: auto`, con un `viewBox` de 720x664 (en un celular de 390 px
+// Es responsive: `width: 100%` y `height: auto`, con un `viewBox` de 720x663 (en un celular de 390 px
 // queda de unos 360 px de alto). No saca scroll horizontal ni se sale de su caja.
 //
 // EL CARRIL TIENE SU PROPIO ESPACIO: el recorrido punteado va entre las dos filas con 26 unidades de
@@ -252,7 +252,7 @@ export function FlujoAnimado() {
     <div className="flujo-caja">
       <svg
         className="flujo-svg"
-        viewBox="0 0 720 664"
+        viewBox="0 -8 720 663"
         role="img"
         aria-labelledby="flujo-titulo"
         aria-describedby="flujo-desc"
@@ -301,8 +301,10 @@ export function FlujoAnimado() {
         </defs>
 
         {/* ---------- EL TABLERO ---------- */}
-        <rect className="flujo-tablero" x={0} y={0} width={720} height={664} rx={16} />
-        <rect x={0} y={0} width={720} height={664} rx={16} fill="url(#flujo-brillo-fondo)" />
+        {/* El marco arranca en y=-8 y termina en 655: así el contenido (que va de 3 a 644) queda
+            centrado, con 11 de aire arriba y 11 abajo. Antes tenía 2,9 arriba y 20 abajo. */}
+        <rect className="flujo-tablero" x={0} y={-8} width={720} height={663} rx={16} />
+        <rect x={0} y={-8} width={720} height={663} rx={16} fill="url(#flujo-brillo-fondo)" />
 
         {/* ---------- LOS RÓTULOS DE LAS SIETE ETAPAS (arriba de cada panel) ---------- */}
         <Etiqueta x={12} y={18}>SU NEGOCIO</Etiqueta>
