@@ -157,8 +157,9 @@
   /* El ancho va contra la PANTALLA y no contra el contenedor: la columna de este bloque se mide por
      su contenido, así que un `max-width: 100%` no la hacía encoger y en el celular el monitor se
      salía de la pantalla. Con `86vw` entra siempre.
-     Los 686 son los 400 del principio + 30 % + 10 % + 20 %: los tres agrandados que pidió el dueño. */
-  width: min(686px, 86vw);
+     Los 652 son los 400 del principio + 30 % + 10 % + 20 % − 5 %: los tres agrandados del dueño y el
+     achique final. */
+  width: min(652px, 86vw);
   margin-inline: auto;
 }
 
@@ -185,7 +186,7 @@
      las que se acomodan. */
 .pc-caja {
   flex: 0 0 auto;
-  width: min(780px, 86vw);
+  width: min(740px, 86vw);
   max-width: none;
 }
 
