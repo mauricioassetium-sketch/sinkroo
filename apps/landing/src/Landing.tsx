@@ -764,25 +764,9 @@ export function Landing() {
           </div>
         </section>
 
-        {/* ========================= 11 · LA CIUDAD, ARRIBA DEL PIE =========================
-            El dueño la mandó mudar acá: la ciudad entera, con su dibujo y su firma, justo arriba
-            del pie de la página. Antes cerraba el apartado «Cómo lo hacemos».
-
-            Va DE BORDE A BORDE: el `dubai-pleno` se sale del contenedor para tomar el ancho de la
-            pantalla (el apartado tiene `overflow-hidden`, así que no abre scroll lateral).
-            Y va PEGADA AL PISO: el apartado no lleva relleno abajo (`padding-bottom: 0` en
-            `dubai.css`), así el último píxel de los edificios cae en el borde inferior. Arriba lleva
-            aire para que la ciudad no se pegue a lo anterior. */}
-        <section id="desde-dubai" className="relative bg-[#050505] text-white pt-24 md:pt-32 overflow-hidden">
-          <div className="dubai-pleno relative z-10">
-            <SkylineDubai />
-            {/* LA FIRMA, arriba a la izquierda y sobre los edificios, para que se lea. El corazón va
-                aparte —en morado y latiendo— para poder animarlo sin tocar el texto. */}
-            <p className="dubai-firma">
-              {t.comoLoHacemos.dubaiFirma} <span className="dubai-corazon" aria-hidden="true">❤</span>
-            </p>
-          </div>
-        </section>
+        {/* LA CIUDAD SE FUE ABAJO DEL PIE. El dueño: «puedes pegarlo al borde de donde termina la
+            parte blanca del footer». Ahora cierra la página entera, como en la referencia de
+            Verysset: es lo último que se ve, pegado al borde de abajo del pie blanco. */}
       </main>
 
       {/* ========================= 11 · PIE ========================= */}
@@ -930,6 +914,28 @@ export function Landing() {
           </div>
         </footer>
       </div>
+
+      {/* ========================= 12 · LA CIUDAD, AL PIE DE TODO =========================
+          El dueño la mandó mudar dos veces: primero, de donde estaba (cerrando «Cómo lo hacemos») a
+          arriba del pie; y después acá abajo —«puedes pegarlo al borde de donde termina la parte
+          blanca del footer»—. Queda como en la referencia de Verysset: la ciudad cierra la página
+          entera, pegada al borde de abajo del pie blanco.
+
+          Va DE BORDE A BORDE: el `dubai-pleno` se sale del contenedor para tomar el ancho de la
+          pantalla (este apartado tiene `overflow-hidden`, así que no abre scroll lateral).
+          Va PEGADA AL PISO: no lleva relleno abajo (`padding-bottom: 0` en `dubai.css`), así el
+          último píxel de los edificios cae en el borde de abajo de la página.
+          Y va PEGADA AL BLANCO: no lleva relleno arriba, así arranca justo donde termina el pie. */}
+      <section id="desde-dubai" className="relative bg-black text-white overflow-hidden">
+        <div className="dubai-pleno relative z-10">
+          <SkylineDubai />
+          {/* LA FIRMA, arriba a la izquierda y sobre los edificios, para que se lea. El corazón va
+              aparte —en morado y latiendo— para poder animarlo sin tocar el texto. */}
+          <p className="dubai-firma">
+            {t.comoLoHacemos.dubaiFirma} <span className="dubai-corazon" aria-hidden="true">❤</span>
+          </p>
+        </div>
+      </section>
     </div>
   );
 }
