@@ -59,7 +59,13 @@ const CUENTAS_REGISTRADAS = CUENTAS_DEMO.map(c => ({ email: c.email, nombre: c.n
 const cuentaDe = (email: string) =>
   CUENTAS_REGISTRADAS.find(c => c.email.toLowerCase() === email.trim().toLowerCase());
 
-export function PantallaLogin({ onEntrar, vuelta }: { onEntrar: (s: Sesion) => void; vuelta?: VueltaCorreo }) {
+export function PantallaLogin({ onEntrar, vuelta, sesionAbierta }: {
+  onEntrar: (s: Sesion) => void;
+  vuelta?: VueltaCorreo;
+  /** La sesión que ya estaba abierta en este navegador, si la hay: se avisa y se da el atajo para
+   *  volver al panel sin escribir nada. */
+  sesionAbierta?: Sesion | null;
+}) {
   /* El modo con el que abre: el de siempre (entrar), o el de crear cuenta si la dirección lo pide
      (…?cuenta=nueva, el botón «SIGN IN» del sitio de afuera). */
   const [modo, setModo] = useState<'entrar' | 'crear'>(() => (quiereCrearCuenta() ? 'crear' : 'entrar'));
@@ -224,6 +230,24 @@ export function PantallaLogin({ onEntrar, vuelta }: { onEntrar: (s: Sesion) => v
               confirmación. Sale con las palabras de `textoDeVuelta`, el mismo texto que usa el aviso
               del panel, y va arriba de todo porque es lo primero que hay que leer. */}
           {vuelta && <AvisoVueltaDeCorreo vuelta={vuelta} />}
+
+          {/* SI YA HAY SESIÓN ABIERTA, SE DICE — y se da la salida. Pasa cuando alguien aprieta
+              «LOG IN» o «SIGN IN» en el sitio teniendo la sesión abierta de antes: el panel ya no lo
+              mete adentro sin más, así que acá se avisa y se ofrece volver con un toque. */}
+          {sesionAbierta && (
+            <div className="login-ok">
+              <I_Check size={13} />
+              <span>
+                <b>Ya tiene una sesión abierta en este navegador</b> ({sesionAbierta.email}). Puede
+                entrar al panel con esa sesión, o escribir sus datos abajo para entrar como otra cuenta.
+                <button type="button" className="login-link" style={{ display: 'block', marginTop: 6 }}
+                  title="Vuelve al panel con la sesión que ya estaba abierta. No cambia nada."
+                  onClick={() => onEntrar(sesionAbierta)}>
+                  Entrar al panel con esa sesión
+                </button>
+              </span>
+            </div>
+          )}
 
           {paso === 'correo' && cuentaCreada ? (
             /* ---------- SEGUNDO PASO: QUÉ PASÓ CON EL CORREO DE BIENVENIDA ----------

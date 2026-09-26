@@ -8,7 +8,7 @@ import { OnboardingProvider } from './lib/onboarding';
 import { quitarDeLaDireccion, SeguridadAlDia, SeguridadProvider, useVueltaDeCorreo } from './lib/seguridad';
 import { ViewOnboarding } from './views/Onboarding';
 import { PantallaLogin, type Sesion } from './views/Login';
-import { codigoDeMeta, confirmarRed, hayApi, olvidarRed, quienSoy, token, volverDeMeta } from './api/cliente';
+import { codigoDeMeta, confirmarRed, hayApi, hayIntencionDeEntrada, olvidarRed, quienSoy, token, volverDeMeta } from './api/cliente';
 import { ProveedorDatos, useDatos } from './api/datos';
 import { Asistente } from './components/Asistente';
 import { ViewHoy } from './views/Hoy';
@@ -120,8 +120,24 @@ export default function App() {
     window.setTimeout(() => setToast(''), 2600);
   };
 
-  // Sin sesión, la única pantalla es la entrada. Ahí también se ve cómo salió la vuelta del correo.
-  if (!sesion) return <PantallaLogin onEntrar={setSesion} vuelta={vueltaDeCorreo} />;
+  /* LA INTENCIÓN DE ENTRAR MANDA SOBRE LA SESIÓN GUARDADA.
+     Los botones del sitio (SIGN IN y LOG IN de la cabecera) llegan con `?cuenta=…`. Si en este
+     navegador ya hay una sesión abierta, el panel entraba derecho y los dos botones parecían rotos:
+     se apretaba «entrar» y aparecía el panel adentro, sin ningún formulario. Ahora, con esa marca en
+     la dirección, se muestra la entrada igual —con el aviso de que ya hay una sesión y el atajo para
+     volver al panel—, y la marca se limpia apenas la persona entra, para que recargar no la repita. */
+  const [pideEntrada, setPideEntrada] = useState(() => hayIntencionDeEntrada());
+  const entrarDesdeLaEntrada = (s: Sesion) => {
+    setPideEntrada(false);
+    quitarDeLaDireccion(['cuenta', 'registro', 'entrar']);
+    setSesion(s);
+  };
+
+  // Sin sesión (o con la marca de entrada), la pantalla es la entrada. Ahí también se ve cómo salió
+  // la vuelta del correo.
+  if (!sesion || pideEntrada) {
+    return <PantallaLogin onEntrar={entrarDesdeLaEntrada} vuelta={vueltaDeCorreo} sesionAbierta={sesion} />;
+  }
 
   // Desde acá para adentro, todo el panel tiene los datos del back (o los del demo si no hay back).
 

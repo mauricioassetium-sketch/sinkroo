@@ -361,6 +361,20 @@ const redDeLaMarca = (marca: string) => (/-callback$|-not-enough/.test(marca)
  * ni marca de red) y por eso se lee aparte. Devuelve '' si la dirección no trae ninguna.
  */
 /**
+ * Si la dirección trae la INTENCIÓN de pasar por la pantalla de entrada. La ponen los dos botones
+ * del sitio de afuera: …?cuenta=entrar (LOG IN, ya tiene cuenta) y …?cuenta=nueva (SIGN IN, no
+ * tiene). Manda sobre la sesión que haya guardada en el navegador: quien aprieta el botón quiere ver
+ * el formulario, no caer adentro del panel — que era lo que pasaba y parecía un botón roto.
+ */
+export function hayIntencionDeEntrada(): boolean {
+  try {
+    const q = new URLSearchParams(window.location.search);
+    const v = (q.get('cuenta') || q.get('registro') || q.get('entrar') || '').trim().toLowerCase();
+    return ['entrar', 'entrada', 'nueva', 'nuevo', 'crear', '1'].includes(v);
+  } catch { return false; }
+}
+
+/**
  * Si la dirección pide el formulario de CREAR CUENTA (…?cuenta=nueva).
  * Es para los botones del sitio de afuera: el de «SIGN IN» trae a quien no tiene cuenta y tiene que
  * caer en el formulario de crear, no en el de entrar. Sin el parámetro, la pantalla abre en entrar,
