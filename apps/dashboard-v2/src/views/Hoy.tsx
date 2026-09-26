@@ -3,7 +3,7 @@ import { Card, Badge, Button } from '../components/ui';
 import { EquipoInvestigando } from '../components/EquipoInvestigando';
 import { Ring, BarRow } from '../components/viz';
 import { usePerfil, nombreDePila } from '../lib/perfil';
-import { SinkrooMark, I_ArrowRight, I_Wallet, I_Eye, I_Vote, I_Star, I_Clock, I_Rocket, I_Users, I_Trend } from '../components/icons';
+import { SinkrooMark, I_ArrowRight, I_Wallet, I_Eye, I_Star, I_Clock, I_Rocket, I_Users, I_Trend } from '../components/icons';
 import type { Vista } from '../components/Layout';
 import { useDetalle } from '../components/Detalle';
 import { useOnboarding } from '../lib/onboarding';
@@ -42,7 +42,6 @@ const resultadoTxt = (r: Record<string, unknown>) => {
 };
 
 /** El máximo de una lista, para escalar las barras: nunca cero, que rompería la proporción. */
-const maxDe = (xs: number[]) => Math.max(1, ...xs);
 
 /** La hora del historial de una conversación, en corto. */
 const haceTxt = (iso?: string | null) => {
@@ -415,14 +414,19 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
       </div>
 
       {/* ====================== FILA 2: LOS NÚMEROS DEL MES Y LA CALIDAD ======================
-          Las piezas que el panel puntuó de verdad y el público que votó, tal como los devuelve el
-          servidor. Sin piezas evaluadas y sin votos, la tarjeta invita a que el motor produzca. */}
+          Las piezas que el panel puntuó, tal como las devuelve el servidor. Sin piezas evaluadas,
+          la tarjeta invita a que el motor produzca.
+          Acá estaba, al lado, la tarjeta «El público que votó»: la que mostraba a los 500 repartidos
+          por estilo y por edad, con la línea «N personas en la muestra que dejó el motor» y el pie
+          «son personas de verdad las que votan». Se va: el modelo quedó SIN audiencia —los 500
+          trabajan con su comportamiento simulado— y esa tarjeta contaba lo contrario. La fila queda
+          con una sola tarjeta, así que va a lo ancho (`col`) y no en la mitad de un `duo`. */}
       <div className="csec">
         <span className="csec-n">2</span>
         <span className="csec-t">Los números del mes y la calidad de lo que produjo</span>
-        <span className="csec-s">Las piezas que puntuó el panel y el público que votó, tal como están en el back</span>
+        <span className="csec-s">Las piezas que puntuó el panel, tal como están en el back</span>
       </div>
-      <div className="duo">
+      <div className="col">
         <Card
           title={<span className="row" style={{ gap: 8 }}><I_Star size={14} style={{ color: 'var(--purple3)' }} /> La calidad de sus piezas</span>}
           action={<Badge tone={datos.evaluaciones.length ? 'green' : 'muted'}>{datos.evaluaciones.length} evaluadas</Badge>}>
@@ -468,38 +472,6 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
           <div className="acc-why">
             <b>Una pieza que no pasa a los jueces nunca se publica.</b> Los puntajes de aquí son los que
             hay en el servidor, con la fecha en que se evaluó cada una.
-          </div>
-        </Card>
-
-        <Card
-          title={<span className="row" style={{ gap: 8 }}><I_Vote size={14} style={{ color: 'var(--green)' }} /> El público que votó</span>}
-          action={<Badge tone={datos.publico?.total ? 'green' : 'muted'}>{datos.publico?.total ?? 0} personas</Badge>}>
-          {!datos.publico || datos.publico.total === 0 ? (
-            <EstadoVacio
-              {...vacio(
-                'Todavía no hay público',
-                'Aquí se ve quién votó sus piezas, por estilo y por edad. Cuando haya votos, aparecen agrupados en esta tarjeta: es el mismo público que decide si una pieza sale.',
-              )} />
-          ) : (
-            <>
-              <div className="bs" style={{ marginBottom: 8 }}>Por estilo:</div>
-              {(datos.publico.por_estilo ?? []).slice(0, 6).map((e, i) => (
-                <BarRow key={i} label={e.estilo} valor={e.n} max={maxDe((datos.publico?.por_estilo ?? []).map(x => x.n))} color="var(--purple2)" formato={String(e.n)} />
-              ))}
-              <div className="bs" style={{ marginTop: 14, marginBottom: 8 }}>Por edad:</div>
-              {(datos.publico.por_edad ?? []).slice(0, 6).map((e, i) => (
-                <BarRow key={i} label={e.rango} valor={e.n} max={maxDe((datos.publico?.por_edad ?? []).map(x => x.n))} color="var(--green)" formato={String(e.n)} />
-              ))}
-              {datos.publico.muestra?.length > 0 && (
-                <div className="tiny muted" style={{ marginTop: 10 }}>
-                  {datos.publico.muestra.length} {datos.publico.muestra.length === 1 ? 'persona' : 'personas'} en la muestra que dejó el motor.
-                </div>
-              )}
-            </>
-          )}
-          <div className="acc-why">
-            El público es lo que hace que un puntaje no sea una opinión: <b>son personas de verdad las que
-            votan</b> antes de que la pieza gaste un peso.
           </div>
         </Card>
       </div>
