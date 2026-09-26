@@ -318,6 +318,9 @@ export function FlujoAnimado() {
             ========================================================================================== */}
         <g className="flujo-etapa flujo-e1">
           <Panel x={12} y={28} w={116} h={222} />
+          {/* El contenido del panel, un 9 % más chico y centrado: así ningún texto queda
+              pegado al borde del recuadro. El recuadro y su luz NO se tocan. */}
+          <g transform="translate(70 139) scale(0.91) translate(-70 -139)">
           <text className="flujo-chico" x={20} y={46}>
             MATERIAL
           </text>
@@ -354,6 +357,7 @@ export function FlujoAnimado() {
             fillOpacity={0.55}
             style={{ animationDelay: desfase(0.69) }}
           />
+          </g>
           <rect className="flujo-luz flujo-e1" x={12} y={28} width={116} height={222} rx={12} />
         </g>
 
@@ -362,6 +366,9 @@ export function FlujoAnimado() {
             ========================================================================================== */}
         <g className="flujo-etapa flujo-e2">
           <Panel x={140} y={28} w={140} h={222} />
+          {/* El contenido del panel, un 9 % más chico y centrado: así ningún texto queda
+              pegado al borde del recuadro. El recuadro y su luz NO se tocan. */}
+          <g transform="translate(210 139) scale(0.91) translate(-210 -139)">
           <text className="flujo-chico" x={152} y={42}>
             6 AGENTES
           </text>
@@ -396,6 +403,7 @@ export function FlujoAnimado() {
               style={{ animationDelay: desfase(i * 0.257) }}
             />
           ))}
+          </g>
           <rect className="flujo-luz flujo-e2" x={140} y={28} width={140} height={222} rx={12} />
         </g>
 
@@ -404,6 +412,9 @@ export function FlujoAnimado() {
             ========================================================================================== */}
         <g className="flujo-etapa flujo-e3">
           <Panel x={292} y={28} w={112} h={222} />
+          {/* El contenido del panel, un 9 % más chico y centrado: así ningún texto queda
+              pegado al borde del recuadro. El recuadro y su luz NO se tocan. */}
+          <g transform="translate(348 139) scale(0.91) translate(-348 -139)">
           <text className="flujo-chico" x={300} y={42}>
             ESCRIBE
           </text>
@@ -413,6 +424,7 @@ export function FlujoAnimado() {
           {PIEZAS.map((nombre, i) => (
             <Pieza key={nombre} marca={POR_NOMBRE[nombre]} x={300} y={62 + i * 62} />
           ))}
+          </g>
           <rect className="flujo-luz flujo-e3" x={292} y={28} width={112} height={222} rx={12} />
         </g>
 
@@ -421,6 +433,9 @@ export function FlujoAnimado() {
             ========================================================================================== */}
         <g className="flujo-etapa flujo-e4">
           <Panel x={416} y={28} w={294} h={222} />
+          {/* El contenido del panel, un 9 % más chico y centrado: así ningún texto queda
+              pegado al borde del recuadro. El recuadro y su luz NO se tocan. */}
+          <g transform="translate(563 139) scale(0.91) translate(-563 -139)">
           <text className="flujo-chico" x={424} y={44}>
             5 JUECES · VOTAN
           </text>
@@ -445,6 +460,7 @@ export function FlujoAnimado() {
               retraso={desfase(i * 0.857)}
             />
           ))}
+          </g>
           <rect className="flujo-luz flujo-e4" x={416} y={28} width={294} height={222} rx={12} />
         </g>
 
@@ -453,11 +469,15 @@ export function FlujoAnimado() {
             ========================================================================================== */}
         <g className="flujo-etapa flujo-e5">
           <Panel x={556} y={444} w={154} h={200} />
+          {/* El contenido del panel, un 9 % más chico y centrado: así ningún texto queda
+              pegado al borde del recuadro. El recuadro y su luz NO se tocan. */}
+          <g transform="translate(633 544) scale(0.91) translate(-633 -544)">
           <circle className="flujo-cheque-halo" cx={633} cy={542} r={40} />
           <path className="flujo-cheque" d="M 606,546 L 626,566 L 668,510" />
           <text className="flujo-ok-txt" x={633} y={610} textAnchor="middle">
             APROBADO
           </text>
+          </g>
           <rect className="flujo-luz flujo-e5" x={556} y={444} width={154} height={200} rx={12} />
         </g>
 
@@ -467,6 +487,9 @@ export function FlujoAnimado() {
             ========================================================================================== */}
         <g className="flujo-etapa flujo-e6">
           <Panel x={286} y={444} w={258} h={200} />
+          {/* El contenido del panel, un 9 % más chico y centrado: así ningún texto queda
+              pegado al borde del recuadro. El recuadro y su luz NO se tocan. */}
+          <g transform="translate(415 544) scale(0.91) translate(-415 -544)">
           {MARCAS.map((marca, i) => (
             <Red
               key={marca.nombre}
@@ -479,6 +502,7 @@ export function FlujoAnimado() {
           <text className="flujo-nota" x={415} y={620} textAnchor="middle">
             USTED DA EL OK ANTES DE PUBLICAR
           </text>
+          </g>
           <rect className="flujo-luz flujo-e6" x={286} y={444} width={258} height={200} rx={12} />
         </g>
 
@@ -487,6 +511,9 @@ export function FlujoAnimado() {
             ========================================================================================== */}
         <g className="flujo-etapa flujo-e7">
           <Panel x={12} y={444} w={262} h={200} />
+          {/* El contenido del panel, un 9 % más chico y centrado: así ningún texto queda
+              pegado al borde del recuadro. El recuadro y su luz NO se tocan. */}
+          <g transform="translate(143 544) scale(0.91) translate(-143 -544)">
           {/* Las cifras se reparten en la ventana nueva de MIDE (10,80–13,00 s): una cada 0,37 s, la
               última a 1,11 s. Antes el desfase era de 0,171 s por cifra dentro de una ventana de
               1,20 s; ahora la ventana es de 2,20 s y el desfase acompaña. */}
@@ -504,6 +531,7 @@ export function FlujoAnimado() {
           <text className="flujo-ejemplo-txt" x={143} y={637} textAnchor="middle">
             CIFRAS Y NOTAS DE EJEMPLO
           </text>
+          </g>
           <rect className="flujo-luz flujo-e7" x={12} y={444} width={262} height={200} rx={12} />
         </g>
 
