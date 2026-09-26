@@ -1,0 +1,785 @@
+/* ==================================================================================================
+   LOS CINCO ICONOS DE «CON QUÉ TRABAJA» — la hoja de estilos de <IconoHerramienta/>.
+
+   QUÉ ES: cinco dibujos (un solo SVG en línea cada uno) que reemplazan a las cinco capturas de la
+   sección «CON QUÉ TRABAJA». Uno por tarjeta:
+
+     01 · EL EQUIPO DE INVESTIGACIÓN   el mapa de datos y los seis agentes, con la lupa barriendo
+     02 · MIROFISH                     cinco fichas de juez que se llenan y el público que opina
+     03 · EL PANEL                     la mini pantalla con sus módulos encendiéndose en secuencia
+     04 · LAS MEDICIONES               las barras, la línea que sube y el desvío contra lo previsto
+     05 · LOS CRÉDITOS                 la pila que baja, las fichas que viajan al motor y el número
+
+   LAS CINCO REGLAS QUE MANDAN AQUÍ:
+
+     1. UN SOLO RELOJ: 5 s. Cada dibujo dura exactamente cinco segundos y se repite en bucle. Todo
+        se escribe en porcentajes de ese reloj (100 % = 5 s · 20 % = 1 s · 1 % = 0,05 s).
+     2. LOS BUCLES CORTOS DIVIDEN 5: 2,5 s (dos vueltas por ciclo) · 1,25 s (cuatro) · 1 s (cinco).
+        Así, al cerrar el ciclo, todo vuelve a estar en fase y el bucle no se desalinea nunca.
+        Los escalonados («uno por uno») NO son bucles distintos: son el mismo reloj de 5 s con un
+        `animation-delay` corto, que es lo que los desfasa en el arranque y nada más.
+     3. NADA DEPENDE DE JAVASCRIPT, ni para animar ni para aparecer. El componente no tiene estado
+        ni efectos: se pinta y ya.
+     4. NADA ARRANCA ESCONDIDO SI NO HAY ANIMACIÓN. Con `prefers-reduced-motion: reduce` (mirá el
+        bloque al final) el dibujo queda ENTERO y QUIETO: los seis agentes, las cinco notas puestas,
+        los cinco módulos encendidos, las barras crecidas y la pila llena. Nunca un cuadro vacío.
+     5. COLORES DE SINKROO. Fondo oscuro, violetas y gris; el verde SÓLO en lo que sale bien: el
+        punto medido que quedó por encima de lo previsto (04). Trazo fino y brillo suave.
+   ================================================================================================== */
+
+/* ---------------------------------------------------------------------------------------------------
+   LA CAJA COMÚN. `width:100%` + `aspect-ratio:1/1` la hace cuadrada y elástica; el `max-width` evita
+   que en una tarjeta muy ancha se vuelva un cuadro enorme. Su respiración es el reloj de la escena:
+   5 s, la misma vuelta que todo lo de adentro.
+   --------------------------------------------------------------------------------------------------- */
+.ico-h {
+  --ico-fondo: #0a0a0c;
+  --ico-pantalla: #07070a;
+  --ico-panel: #12101c;
+  --ico-violeta: #a855f7;
+  --ico-violeta-claro: #c084fc;
+  --ico-violeta-hondo: #7c3aed;
+  --ico-texto: #f5f5f5;
+  --ico-gris: #9a8fad;
+  --ico-verde: #22c55e;
+  --ico-borde: rgba(168, 85, 247, 0.22);
+  --ico-borde-suave: rgba(168, 85, 247, 0.13);
+  --ico-tenue: rgba(154, 143, 173, 0.35);
+  --ico-velo: rgba(168, 85, 247, 0.09);
+
+  width: 100%;
+  max-width: 460px;
+  margin-inline: auto;
+  aspect-ratio: 1 / 1;
+  border-radius: 14px;
+  animation: icoRespira 5s ease-in-out infinite;
+}
+
+@keyframes icoRespira {
+  0%, 100% { box-shadow: 0 0 0 rgba(168, 85, 247, 0); }
+  50%      { box-shadow: 0 0 22px rgba(168, 85, 247, 0.16); }
+}
+
+.ico-h__svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  /* La tipografía es la de la página: el dibujo se integra, no impone otra fuente. */
+  font-family: inherit;
+}
+
+.ico-h__fondo { fill: var(--ico-fondo); }
+.ico-h__velo  { pointer-events: none; }
+.ico-h__marco { fill: none; stroke: rgba(168, 85, 247, 0.18); stroke-width: 1; }
+
+.ico-h__brillo-a { stop-color: var(--ico-violeta); stop-opacity: 0.16; }
+.ico-h__brillo-b { stop-color: var(--ico-violeta); stop-opacity: 0; }
+
+/* ==================================================================================================
+   01 · EL EQUIPO DE INVESTIGACIÓN
+   El mapa de datos abajo (retícula tenue + dos contornos que corren a 2,5 s) y el equipo encima:
+   seis puntos que se prenden de izquierda a derecha, uno cada 0,45 s, en el mismo orden en que la
+   lupa los va alcanzando. La lupa barre la escena en los cinco segundos y se mece a 1,25 s.
+   ================================================================================================== */
+
+.ico-inv-mapa line {
+  stroke: var(--ico-borde-suave);
+  stroke-width: 0.7;
+}
+
+/* La retícula respira: dos vueltas por ciclo (2,5 s cada una). */
+.ico-inv-mapa {
+  animation: icoInvMapa 2.5s ease-in-out infinite;
+}
+
+@keyframes icoInvMapa {
+  0%, 100% { opacity: 0.55; }
+  50%      { opacity: 1; }
+}
+
+/* Los contornos punteados corren. El desplazamiento es un múltiplo exacto del largo del guion
+   (3 + 2,4 = 5,4 y el doble son 10,8), así que al cerrar la vuelta quedan en el mismo lugar. */
+.ico-inv-contorno {
+  fill: none;
+  stroke: var(--ico-tenue);
+  stroke-width: 0.9;
+  stroke-dasharray: 3 2.4;
+  animation: icoInvCorre 2.5s linear infinite;
+}
+
+.ico-inv-contorno--b {
+  opacity: 0.75;
+  animation-direction: reverse;
+}
+
+@keyframes icoInvCorre {
+  to { stroke-dashoffset: -10.8; }
+}
+
+/* El agente se prende a los 0,45 s de arrancar (9 % del ciclo) y queda encendido hasta el final;
+   se apaga suavecito en el último tramo, para que el bucle pueda empezar de nuevo. La opacidad
+   base es 0 —igual que el final de la animación— para que nadie esté encendido antes de su turno
+   (el estado base es el que se ve mientras corre el `animation-delay`). */
+.ico-inv-agente {
+  opacity: 0;
+  animation: icoInvAgente 5s ease-out infinite;
+  animation-delay: var(--ico-retraso, 0s);
+}
+
+.ico-inv-agente--1 { --ico-retraso: 0s; }
+.ico-inv-agente--2 { --ico-retraso: 0.45s; }
+.ico-inv-agente--3 { --ico-retraso: 0.9s; }
+.ico-inv-agente--4 { --ico-retraso: 1.35s; }
+.ico-inv-agente--5 { --ico-retraso: 1.8s; }
+.ico-inv-agente--6 { --ico-retraso: 2.25s; }
+
+@keyframes icoInvAgente {
+  0%, 3%    { opacity: 0; }
+  9%        { opacity: 1; }
+  88%       { opacity: 1; }
+  96%, 100% { opacity: 0; }
+}
+
+/* El halo de cada agente: dos ondas cortas apenas se prende. */
+.ico-inv-halo {
+  fill: none;
+  stroke: var(--ico-violeta);
+  stroke-width: 1;
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: icoInvHalo 5s ease-out infinite;
+  animation-delay: var(--ico-retraso, 0s);
+}
+
+@keyframes icoInvHalo {
+  0%, 8%    { opacity: 0; transform: scale(0.5); }
+  12%       { opacity: 0.45; transform: scale(0.8); }
+  22%       { opacity: 0; transform: scale(1.7); }
+  32%       { opacity: 0; transform: scale(0.8); }
+  42%       { opacity: 0; transform: scale(1.7); }
+  100%      { opacity: 0; transform: scale(1.7); }
+}
+
+/* El punto del agente late a 1,25 s: cuatro latidos por ciclo, siempre en fase. */
+.ico-inv-punto {
+  fill: var(--ico-violeta-claro);
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: icoInvLate 1.25s ease-in-out infinite;
+  animation-delay: var(--ico-retraso, 0s);
+}
+
+@keyframes icoInvLate {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.22); }
+}
+
+.ico-inv-punto-luz {
+  fill: var(--ico-texto);
+  opacity: 0.9;
+}
+
+/* La lupa: cruza la escena de izquierda a derecha y se mece mientras viaja. */
+.ico-inv-lupa {
+  animation: icoInvBarre 5s ease-in-out infinite;
+}
+
+@keyframes icoInvBarre {
+  0%    { transform: translateX(0); opacity: 0; }
+  7%    { opacity: 1; }
+  88%   { transform: translateX(52px); opacity: 1; }
+  95%   { transform: translateX(52px); opacity: 0; }
+  100%  { transform: translateX(52px); opacity: 0; }
+}
+
+.ico-inv-lupa-flota {
+  animation: icoInvFlota 1.25s ease-in-out infinite;
+}
+
+@keyframes icoInvFlota {
+  0%, 100% { transform: translateY(-1.4px); }
+  50%      { transform: translateY(1.4px); }
+}
+
+.ico-inv-cristal {
+  fill: rgba(168, 85, 247, 0.1);
+  stroke: var(--ico-violeta-claro);
+  stroke-width: 1.3;
+}
+
+/* El brillo del cristal: un aro ancho y transparente, en vez de un filtro. */
+.ico-inv-cristal-brillo {
+  fill: none;
+  stroke: var(--ico-violeta);
+  stroke-width: 3.2;
+  opacity: 0.22;
+}
+
+.ico-inv-cruz {
+  stroke: var(--ico-violeta-claro);
+  stroke-width: 0.6;
+  opacity: 0.45;
+}
+
+.ico-inv-mango {
+  stroke: var(--ico-violeta-claro);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+}
+
+/* ==================================================================================================
+   02 · MIROFISH
+   A la izquierda, las cinco fichas de juez: cada una se enciende, y su barra de nota crece hasta su
+   largo (una nota distinta por juez) con 0,3 s de diferencia. A la derecha, los tres bocadillos del
+   público: aparecen, se quedan un momento y se van, uno detrás del otro, con sus puntos tecleando.
+   ================================================================================================== */
+
+.ico-mf-raya {
+  stroke: var(--ico-borde-suave);
+  stroke-width: 0.8;
+  stroke-dasharray: 2 2.4;
+}
+
+/* La ficha arranca apagada (0,42) y se enciende cuando le llega su nota: el mismo valor del final
+   de la animación, que es lo que se ve mientras corre el `animation-delay`. */
+.ico-mf-ficha {
+  opacity: 0.42;
+  animation: icoMfEnciende 5s ease-out infinite;
+  animation-delay: var(--ico-retraso, 0s);
+}
+
+.ico-mf-ficha--1 { --ico-retraso: 0s;   --ico-mf-meta: 0.36; }
+.ico-mf-ficha--2 { --ico-retraso: 0.3s; --ico-mf-meta: 0.6; }
+.ico-mf-ficha--3 { --ico-retraso: 0.6s; --ico-mf-meta: 0.48; }
+.ico-mf-ficha--4 { --ico-retraso: 0.9s; --ico-mf-meta: 0.82; }
+.ico-mf-ficha--5 { --ico-retraso: 1.2s; --ico-mf-meta: 0.68; }
+
+@keyframes icoMfEnciende {
+  0%, 3%    { opacity: 0.42; }
+  12%       { opacity: 1; }
+  88%       { opacity: 1; }
+  97%, 100% { opacity: 0.42; }
+}
+
+.ico-mf-tarjeta {
+  fill: var(--ico-panel);
+  stroke: var(--ico-borde);
+  stroke-width: 0.8;
+}
+
+/* La nota: la barra crece desde la izquierda hasta su largo. */
+.ico-mf-nota {
+  fill: var(--ico-violeta);
+  transform: scaleX(0);
+  transform-box: fill-box;
+  transform-origin: left center;
+  animation: icoMfNota 5s ease-out infinite;
+  animation-delay: var(--ico-retraso, 0s);
+}
+
+@keyframes icoMfNota {
+  0%, 4%    { transform: scaleX(0); }
+  24%       { transform: scaleX(var(--ico-mf-meta, 1)); }
+  88%       { transform: scaleX(var(--ico-mf-meta, 1)); }
+  97%, 100% { transform: scaleX(0); }
+}
+
+/* Los tres bocadillos del público. */
+.ico-mf-bocadillo {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: icoMfBocadillo 5s ease-out infinite;
+  animation-delay: var(--ico-retraso, 0s);
+}
+
+.ico-mf-bocadillo--1 { --ico-retraso: 0s; }
+.ico-mf-bocadillo--2 { --ico-retraso: 1.55s; }
+.ico-mf-bocadillo--3 { --ico-retraso: 3.1s; }
+
+@keyframes icoMfBocadillo {
+  0%, 2%    { opacity: 0; transform: translateY(2.4px) scale(0.9); }
+  8%        { opacity: 1; transform: translateY(0) scale(1); }
+  26%       { opacity: 1; transform: translateY(0) scale(1); }
+  34%, 100% { opacity: 0; transform: translateY(2.4px) scale(0.9); }
+}
+
+.ico-mf-globo,
+.ico-mf-cola {
+  fill: var(--ico-panel);
+  stroke: var(--ico-borde);
+  stroke-width: 0.8;
+}
+
+/* Los puntos que teclean dentro del bocadillo: 1 s, cinco vueltas por ciclo. */
+.ico-mf-grano {
+  fill: var(--ico-violeta-claro);
+  opacity: 0.32;
+  animation: icoMfGrano 1s ease-in-out infinite;
+  animation-delay: var(--ico-grano-retraso, 0s);
+}
+
+.ico-mf-grano--1 { --ico-grano-retraso: 0s; }
+.ico-mf-grano--2 { --ico-grano-retraso: 0.33s; }
+.ico-mf-grano--3 { --ico-grano-retraso: 0.66s; }
+
+@keyframes icoMfGrano {
+  0%, 100% { opacity: 0.32; }
+  40%      { opacity: 1; }
+  55%      { opacity: 0.32; }
+}
+
+/* ==================================================================================================
+   03 · EL PANEL
+   La mini pantalla: la barra superior que se completa de izquierda a derecha, un brillo que la
+   cruza a 2,5 s y cinco módulos que se van encendiendo en secuencia (0,45 s entre uno y otro),
+   cada uno con sus líneas, su led y su barrita.
+   ================================================================================================== */
+
+.ico-panel-marco {
+  fill: none;
+  stroke: var(--ico-borde);
+  stroke-width: 1;
+}
+
+.ico-panel-pantalla { fill: var(--ico-pantalla); }
+.ico-panel-lente    { fill: var(--ico-tenue); }
+.ico-panel-pista    { fill: rgba(154, 143, 173, 0.18); }
+
+/* La barra superior: se completa durante el ciclo y se reinicia cuando ya no se ve. */
+.ico-panel-barra {
+  fill: var(--ico-violeta);
+  transform: scaleX(0.04);
+  transform-box: fill-box;
+  transform-origin: left center;
+  animation: icoPanelBarra 5s ease-out infinite;
+}
+
+@keyframes icoPanelBarra {
+  0%        { transform: scaleX(0.04); opacity: 0; }
+  8%        { opacity: 1; }
+  75%       { transform: scaleX(1); }
+  92%       { transform: scaleX(1); opacity: 1; }
+  99%, 100% { transform: scaleX(0.04); opacity: 0; }
+}
+
+/* Los módulos de la pantalla, apagados de base. */
+.ico-panel-caja {
+  fill: var(--ico-panel);
+  stroke: var(--ico-borde-suave);
+  stroke-width: 0.8;
+}
+
+.ico-panel-luz {
+  opacity: 0;
+  animation: icoPanelLuz 5s ease-out infinite;
+  animation-delay: var(--ico-retraso, 0s);
+}
+
+.ico-panel-modulo--1 { --ico-retraso: 0.3s; }
+.ico-panel-modulo--2 { --ico-retraso: 0.75s; }
+.ico-panel-modulo--3 { --ico-retraso: 1.2s; }
+.ico-panel-modulo--4 { --ico-retraso: 1.65s; }
+.ico-panel-modulo--5 { --ico-retraso: 2.1s; }
+
+@keyframes icoPanelLuz {
+  0%, 3%    { opacity: 0; }
+  11%       { opacity: 1; }
+  88%       { opacity: 1; }
+  97%, 100% { opacity: 0; }
+}
+
+.ico-panel-caja-luz {
+  fill: var(--ico-velo);
+  stroke: var(--ico-violeta);
+  stroke-width: 1;
+}
+
+.ico-panel-linea      { fill: rgba(192, 132, 252, 0.55); }
+.ico-panel-barra-mini { fill: rgba(192, 132, 252, 0.5); }
+.ico-panel-led        { fill: var(--ico-violeta-claro); }
+
+/* El brillo que cruza la pantalla: 2,5 s, y siempre fuera del cuadro cuando da la vuelta. */
+.ico-panel-brillo {
+  fill: rgba(255, 255, 255, 0.05);
+  animation: icoPanelBrillo 2.5s linear infinite;
+}
+
+@keyframes icoPanelBrillo {
+  from { transform: translateX(0); }
+  to   { transform: translateX(120px); }
+}
+
+/* ==================================================================================================
+   04 · LAS MEDICIONES
+   Las cinco barras suben (0,2 s entre una y otra), la línea las recorre de izquierda a derecha
+   hasta el último dato, y al final aparece el desvío: la guía contra la línea de lo previsto,
+   con el punto medido —el único verde— latiendo a 1,25 s.
+   ================================================================================================== */
+
+.ico-med-eje {
+  stroke: rgba(154, 143, 173, 0.4);
+  stroke-width: 0.8;
+}
+
+/* Lo que se había previsto: una línea punteada, siempre a la vista, que es la referencia. */
+.ico-med-previsto {
+  fill: none;
+  stroke: var(--ico-gris);
+  stroke-width: 0.9;
+  stroke-dasharray: 2.4 2.6;
+  opacity: 0.55;
+}
+
+.ico-med-parada-a { stop-color: var(--ico-violeta); stop-opacity: 1; }
+.ico-med-parada-b { stop-color: var(--ico-violeta-claro); stop-opacity: 0.95; }
+
+/* Las barras: crecen desde la base hasta su alto. */
+.ico-med-barra {
+  fill: url(#ico-med-degradado);
+  stroke: rgba(192, 132, 252, 0.35);
+  stroke-width: 0.6;
+  transform: scaleY(0);
+  transform-box: fill-box;
+  transform-origin: bottom center;
+  animation: icoMedBarra 5s ease-out infinite;
+  animation-delay: var(--ico-retraso, 0s);
+}
+
+.ico-med-barra--1 { --ico-retraso: 0s; }
+.ico-med-barra--2 { --ico-retraso: 0.2s; }
+.ico-med-barra--3 { --ico-retraso: 0.4s; }
+.ico-med-barra--4 { --ico-retraso: 0.6s; }
+.ico-med-barra--5 { --ico-retraso: 0.8s; }
+
+@keyframes icoMedBarra {
+  0%, 2%    { transform: scaleY(0); }
+  22%       { transform: scaleY(1); }
+  88%       { transform: scaleY(1); }
+  97%, 100% { transform: scaleY(0); }
+}
+
+/* La línea que sube: se dibuja sola. `pathLength="1"` (en el componente) hace que el guion mida
+   exactamente el largo del trazo, así el dibujado no depende de medir nada a mano. */
+.ico-med-trazo {
+  fill: none;
+  stroke: var(--ico-violeta-claro);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: icoMedTrazo 5s ease-out infinite;
+}
+
+@keyframes icoMedTrazo {
+  0%, 18%   { stroke-dashoffset: 1; opacity: 0; }
+  22%       { stroke-dashoffset: 1; opacity: 1; }
+  64%       { stroke-dashoffset: 0; opacity: 1; }
+  92%       { stroke-dashoffset: 0; opacity: 1; }
+  99%, 100% { stroke-dashoffset: 0; opacity: 0; }
+}
+
+/* El desvío: aparece apenas la línea llegó al último dato, y se queda a la vista hasta el final. */
+.ico-med-desvio {
+  opacity: 0;
+  animation: icoMedDesvio 5s ease-out infinite;
+}
+
+@keyframes icoMedDesvio {
+  0%, 66%   { opacity: 0; }
+  72%       { opacity: 1; }
+  95%       { opacity: 1; }
+  99%, 100% { opacity: 0; }
+}
+
+.ico-med-guia {
+  stroke: var(--ico-violeta-claro);
+  stroke-width: 1;
+  stroke-dasharray: 1.6 1.6;
+}
+
+.ico-med-tope {
+  stroke: var(--ico-violeta-claro);
+  stroke-width: 1;
+  stroke-linecap: round;
+}
+
+/* El único verde del juego: lo medido quedó por encima de lo previsto. */
+.ico-med-pulso {
+  fill: none;
+  stroke: var(--ico-verde);
+  stroke-width: 1;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: icoMedPulso 1.25s ease-out infinite;
+}
+
+@keyframes icoMedPulso {
+  0%, 100% { opacity: 0; transform: scale(0.5); }
+  20%      { opacity: 0.55; transform: scale(0.7); }
+  70%      { opacity: 0; transform: scale(1.8); }
+}
+
+.ico-med-punto {
+  fill: var(--ico-verde);
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: icoMedLatido 1.25s ease-in-out infinite;
+}
+
+@keyframes icoMedLatido {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.18); }
+}
+
+/* ==================================================================================================
+   05 · LOS CRÉDITOS
+   La pila se consume ficha por ficha (de arriba hacia abajo, una cada 0,4 s), las fichas viajan al
+   motor durante todo el ciclo, el aro del contador se vacía y el número baja. Cerca del final todo
+   se repone a la vez: la pila vuelve, el aro se llena y el número vuelve al primero.
+   ================================================================================================== */
+
+/* El número. Son cifras de ejemplo, y el rótulo de abajo lo dice. */
+.ico-cre-cifra {
+  fill: var(--ico-texto);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  font-variant-numeric: tabular-nums;
+  opacity: 0;
+  animation: icoCreCifra 5s infinite;
+  animation-delay: var(--ico-retraso, 0s);
+}
+
+/* Las cifras están repartidas en cuartos exactos del ciclo: 1,25 s cada una, sin huecos ni
+   superposiciones. El cambio es seco, como el de un contador de verdad. */
+.ico-cre-cifra--1 { --ico-retraso: 0s; }
+.ico-cre-cifra--2 { --ico-retraso: 1.25s; }
+.ico-cre-cifra--3 { --ico-retraso: 2.5s; }
+.ico-cre-cifra--4 { --ico-retraso: 3.75s; }
+
+@keyframes icoCreCifra {
+  0%, 24%   { opacity: 1; }
+  25%, 100% { opacity: 0; }
+}
+
+.ico-cre-rotulo {
+  fill: var(--ico-gris);
+  font-size: 4.6px;
+  font-weight: 700;
+  letter-spacing: 0.9px;
+}
+
+/* El aro del contador: se vacía a lo largo del ciclo. La vuelta mide 2·π·10 = 62,8. */
+.ico-cre-aro-pista {
+  fill: none;
+  stroke: rgba(154, 143, 173, 0.18);
+  stroke-width: 1.6;
+}
+
+.ico-cre-aro {
+  fill: none;
+  stroke: var(--ico-violeta);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-dasharray: 62.8;
+  stroke-dashoffset: 0;
+  animation: icoCreAro 5s ease-out infinite;
+}
+
+@keyframes icoCreAro {
+  0%        { stroke-dashoffset: 0; }
+  88%       { stroke-dashoffset: 47; }
+  94%       { stroke-dashoffset: 47; }
+  100%      { stroke-dashoffset: 0; }
+}
+
+/* La pila. Cada ficha tiene sus propias llaves porque el orden importa: la primera se va primero
+   y todas vuelven juntas sobre el final (94 %–99 %), cuando el contador vuelve al primer número. */
+.ico-cre-ficha {
+  fill: var(--ico-violeta-hondo);
+  stroke: rgba(192, 132, 252, 0.45);
+  stroke-width: 0.6;
+  animation-duration: 5s;
+  animation-timing-function: ease-out;
+  animation-iteration-count: infinite;
+}
+
+.ico-cre-ficha--1 { animation-name: icoCrePila1; }
+.ico-cre-ficha--2 { animation-name: icoCrePila2; }
+.ico-cre-ficha--3 { animation-name: icoCrePila3; }
+.ico-cre-ficha--4 { animation-name: icoCrePila4; }
+.ico-cre-ficha--5 { animation-name: icoCrePila5; }
+.ico-cre-ficha--6 { animation-name: icoCrePila6; }
+
+@keyframes icoCrePila1 {
+  0%, 6%    { opacity: 1; transform: translateY(0); }
+  12%       { opacity: 0; transform: translateY(-2.4px); }
+  94%       { opacity: 0; transform: translateY(-2.4px); }
+  99%, 100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes icoCrePila2 {
+  0%, 14%   { opacity: 1; transform: translateY(0); }
+  20%       { opacity: 0; transform: translateY(-2.4px); }
+  94%       { opacity: 0; transform: translateY(-2.4px); }
+  99%, 100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes icoCrePila3 {
+  0%, 22%   { opacity: 1; transform: translateY(0); }
+  28%       { opacity: 0; transform: translateY(-2.4px); }
+  94%       { opacity: 0; transform: translateY(-2.4px); }
+  99%, 100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes icoCrePila4 {
+  0%, 30%   { opacity: 1; transform: translateY(0); }
+  36%       { opacity: 0; transform: translateY(-2.4px); }
+  94%       { opacity: 0; transform: translateY(-2.4px); }
+  99%, 100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes icoCrePila5 {
+  0%, 38%   { opacity: 1; transform: translateY(0); }
+  44%       { opacity: 0; transform: translateY(-2.4px); }
+  94%       { opacity: 0; transform: translateY(-2.4px); }
+  99%, 100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes icoCrePila6 {
+  0%, 46%   { opacity: 1; transform: translateY(0); }
+  52%       { opacity: 0; transform: translateY(-2.4px); }
+  94%       { opacity: 0; transform: translateY(-2.4px); }
+  99%, 100% { opacity: 1; transform: translateY(0); }
+}
+
+/* Las fichas que viajan al motor: una cada 0,625 s (ocho por ciclo), siempre en fase. */
+.ico-cre-viajera {
+  fill: var(--ico-violeta-claro);
+  opacity: 0;
+  animation: icoCreViaja 5s ease-in infinite;
+  animation-delay: var(--ico-retraso, 0s);
+}
+
+.ico-cre-viajera--1 { --ico-retraso: 0s; }
+.ico-cre-viajera--2 { --ico-retraso: 0.625s; }
+.ico-cre-viajera--3 { --ico-retraso: 1.25s; }
+.ico-cre-viajera--4 { --ico-retraso: 1.875s; }
+.ico-cre-viajera--5 { --ico-retraso: 2.5s; }
+.ico-cre-viajera--6 { --ico-retraso: 3.125s; }
+
+@keyframes icoCreViaja {
+  0%        { opacity: 0; transform: translateX(0); }
+  6%        { opacity: 1; transform: translateX(1.5px); }
+  26%       { opacity: 1; transform: translateX(24px); }
+  32%, 100% { opacity: 0; transform: translateX(26px); }
+}
+
+/* El motor: la caja, el halo que late a 1,25 s y el engranaje que gira a 2,5 s (dos vueltas por
+   ciclo, y como el engranaje tiene ocho dientes simétricos vuelve siempre al mismo lugar). */
+.ico-cre-motor-caja {
+  fill: var(--ico-panel);
+  stroke: var(--ico-borde);
+  stroke-width: 1;
+}
+
+.ico-cre-motor-halo {
+  fill: none;
+  stroke: var(--ico-violeta);
+  stroke-width: 3;
+  opacity: 0.18;
+  animation: icoCreHalo 1.25s ease-in-out infinite;
+}
+
+@keyframes icoCreHalo {
+  0%, 100% { opacity: 0.14; }
+  50%      { opacity: 0.28; }
+}
+
+.ico-cre-engranaje {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: icoCreGira 2.5s linear infinite;
+}
+
+@keyframes icoCreGira {
+  to { transform: rotate(360deg); }
+}
+
+.ico-cre-engranaje-aro {
+  fill: none;
+  stroke: var(--ico-violeta-claro);
+  stroke-width: 1.2;
+}
+
+.ico-cre-diente { fill: var(--ico-violeta-claro); }
+.ico-cre-nucleo { fill: var(--ico-violeta); }
+
+/* ===================================================================================================
+   RESPETO POR EL USUARIO: si pidió que no haya movimiento, TODO QUEDA QUIETO Y COMPLETO.
+   Se apaga cada animación y cada dibujo se muestra entero, en su momento más pleno: los seis
+   agentes encendidos con la lupa en el medio, las cinco notas puestas, los cinco módulos
+   encendidos y la barra completa, las barras crecidas con el desvío marcado, y la pila llena con
+   el aro entero y el primer número.
+   =================================================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  .ico-h,
+  .ico-h *,
+  .ico-h *::before,
+  .ico-h *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  /* 01 · el equipo completo, con la lupa a mitad de camino */
+  .ico-inv-agente,
+  .ico-inv-punto,
+  .ico-inv-lupa,
+  .ico-inv-mapa,
+  .ico-inv-contorno {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .ico-inv-lupa          { transform: translateX(26px) !important; }
+  .ico-inv-halo          { opacity: 0.35 !important; transform: scale(1) !important; }
+  .ico-inv-punto-luz     { opacity: 0.9 !important; }
+
+  /* 02 · las cinco notas puestas y los tres bocadillos a la vista */
+  .ico-mf-ficha,
+  .ico-mf-bocadillo      { opacity: 1 !important; transform: none !important; }
+  .ico-mf-nota           { transform: scaleX(var(--ico-mf-meta, 1)) !important; }
+  .ico-mf-grano          { opacity: 0.75 !important; }
+
+  /* 03 · los cinco módulos encendidos y la barra de arriba completa */
+  .ico-panel-luz         { opacity: 1 !important; }
+  .ico-panel-barra       { opacity: 1 !important; transform: scaleX(1) !important; }
+
+  /* 04 · las barras crecidas, la línea dibujada y el desvío marcado */
+  .ico-med-barra         { transform: scaleY(1) !important; }
+  .ico-med-trazo         { stroke-dashoffset: 0 !important; opacity: 1 !important; }
+  .ico-med-desvio        { opacity: 1 !important; }
+  .ico-med-pulso         { opacity: 0.45 !important; transform: scale(1.1) !important; }
+
+  /* 05 · la pila llena, el aro entero, el número primero y tres fichas en camino */
+  .ico-cre-cifra         { opacity: 0 !important; }
+  .ico-cre-cifra--1      { opacity: 1 !important; }
+  .ico-cre-ficha         { opacity: 1 !important; transform: none !important; }
+  .ico-cre-aro           { stroke-dashoffset: 0 !important; }
+  .ico-cre-motor-halo    { opacity: 0.22 !important; }
+
+  .ico-cre-viajera       { opacity: 1 !important; }
+  .ico-cre-viajera--1    { transform: translateX(2px) !important; }
+  .ico-cre-viajera--2    { transform: translateX(7px) !important; }
+  .ico-cre-viajera--3    { transform: translateX(12px) !important; }
+  .ico-cre-viajera--4    { transform: translateX(17px) !important; }
+  .ico-cre-viajera--5    { transform: translateX(22px) !important; }
+  .ico-cre-viajera--6    { transform: translateX(24px) !important; }
+
+  /* El engranaje, en su posición natural. */
+  .ico-cre-engranaje     { transform: none !important; }
+}

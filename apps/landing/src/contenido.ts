@@ -31,16 +31,20 @@ export const PANEL = '/panel/';
  * imagen: devuelve la página del panel con un 200 y en la landing sale rota.
  *
  * CADA BLOQUE CON IMAGEN MUESTRA UNA PANTALLA DISTINTA DEL PANEL (nunca se repite una captura en
- * dos bloques): el bloque 4 usa investigacion, creacion y jueces; el bloque 6 usa motor, mirofish,
- * cuenta, en línea y créditos; el bloque 8 usa primeros pasos. Las fotos de gente son del trabajo (no
- * son el equipo del negocio ni el público real) y el bloque 5 lo dice con su rótulo.
+ * dos bloques): el bloque 4 usa investigacion, creacion y jueces; el bloque 8 usa primeros pasos. El
+ * bloque 6 ya no lleva capturas: sus cinco tarjetas llevan los dibujos animados de
+ * `IconosHerramientas.tsx`. Las fotos de gente son del trabajo (no son el equipo del negocio ni el
+ * público real) y el bloque 5 lo dice con su rótulo.
  */
+import type { CualHerramienta } from './IconosHerramientas';
+
 export const IMAGENES = {
   buho: '/67.png',
   portada: '/6-web.jpg',
   /* Bloque 4 · QUÉ HACEMOS — una pantalla por paso, y cada una con lo que dice su tarjeta: el paso 1
      son los seis agentes investigando, el paso 2 las piezas ya creadas y el paso 3 los cinco jueces
-     ordenándolas. Las pantallas que mostraba antes (Mercado, Campañas y Su día) no hablaban de su paso. */
+     ordenándolas. Son las capturas ANCHAS de escritorio que mandó el dueño (1200 px de ancho, con la
+     barra del navegador recortada): la tarjeta las muestra enteras, sin recortar. */
   investigacion: '/capturas/investigacion.jpg',
   creacion: '/capturas/creacion.jpg',
   jueces: '/capturas/jueces.jpg',
@@ -49,12 +53,6 @@ export const IMAGENES = {
   mercado: '/capturas/mercado.jpg',
   campanas: '/capturas/campanas.jpg',
   hoy: '/capturas/hoy.jpg',
-  /* Bloque 6 · CON QUÉ TRABAJA */
-  motor: '/capturas/motor.jpg',
-  mirofish: '/capturas/mirofish.jpg',
-  cuenta: '/capturas/cuenta.jpg',
-  enLinea: '/capturas/en-linea.jpg',
-  creditos: '/capturas/creditos.jpg',
   /* Bloque 8 · PLANES */
   primerosPasos: '/capturas/primeros-pasos.jpg',
   /* Bloque 9 · PALABRAS DE NUESTRA CEO */
@@ -68,7 +66,13 @@ type Cifra = { etiqueta: string; valor: string };
 type Enlace = { texto: string; href: string };
 type TarjetaExplica = { numero: string; titulo: string; texto: string; imagen: string; alt: string };
 type Etapa = { numero: string; titulo: string; texto: string };
-type Herramienta = { numero: string; nombre: string; texto: string; imagen: string; alt: string };
+type Herramienta = {
+  numero: string;
+  nombre: string;
+  texto: string;
+  /** Cuál de los cinco dibujos animados de `IconosHerramientas.tsx` (5 s cada uno). */
+  dibujo: CualHerramienta;
+};
 type Conexion = { nombre: string; texto: string; /** Los `id` de `redes.ts` que van como icono delante del nombre. */ redes: string[] };
 type Plan = { nombre: string; precio: string; creditos: string };
 
@@ -204,7 +208,7 @@ const ES: Contenido = {
         texto:
           'Seis agentes leen su mercado y guardan cada hallazgo con su fuente: qué publica la competencia, con qué colores, en qué duración, con qué gancho y a qué precio.',
         imagen: IMAGENES.investigacion,
-        alt: 'Panel de Sinkroo: la pantalla «Su día», con los seis agentes de la investigación y su tarea terminada.',
+        alt: 'Panel de Sinkroo: lo que investigaron los 6 agentes (colores, duración, gancho y cuándo publican) y lo que crearon, en la pantalla «Campañas».',
       },
       {
         numero: '02',
@@ -212,7 +216,7 @@ const ES: Contenido = {
         texto:
           'Con esos hallazgos, el motor escribe las piezas de cada red en su formato y con su texto. Cada pieza nace de un hallazgo, no de una corazonada.',
         imagen: IMAGENES.creacion,
-        alt: 'Panel de Sinkroo: la pantalla «Campañas», con las seis piezas ya escritas y su puntaje.',
+        alt: 'Panel de Sinkroo: las piezas ya escritas, cada una con su puntaje y su veredicto, en la pantalla «Campañas».',
       },
       {
         numero: '03',
@@ -220,7 +224,7 @@ const ES: Contenido = {
         texto:
           'Antes de gastar, cada pieza se prueba: cinco jueces la puntúan y quinientas personas simuladas reaccionan. La que no convence vuelve a corregirse y no gasta un peso.',
         imagen: IMAGENES.jueces,
-        alt: 'Panel de Sinkroo: la pantalla «Campañas», con los cinco jueces votando y ordenando las piezas.',
+        alt: 'Panel de Sinkroo: el mercado simulado probando una pieza, con el puntaje de los cinco jueces y la reacción del público.',
       },
     ],
   },
@@ -277,40 +281,35 @@ const ES: Contenido = {
         nombre: 'EL EQUIPO DE INVESTIGACIÓN',
         texto:
           'Seis agentes que leen el mercado y dejan todo por escrito con su fuente. Cada hallazgo que usan después las piezas viene de ahí.',
-        imagen: IMAGENES.motor,
-        alt: 'Panel de Sinkroo: la pantalla «Campañas», donde arranca el trabajo del motor.',
+        dibujo: 'investigacion',
       },
       {
         numero: '02',
         nombre: 'MIROFISH',
         texto:
           'El mercado simulado. Cinco jueces (Claridad, Gancho, Deseo, Prueba y Llamada) y quinientas personas con el comportamiento de su público. Es lo que se interpone entre su dinero y la publicación.',
-        imagen: IMAGENES.mirofish,
-        alt: 'Panel de Sinkroo: la pestaña «MiroFish», con la nota de una pieza y lo que votó cada juez.',
+        dibujo: 'mirofish',
       },
       {
         numero: '03',
         nombre: 'EL PANEL',
         texto:
           'Su día, campañas, mercado, conversaciones, créditos y autonomía. Todo lo que el motor hace queda ahí, con su fecha y su motivo.',
-        imagen: IMAGENES.cuenta,
-        alt: 'Panel de Sinkroo: la pantalla «Cuenta y autonomía», con el negocio, sus créditos y lo que decide la IA.',
+        dibujo: 'panel',
       },
       {
         numero: '04',
         nombre: 'LAS MEDICIONES',
         texto:
           'Lo que las plataformas reportan de verdad (alcance, clics, gasto, ventas) y la comparación con lo que el modelo había predicho: el desvío.',
-        imagen: IMAGENES.enLinea,
-        alt: 'Panel de Sinkroo: la pestaña «En línea», con el monitoreo en vivo de lo que va corriendo.',
+        dibujo: 'mediciones',
       },
       {
         numero: '05',
         nombre: 'LOS CRÉDITOS',
         texto:
           'Un crédito es una unidad de trabajo del motor. Cada análisis, cada pieza y cada prueba consumen, y usted ve en qué se va.',
-        imagen: IMAGENES.creditos,
-        alt: 'Panel de Sinkroo: la pantalla «Créditos», con lo que tiene, en qué se va y cómo cargarlo.',
+        dibujo: 'creditos',
       },
     ],
   },
@@ -512,7 +511,7 @@ const EN: Contenido = {
         texto:
           'Six agents read your market and keep every finding with its source: what the competition publishes, in which colours, at what length, with which hook and at what price.',
         imagen: IMAGENES.investigacion,
-        alt: 'Sinkroo panel: the “Su día” screen, with the six research agents and their finished task.',
+        alt: 'Sinkroo panel: what the 6 agents researched (colours, length, hook, when they publish) and what they created, on the “Campañas” screen.',
       },
       {
         numero: '02',
@@ -520,7 +519,7 @@ const EN: Contenido = {
         texto:
           'With those findings, the engine writes the pieces for each network in its format and with its text. Every piece is born from a finding, not from a hunch.',
         imagen: IMAGENES.creacion,
-        alt: 'Sinkroo panel: the “Campañas” screen, with the six pieces already written and their score.',
+        alt: 'Sinkroo panel: the pieces already written, each with its score and its verdict, on the “Campañas” screen.',
       },
       {
         numero: '03',
@@ -528,7 +527,7 @@ const EN: Contenido = {
         texto:
           'Before spending, every piece is tested: five judges score it and five hundred simulated people react. The one that does not convince goes back to be fixed and does not spend a peso.',
         imagen: IMAGENES.jueces,
-        alt: 'Sinkroo panel: the “Campañas” screen, with the five judges voting and ranking the pieces.',
+        alt: 'Sinkroo panel: the simulated market testing a piece, with the score of the five judges and the reaction of the public.',
       },
     ],
   },
@@ -587,40 +586,35 @@ const EN: Contenido = {
         nombre: 'THE RESEARCH TEAM',
         texto:
           'Six agents that read the market and leave everything in writing with its source. Every finding the pieces use afterwards comes from there.',
-        imagen: IMAGENES.motor,
-        alt: 'Sinkroo panel: the “Campañas” screen, where the work of the engine starts.',
+        dibujo: 'investigacion',
       },
       {
         numero: '02',
         nombre: 'MIROFISH',
         texto:
           'The simulated market. Five judges (Clarity, Hook, Desire, Proof and Call) and five hundred people with your audience’s behaviour. It is what stands between your money and publishing.',
-        imagen: IMAGENES.mirofish,
-        alt: 'Sinkroo panel: the “MiroFish” tab, with the score of a piece and what each judge voted.',
+        dibujo: 'mirofish',
       },
       {
         numero: '03',
         nombre: 'THE PANEL',
         texto:
           'Your day, campaigns, market, conversations, credits and autonomy. Everything the engine does is there, with its date and its reason.',
-        imagen: IMAGENES.cuenta,
-        alt: 'Sinkroo panel: the “Cuenta y autonomía” screen, with the business, its credits and what the AI decides.',
+        dibujo: 'panel',
       },
       {
         numero: '04',
         nombre: 'THE MEASUREMENTS',
         texto:
           'What the platforms report for real (reach, clicks, spend, sales) and the comparison with what the model had predicted: the deviation.',
-        imagen: IMAGENES.enLinea,
-        alt: 'Sinkroo panel: the “En línea” tab, with live monitoring of what is running.',
+        dibujo: 'mediciones',
       },
       {
         numero: '05',
         nombre: 'THE CREDITS',
         texto:
           'A credit is a unit of work of the engine. Every analysis, every piece and every test consume, and you see where it goes.',
-        imagen: IMAGENES.creditos,
-        alt: 'Sinkroo panel: the “Créditos” screen, with what you have, where it goes and how to load it.',
+        dibujo: 'creditos',
       },
     ],
   },

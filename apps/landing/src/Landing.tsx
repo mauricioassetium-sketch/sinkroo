@@ -35,6 +35,7 @@ import type { Idioma } from './contenido';
 import { REDES } from './redes';
 import { FlujoAnimado } from './FlujoAnimado';
 import { MarquesinaRedes } from './MarquesinaRedes';
+import { IconoHerramienta } from './IconosHerramientas';
 
 /* Las 31 líneas verticales del fondo de la portada: son adorno, con la misma clase de la vieja.
    La posición es fija (no al azar) para que la página se pinte igual siempre. Va con UN decimal a
@@ -380,11 +381,14 @@ export function Landing() {
                   <p className="text-purple-500 text-[10px] font-black tracking-widest mb-5 opacity-70">{tarjeta.numero}</p>
                   <h3 className="text-2xl font-bold mb-4 group-hover:text-purple-400 transition-colors">{tarjeta.titulo}</h3>
                   <p className="text-gray-400 text-sm leading-relaxed mb-6">{tarjeta.texto}</p>
+                  {/* La captura va ENTERA: es ancha (de escritorio) y `h-auto` la deja con su propia
+                      proporción, sin recortarle los costados. Antes era una franja de 240/300 px que
+                      sólo dejaba ver la parte de arriba de la pantalla. */}
                   <img
                     src={tarjeta.imagen}
                     alt={tarjeta.alt}
                     loading="lazy"
-                    className="w-full h-[240px] md:h-[300px] object-cover object-top rounded-xl border border-white/10"
+                    className="w-full h-auto rounded-xl border border-white/10"
                   />
                 </div>
               ))}
@@ -476,16 +480,10 @@ export function Landing() {
                       <p className="text-gray-400 leading-relaxed max-w-md text-sm md:text-base">{herramienta.texto}</p>
                     </div>
                     <div className={alReves ? 'lg:col-start-1' : ''}>
-                      <div className="relative rounded-2xl overflow-hidden border border-white/10 bg-[#0b0b0b] shadow-[0_30px_80px_rgba(168,85,247,0.25)]">
-                        <img
-                          src={herramienta.imagen}
-                          alt={herramienta.alt}
-                          loading="lazy"
-                          className="w-full h-[300px] md:h-[460px] object-cover object-top"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-tr from-black/70 via-transparent to-white/10"></div>
-                        <div className="absolute inset-0 rounded-2xl border border-purple-400/20 pointer-events-none"></div>
-                      </div>
+                      {/* El dibujo animado (5 s, en bucle) reemplaza a la captura del panel. Trae su
+                          propio marco y su propio brillo, así que no lleva encima ni el filete ni el
+                          degradado que llevaba la imagen. */}
+                      <IconoHerramienta cual={herramienta.dibujo} />
                     </div>
                   </div>
                 );
