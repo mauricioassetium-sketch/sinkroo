@@ -30,12 +30,14 @@ import { useEffect, useState } from 'react';
 
 import './viejo.css';
 import './landing-extra.css';
+import './dubai.css';
 import { CONTENIDO, IDIOMA_INICIAL, PANEL, IMAGENES } from './contenido';
 import type { Idioma } from './contenido';
 import { REDES } from './redes';
 import { FlujoAnimado } from './FlujoAnimado';
 import { MarquesinaRedes } from './MarquesinaRedes';
 import { IconoHerramienta } from './IconosHerramientas';
+import { SkylineDubai } from './Dubai';
 
 /* Las 31 líneas verticales del fondo de la portada: son adorno, con la misma clase de la vieja.
    La posición es fija (no al azar) para que la página se pinte igual siempre. Va con UN decimal a
@@ -432,22 +434,18 @@ export function Landing() {
             </div>
           </div>
 
-          {/* Las fotos del trabajo: son imágenes del trabajo, y el rótulo lo dice. No se afirma
-              quiénes son ni que sean el equipo del negocio. */}
+          {/* EL CIERRE DEL BLOQUE: DUBAI. Acá estaban las dos fotos de gente («IMÁGENES DEL TRABAJO»)
+              y el dueño las mandó sacar. En su lugar va el dibujo que él pidió: el Burj Khalifa al
+              centro con su juego de luces, las luces subiendo por la fachada como burbujas y las
+              ventanas de los vecinos prendiendo y apagando. El dibujo es SVG en línea y se anima con
+              CSS (`Dubai.tsx` + `dubai.css`); acá sólo se pone, con su rótulo y su línea. */}
           <div className="max-w-7xl mx-auto mt-24 md:mt-32 relative z-10">
-            <div className="grid sm:grid-cols-2 gap-6 md:gap-8">
-              {t.comoLoHacemos.gente.map((foto) => (
-                <img
-                  src={foto.imagen}
-                  alt={foto.alt}
-                  loading="lazy"
-                  className="w-full h-[240px] md:h-[340px] object-cover rounded-2xl border border-white/10"
-                  key={foto.imagen}
-                />
-              ))}
-            </div>
-            <p className="mt-5 text-[10px] font-bold tracking-[0.3em] text-gray-500 uppercase">
-              {t.comoLoHacemos.genteEtiqueta}
+            <SkylineDubai />
+            <p className="mt-6 text-[10px] font-bold tracking-[0.3em] text-purple-300 uppercase">
+              {t.comoLoHacemos.dubaiEtiqueta}
+            </p>
+            <p className="mt-3 max-w-3xl text-gray-400 text-sm md:text-base leading-relaxed">
+              {t.comoLoHacemos.dubaiTexto}
             </p>
           </div>
         </section>

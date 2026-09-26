@@ -33,8 +33,8 @@ export const PANEL = '/panel/';
  * CADA BLOQUE CON IMAGEN MUESTRA UNA PANTALLA DISTINTA DEL PANEL (nunca se repite una captura en
  * dos bloques): el bloque 4 usa investigacion, creacion y jueces; el bloque 8 usa primeros pasos. El
  * bloque 6 ya no lleva capturas: sus cinco tarjetas llevan los dibujos animados de
- * `IconosHerramientas.tsx`. Las fotos de gente son del trabajo (no son el equipo del negocio ni el
- * público real) y el bloque 5 lo dice con su rótulo.
+ * `IconosHerramientas.tsx`. El bloque 5 ya no lleva fotos: cierra con el dibujo animado de Dubai
+ * (`Dubai.tsx`), que es del dueño y no muestra ni al equipo ni al público.
  */
 import type { CualHerramienta } from './IconosHerramientas';
 
@@ -57,9 +57,6 @@ export const IMAGENES = {
   primerosPasos: '/capturas/primeros-pasos.jpg',
   /* Bloque 9 · PALABRAS DE NUESTRA CEO */
   ceo: '/ceo/maria-paula-castanos.webp',
-  /* Bloque 5 · las fotos del trabajo */
-  gente1: '/gente/gente-1.jpg',
-  gente3: '/gente/gente-3.jpg',
 } as const;
 
 type Cifra = { etiqueta: string; valor: string };
@@ -106,8 +103,10 @@ export type Contenido = {
   comoLoHacemos: {
     titulo: { uno: string; dos: string };
     etapas: Etapa[];
-    genteEtiqueta: string;
-    gente: { imagen: string; alt: string }[];
+    /* El cierre del bloque: el dibujo de Dubai (el Burj Khalifa y su juego de luces, en SVG) y las
+       dos líneas que dicen de dónde es la casa desde la que trabaja Sinkroo. */
+    dubaiEtiqueta: string;
+    dubaiTexto: string;
   };
   /* 6 · CON QUÉ TRABAJA */
   conQueTrabaja: { titulo: { uno: string; dos: string }; herramientas: Herramienta[] };
@@ -280,11 +279,12 @@ const ES: Contenido = {
         texto: 'Alcance, clics, costo por venta y el desvío del modelo contra lo que había predicho.',
       },
     ],
-    genteEtiqueta: 'IMÁGENES DEL TRABAJO',
-    gente: [
-      { imagen: IMAGENES.gente1, alt: 'Imágenes del trabajo: una sala de trabajo.' },
-      { imagen: IMAGENES.gente3, alt: 'Imágenes del trabajo: una reunión de trabajo.' },
-    ],
+    /* Acá estaban las dos fotos de gente («IMÁGENES DEL TRABAJO»). El dueño las mandó sacar y poner
+       en su lugar el dibujo animado de Dubai con el Burj Khalifa al centro. El texto dice de dónde
+       es la casa, y nada más: no promete nada del sistema. */
+    dubaiEtiqueta: 'FROM DUBAI',
+    dubaiTexto:
+      'Desde Dubai, para su negocio: Sinkroo opera desde el Dubai International Financial Centre (DIFC), en los Emiratos Árabes Unidos. El trabajo del motor corre desde ahí, todos los días.',
   },
   conQueTrabaja: {
     titulo: { uno: 'CON QUÉ', dos: 'TRABAJA' },
@@ -591,11 +591,9 @@ const EN: Contenido = {
         texto: 'Reach, clicks, cost per sale and the deviation of the model against what it had predicted.',
       },
     ],
-    genteEtiqueta: 'PICTURES OF THE WORK',
-    gente: [
-      { imagen: IMAGENES.gente1, alt: 'Pictures of the work: a work room.' },
-      { imagen: IMAGENES.gente3, alt: 'Pictures of the work: a work meeting.' },
-    ],
+    dubaiEtiqueta: 'FROM DUBAI',
+    dubaiTexto:
+      'From Dubai, for your business: Sinkroo operates from the Dubai International Financial Centre (DIFC), in the United Arab Emirates. The engine works from there, every day.',
   },
   conQueTrabaja: {
     titulo: { uno: 'WHAT IT', dos: 'WORKS WITH' },
