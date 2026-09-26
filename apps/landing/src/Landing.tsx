@@ -399,7 +399,7 @@ export function Landing() {
         </section>
 
         {/* ========================= 5 · CÓMO LO HACEMOS ========================= */}
-        <section id="como-funciona" className="relative bg-[#050505] text-white min-h-screen px-6 py-32 overflow-hidden">
+        <section id="como-funciona" className="relative bg-[#050505] text-white px-6 py-32 overflow-hidden">
           <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-purple-600/10 rounded-full blur-[120px] pointer-events-none"></div>
           <div className="absolute bottom-0 right-1/4 w-[400px] h-[400px] bg-blue-600/10 rounded-full blur-[100px] pointer-events-none"></div>
           <div className="absolute inset-0 flex items-center justify-center opacity-[0.02] pointer-events-none">
@@ -441,8 +441,11 @@ export function Landing() {
               anima con CSS (`Dubai.tsx` + `dubai.css`); acá sólo se pone.
               Va DE BORDE A BORDE y PEGADA AL PISO DEL BLOQUE: el `dubai-pleno` se sale del
               contenedor para tomar el ancho de la pantalla (la sección tiene `overflow-hidden`, así
-              que no abre scroll lateral) y el `-mb-32` se come el relleno de abajo de la sección,
-              de modo que el pie de los edificios queda justo en el borde inferior del módulo.
+              que no abre scroll lateral) y el margen negativo de `-8rem` se come el relleno de abajo
+              de la sección, de modo que el pie de los edificios queda justo en el borde inferior.
+              A esta sección se le quitó el `min-h-screen` que tenía: con un alto mínimo de una
+              pantalla, en un monitor grande sobraba aire abajo y la ciudad quedaba flotando en vez
+              de pegada al borde. Ahora el módulo mide lo que mide su contenido.
               El texto que estaba acá abajo («FROM DUBAI» y la línea del DIFC) lo mandó sacar el
               dueño. El domicilio legal sigue en el pie de la página, que es donde vive. */}
           <div className="dubai-pleno mt-24 md:mt-32 relative z-10">

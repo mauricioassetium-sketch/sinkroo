@@ -25,9 +25,12 @@
   /* El alto: en un celular de 390 px el dibujo entero dejaría la torre del tamaño de un sello, así
      que el cuadro se estira y el dibujo se recorta por los costados (`xMidYMax slice` en el SVG):
      la torre queda grande y los vecinos de las puntas se pierden, que es lo que menos importa. */
-  /* La franja: la MITAD de alta que antes (era clamp(200px, 33vw, 460px)) y, como el lienzo es
-     ancho, igual cruza la pantalla de lado a lado. */
-  height: clamp(96px, 16.5vw, 212px);
+  /* EL ALTO SALE DEL ANCHO: 16,7 vw es exactamente la proporción del lienzo (2400 de ancho por 400
+     de alto = 6 a 1), así que el dibujo entra ENTERO en cualquier pantalla. Antes el alto estaba
+     topado en 212 px: en un monitor grande el ancho seguía creciendo, el dibujo se agrandaba para
+     cubrir y se comía la punta de la torre. Con el mínimo de 96 px, en un celular queda un poco más
+     alto que su proporción y el recorte por los costados deja la torre más grande, a propósito. */
+  height: max(96px, 16.7vw);
   /* SIN BORDE Y SIN CAJA. El dibujo no vive dentro de un recuadro: flota sobre el negro de la
      página. Lo único que queda de fondo es el defumigado morado del pie, que es la luz del juego
      apoyada en el piso — se apaga solo hacia los costados y hacia arriba. */
@@ -42,15 +45,20 @@
 
 /* La ciudad de borde a borde y pegada al piso del bloque.
    · `100vw` con los márgenes que la centran: se sale del contenedor y toma el ancho de la pantalla.
-   · El `margin-bottom` negativo se come el relleno de abajo de la sección (`py-32` = 8rem), así el
-     pie de los edificios queda EN el borde inferior del módulo, sin aire de por medio.
-     OJO: acá va a mano porque las clases negativas de Tailwind (`-mb-32`) no están compiladas en
-     `viejo.css`: usarlas no haría nada. */
+   · El pie de la ciudad ES el pie del módulo: la sección no lleva relleno abajo (`padding-bottom:
+     0`), así el último pixel de los edificios cae en el borde inferior del bloque, sin aire.
+     Se hace con el relleno y no con un margen negativo a propósito: un `margin-bottom` negativo
+     encoge la caja pero NO sube el elemento, y quedaba un resto de aire abajo (32 px en el celular).
+   · OJO con Tailwind acá: las clases negativas (`-mb-32`) no están compiladas en `viejo.css`. */
 .dubai-pleno {
   width: 100vw;
   margin-left: calc(50% - 50vw);
   margin-right: calc(50% - 50vw);
-  margin-bottom: -8rem;
+}
+
+/* El módulo de «CÓMO LO HACEMOS» termina en el pie de la ciudad. */
+#como-funciona {
+  padding-bottom: 0;
 }
 
 /* ---------- los vecinos ---------- */
