@@ -621,3 +621,30 @@
     opacity: 0.45 !important;
   }
 }
+
+/* ===================================================================================================
+   SIN LUZ Y SIN COLOR. El dueño: «debe quedar 100% transparente sin luz, color etc».
+
+   · Los paneles de cada etapa dejan de tener relleno y borde: ya no hay cajas de fondo oscuro, el
+     dibujo se apoya en el fondo de la página.
+   · Se apagan los cuatro resplandores: la luz que se encendía en cada etapa, el halo del visto
+     bueno, el halo del búho y el resplandor de la foto del búho.
+   · Queda el dibujo mismo: las palabras, los iconos, el riel punteado, las flechas y las tarjetas.
+
+   Apagar no es borrar: los elementos siguen en el dibujo, sólo que no se pintan. Devolverlos es
+   borrar este bloque.
+   =================================================================================================== */
+.flujo-panel {
+  fill: none;
+  stroke: none;
+}
+
+.flujo-luz,
+.flujo-cheque-halo,
+.flujo-buho-halo {
+  display: none;
+}
+
+.flujo-buho-imagen {
+  filter: none;
+}

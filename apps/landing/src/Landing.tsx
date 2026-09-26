@@ -413,15 +413,15 @@ export function Landing() {
         </section>
 
         {/* ========================= 5 · CÓMO LO HACEMOS ========================= */}
-        <section id="como-funciona" className="relative bg-[#050505] text-white px-6 py-32 overflow-hidden">
-          {/* A este apartado se le quitaron los dos resplandores que tenía: un círculo violeta
-              (bg-purple-600/10, blur 120px) arriba a la izquierda y uno azul (bg-blue-600/10, blur
-              100px) abajo a la derecha. El dueño los mandó borrar —«elimina el color de fondo la
-              iluminacion»—: el fondo queda el negro parejo del apartado y nada más. El dibujo del
-              búho de atrás (al 2%) se queda: es un dibujo, no un color. */}
-          <div className="absolute inset-0 flex items-center justify-center opacity-[0.02] pointer-events-none">
-            <img src={IMAGENES.buho} className="w-[800px]" alt="" aria-hidden="true" />
-          </div>
+        {/* EL APARTADO MÁS DESNUDO DE TODOS, a pedido del dueño: «elimina el color de fondo la
+            iluminacion» y después «debe quedar 100% transparente sin luz, color etc». Se le quitó
+            todo lo que había detrás del dibujo, uno por uno:
+              · los dos resplandores (un círculo violeta y uno azul, con blur de 120 y 100 px);
+              · el dibujo del búho de atrás, al 2%;
+              · y su propio negro de fondo (bg-[#050505]), que ahora es transparente.
+            Lo que se ve detrás es el fondo de la página (el negro de html/body, en landing-extra.css)
+            y nada más. El dibujo del flujo se apoya ahí, sin caja. */}
+        <section id="como-funciona" className="relative text-white px-6 py-32 overflow-hidden">
 
           <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-16 md:gap-20 items-center relative z-10">
             {/* El modelo animado del flujo: trece segundos en bucle (el búho por las siete etapas). */}

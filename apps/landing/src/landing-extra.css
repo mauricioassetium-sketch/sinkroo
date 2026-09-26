@@ -696,3 +696,13 @@ body {
     font-size: 0.8125rem;
   }
 }
+
+/* ---------------------------------------------------------------------------------------------------
+   EL FONDO DE LA PÁGINA. Va acá porque el apartado 5 («Cómo lo hacemos») quedó transparente a
+   pedido del dueño —«100% transparente»— y detrás tiene que haber algo oscuro: si no, se vería el
+   blanco del navegador. Es el mismo negro que usan los apartados.
+   --------------------------------------------------------------------------------------------------- */
+html,
+body {
+  background-color: #050505;
+}
