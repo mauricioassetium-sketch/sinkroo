@@ -27,18 +27,42 @@
    ============================================================================================= */
 
 /* ---------------------------------------------------------------------------------------------
-   LOS EDIFICIOS VECINOS: 26, trece de cada lado de la torre (antes eran doce en total). Los anchos,
-   los altos y los remates salen de tres listas fijas, así que la ciudad es siempre la misma.
+   LOS EDIFICIOS VECINOS: 26, trece de cada lado de la torre.
+   CADA UNO TIENE CUERPO PROPIO, no un rectángulo con un remate encima: así se parecen a la silueta
+   de la imagen de referencia, que trae torres escalonadas que terminan en punta, techos inclinados,
+   cúpulas y un edificio con un arco calado en el medio. Las formas, los anchos y los altos salen de
+   tres listas fijas: la ciudad es siempre la misma.
    Ninguno le tapa la punta al Burj: el más alto llega a 228 y la torre pasa los 340.
    --------------------------------------------------------------------------------------------- */
-type Remate = 'plano' | 'escalonado' | 'aguja' | 'piramide' | 'redondo';
-type Edificio = { x: number; w: number; h: number; remate: Remate };
+type Forma =
+  | 'plano'
+  | 'escalonado'
+  | 'aguja'
+  | 'piramide'
+  | 'redondo'
+  | 'inclinado-derecha'
+  | 'inclinado-izquierda'
+  | 'arco';
+type Edificio = { x: number; w: number; h: number; forma: Forma };
+
+/** Qué parte del alto es de ancho completo. Arriba de eso la forma se angosta (o se inclina, o tiene
+ *  el hueco del arco), así que ahí no se ponen ventanas: quedarían flotando fuera del edificio. */
+const ANCHO_COMPLETO: Record<Forma, number> = {
+  plano: 0.94,
+  escalonado: 0.56,
+  aguja: 0.84,
+  piramide: 0.8,
+  redondo: 0.86,
+  'inclinado-derecha': 0.6,
+  'inclinado-izquierda': 0.6,
+  arco: 0.48,
+};
 
 const ANCHOS = [72, 54, 90, 62, 84, 48, 78, 66, 96, 58, 70, 52, 88];
 const ALTOS = [120, 186, 96, 228, 140, 86, 168, 110, 200, 92, 154, 128, 210];
-const REMATES: Remate[] = [
-  'escalonado', 'plano', 'redondo', 'aguja', 'plano', 'piramide', 'aguja',
-  'plano', 'escalonado', 'redondo', 'piramide', 'plano', 'redondo',
+const FORMAS: Forma[] = [
+  'escalonado', 'plano', 'redondo', 'inclinado-derecha', 'aguja', 'plano', 'escalonado',
+  'arco', 'plano', 'piramide', 'inclinado-izquierda', 'aguja', 'plano',
 ];
 const HUECO = 14;
 const LIENZO = 2400;
@@ -50,7 +74,7 @@ function fila(lado: 'izq' | 'der'): Edificio[] {
     let x = 16;
     for (let i = 0; i < ANCHOS.length; i++) {
       const w = ANCHOS[i];
-      out.push({ x, w, h: ALTOS[(i + 3) % ALTOS.length], remate: REMATES[i] });
+      out.push({ x, w, h: ALTOS[(i + 3) % ALTOS.length], forma: FORMAS[i] });
       x += w + HUECO;
     }
   } else {
@@ -58,7 +82,7 @@ function fila(lado: 'izq' | 'der'): Edificio[] {
     for (let i = 0; i < ANCHOS.length; i++) {
       const w = ANCHOS[(i + 7) % ANCHOS.length];
       x -= w;
-      out.push({ x, w, h: ALTOS[(i + 5) % ALTOS.length], remate: REMATES[(i + 2) % REMATES.length] });
+      out.push({ x, w, h: ALTOS[(i + 5) % ALTOS.length], forma: FORMAS[(i + 2) % FORMAS.length] });
       x -= HUECO;
     }
   }
@@ -71,46 +95,121 @@ const VECINOS: Edificio[] = [...fila('izq'), ...fila('der')];
  *  ciudad queda pegada al piso del bloque, sin aire debajo. */
 const PISO = 396;
 
-/** El remate de un vecino: lo que le da carácter. Va encima del cuerpo. */
-function Remate({ edificio }: { edificio: Edificio }) {
-  const { x, w, h, remate } = edificio;
-  const y = PISO - h;
+/** EL CUERPO DE UN VECINO, según su forma. Todos se apoyan en el piso y todos son una sola pieza. */
+function Cuerpo({ edificio }: { edificio: Edificio }) {
+  const { x, w, h, forma } = edificio;
+  const arriba = PISO - h;
   const medio = x + w / 2;
+  const derecha = x + w;
 
-  if (remate === 'escalonado') {
+  if (forma === 'aguja') {
+    /* El cuerpo recto y una aguja fina, con su lucecita arriba. */
     return (
-      <g className="dubai-remate">
-        <rect x={x + w * 0.2} y={y - 6} width={w * 0.6} height={6} rx={1.2} />
-        <rect x={x + w * 0.36} y={y - 11} width={w * 0.28} height={5} rx={1.2} />
-      </g>
+      <>
+        <rect className="dubai-cuerpo" x={x} y={arriba + h * 0.16} width={w} height={h * 0.84} rx={2} />
+        <rect className="dubai-cuerpo" x={medio - w * 0.06} y={arriba} width={w * 0.12} height={h * 0.2} rx={1} />
+        <circle className="dubai-luz-remate" cx={medio} cy={arriba - 3} r={2} />
+      </>
     );
   }
-  if (remate === 'aguja') {
+
+  if (forma === 'escalonado') {
+    /* Tres cuerpos que se angostan y una punta: la torre escalonada de la referencia. */
+    const y1 = PISO - h * 0.56;
+    const y2 = PISO - h * 0.82;
+    const y3 = PISO - h * 0.94;
+    const w2 = w * 0.72;
+    const w3 = w * 0.44;
+    const x2 = x + (w - w2) / 2;
+    const x3 = x + (w - w3) / 2;
     return (
-      <g className="dubai-remate">
-        <rect x={medio - 1} y={y - 20} width={2} height={20} rx={1} />
-        <circle className="dubai-luz-remate" cx={medio} cy={y - 21} r={1.8} />
-      </g>
+      <path
+        className="dubai-cuerpo"
+        d={
+          `M ${x},${PISO} L ${x},${y1} L ${x2},${y1} L ${x2},${y2} L ${x3},${y2} L ${x3},${y3} ` +
+          `L ${medio - w * 0.09},${y3} L ${medio},${arriba} L ${medio + w * 0.09},${y3} ` +
+          `L ${x3 + w3},${y3} L ${x3 + w3},${y2} L ${x2 + w2},${y2} L ${x2 + w2},${y1} ` +
+          `L ${derecha},${y1} L ${derecha},${PISO} Z`
+        }
+      />
     );
   }
-  if (remate === 'piramide') {
-    return <polygon className="dubai-remate" points={`${x + 2},${y} ${medio},${y - 15} ${x + w - 2},${y}`} />;
+
+  if (forma === 'piramide') {
+    /* Cuerpo y punta triangular. */
+    const y = PISO - h * 0.8;
+    return (
+      <path
+        className="dubai-cuerpo"
+        d={`M ${x},${PISO} L ${x},${y} L ${x + w * 0.14},${y} L ${medio},${arriba} ` +
+           `L ${x + w * 0.86},${y} L ${derecha},${y} L ${derecha},${PISO} Z`}
+      />
+    );
   }
-  if (remate === 'redondo') {
-    return <path className="dubai-remate" d={`M ${x},${y + 10} Q ${medio},${y - 16} ${x + w},${y + 10} Z`} />;
+
+  if (forma === 'redondo') {
+    /* Cuerpo y cúpula. La cúpula ocupa un quinto del alto y los puntos de control van afuera del
+       filo para que redondee de verdad: con la curva pegada al borde se veía como un techo recto. */
+    const y = PISO - h * 0.8;
+    const cima = arriba;
+    return (
+      <path
+        className="dubai-cuerpo"
+        d={`M ${x},${PISO} L ${x},${y} Q ${x - w * 0.06},${cima} ${medio},${cima} ` +
+           `Q ${derecha + w * 0.06},${cima} ${derecha},${y} L ${derecha},${PISO} Z`}
+      />
+    );
   }
-  return null;
+
+  if (forma === 'inclinado-derecha') {
+    /* Techo que baja hacia la derecha. */
+    return (
+      <path
+        className="dubai-cuerpo"
+        d={`M ${x},${PISO} L ${x},${arriba} L ${derecha},${PISO - h * 0.6} L ${derecha},${PISO} Z`}
+      />
+    );
+  }
+
+  if (forma === 'inclinado-izquierda') {
+    /* Techo que baja hacia la izquierda. */
+    return (
+      <path
+        className="dubai-cuerpo"
+        d={`M ${x},${PISO - h * 0.6} L ${derecha},${arriba} L ${derecha},${PISO} L ${x},${PISO} Z`}
+      />
+    );
+  }
+
+  if (forma === 'arco') {
+    /* El cuerpo con un arco calado en el medio (el hueco se dibuja al revés y con `evenodd`). */
+    const hueco = `M ${x + w * 0.28},${arriba + h * 0.12} L ${x + w * 0.72},${arriba + h * 0.12} ` +
+                  `L ${x + w * 0.72},${arriba + h * 0.42} L ${x + w * 0.28},${arriba + h * 0.42} Z`;
+    return (
+      <path
+        className="dubai-cuerpo"
+        fillRule="evenodd"
+        d={`M ${x},${PISO} L ${x},${arriba} L ${derecha},${arriba} L ${derecha},${PISO} Z ${hueco}`}
+      />
+    );
+  }
+
+  /* plano */
+  return <rect className="dubai-cuerpo" x={x} y={arriba} width={w} height={h} rx={2} />;
 }
 
 /* ---------------------------------------------------------------------------------------------
-   LAS VENTANAS DE UN VECINO. Una columna cada 18 y un piso cada 16, siempre con su borde. El
-   retardo sale de la posición (nunca al azar): cuanto más a la derecha está el edificio, más tarde
-   prende, y así la ola cruza la ciudad de un costado al otro, como el haz que la enciende.
+   LAS VENTANAS DE UN VECINO. Una columna cada 18 y un piso cada 16, siempre con su borde, y sólo
+   hasta donde el edificio es de ancho completo (arriba de eso la forma se angosta y las ventanas
+   quedarían flotando afuera). El retardo sale de la posición, nunca al azar: cuanto más a la derecha
+   está el edificio, más tarde prende, y así la ola cruza la ciudad de un costado al otro, como el
+   haz que la enciende.
    --------------------------------------------------------------------------------------------- */
 function Ventanas({ edificio, indice }: { edificio: Edificio; indice: number }) {
-  const { x, w, h } = edificio;
+  const { x, w, h, forma } = edificio;
   const columnas = Math.max(1, Math.floor((w - 14) / 18));
-  const filas = Math.max(1, Math.floor((h - 22) / 16));
+  const altoUtil = h * ANCHO_COMPLETO[forma];
+  const filas = Math.max(1, Math.floor((altoUtil - 18) / 16));
   const ancho = 7;
   const alto = 8;
   const separacion = 18;
@@ -135,15 +234,7 @@ function Ventanas({ edificio, indice }: { edificio: Edificio; indice: number }) 
 
   return (
     <g className="dubai-edificio">
-      <rect
-        className="dubai-cuerpo"
-        x={x}
-        y={PISO - h}
-        width={w}
-        height={h}
-        rx={edificio.remate === 'redondo' ? 7 : 2}
-      />
-      <Remate edificio={edificio} />
+      <Cuerpo edificio={edificio} />
       {ventanas.map((v, i) => (
         <rect
           key={`v-${indice}-${i}`}

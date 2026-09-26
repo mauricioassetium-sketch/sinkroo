@@ -67,12 +67,9 @@
   stroke: rgba(168, 85, 247, 0.22);
   stroke-width: 0.7;
 }
-/* El remate de cada vecino (escalones, aguja, punta o cúpula) y la lucecita de la aguja. */
-.dubai-remate {
-  fill: #1b1529;
-  stroke: rgba(192, 132, 252, 0.3);
-  stroke-width: 0.7;
-}
+/* La lucecita de la aguja. (Los remates sueltos ya no existen: ahora cada edificio es una sola
+   pieza con su forma —escalonada, en punta, inclinada, con cúpula o con arco— y la pinta
+   `.dubai-cuerpo`, la misma de los cuerpos rectos.) */
 .dubai-luz-remate {
   fill: #f5e8ff;
   animation: dubaiAguja 3.4s ease-in-out infinite both;
