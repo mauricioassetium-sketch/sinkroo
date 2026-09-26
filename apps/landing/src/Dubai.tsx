@@ -1,67 +1,75 @@
 /* =============================================================================================
    DUBAI — EL BURJ KHALIFA Y SU JUEGO DE LUCES, DIBUJADO Y ANIMADO EN SVG.
 
-   Reemplaza a las dos fotos de gente que estaban al final del bloque 5 (`IMÁGENES DEL TRABAJO`)
-   y cuenta de dónde es la casa desde la que trabaja Sinkroo.
+   El cierre del bloque 5 (`COMO LO HACEMOS`), donde antes estaban las dos fotos de gente.
+
+   POR QUÉ EL LIENZO ES TAN ANCHO (2400 x 400):
+     El dibujo tiene que entrar en una franja baja y, al mismo tiempo, cruzar la pantalla de lado a
+     lado. Si el lienzo fuera cuadrado, al bajarlo de alto el dibujo se agrandaría y se recortaría
+     por arriba (o dejaría de llegar a los costados). Con un lienzo de 6 a 1 las dos cosas pasan
+     juntas: en un monitor de 1280 px la franja mide 1280x211 (6,06 de proporción) y entra casi
+     exacta; en un celular de 390 px se ve la parte del medio, con la torre y los vecinos vecinos.
 
    CÓMO ESTÁ HECHO (y por qué así):
-     · ES UN DIBUJO, NO UNA FOTO: todo son formas de SVG. No hay ni una imagen remota y nada se
-       carga desde afuera.
-     · NADA DE JAVASCRIPT: son relojes de CSS. El aparato no tiene un `useEffect` que mueva nada
-       (la página se pinta igual siempre, y sin JS se ve el dibujo quieto y encendido).
-     · LAS POSICIONES SON FIJAS, escritas a mano o sacadas de una cuenta: nunca al azar. Así el
-       dibujo se ve igual en todas las visitas — es la misma regla que usan las 31 líneas del
-       fondo de la portada.
+     · ES UN DIBUJO, NO UNA FOTO: todo son formas de SVG. No hay imágenes remotas.
+     · NADA DE JAVASCRIPT: son relojes de CSS. Sin JS se ve el dibujo quieto y encendido.
+     · LAS POSICIONES SON FIJAS, sacadas de listas escritas a mano: nunca al azar. Así el dibujo se
+       ve igual en todas las visitas — la misma regla de las 31 líneas de la portada.
      · LA LÓGICA DEL JUEGO DE LUCES ES LA DEL BURJ KHALIFA DE VERDAD:
-         1. La fachada completa es una pantalla de luces: la luz SUBE por el edificio. Por eso las
-            franjas de la torre y las burbujas van de abajo hacia arriba, en orden.
-         2. El edificio se ve de noche por las ventanas encendidas: los vecinos prenden y apagan
-            ventanas de a una, nunca de golpe. En Dubai hay ventanas que se quedan fijas toda la
-            noche, y acá también: una de cada tres.
-         3. El juego termina en los HACES: salen de la torre, barren la ciudad de un costado al otro
-            y se apagan. Cada haz deja su mancha de luz en el piso contra los vecinos, y las ventanas
-            prenden cuando la ola del haz les pasa por encima (por eso el retardo de cada ventana
-            sale de su posición: la ola no es un adorno, es el haz).
-     · `prefers-reduced-motion` (o quien tenga el movimiento apagado en su sistema): el dibujo queda
-       quieto y con la ciudad ENCENDIDA — nunca un cuadro vacío ni apagado.
-
-   El tamaño: un `viewBox` de 1000x380. En `dubai.css` el dibujo se estira en el celular
-   (`preserveAspectRatio="xMidYMax slice"` + un alto mínimo), porque a 390 px de ancho la torre
-   quedaría del tamaño de un sello.
+         1. La fachada es una pantalla: la luz SUBE. Una ola recorre la torre de abajo hacia arriba
+            y las franjas prenden en orden, de la primera a la última.
+         2. La ciudad se ve por las ventanas encendidas: prenden y apagan de a una, en olas que
+            cruzan de un costado al otro (el retardo sale de la posición). Una de cada dos queda
+            fija toda la noche, como en Dubai.
+         3. El juego termina en los HACES: salen de la torre, barren la ciudad y dejan su mancha de
+            luz contra los vecinos, que es lo que los alumbra.
+     · `prefers-reduced-motion`: el dibujo queda quieto y con la ciudad ENCENDIDA.
    ============================================================================================= */
 
 /* ---------------------------------------------------------------------------------------------
-   LOS EDIFICIOS VECINOS. Cada uno es un ancho, un alto, su lugar en la fila y su remate: no todos
-   terminan igual, porque una ciudad de cajas idénticas no se ve como una ciudad.
-   Las alturas están pensadas para que NINGUNO le tape la punta al Burj: el más alto de los vecinos
-   llega a 236 y la torre pasa los 330.
-   La fila de la izquierda termina antes de la torre (x 462) y la de la derecha arranca después
-   (x 538): la torre queda en el hueco, que es como se ve desde el DIFC.
+   LOS EDIFICIOS VECINOS: 26, trece de cada lado de la torre (antes eran doce en total). Los anchos,
+   los altos y los remates salen de tres listas fijas, así que la ciudad es siempre la misma.
+   Ninguno le tapa la punta al Burj: el más alto llega a 228 y la torre pasa los 340.
    --------------------------------------------------------------------------------------------- */
 type Remate = 'plano' | 'escalonado' | 'aguja' | 'piramide' | 'redondo';
 type Edificio = { x: number; w: number; h: number; remate: Remate };
 
-const VECINOS: Edificio[] = [
-  // la fila de la izquierda
-  { x: 18, w: 70, h: 108, remate: 'escalonado' },
-  { x: 96, w: 56, h: 182, remate: 'plano' },
-  { x: 160, w: 82, h: 96, remate: 'redondo' },
-  { x: 250, w: 64, h: 222, remate: 'aguja' },
-  { x: 322, w: 74, h: 144, remate: 'plano' },
-  { x: 404, w: 50, h: 88, remate: 'piramide' },
-  // la fila de la derecha
-  { x: 546, w: 52, h: 92, remate: 'redondo' },
-  { x: 606, w: 76, h: 158, remate: 'escalonado' },
-  { x: 690, w: 60, h: 236, remate: 'aguja' },
-  { x: 758, w: 84, h: 104, remate: 'plano' },
-  { x: 850, w: 64, h: 182, remate: 'piramide' },
-  { x: 922, w: 68, h: 126, remate: 'escalonado' },
+const ANCHOS = [72, 54, 90, 62, 84, 48, 78, 66, 96, 58, 70, 52, 88];
+const ALTOS = [120, 186, 96, 228, 140, 86, 168, 110, 200, 92, 154, 128, 210];
+const REMATES: Remate[] = [
+  'escalonado', 'plano', 'redondo', 'aguja', 'plano', 'piramide', 'aguja',
+  'plano', 'escalonado', 'redondo', 'piramide', 'plano', 'redondo',
 ];
+const HUECO = 14;
+const LIENZO = 2400;
 
-/** El piso donde se apoyan todos (y donde llegan los haces). Va casi al borde de abajo del cuadro
- *  (el `viewBox` mide 380 de alto) para que la ciudad quede PEGADA a la línea del texto de abajo:
- *  antes quedaba un hueco de aire entre el pie de los edificios y el rótulo. */
-const PISO = 375;
+/** La fila de un costado: se arma de la punta hacia la torre, con las tres listas y un hueco fijo. */
+function fila(lado: 'izq' | 'der'): Edificio[] {
+  const out: Edificio[] = [];
+  if (lado === 'izq') {
+    let x = 16;
+    for (let i = 0; i < ANCHOS.length; i++) {
+      const w = ANCHOS[i];
+      out.push({ x, w, h: ALTOS[(i + 3) % ALTOS.length], remate: REMATES[i] });
+      x += w + HUECO;
+    }
+  } else {
+    let x = LIENZO - 16;
+    for (let i = 0; i < ANCHOS.length; i++) {
+      const w = ANCHOS[(i + 7) % ANCHOS.length];
+      x -= w;
+      out.push({ x, w, h: ALTOS[(i + 5) % ALTOS.length], remate: REMATES[(i + 2) % REMATES.length] });
+      x -= HUECO;
+    }
+  }
+  return out;
+}
+
+const VECINOS: Edificio[] = [...fila('izq'), ...fila('der')];
+
+/** El piso donde se apoyan todos (y donde llegan los haces). Va al borde de abajo del lienzo: la
+ *  ciudad queda pegada al piso del bloque, sin aire debajo. */
+const PISO = 396;
 
 /** El remate de un vecino: lo que le da carácter. Va encima del cuerpo. */
 function Remate({ edificio }: { edificio: Edificio }) {
@@ -72,57 +80,55 @@ function Remate({ edificio }: { edificio: Edificio }) {
   if (remate === 'escalonado') {
     return (
       <g className="dubai-remate">
-        <rect x={x + w * 0.2} y={y - 8} width={w * 0.6} height={8} rx={1.5} />
-        <rect x={x + w * 0.36} y={y - 15} width={w * 0.28} height={7} rx={1.5} />
+        <rect x={x + w * 0.2} y={y - 6} width={w * 0.6} height={6} rx={1.2} />
+        <rect x={x + w * 0.36} y={y - 11} width={w * 0.28} height={5} rx={1.2} />
       </g>
     );
   }
   if (remate === 'aguja') {
     return (
       <g className="dubai-remate">
-        <rect x={medio - 1.2} y={y - 26} width={2.4} height={26} rx={1.2} />
-        <circle className="dubai-luz-remate" cx={medio} cy={y - 27} r={2.2} />
+        <rect x={medio - 1} y={y - 20} width={2} height={20} rx={1} />
+        <circle className="dubai-luz-remate" cx={medio} cy={y - 21} r={1.8} />
       </g>
     );
   }
   if (remate === 'piramide') {
-    return <polygon className="dubai-remate" points={`${x + 2},${y} ${medio},${y - 20} ${x + w - 2},${y}`} />;
+    return <polygon className="dubai-remate" points={`${x + 2},${y} ${medio},${y - 15} ${x + w - 2},${y}`} />;
   }
   if (remate === 'redondo') {
-    return <path className="dubai-remate" d={`M ${x},${y + 14} Q ${medio},${y - 22} ${x + w},${y + 14} Z`} />;
+    return <path className="dubai-remate" d={`M ${x},${y + 10} Q ${medio},${y - 16} ${x + w},${y + 10} Z`} />;
   }
   return null;
 }
 
 /* ---------------------------------------------------------------------------------------------
-   LAS VENTANAS DE UN VECINO. Se reparten solas: una columna cada 16 y un piso cada 20, dejando un
-   borde. Cada ventana lleva su propio retardo, y ese retardo sale de la posición (nunca al azar):
-   cuanto más a la derecha está el edificio, más tarde prende — así la ola cruza la ciudad de un
-   costado al otro, igual que el haz.
+   LAS VENTANAS DE UN VECINO. Una columna cada 18 y un piso cada 16, siempre con su borde. El
+   retardo sale de la posición (nunca al azar): cuanto más a la derecha está el edificio, más tarde
+   prende, y así la ola cruza la ciudad de un costado al otro, como el haz que la enciende.
    --------------------------------------------------------------------------------------------- */
 function Ventanas({ edificio, indice }: { edificio: Edificio; indice: number }) {
   const { x, w, h } = edificio;
-  const columnas = Math.max(1, Math.floor((w - 16) / 16));
-  const filas = Math.max(1, Math.floor((h - 24) / 20));
-  const ancho = 8;
-  const alto = 10;
-  const separacion = 16;
+  const columnas = Math.max(1, Math.floor((w - 14) / 18));
+  const filas = Math.max(1, Math.floor((h - 22) / 16));
+  const ancho = 7;
+  const alto = 8;
+  const separacion = 18;
   const sobra = w - columnas * separacion;
   const ventanas: { x: number; y: number; retardo: string; fija: boolean }[] = [];
 
   for (let fila = 0; fila < filas; fila++) {
     for (let col = 0; col < columnas; col++) {
       const i = fila * columnas + col;
-      // El retardo: manda la posición horizontal (la ola) y la ayudan el piso y la columna para que
-      // no se enciendan todas juntas. Todo con cuentas fijas.
-      const t = (indice * 0.85 + fila * 0.22 + col * 0.13) % 9;
+      const t = (indice * 0.42 + fila * 0.17 + col * 0.11) % 9;
       ventanas.push({
         x: x + sobra / 2 + col * separacion + 3,
-        y: PISO - 12 - fila * 20,
+        y: PISO - 10 - fila * 16,
         retardo: `${t.toFixed(2)}s`,
-        // Una de cada tres ventanas queda FIJA, en su luz de noche: una ciudad donde todas titilan es
-        // una feria. Además baja el trabajo del navegador sin que se note.
-        fija: i % 3 === 2,
+        // Dos de cada tres ventanas quedan FIJAS en su luz de noche: con 26 edificios y casi 500
+        // ventanas, si titilaran todas la ciudad se vería como una feria y el navegador tendría tres
+        // veces más trabajo. Las que titilan alcanzan de sobra para que la ciudad se vea viva.
+        fija: i % 3 !== 0,
       });
     }
   }
@@ -135,7 +141,7 @@ function Ventanas({ edificio, indice }: { edificio: Edificio; indice: number }) 
         y={PISO - h}
         width={w}
         height={h}
-        rx={edificio.remate === 'redondo' ? 8 : 2}
+        rx={edificio.remate === 'redondo' ? 7 : 2}
       />
       <Remate edificio={edificio} />
       {ventanas.map((v, i) => (
@@ -155,63 +161,63 @@ function Ventanas({ edificio, indice }: { edificio: Edificio; indice: number }) 
 }
 
 /* ---------------------------------------------------------------------------------------------
-   LA TORRE. El perfil del Burj Khalifa, simplificado a sus seis cuerpos y la aguja: cada cuerpo es
-   más angosto que el de abajo, que es lo que hace que se reconozca de una.
-   Encima del perfil van las dos cosas que se mueven:
-     · LAS FRANJAS: la fachada es una pantalla, así que las franjas prenden de abajo hacia arriba.
-     · LAS BURBUJAS: la luz que sube por el edificio, como en el juego de luces de verdad.
+   LA TORRE. El perfil del Burj Khalifa: sus seis cuerpos y la aguja, cada cuerpo más angosto que el
+   de abajo, que es lo que hace que se reconozca de una. Va en el medio del lienzo (x 1200).
+   Encima del perfil van las dos cosas que se mueven: las FRANJAS de la fachada (prenden de abajo
+   hacia arriba) y las BURBUJAS (la luz que sube por el edificio).
    --------------------------------------------------------------------------------------------- */
 const PERFIL =
-  'M 462,372 L 462,300 L 472,300 L 472,236 L 481,236 L 481,168 L 489,168 L 489,108 L 496,108 ' +
-  'L 499,72 L 500,26 L 501,72 L 504,108 L 511,108 L 511,168 L 519,168 L 519,236 L 528,236 ' +
-  'L 528,300 L 538,300 L 538,372 Z';
+  'M 1160,396 L 1160,324 L 1170,324 L 1170,260 L 1179,260 L 1179,192 L 1187,192 L 1187,132 ' +
+  'L 1194,132 L 1197,96 L 1200,50 L 1203,96 L 1206,132 L 1213,132 L 1213,192 L 1221,192 ' +
+  'L 1221,260 L 1230,260 L 1230,324 L 1240,324 L 1240,396 Z';
 
 /** Las franjas de la fachada: su ancho acompaña el del cuerpo de la torre a esa altura. */
 const FRANJAS: { y: number; w: number }[] = [
-  { y: 350, w: 68 },
-  { y: 318, w: 64 },
-  { y: 286, w: 60 },
-  { y: 254, w: 54 },
-  { y: 222, w: 50 },
-  { y: 190, w: 44 },
-  { y: 158, w: 38 },
-  { y: 126, w: 32 },
-  { y: 96, w: 24 },
-  { y: 66, w: 16 },
+  { y: 374, w: 68 },
+  { y: 342, w: 64 },
+  { y: 310, w: 60 },
+  { y: 278, w: 54 },
+  { y: 246, w: 50 },
+  { y: 214, w: 44 },
+  { y: 182, w: 38 },
+  { y: 150, w: 32 },
+  { y: 118, w: 24 },
+  { y: 88, w: 16 },
 ];
 
 /** Las burbujas que suben por la fachada: su x y su hora de salida, fijas. */
 const BURBUJAS: { x: number; retardo: number; r: number }[] = [
-  { x: 500, retardo: 0.0, r: 6.2 },
-  { x: 489, retardo: 0.6, r: 4.6 },
-  { x: 511, retardo: 1.2, r: 5.2 },
-  { x: 495, retardo: 1.8, r: 3.8 },
-  { x: 506, retardo: 2.4, r: 5.8 },
-  { x: 486, retardo: 3.0, r: 4.2 },
-  { x: 514, retardo: 3.6, r: 4.8 },
-  { x: 500, retardo: 4.2, r: 5.6 },
+  { x: 1200, retardo: 0.0, r: 5.6 },
+  { x: 1191, retardo: 0.6, r: 4.2 },
+  { x: 1209, retardo: 1.2, r: 4.8 },
+  { x: 1196, retardo: 1.8, r: 3.6 },
+  { x: 1204, retardo: 2.4, r: 5.2 },
+  { x: 1189, retardo: 3.0, r: 3.8 },
+  { x: 1211, retardo: 3.6, r: 4.4 },
+  { x: 1200, retardo: 4.2, r: 5.0 },
 ];
 
 /* ---------------------------------------------------------------------------------------------
-   LOS HACES. Salen de la torre (de dos alturas, como en el juego real) y bajan hasta el piso del
-   otro lado de los vecinos. Adentro del grupo cada uno tiene su hora y todos juntos barren de un
-   costado al otro. Duran lo suficiente para que siempre haya alguno prendido: con destellos de un
-   instante el juego de luces no se lee.
+   LOS HACES. Ocho, salen de la torre a dos alturas y bajan hasta el piso del otro lado de los
+   vecinos: con la ciudad el doble de ancha hacían falta más para que la barran entera. Cada uno
+   deja su mancha de luz contra los vecinos, que es lo que los alumbra.
    --------------------------------------------------------------------------------------------- */
 const HACES: { x: number; desde: number; retardo: number }[] = [
-  { x: 60, desde: 58, retardo: 0.0 },
-  { x: 190, desde: 150, retardo: 0.9 },
-  { x: 330, desde: 58, retardo: 1.8 },
-  { x: 670, desde: 58, retardo: 2.7 },
-  { x: 810, desde: 150, retardo: 3.6 },
-  { x: 950, desde: 58, retardo: 4.5 },
+  { x: 120, desde: 80, retardo: 0.0 },
+  { x: 420, desde: 190, retardo: 0.7 },
+  { x: 700, desde: 80, retardo: 1.4 },
+  { x: 980, desde: 190, retardo: 2.1 },
+  { x: 1420, desde: 190, retardo: 2.8 },
+  { x: 1700, desde: 80, retardo: 3.5 },
+  { x: 1980, desde: 190, retardo: 4.2 },
+  { x: 2280, desde: 80, retardo: 4.9 },
 ];
 
 export function SkylineDubai() {
   return (
     <svg
       className="dubai"
-      viewBox="0 0 1000 380"
+      viewBox="0 0 2400 400"
       role="img"
       aria-label="Dubai de noche: el Burj Khalifa en el centro con su juego de luces, los haces barriendo la ciudad y los edificios de los costados con las ventanas encendidas."
       preserveAspectRatio="xMidYMax slice"
@@ -251,26 +257,24 @@ export function SkylineDubai() {
       </defs>
 
       {/* El resplandor del piso, detrás de todo. */}
-      <rect x="0" y="150" width="1000" height="230" fill="url(#dubai-base)" />
+      <rect x="0" y="160" width="2400" height="240" fill="url(#dubai-base)" />
 
-      {/* LOS VECINOS: primero los de la izquierda, después los de la derecha, para que el retardo de
-          las ventanas corra de un costado al otro. */}
+      {/* LOS VECINOS: primero la fila de la izquierda, después la de la derecha, para que el retardo
+          de las ventanas corra de un costado al otro. */}
       {VECINOS.map((e, i) => (
         <Ventanas key={`vecino-${i}`} edificio={e} indice={i} />
       ))}
 
-      {/* LA TORRE, con sus franjas y sus burbujas. Va última de las siluetas: queda por delante. */}
+      {/* LA TORRE, con sus franjas y sus burbujas. Va después de las siluetas: queda por delante. */}
       <g className="dubai-torre-g">
         <path className="dubai-perfil" d={PERFIL} fill="url(#dubai-torre)" />
-        {/* LA OLA: la luz que sube por la fachada de un tirón, del pie a la punta. Es el efecto que
-            más se reconoce del juego de luces del Burj Khalifa y el que pidió el dueño («de abajo
-            para arriba como burbujas»). Va encima del perfil y debajo de las franjas. */}
-        <rect className="dubai-ola" x={466} y={372} width={68} height={14} rx={7} />
+        {/* LA OLA: la luz que sube por la fachada de un tirón, del pie a la punta. */}
+        <rect className="dubai-ola" x={1166} y={PISO - 2} width={68} height={14} rx={7} />
         {FRANJAS.map((f, i) => (
           <rect
             key={`franja-${i}`}
             className="dubai-franja"
-            x={500 - f.w / 2}
+            x={1200 - f.w / 2}
             y={f.y}
             width={f.w}
             height={4.4}
@@ -279,7 +283,7 @@ export function SkylineDubai() {
           />
         ))}
         {/* La aguja: la punta que titila. */}
-        <circle className="dubai-aguja" cx={500} cy={22} r={3.4} />
+        <circle className="dubai-aguja" cx={1200} cy={46} r={3.2} />
         {BURBUJAS.map((b, i) => (
           <circle
             key={`burbuja-${i}`}
@@ -292,22 +296,22 @@ export function SkylineDubai() {
         ))}
       </g>
 
-      {/* LOS HACES. El grupo entero barre de un costado al otro (esa es la parte que se mueve de
-          verdad en el juego de luces) y adentro cada haz tiene su hora, con su mancha en el piso. */}
+      {/* LOS HACES. El grupo entero barre de un costado al otro (con la torre como eje) y adentro
+          cada haz tiene su hora, con su mancha de luz en el piso. */}
       <g className="dubai-haces" filter="url(#dubai-brillo)">
         {HACES.map((h, i) => (
           <g key={`haz-${i}`} className="dubai-haz" style={{ animationDelay: `${h.retardo}s` }}>
             <polygon
-              points={`500,${h.desde} ${h.x - 22},${PISO + 4} ${h.x + 22},${PISO + 4}`}
+              points={`1200,${h.desde} ${h.x - 26},${PISO + 4} ${h.x + 26},${PISO + 4}`}
               fill="url(#dubai-haz)"
             />
-            <ellipse cx={h.x} cy={PISO + 1} rx={46} ry={12} fill="url(#dubai-mancha)" />
+            <ellipse cx={h.x} cy={PISO + 1} rx={56} ry={13} fill="url(#dubai-mancha)" />
           </g>
         ))}
       </g>
 
-      {/* El piso: una línea de un pelo, para que la ciudad no quede flotando. */}
-      <rect className="dubai-piso" x="0" y={PISO} width="1000" height="1" />
+      {/* El piso: una línea de un pelo, al borde de abajo del lienzo. */}
+      <rect className="dubai-piso" x="0" y={PISO} width="2400" height="1.4" />
     </svg>
   );
 }

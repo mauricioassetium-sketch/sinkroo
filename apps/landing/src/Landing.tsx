@@ -434,26 +434,19 @@ export function Landing() {
             </div>
           </div>
 
-          {/* EL CIERRE DEL BLOQUE: DUBAI. Acá estaban las dos fotos de gente («IMÁGENES DEL TRABAJO»)
-              y el dueño las mandó sacar. En su lugar va el dibujo que él pidió: el Burj Khalifa al
-              centro con su juego de luces, las luces subiendo por la fachada como burbujas y las
-              ventanas de los vecinos prendiendo y apagando. El dibujo es SVG en línea y se anima con
-              CSS (`Dubai.tsx` + `dubai.css`); acá sólo se pone, con su rótulo y su línea. */}
-          <div className="mt-24 md:mt-32 relative z-10">
-            {/* LA CIUDAD, DE BORDE A BORDE. El dibujo se sale del contenedor y toma el ancho de la
-                pantalla; el texto de abajo se queda dentro del mismo ancho que el resto de la
-                página. La sección tiene `overflow-hidden`, así que esto no abre scroll lateral. */}
-            <div className="dubai-pleno">
-              <SkylineDubai />
-            </div>
-            <div className="max-w-7xl mx-auto">
-              <p className="mt-2 text-[10px] font-bold tracking-[0.3em] text-purple-300 uppercase">
-                {t.comoLoHacemos.dubaiEtiqueta}
-              </p>
-              <p className="mt-3 max-w-3xl text-gray-400 text-sm md:text-base leading-relaxed">
-                {t.comoLoHacemos.dubaiTexto}
-              </p>
-            </div>
+          {/* EL CIERRE DEL BLOQUE: LA CIUDAD DE DUBAI. Acá estaban las dos fotos de gente
+              («IMÁGENES DEL TRABAJO») y el dueño las mandó sacar. En su lugar va el dibujo que él
+              pidió: el Burj Khalifa con su juego de luces, la luz subiendo por la fachada como
+              burbujas y las ventanas de los vecinos prendiendo y apagando. Es SVG en línea y se
+              anima con CSS (`Dubai.tsx` + `dubai.css`); acá sólo se pone.
+              Va DE BORDE A BORDE y PEGADA AL PISO DEL BLOQUE: el `dubai-pleno` se sale del
+              contenedor para tomar el ancho de la pantalla (la sección tiene `overflow-hidden`, así
+              que no abre scroll lateral) y el `-mb-32` se come el relleno de abajo de la sección,
+              de modo que el pie de los edificios queda justo en el borde inferior del módulo.
+              El texto que estaba acá abajo («FROM DUBAI» y la línea del DIFC) lo mandó sacar el
+              dueño. El domicilio legal sigue en el pie de la página, que es donde vive. */}
+          <div className="dubai-pleno mt-24 md:mt-32 relative z-10">
+            <SkylineDubai />
           </div>
         </section>
 

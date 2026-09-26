@@ -25,7 +25,9 @@
   /* El alto: en un celular de 390 px el dibujo entero dejaría la torre del tamaño de un sello, así
      que el cuadro se estira y el dibujo se recorta por los costados (`xMidYMax slice` en el SVG):
      la torre queda grande y los vecinos de las puntas se pierden, que es lo que menos importa. */
-  height: clamp(200px, 33vw, 460px);
+  /* La franja: la MITAD de alta que antes (era clamp(200px, 33vw, 460px)) y, como el lienzo es
+     ancho, igual cruza la pantalla de lado a lado. */
+  height: clamp(96px, 16.5vw, 212px);
   /* SIN BORDE Y SIN CAJA. El dibujo no vive dentro de un recuadro: flota sobre el negro de la
      página. Lo único que queda de fondo es el defumigado morado del pie, que es la luz del juego
      apoyada en el piso — se apaga solo hacia los costados y hacia arriba. */
@@ -38,11 +40,17 @@
   overflow: hidden;
 }
 
-/* La ciudad de borde a borde: se sale del contenedor y toma el ancho de la pantalla. */
+/* La ciudad de borde a borde y pegada al piso del bloque.
+   · `100vw` con los márgenes que la centran: se sale del contenedor y toma el ancho de la pantalla.
+   · El `margin-bottom` negativo se come el relleno de abajo de la sección (`py-32` = 8rem), así el
+     pie de los edificios queda EN el borde inferior del módulo, sin aire de por medio.
+     OJO: acá va a mano porque las clases negativas de Tailwind (`-mb-32`) no están compiladas en
+     `viejo.css`: usarlas no haría nada. */
 .dubai-pleno {
   width: 100vw;
   margin-left: calc(50% - 50vw);
   margin-right: calc(50% - 50vw);
+  margin-bottom: -8rem;
 }
 
 /* ---------- los vecinos ---------- */
@@ -139,7 +147,7 @@
   0% { transform: translateY(0); opacity: 0; }
   10% { opacity: 1; }
   72% { opacity: 0.8; }
-  100% { transform: translateY(-296px); opacity: 0; }
+  100% { transform: translateY(-330px); opacity: 0; }
 }
 .dubai-burbuja {
   animation: dubaiBurbuja 4.8s linear infinite both;
@@ -165,7 +173,7 @@
   50% { transform: rotate(2.2deg); }
 }
 .dubai-haces {
-  transform-origin: 500px 60px;
+  transform-origin: 1200px 80px;
   animation: dubaiBarrido 12s ease-in-out infinite;
 }
 
@@ -174,7 +182,7 @@
   0% { transform: translateY(0); opacity: 0; }
   6% { opacity: 0.95; }
   82% { opacity: 0.8; }
-  100% { transform: translateY(-322px); opacity: 0; }
+  100% { transform: translateY(-344px); opacity: 0; }
 }
 .dubai-ola {
   animation: dubaiOla 4s linear infinite both;

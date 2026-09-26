@@ -103,10 +103,6 @@ export type Contenido = {
   comoLoHacemos: {
     titulo: { uno: string; dos: string };
     etapas: Etapa[];
-    /* El cierre del bloque: el dibujo de Dubai (el Burj Khalifa y su juego de luces, en SVG) y las
-       dos líneas que dicen de dónde es la casa desde la que trabaja Sinkroo. */
-    dubaiEtiqueta: string;
-    dubaiTexto: string;
   };
   /* 6 · CON QUÉ TRABAJA */
   conQueTrabaja: { titulo: { uno: string; dos: string }; herramientas: Herramienta[] };
@@ -279,12 +275,8 @@ const ES: Contenido = {
         texto: 'Alcance, clics, costo por venta y el desvío del modelo contra lo que había predicho.',
       },
     ],
-    /* Acá estaban las dos fotos de gente («IMÁGENES DEL TRABAJO»). El dueño las mandó sacar y poner
-       en su lugar el dibujo animado de Dubai con el Burj Khalifa al centro. El texto dice de dónde
-       es la casa, y nada más: no promete nada del sistema. */
-    dubaiEtiqueta: 'FROM DUBAI',
-    dubaiTexto:
-      'Desde Dubai, para su negocio: Sinkroo opera desde el Dubai International Financial Centre (DIFC), en los Emiratos Árabes Unidos. El trabajo del motor corre desde ahí, todos los días.',
+    /* El bloque cierra con el dibujo de Dubai (el Burj Khalifa y su juego de luces, en `Dubai.tsx`).
+       Sin textos: el dueño los mandó sacar. El domicilio sigue en el pie de la página. */
   },
   conQueTrabaja: {
     titulo: { uno: 'CON QUÉ', dos: 'TRABAJA' },
@@ -591,9 +583,8 @@ const EN: Contenido = {
         texto: 'Reach, clicks, cost per sale and the deviation of the model against what it had predicted.',
       },
     ],
-    dubaiEtiqueta: 'FROM DUBAI',
-    dubaiTexto:
-      'From Dubai, for your business: Sinkroo operates from the Dubai International Financial Centre (DIFC), in the United Arab Emirates. The engine works from there, every day.',
+    /* El bloque cierra con el dibujo de Dubai (el Burj Khalifa y su juego de luces, en `Dubai.tsx`).
+       Sin textos: el dueño los mandó sacar. El domicilio sigue en el pie de la página. */
   },
   conQueTrabaja: {
     titulo: { uno: 'WHAT IT', dos: 'WORKS WITH' },
