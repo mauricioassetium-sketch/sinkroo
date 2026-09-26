@@ -53,7 +53,12 @@ export const IMAGENES = {
   mercado: '/capturas/mercado.jpg',
   campanas: '/capturas/campanas.jpg',
   hoy: '/capturas/hoy.jpg',
-  /* Bloque 8 · PLANES */
+  /* Bloque 8 · PLANES — la pantalla de Créditos del panel, en su monitor. El dueño mandó cambiar la
+     captura vieja («Primeros pasos») por esta: se ve el saldo, el plan y lo que cuesta recargar,
+     que es justo lo que se está mirando al lado de los planes. */
+  creditos: '/capturas/creditos.jpg',
+  /* Esta la usaba el bloque 8 y ya no la usa ningún bloque: queda en la carpeta y en el catálogo por
+     si otro frente la vuelve a mostrar. */
   primerosPasos: '/capturas/primeros-pasos.jpg',
   /* Bloque 9 · PALABRAS DE NUESTRA CEO */
   ceo: '/ceo/maria-paula-castanos.webp',
@@ -402,7 +407,7 @@ const ES: Contenido = {
       'Los tres planes incluyen: el motor, la investigación del mercado, el filtro de MiroFish, el panel y los créditos del mes.',
     nota: 'El detalle y la carga de créditos están adentro del panel.',
     boton: 'ENTRAR AL PANEL',
-    alt: 'Panel de Sinkroo: «Primeros pasos», donde se ve el plan con sus créditos del mes.',
+    alt: 'El panel de Sinkroo en una pantalla: la sección «Créditos», con el saldo, el plan y los paquetes de recarga.',
   },
   /* Las palabras son de ella: las escribe el dueño de producto y aquí quedaron reescritas (él dejó las
      suyas como ejemplo). Debajo, el bloque `ceo` explica qué se conservó y qué no. */
@@ -711,7 +716,7 @@ const EN: Contenido = {
       'The three plans include: the engine, the market research, the MiroFish filter, the panel and the credits of the month.',
     nota: 'The detail and the loading of credits are inside the panel.',
     boton: 'ENTER THE PANEL',
-    alt: 'Sinkroo panel: “Primeros pasos”, where the plan with its credits of the month is shown.',
+    alt: 'The Sinkroo panel on a screen: the “Credits” section, with the balance, the plan and the top-up packs.',
   },
   /* These are her words: the idea is the one the owner dictated (the market changed, it cannot keep
      going the same way, and AI brings another paradigm: one platform does a thousand times more than

@@ -568,12 +568,26 @@ export function Landing() {
                 <div className="absolute w-64 h-64 bg-purple-600/20 blur-[100px] animate-pulse"></div>
                 <div className="absolute inset-0 border border-dashed border-purple-500/20 rounded-full"></div>
                 <div className="absolute inset-12 border border-purple-500/10 rounded-full shadow-[inset_0_0_20px_rgba(168,85,247,0.1)]"></div>
-                <img
-                  src={IMAGENES.primerosPasos}
-                  alt={t.planes.alt}
-                  loading="lazy"
-                  className="relative w-[280px] md:w-[360px] rounded-2xl border border-purple-400/20 shadow-[0_30px_80px_rgba(168,85,247,0.25)]"
-                />
+                {/* LA PANTALLA DEL PANEL, EN UN MONITOR. El dueño pidió cambiar la captura por la
+                    del panel «en PC» y meterla en un computador para que se vea mejor: el marco, el
+                    cuello y la base son clases propias (`pc*` en `landing-extra.css`), no una
+                    imagen de adorno. */}
+                <div className="pc relative">
+                  <div className="pc-marco">
+                    <img
+                      className="pc-pantalla"
+                      src={IMAGENES.creditos}
+                      alt={t.planes.alt}
+                      loading="lazy"
+                      decoding="async"
+                      width={1440}
+                      height={900}
+                    />
+                    <span className="pc-luz" aria-hidden="true"></span>
+                  </div>
+                  <div className="pc-cuello" aria-hidden="true"></div>
+                  <div className="pc-base" aria-hidden="true"></div>
+                </div>
               </div>
             </div>
           </div>
