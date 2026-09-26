@@ -1929,6 +1929,14 @@ html.marca-cliente .pers-flotante { color: var(--sobre-grad); }
    otros y no se distinguía el que cierra. */
 .sb-user:hover .sb-salir:hover,
 .sb-salir:hover { opacity: 1; color: var(--red); border-color: var(--red); }
+
+/* ---------- La marca del encabezado del menú (el búho y el nombre), que ahora lleva a Hoy ----------
+   Se ve como lo que es —el título del panel—: sin fondo ni borde. Al pasar el ratón aclara el nombre,
+   que es toda la pista que hace falta para saber que se puede tocar. */
+.sb-marca { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 0;
+  background: none; border: 0; cursor: pointer; color: inherit; opacity: .9; transition: opacity .15s; }
+.sb-marca:hover { opacity: 1; }
+.sb-marca:hover .wordmark { filter: brightness(1.25); }
 .sb-user:hover .sb-datos { opacity: 1; }
 
 /* En pantalla chica el panel se vuelve una bandeja de abajo: se sigue viendo el panel de atrás

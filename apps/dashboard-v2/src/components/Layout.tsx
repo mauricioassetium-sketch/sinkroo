@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { SinkrooMark, I_Home, I_Megaphone, I_Whatsapp, I_Globe, I_Settings, I_Bell, I_Sun, I_Moon, I_Zap, I_Clock, I_Vote, I_Robot, I_Credit, I_Gift, I_Shield, I_User, I_Palette, I_Menu, I_X, I_Rocket, I_Logout } from './icons';
 import { MODOS, PLANES, type Modo } from '../data/demo';
-import { Progress } from './ui';
+import { Button, Modal, Progress } from './ui';
 import { usePerfil, inicialesDe } from '../lib/perfil';
 import { useDatos } from '../api/datos';
 import { useOnboarding } from '../lib/onboarding';
@@ -52,6 +52,9 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
   // arriba y el hero, sin esperar a que guarde.
   const { perfilVisible: perfil } = usePerfil();
   const [perfilAbierto, setPerfilAbierto] = useState(false);
+  // El pop-up de cerrar sesión: el botón abre esta ventana y no cierra nada hasta que se confirma.
+  const [salirAbierto, setSalirAbierto] = useState(false);
+  const [saliendo, setSaliendo] = useState(false);
   const [persAbierto, setPersAbierto] = useState(false);
   // Cada toque en una de las dos puertas de la personalización suma uno: es lo que hace que el
   // panel vuelva a aparecer aunque lo hayas corrido con «Ver el panel completo».
@@ -99,9 +102,15 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
     <div className="app">
       {/* ================= SIDEBAR ================= */}
       <aside className={`sidebar ${menuAbierto ? 'abierto' : ''}`}>
+        {/* LA MARCA ES UN BOTÓN Y LLEVA AL MENÚ PRINCIPAL. El búho con el nombre es el camino de
+            vuelta a Hoy, como en cualquier casa: desde donde esté, un toque lo devuelve al principio.
+            No cambia nada de lo que hizo el motor. */}
         <div className="sb-brand">
-          <SinkrooMark size={30} />
-          <div className="wordmark">Sinkroo</div>
+          <button type="button" className="sb-marca" onClick={() => { setVista('hoy'); setMenuAbierto(false); }}
+            title="Va al menú principal: Su día (Hoy). No cambia nada de lo que hizo el motor.">
+            <SinkrooMark size={30} />
+            <div className="wordmark">Sinkroo</div>
+          </button>
           <button className="sb-close" title="Cerrar el menú" onClick={() => setMenuAbierto(false)}><I_X size={16} /></button>
           <span className="badge badge-purple sb-v2" style={{ marginLeft: 'auto', fontSize: 9 }}>v2</span>
         </div>
@@ -232,11 +241,44 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
               pidió por acá. El title dice lo que hace y lo que NO pasa (nada se pierde). */}
           {onSalir && (
             <button className="sb-datos sb-salir"
-              title="Cierra la sesión en este navegador y vuelve a la pantalla de entrada. Su cuenta, su negocio y todo lo que hizo el motor quedan guardados: para volver, entre con su correo y su clave."
-              onClick={e => { e.stopPropagation(); onSalir(); }}><I_Logout size={14} /></button>
+              title="Cerrar la sesión en este navegador. Antes de cerrarla, el panel pregunta si está seguro."
+              onClick={e => { e.stopPropagation(); setSalirAbierto(true); }}><I_Logout size={14} /></button>
           )}
         </div>
       </aside>
+
+      {/* ---------- EL POP-UP DE CERRAR SESIÓN ----------
+          El botón del menú no cierra nada de una: abre esta ventana y pregunta. Dice lo que pasa (vuelve
+          a la pantalla de entrada) y lo que NO pasa (no se pierde nada), y los dos botones dicen lo que
+          hacen: el de la izquierda es el que sale, el de la derecha el que se queda. Mientras cierra,
+          el botón de confirmar se apaga y dice «Cerrando…», para que no se apriete dos veces. */}
+      <Modal open={salirAbierto} onClose={() => { if (!saliendo) setSalirAbierto(false); }} title="Cerrar la sesión">
+        <p className="bs" style={{ marginTop: 0 }}>
+          ¿Está seguro de que desea cerrar la sesión?
+        </p>
+        <p className="bs">
+          Vuelve a la pantalla de entrada de Sinkroo. <b>No se pierde nada</b>: su cuenta, su negocio, sus
+          piezas y todo lo que hizo el motor quedan guardados. Para volver, entre con su correo y su clave.
+        </p>
+        <div className="row" style={{ gap: 10, marginTop: 18, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+          <Button variant="ghost" disabled={saliendo}
+            title="Cierra esta ventana y sigue en el panel, con la sesión abierta como estaba. No cambia nada."
+            onClick={() => setSalirAbierto(false)}>
+            Seguir en el panel
+          </Button>
+          <Button variant="danger" disabled={saliendo}
+            title="Cierra la sesión en este navegador y vuelve a la pantalla de entrada. No se pierde nada de lo que hizo."
+            onClick={() => {
+              setSaliendo(true);
+              // El cierre lo hace App (le avisa al back y borra el token). Si algo falla, igual se
+              // cierra: es lo que ya hace `salir()`. La ventana queda abierta con «Cerrando…» un
+              // instante para que se vea que el toque tomó.
+              window.setTimeout(() => { setSaliendo(false); setSalirAbierto(false); onSalir?.(); }, 320);
+            }}>
+            {saliendo ? 'Cerrando…' : 'Cerrar la sesión'}
+          </Button>
+        </div>
+      </Modal>
 
       {/* En celular el menú se abre encima del contenido */}
       {menuAbierto && <div className="sb-backdrop" onClick={() => setMenuAbierto(false)} />}
