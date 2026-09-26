@@ -1,22 +1,26 @@
 /* =============================================================================================
    LA LANDING DE SINKROO — la puerta de entrada.
-   Es EL MISMO ARMAZÓN de la landing anterior (mismos bloques, en el mismo orden, con las mismas
-   clases y su mismo CSS: `viejo.css`), con la información de hoy adentro.
+   Es EL MISMO ARMAZÓN de la landing anterior (las mismas clases y su mismo CSS: `viejo.css`), con
+   la información de hoy adentro.
 
-   LOS DIEZ BLOQUES, EN ORDEN (los mismos de la vieja):
-     1. Cabecera fija · 2. Portada · 3. Dos párrafos · 4. Franja que se mueve · 5. Cómo funciona ·
-     6. Los siete módulos · 7. La diferencia es el orden · 8. Bloque numerado (la investigación) ·
+   LOS DIEZ BLOQUES, EN ORDEN:
+     1. Cabecera · 2. Portada (con el título que se cambia solo) · 3. Franja que se mueve ·
+     4. Qué hacemos · 5. Cómo lo hacemos (el flujo animado + las siete etapas) ·
+     6. Con qué trabaja (cinco herramientas) · 7. Con quién se conecta (las 14) · 8. Planes ·
      9. Contacto · 10. Pie
 
    REGLAS QUE LA MANDAN:
      · EL TEXTO ES DEL DUEÑO, LITERAL. Vive en `contenido.ts` (español e inglés) y no se reescribe
        aquí: este archivo sólo lo pone en su bloque.
+     · NADA SE REPITE. Cada bloque dice algo nuevo y cada bloque con imagen muestra una pantalla
+       DISTINTA del panel (ninguna captura se usa dos veces).
      · NADA PROMETE LO QUE EL SISTEMA NO HACE. El panel todavía no publica en las redes: las piezas
-       quedan listas y usted aprueba. No se dice «publica solo», ni «en milisegundos», ni cifras
-       que nadie midió.
+       quedan listas y usted aprueba. El bloque 7 lo dice con todas las letras.
      · NADA SE ESCONDE POR JAVASCRIPT: no hay animación de entrada ni estado invisible que alguien
-       tenga que destapar. Lo único que se mueve es la franja del bloque 4, y se detiene sola para
-       quien pidió menos movimiento en su sistema (`prefers-reduced-motion`).
+       tenga que destapar. Lo que se mueve (el título de la portada, la franja, la marquesina de
+       redes y el flujo) va en CSS y se detiene solo para quien pidió menos movimiento en su
+       sistema (`prefers-reduced-motion`). El título que se cambia solo NO usa relojes de
+       JavaScript: son las cuatro frases en el HTML y una animación de CSS.
      · SIN IMÁGENES REMOTAS: todo sale de public/.
    ============================================================================================= */
 
@@ -26,11 +30,15 @@ import './viejo.css';
 import './landing-extra.css';
 import { CONTENIDO, IDIOMA_INICIAL, PANEL, IMAGENES } from './contenido';
 import type { Idioma } from './contenido';
+import { FlujoAnimado } from './FlujoAnimado';
+import { MarquesinaRedes } from './MarquesinaRedes';
 
 /* Las 31 líneas verticales del fondo de la portada: son adorno, con la misma clase de la vieja.
-   La posición es fija (no al azar) para que la página se pinte igual siempre. */
+   La posición es fija (no al azar) para que la página se pinte igual siempre. Va con UN decimal a
+   propósito: así ninguna posición cae en un número que se pueda leer como una cifra del negocio
+   (la revisión de frases prohibidas mira también el HTML). */
 const LINEAS = Array.from({ length: 31 }, (_, i) => ({
-  left: `${(i * 100) / 31}%`,
+  left: `${((i * 100) / 31).toFixed(1)}%`,
   retardo: `${(i % 7) * 1.4}s`,
 }));
 
@@ -76,6 +84,42 @@ function Flecha({ ancho = 18 }: { ancho?: number }) {
   );
 }
 
+/** El selector ES | EN: dos letras, ninguna bandera de afuera. Va en la cabecera y en el celular. */
+function SelectorIdioma({
+  idioma,
+  cambiar,
+  etiqueta,
+  textoEs,
+  textoEn,
+}: {
+  idioma: Idioma;
+  cambiar: (idioma: Idioma) => void;
+  etiqueta: string;
+  textoEs: string;
+  textoEn: string;
+}) {
+  return (
+    <div className="selector-idioma" role="group" aria-label={etiqueta}>
+      <button
+        type="button"
+        className={idioma === 'es' ? 'idioma-activo' : 'idioma-inactivo'}
+        aria-pressed={idioma === 'es'}
+        onClick={() => cambiar('es')}
+      >
+        {textoEs}
+      </button>
+      <button
+        type="button"
+        className={idioma === 'en' ? 'idioma-activo' : 'idioma-inactivo'}
+        aria-pressed={idioma === 'en'}
+        onClick={() => cambiar('en')}
+      >
+        {textoEn}
+      </button>
+    </div>
+  );
+}
+
 export function Landing() {
   const [idioma, setIdioma] = useState<Idioma>(IDIOMA_INICIAL);
   const [menuAbierto, setMenuAbierto] = useState(false);
@@ -92,7 +136,7 @@ export function Landing() {
     <div className="bg-primary flex flex-col min-h-screen">
       {/* ========================= 1 · CABECERA ========================= */}
       <header className="fixed top-0 left-0 right-0 z-50 h-16 md:h-20 flex items-center border-b border-white/10">
-        <nav className="w-full max-w-7xl mx-auto px-4 md:px-6 flex items-center justify-between">
+        <nav className="w-full max-w-7xl mx-auto px-4 md:px-6 flex items-center justify-between gap-4">
           <a href="/" className="flex items-center gap-2 active">
             <img src={IMAGENES.buho} className="w-10 h-10 md:w-12 md:h-12" alt={t.cabecera.altBuho} />
             <h2 className="text-xl md:text-2xl font-black bg-gradient-to-r from-purple-500 to-purple-700 bg-clip-text text-transparent">
@@ -100,45 +144,37 @@ export function Landing() {
             </h2>
           </a>
 
-          <div className="hidden md:flex gap-8">
-            <a href="#como-funciona" className="text-gray-400 hover:text-white transition">
-              {t.cabecera.menu.comoFunciona}
-            </a>
-            <a href={PANEL} className="text-gray-400 hover:text-white transition">
-              {t.cabecera.menu.planes}
-            </a>
+          <div className="hidden lg:flex gap-6 xl:gap-8">
+            {t.cabecera.enlaces.map((enlace) => (
+              <a
+                href={enlace.href}
+                className="text-gray-400 hover:text-white transition text-sm xl:text-base whitespace-nowrap"
+                key={enlace.href}
+              >
+                {enlace.texto}
+              </a>
+            ))}
           </div>
 
-          <div className="hidden md:flex items-center gap-4">
-            <div className="selector-idioma" role="group" aria-label={t.cabecera.idioma.etiqueta}>
-              <button
-                type="button"
-                className={idioma === 'es' ? 'idioma-activo' : 'idioma-inactivo'}
-                aria-pressed={idioma === 'es'}
-                onClick={() => setIdioma('es')}
-              >
-                {t.cabecera.idioma.es}
-              </button>
-              <button
-                type="button"
-                className={idioma === 'en' ? 'idioma-activo' : 'idioma-inactivo'}
-                aria-pressed={idioma === 'en'}
-                onClick={() => setIdioma('en')}
-              >
-                {t.cabecera.idioma.en}
-              </button>
-            </div>
+          <div className="hidden lg:flex items-center gap-4">
+            <SelectorIdioma
+              idioma={idioma}
+              cambiar={setIdioma}
+              etiqueta={t.cabecera.idioma.etiqueta}
+              textoEs={t.cabecera.idioma.es}
+              textoEn={t.cabecera.idioma.en}
+            />
             <a
               href={PANEL}
-              className="px-5 py-2 bg-white text-black rounded-full font-semibold hover:bg-gray-200 transition"
+              className="px-5 py-2 bg-white text-black rounded-full font-semibold hover:bg-gray-200 transition whitespace-nowrap"
             >
-              {t.cabecera.menu.entrar}
+              {t.cabecera.entrar}
             </a>
           </div>
 
           <button
             type="button"
-            className="md:hidden text-white text-2xl"
+            className="lg:hidden text-white text-2xl"
             aria-label={t.cabecera.abrirMenu}
             aria-expanded={menuAbierto}
             onClick={() => setMenuAbierto((abierto) => !abierto)}
@@ -148,41 +184,29 @@ export function Landing() {
         </nav>
       </header>
 
-      {/* El menú del celular: la misma lista, debajo de la cabecera. */}
+      {/* El menú del celular y de la tableta: la misma lista, debajo de la cabecera. */}
       {menuAbierto ? (
         <div className="menu-movil">
-          <a href="#como-funciona" onClick={() => setMenuAbierto(false)}>
-            {t.cabecera.menu.comoFunciona}
-          </a>
+          {t.cabecera.enlaces.map((enlace) => (
+            <a href={enlace.href} onClick={() => setMenuAbierto(false)} key={enlace.href}>
+              {enlace.texto}
+            </a>
+          ))}
           <a href={PANEL} onClick={() => setMenuAbierto(false)}>
-            {t.cabecera.menu.planes}
+            {t.cabecera.entrar}
           </a>
-          <a href={PANEL} onClick={() => setMenuAbierto(false)}>
-            {t.cabecera.menu.entrar}
-          </a>
-          <div className="selector-idioma" role="group" aria-label={t.cabecera.idioma.etiqueta}>
-            <button
-              type="button"
-              className={idioma === 'es' ? 'idioma-activo' : 'idioma-inactivo'}
-              aria-pressed={idioma === 'es'}
-              onClick={() => setIdioma('es')}
-            >
-              {t.cabecera.idioma.es}
-            </button>
-            <button
-              type="button"
-              className={idioma === 'en' ? 'idioma-activo' : 'idioma-inactivo'}
-              aria-pressed={idioma === 'en'}
-              onClick={() => setIdioma('en')}
-            >
-              {t.cabecera.idioma.en}
-            </button>
-          </div>
+          <SelectorIdioma
+            idioma={idioma}
+            cambiar={setIdioma}
+            etiqueta={t.cabecera.idioma.etiqueta}
+            textoEs={t.cabecera.idioma.es}
+            textoEn={t.cabecera.idioma.en}
+          />
         </div>
       ) : null}
 
       <main className="flex-grow relative z-0">
-        {/* ============ 2 · PORTADA · 3 · LOS DOS PÁRRAFOS · 4 · LA FRANJA ============ */}
+        {/* ============ 2 · PORTADA (y 3 · la franja que se mueve, abajo) ============ */}
         <div className="min-h-screen bg-black text-white overflow-hidden relative font-sans">
           <div className="absolute inset-0 z-0">
             <img
@@ -207,13 +231,19 @@ export function Landing() {
             <div className="md:col-span-7 flex flex-col gap-12">
               <div className="flex flex-col gap-6">
                 <div className="text-xs tracking-widest text-purple-300 uppercase">{t.portada.linea}</div>
-                <h1 className="text-[12vw] md:text-[3.5rem] leading-[0.85] tracking-tighter font-black uppercase">
-                  {t.portada.titulo.uno}
-                  <br />
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-white/40">
-                    {t.portada.titulo.dos}
-                  </span>
+
+                {/* EL TÍTULO QUE SE CAMBIA SOLO — cuatro frases, las cuatro en el HTML, en CSS:
+                    con `prefers-reduced-motion: reduce` se ve la primera y nada se mueve. */}
+                <h1 className="titulo-cambia text-[12vw] md:text-[3.5rem] leading-[0.85] tracking-tighter font-black uppercase">
+                  {t.portada.titulos.map((frase, i) => (
+                    <span className="titulo-cambia-frase" style={{ animationDelay: `${i * 3.5}s` }} key={frase}>
+                      <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-white/40">
+                        {frase}
+                      </span>
+                    </span>
+                  ))}
                 </h1>
+
                 <p className="text-white/60 text-lg max-w-xl leading-relaxed">{t.portada.bajada}</p>
               </div>
 
@@ -230,9 +260,9 @@ export function Landing() {
                     <FlechaDiagonal />
                   </button>
                 </a>
-                <a href={PANEL}>
+                <a href="#conexiones">
                   <button className="boton-fantasma flex items-center justify-between gap-4 px-8 py-4 rounded-xl text-sm font-bold transition-colors duration-300 group w-full md:w-auto min-w-[200px] border-2">
-                    <span className="tracking-tighter uppercase">{t.portada.accesos.planes}</span>
+                    <span className="tracking-tighter uppercase">{t.portada.accesos.conexiones}</span>
                     <FlechaDiagonal />
                   </button>
                 </a>
@@ -262,21 +292,32 @@ export function Landing() {
               </div>
             </div>
 
-            {/* 3 · LOS DOS PÁRRAFOS (la columna derecha de la portada, como en la vieja). */}
+            {/* La columna derecha de la portada: el índice de la página (los mismos nombres del
+                menú). No repite ninguna promesa: sólo dice qué hay más abajo. */}
             <div className="md:col-span-5 flex items-center justify-end">
               <div className="relative">
                 <div className="absolute -left-8 top-0 bottom-0 w-[1px] bg-gradient-to-b from-purple-400 to-transparent hidden md:block"></div>
-                <p className="text-white/50 text-sm md:text-base max-w-xs md:max-w-sm mr-auto text-left leading-relaxed font-light">
-                  {t.introduccion.uno}
-                  <br />
-                  <br />
-                  {t.introduccion.dos}
+                <p className="text-[10px] font-bold tracking-[0.3em] text-purple-300 uppercase mb-6">
+                  {t.portada.indiceTitulo}
                 </p>
+                <ul className="space-y-4">
+                  {t.portada.indice.map((enlace) => (
+                    <li key={enlace.href}>
+                      <a
+                        href={enlace.href}
+                        className="group flex items-center gap-3 text-white/50 hover:text-white text-sm md:text-base font-light transition-colors"
+                      >
+                        <span>{enlace.texto}</span>
+                        <span className="text-purple-400 transition-transform group-hover:translate-x-1">→</span>
+                      </a>
+                    </li>
+                  ))}
+                </ul>
               </div>
             </div>
           </div>
 
-          {/* 4 · LA FRANJA QUE SE MUEVE (en la vieja eran los logos de medios). */}
+          {/* 3 · LA FRANJA QUE SE MUEVE: las seis palabras del trabajo del motor. */}
           <div className="absolute bottom-0 w-full bg-gradient-to-t from-black to-transparent pt-20 pb-10 z-50">
             <section className="bg-black py-2 overflow-hidden border-white/10">
               <div className="relative w-full overflow-hidden">
@@ -294,26 +335,41 @@ export function Landing() {
                   ))}
                 </div>
               </div>
-              <div className="relative w-full overflow-hidden mt-4">
-                <div className="marquesina marquesina-al-reves flex gap-24">
-                  {[0, 1].map((copia) => (
-                    <div className="flex gap-24" key={copia}>
-                      {t.franja.frases.map((frase) => (
-                        <div className="flex items-center justify-center min-w-[180px]" key={frase}>
-                          <span className="text-[10px] font-bold tracking-[0.2em] text-gray-500 uppercase whitespace-nowrap">
-                            {frase}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  ))}
-                </div>
-              </div>
             </section>
           </div>
         </div>
 
-        {/* ========================= 5 · CÓMO FUNCIONA ========================= */}
+        {/* ========================= 4 · QUÉ HACEMOS ========================= */}
+        <section id="que-hacemos" className="relative bg-black text-white py-28 px-6 overflow-hidden">
+          <div className="absolute top-0 right-0 w-1/3 h-full bg-purple-600/10 blur-[140px] -z-10"></div>
+          <div className="max-w-7xl mx-auto">
+            <div className="mb-14 md:mb-20">
+              <h2 className="text-4xl md:text-6xl font-black tracking-tight leading-tight">{t.queHacemos.titulo}</h2>
+              <p className="text-gray-400 mt-6 max-w-3xl leading-relaxed">{t.queHacemos.parrafo}</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {t.queHacemos.tarjetas.map((tarjeta) => (
+                <div
+                  className="group relative bg-[#0b0b0b] border border-white/10 rounded-3xl p-8 hover:border-purple-500/50 transition-all duration-300"
+                  key={tarjeta.numero}
+                >
+                  <p className="text-purple-500 text-[10px] font-black tracking-widest mb-5 opacity-70">{tarjeta.numero}</p>
+                  <h3 className="text-2xl font-bold mb-4 group-hover:text-purple-400 transition-colors">{tarjeta.titulo}</h3>
+                  <p className="text-gray-400 text-sm leading-relaxed mb-6">{tarjeta.texto}</p>
+                  <img
+                    src={tarjeta.imagen}
+                    alt={tarjeta.alt}
+                    loading="lazy"
+                    className="w-full h-[240px] md:h-[300px] object-cover object-top rounded-xl border border-white/10"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ========================= 5 · CÓMO LO HACEMOS ========================= */}
         <section id="como-funciona" className="relative bg-[#050505] text-white min-h-screen px-6 py-32 overflow-hidden">
           <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-purple-600/10 rounded-full blur-[120px] pointer-events-none"></div>
           <div className="absolute bottom-0 right-1/4 w-[400px] h-[400px] bg-blue-600/10 rounded-full blur-[100px] pointer-events-none"></div>
@@ -321,133 +377,91 @@ export function Landing() {
             <img src={IMAGENES.buho} className="w-[800px]" alt="" aria-hidden="true" />
           </div>
 
-          <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-20 items-center relative z-10">
-            <div className="relative grid grid-cols-2 gap-4 h-[600px]">
-              <div className="space-y-4">
-                <img
-                  src={t.comoFunciona.tarjetas[0].imagen}
-                  alt={t.comoFunciona.tarjetas[0].alt}
-                  loading="lazy"
-                  className="w-full h-[320px] object-cover object-top rounded-2xl border border-white/10 shadow-2xl transition-transform duration-300 ease-out hover:scale-[1.03]"
-                />
-                <img
-                  src={t.comoFunciona.tarjetas[1].imagen}
-                  alt={t.comoFunciona.tarjetas[1].alt}
-                  loading="lazy"
-                  className="w-full h-[220px] object-cover object-top rounded-2xl border border-white/10 transition-transform duration-300 ease-out hover:scale-[1.03]"
-                />
-              </div>
-              <div className="space-y-4 pt-12">
-                <img
-                  src={t.comoFunciona.tarjetas[2].imagen}
-                  alt={t.comoFunciona.tarjetas[2].alt}
-                  loading="lazy"
-                  className="w-full h-[220px] object-cover object-top rounded-2xl border border-white/10 transition-transform duration-300 ease-out hover:scale-[1.03]"
-                />
-                <img
-                  src={IMAGENES.creditos}
-                  alt={t.cifras.tarjetas[2].alt}
-                  loading="lazy"
-                  className="w-full h-[320px] object-cover object-top rounded-2xl border border-white/10 shadow-2xl transition-transform duration-300 ease-out hover:scale-[1.03]"
-                />
-              </div>
+          <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-16 md:gap-20 items-center relative z-10">
+            {/* El modelo animado del flujo: siete segundos en bucle (el búho por las siete etapas). */}
+            <div className="relative w-full">
+              <FlujoAnimado />
             </div>
 
             <div>
-              <div className="inline-block px-4 py-1.5 mb-6 rounded-full border border-purple-500/30 bg-purple-500/5 backdrop-blur-md">
-                <span className="text-[10px] font-bold tracking-[0.2em] text-purple-400 uppercase">
-                  {t.comoFunciona.etiqueta}
-                </span>
-              </div>
-              <h2 className="text-6xl md:text-8xl font-bold leading-[0.85] tracking-tighter mb-8">
-                {t.comoFunciona.titulo.uno}
+              <h2 className="text-4xl md:text-6xl font-bold leading-[0.95] tracking-tighter mb-10">
+                {t.comoLoHacemos.titulo.uno}
                 <br />
                 <span className="text-transparent bg-clip-text bg-gradient-to-br from-white via-white to-gray-600">
-                  {t.comoFunciona.titulo.dos}
+                  {t.comoLoHacemos.titulo.dos}
                 </span>
               </h2>
-              <div className="space-y-6 max-w-xl">
-                <p className="text-xl text-gray-200 font-light leading-relaxed">{t.comoFunciona.parrafos.uno}</p>
-                <p className="text-gray-400 leading-relaxed">{t.comoFunciona.parrafos.dos}</p>
-                <div className="flex items-center gap-4 py-4">
-                  <div className="h-[1px] w-12 bg-purple-500"></div>
-                  <p className="text-[10px] tracking-[0.3em] text-gray-500 uppercase">{t.comoFunciona.linea}</p>
-                </div>
-                <div className="pt-4">
-                  <a href={PANEL}>
-                    <button className="group flex items-center gap-4 px-10 py-4 rounded-full text-sm font-bold uppercase tracking-widest border-2 transition-all duration-300 ease-out hover:scale-[1.03] active:scale-[0.97] bg-purple-600 text-white border-purple-600 shadow-[0_0_20px_rgba(168,85,247,0.4)]">
-                      <span className="transition-transform group-hover:translate-x-1">{t.comoFunciona.boton}</span>
-                      <Flecha />
-                    </button>
-                  </a>
-                </div>
-              </div>
+
+              <ol className="space-y-6 max-w-xl">
+                {t.comoLoHacemos.etapas.map((etapa) => (
+                  <li className="flex gap-4 items-baseline" key={etapa.numero}>
+                    <span className="text-purple-400 text-2xl font-mono font-bold leading-none">{etapa.numero}</span>
+                    <p className="text-gray-400 text-sm md:text-base leading-relaxed">
+                      <span className="text-white font-bold tracking-wide">{etapa.titulo}</span> — {etapa.texto}
+                    </p>
+                  </li>
+                ))}
+              </ol>
             </div>
           </div>
 
-          <div className="max-w-7xl mx-auto mt-40 grid md:grid-cols-3 gap-8 relative z-10">
-            {t.comoFunciona.tarjetas.map((tarjeta) => (
-              <div
-                className="group relative p-8 rounded-2xl border border-white/5 bg-gradient-to-b from-white/[0.05] to-transparent backdrop-blur-sm transition-all duration-300 hover:-translate-y-1"
-                key={tarjeta.numero}
-              >
-                <div className="absolute inset-0 bg-purple-500/0 group-hover:bg-purple-500/[0.02] transition-colors rounded-2xl"></div>
-                <p className="text-purple-500 text-[10px] font-black tracking-widest mb-6 opacity-70">{tarjeta.numero}</p>
-                <h3 className="text-2xl font-bold mb-4 group-hover:text-purple-400 transition-colors">{tarjeta.titulo}</h3>
-                <p className="text-gray-400 text-sm leading-relaxed mb-8">{tarjeta.texto}</p>
+          {/* Las fotos del trabajo: son imágenes del trabajo, y el rótulo lo dice. No se afirma
+              quiénes son ni que sean el equipo del negocio. */}
+          <div className="max-w-7xl mx-auto mt-24 md:mt-32 relative z-10">
+            <div className="grid sm:grid-cols-2 gap-6 md:gap-8">
+              {t.comoLoHacemos.gente.map((foto) => (
                 <img
-                  src={tarjeta.imagen}
-                  alt={tarjeta.alt}
+                  src={foto.imagen}
+                  alt={foto.alt}
                   loading="lazy"
-                  className="w-full h-[220px] object-cover object-top rounded-xl border border-white/10 mb-8"
+                  className="w-full h-[240px] md:h-[340px] object-cover rounded-2xl border border-white/10"
+                  key={foto.imagen}
                 />
-                <div className="flex items-center gap-2 text-xs font-bold tracking-widest text-white group-hover:text-purple-400 transition-colors">
-                  {tarjeta.enlace}
-                  <span className="text-lg">→</span>
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
+            <p className="mt-5 text-[10px] font-bold tracking-[0.3em] text-gray-500 uppercase">
+              {t.comoLoHacemos.genteEtiqueta}
+            </p>
           </div>
         </section>
 
-        {/* ========================= 6 · LOS SIETE MÓDULOS ========================= */}
-        <div id="modulos" className="relative bg-black text-white py-28 md:py-36 px-5 md:px-8 overflow-hidden">
+        {/* ========================= 6 · CON QUÉ TRABAJA ========================= */}
+        <div id="con-que-trabaja" className="relative bg-black text-white py-28 md:py-36 px-5 md:px-8 overflow-hidden">
           <div className="max-w-7xl mx-auto relative z-10">
-            <div className="text-center mb-24 md:mb-32">
-              <h1 className="text-5xl md:text-9xl font-bold leading-[0.9] tracking-tighter mb-6">
-                {t.modulosTitulo.uno}{' '}
+            <div className="text-center mb-20 md:mb-28">
+              <h2 className="text-5xl md:text-8xl font-bold leading-[0.9] tracking-tighter">
+                {t.conQueTrabaja.titulo.uno}{' '}
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-purple-700">
-                  {t.modulosTitulo.dos}
+                  {t.conQueTrabaja.titulo.dos}
                 </span>
-              </h1>
+              </h2>
             </div>
 
-            <div className="space-y-28 md:space-y-36">
-              {t.modulos.map((modulo, i) => {
+            <div className="space-y-24 md:space-y-32">
+              {t.conQueTrabaja.herramientas.map((herramienta, i) => {
                 const alReves = i % 2 === 1;
                 return (
                   <div
                     className={'grid lg:grid-cols-2 gap-12 md:gap-20 items-center' + (alReves ? ' lg:grid-flow-dense' : '')}
-                    key={modulo.numero}
+                    key={herramienta.numero}
                   >
                     <div className={alReves ? 'lg:col-start-2' : ''}>
-                      <div className="text-purple-400 text-5xl md:text-7xl font-mono font-bold mb-5 tracking-wider">
-                        {modulo.numero}
+                      <div className="text-purple-400 text-4xl md:text-6xl font-mono font-bold mb-5 tracking-wider">
+                        {herramienta.numero}
                       </div>
-                      <h3 className="text-2xl md:text-4xl font-bold mb-5 leading-tight">{modulo.titulo}</h3>
-                      <p className="text-gray-400 leading-relaxed max-w-md text-sm md:text-base">{modulo.texto}</p>
+                      <h3 className="text-2xl md:text-4xl font-bold mb-5 leading-tight">{herramienta.nombre}</h3>
+                      <p className="text-gray-400 leading-relaxed max-w-md text-sm md:text-base">{herramienta.texto}</p>
                     </div>
                     <div className={alReves ? 'lg:col-start-1' : ''}>
                       <div className="relative rounded-2xl overflow-hidden border border-white/10 bg-[#0b0b0b] shadow-[0_30px_80px_rgba(168,85,247,0.25)]">
                         <img
-                          src={modulo.imagen}
-                          alt={modulo.alt}
+                          src={herramienta.imagen}
+                          alt={herramienta.alt}
                           loading="lazy"
-                          className="w-full h-[260px] md:h-[420px] object-cover object-top"
+                          className="w-full h-[300px] md:h-[460px] object-cover object-top"
                         />
                         <div className="absolute inset-0 bg-gradient-to-tr from-black/70 via-transparent to-white/10"></div>
                         <div className="absolute inset-0 rounded-2xl border border-purple-400/20 pointer-events-none"></div>
-                        <div className="absolute inset-0 opacity-0 hover:opacity-100 transition duration-500 bg-purple-400/10 blur-2xl"></div>
                       </div>
                     </div>
                   </div>
@@ -457,147 +471,36 @@ export function Landing() {
           </div>
         </div>
 
-        {/* ================== 7 · LA DIFERENCIA ES EL ORDEN ================== */}
-        <section id="cifras" className="relative bg-black text-white py-28 px-6 overflow-hidden">
-          <div className="absolute top-0 right-0 w-1/3 h-full bg-purple-600/10 blur-[140px] -z-10"></div>
-          <div className="max-w-7xl mx-auto">
-            <div className="mb-16">
-              <div className="inline-block px-4 py-1.5 mb-6 rounded-full border border-purple-500/30 bg-purple-500/5 backdrop-blur-md">
-                <span className="text-[10px] font-bold tracking-[0.2em] text-purple-400 uppercase">
-                  {t.cifras.etiqueta}
-                </span>
-              </div>
-              <h2 className="text-4xl md:text-6xl font-black tracking-tight leading-tight">
-                {t.cifras.titulo.uno}
-                <br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-purple-600">
-                  {t.cifras.titulo.dos}
-                </span>
-              </h2>
-              <p className="text-gray-400 mt-6 max-w-xl">{t.cifras.parrafo}</p>
+        {/* ========================= 7 · CON QUIÉN SE CONECTA ========================= */}
+        <section id="conexiones" className="relative bg-[#050505] text-white py-28 px-5 md:px-8 overflow-hidden">
+          <div className="absolute -top-[10%] -left-[10%] w-[50%] h-[50%] bg-purple-600/10 blur-[140px] rounded-full"></div>
+          <div className="max-w-7xl mx-auto relative z-10">
+            <h2 className="text-4xl md:text-6xl font-black tracking-tight leading-tight mb-6">{t.conexiones.titulo}</h2>
+            <p className="text-gray-400 max-w-3xl leading-relaxed mb-14 md:mb-20">{t.conexiones.bajada}</p>
+
+            {/* Las 14 conexiones, en dos filas que se deslizan en lados opuestos. */}
+            <MarquesinaRedes />
+
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6 mt-16 md:mt-20">
+              {t.conexiones.lista.map((conexion) => (
+                <div
+                  className="bg-[#0b0b0b] border border-white/10 rounded-2xl p-6 hover:border-purple-500/40 transition-colors"
+                  key={conexion.nombre}
+                >
+                  <h3 className="text-white font-bold mb-2">{conexion.nombre}</h3>
+                  <p className="text-gray-400 text-sm leading-relaxed">{conexion.texto}</p>
+                </div>
+              ))}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 mb-12">
-              {/* Tarjeta 1 — el filtro */}
-              <div className="group relative bg-[#0b0b0b] border border-white/10 rounded-3xl p-8 hover:border-purple-500/50 transition-all duration-300 md:col-span-7">
-                <div className="flex justify-between items-start mb-10">
-                  <div className="p-3 bg-purple-500/10 text-purple-400 rounded-2xl group-hover:bg-purple-500 group-hover:text-black transition-all duration-300">
-                    <svg
-                      className="w-6 h-6"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth={2}
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      aria-hidden="true"
-                    >
-                      <circle cx="12" cy="8" r="5" />
-                      <path d="M8.5 12.6 7 21l5-3 5 3-1.5-8.4" />
-                    </svg>
-                  </div>
-                  <span className="text-[10px] font-mono font-bold text-white/30 uppercase tracking-widest border border-white/10 px-3 py-1 rounded-full">
-                    {t.cifras.tarjetas[0].etiqueta}
-                  </span>
-                </div>
-                <div>
-                  <h3 className="text-4xl font-black text-white mb-2">{t.cifras.tarjetas[0].valor}</h3>
-                  <h4 className="text-xl font-bold mb-3">{t.cifras.tarjetas[0].subtitulo}</h4>
-                  <p className="text-gray-400 text-sm md:text-base leading-relaxed">{t.cifras.tarjetas[0].texto}</p>
-                </div>
-                <div className="absolute bottom-0 right-0 w-28 h-28 bg-purple-500/10 blur-[50px] rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
-              </div>
-
-              {/* Tarjeta 2 — el público */}
-              <div className="group relative bg-[#0b0b0b] border border-white/10 rounded-3xl p-8 hover:border-purple-500/50 transition-all duration-300 md:col-span-5">
-                <div className="flex justify-between items-start mb-10">
-                  <div className="p-3 bg-purple-500/10 text-purple-400 rounded-2xl group-hover:bg-purple-500 group-hover:text-black transition-all duration-300">
-                    <svg
-                      className="w-6 h-6"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth={2}
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      aria-hidden="true"
-                    >
-                      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                      <circle cx="9" cy="7" r="4" />
-                      <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-                      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                    </svg>
-                  </div>
-                  <span className="text-[10px] font-mono font-bold text-white/30 uppercase tracking-widest border border-white/10 px-3 py-1 rounded-full">
-                    {t.cifras.tarjetas[1].etiqueta}
-                  </span>
-                </div>
-                <div>
-                  <h3 className="text-4xl font-black text-white mb-2">{t.cifras.tarjetas[1].valor}</h3>
-                  <h4 className="text-xl font-bold mb-3">{t.cifras.tarjetas[1].subtitulo}</h4>
-                  <p className="text-gray-400 text-sm md:text-base leading-relaxed">{t.cifras.tarjetas[1].texto}</p>
-                </div>
-                <div className="absolute bottom-0 right-0 w-28 h-28 bg-purple-500/10 blur-[50px] rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
-              </div>
-
-              {/* Tarjeta 3 — el gasto, con la pantalla de créditos al lado. */}
-              <div className="group relative bg-[#0b0b0b] border border-white/10 rounded-3xl p-8 hover:border-purple-500/50 transition-all duration-300 md:col-span-5">
-                <div className="flex justify-between items-start mb-10">
-                  <div className="p-3 bg-purple-500/10 text-purple-400 rounded-2xl group-hover:bg-purple-500 group-hover:text-black transition-all duration-300">
-                    <svg
-                      className="w-6 h-6"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth={2}
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      aria-hidden="true"
-                    >
-                      <path d="M19 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0 0 4h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5" />
-                      <circle cx="16" cy="12" r="1" />
-                    </svg>
-                  </div>
-                  <span className="text-[10px] font-mono font-bold text-white/30 uppercase tracking-widest border border-white/10 px-3 py-1 rounded-full">
-                    {t.cifras.tarjetas[2].etiqueta}
-                  </span>
-                </div>
-                <div>
-                  <h3 className="text-4xl font-black text-white mb-2">{t.cifras.tarjetas[2].valor}</h3>
-                  <h4 className="text-xl font-bold mb-3">{t.cifras.tarjetas[2].subtitulo}</h4>
-                  <p className="text-gray-400 text-sm md:text-base leading-relaxed mb-6">{t.cifras.tarjetas[2].texto}</p>
-                  {t.cifras.tarjetas[2].imagen ? (
-                    <img
-                      src={t.cifras.tarjetas[2].imagen}
-                      alt={t.cifras.tarjetas[2].alt}
-                      loading="lazy"
-                      className="w-full h-[260px] object-cover object-top rounded-2xl border border-white/10"
-                    />
-                  ) : null}
-                </div>
-                <div className="absolute bottom-0 right-0 w-28 h-28 bg-purple-500/10 blur-[50px] rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
-              </div>
-
-              {/* La línea grande, con el enlace. */}
-              <div className="md:col-span-7 rounded-3xl p-8 flex flex-col justify-between group cursor-pointer overflow-hidden relative bg-gradient-to-br from-purple-500 to-purple-700">
-                <div className="relative z-10">
-                  <h3 className="text-3xl font-black text-black leading-tight mb-4">{t.cifras.linea1}</h3>
-                  <p className="text-black/70 text-sm">{t.cifras.linea2}</p>
-                </div>
-                <div className="relative z-10 mt-6">
-                  <a href="#como-funciona">
-                    <button className="bg-black text-white px-8 py-4 rounded-full font-bold text-sm hover:scale-105 transition-transform flex items-center gap-3">
-                      {t.cifras.enlace}
-                    </button>
-                  </a>
-                </div>
-              </div>
+            <div className="mt-12 md:mt-16 rounded-2xl border border-purple-500/30 bg-purple-500/5 p-6 md:p-8">
+              <p className="text-purple-200 text-sm md:text-base leading-relaxed">{t.conexiones.honestidad}</p>
             </div>
           </div>
         </section>
 
-        {/* ================== 8 · BLOQUE NUMERADO (LA INVESTIGACIÓN) ================== */}
-        <div id="investigacion" className="px-6 md:px-10 py-32 bg-black selection:bg-purple-500/30 font-sans">
+        {/* ========================= 8 · PLANES ========================= */}
+        <div id="planes" className="px-6 md:px-10 py-28 md:py-32 bg-black selection:bg-purple-500/30 font-sans">
           <div className="max-w-7xl mx-auto rounded-[48px] bg-[#050505] border border-white/5 p-8 md:p-20 flex flex-col lg:flex-row items-center justify-between gap-16 relative overflow-hidden shadow-[0_0_80px_-20px_rgba(168,85,247,0.15)]">
             <div className="absolute inset-0 pointer-events-none">
               <div className="absolute w-[600px] h-[600px] bg-purple-600/10 blur-[140px] -top-40 -left-40 rounded-full"></div>
@@ -605,47 +508,30 @@ export function Landing() {
               <div className="absolute inset-0 opacity-[0.03] [background-image:linear-gradient(to_right,#ffffff_1px,transparent_1px),linear-gradient(to_bottom,#ffffff_1px,transparent_1px)] [background-size:40px_40px]"></div>
             </div>
 
-            <div className="relative z-10 max-w-2xl">
-              <div className="flex items-center gap-3 mb-8">
-                <span className="text-purple-500 font-mono text-lg font-bold">{t.investigacion.numero}</span>
-                <div className="px-4 py-1.5 rounded-full bg-purple-500/5 border border-purple-500/20 flex items-center gap-2">
-                  <svg
-                    className="text-purple-400"
-                    width={16}
-                    height={16}
-                    viewBox="0 0 24 24"
-                    fill="currentColor"
-                    aria-hidden="true"
-                  >
-                    <path d="M12 2l1.9 5.6L19.5 9l-5.6 1.9L12 16.5l-1.9-5.6L4.5 9l5.6-1.4z" />
-                  </svg>
-                  <span className="text-purple-300 text-[10px] md:text-xs font-bold tracking-[0.2em] uppercase">
-                    {t.investigacion.etiqueta}
-                  </span>
-                </div>
-              </div>
-              <h2 className="text-5xl md:text-7xl font-bold text-white leading-[1.05] mb-8 tracking-tight">
-                {t.investigacion.titulo.uno}
-                <br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-200 via-purple-400 to-purple-800">
-                  {t.investigacion.titulo.dos}
-                </span>
+            <div className="relative z-10 w-full max-w-2xl">
+              <h2 className="text-4xl md:text-6xl font-bold text-white leading-[1.05] mb-10 tracking-tight">
+                {t.planes.titulo}
               </h2>
-              <div className="grid grid-cols-2 gap-6 mb-8 text-[10px] tracking-[0.3em] text-gray-500 uppercase">
-                <span>{t.investigacion.subtitulo[0]}</span>
-                <span>{t.investigacion.subtitulo[1]}</span>
+
+              <div className="grid sm:grid-cols-3 gap-4 md:gap-5 mb-10">
+                {t.planes.lista.map((plan) => (
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6" key={plan.nombre}>
+                    <p className="text-[10px] font-bold tracking-[0.2em] text-purple-300 uppercase mb-3">{plan.nombre}</p>
+                    <p className="text-3xl md:text-4xl font-black text-white mb-2">{plan.precio}</p>
+                    <p className="text-gray-400 text-sm">{plan.creditos}</p>
+                  </div>
+                ))}
               </div>
-              <div className="space-y-6 mb-12">
-                <p className="text-gray-400 text-base md:text-lg leading-relaxed font-light">{t.investigacion.texto}</p>
-              </div>
-              <div className="flex flex-col sm:flex-row items-center gap-6">
-                <a href={PANEL}>
-                  <button className="w-full sm:w-auto px-10 py-5 rounded-2xl bg-gradient-to-r from-purple-500 to-purple-700 text-white font-bold flex items-center justify-center gap-3 transition-all group">
-                    {t.investigacion.enlace}
-                    <Flecha />
-                  </button>
-                </a>
-              </div>
+
+              <p className="text-gray-300 leading-relaxed mb-4">{t.planes.incluye}</p>
+              <p className="text-gray-500 text-sm leading-relaxed mb-10">{t.planes.nota}</p>
+
+              <a href={PANEL}>
+                <button className="w-full sm:w-auto px-10 py-5 rounded-2xl bg-gradient-to-r from-purple-500 to-purple-700 text-white font-bold flex items-center justify-center gap-3 transition-all group">
+                  {t.planes.boton}
+                  <Flecha />
+                </button>
+              </a>
             </div>
 
             <div className="relative z-10 lg:w-1/2 flex justify-center items-center">
@@ -654,8 +540,8 @@ export function Landing() {
                 <div className="absolute inset-0 border border-dashed border-purple-500/20 rounded-full"></div>
                 <div className="absolute inset-12 border border-purple-500/10 rounded-full shadow-[inset_0_0_20px_rgba(168,85,247,0.1)]"></div>
                 <img
-                  src={IMAGENES.mercado}
-                  alt={t.investigacion.alt}
+                  src={IMAGENES.primerosPasos}
+                  alt={t.planes.alt}
                   loading="lazy"
                   className="relative w-[280px] md:w-[360px] rounded-2xl border border-purple-400/20 shadow-[0_30px_80px_rgba(168,85,247,0.25)]"
                 />

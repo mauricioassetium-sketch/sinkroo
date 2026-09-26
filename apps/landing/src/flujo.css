@@ -1,0 +1,600 @@
+/* ==================================================================================================
+   EL FLUJO ANIMADO — la hoja de estilos de <FlujoAnimado/>.
+
+   QUÉ ES: un dibujo (un solo SVG en línea) que explica el modelo de Sinkroo en SIETE SEGUNDOS y se
+   repite en bucle. El búho (el logo, /67.png) es el que viaja: recorre las siete etapas sobre un
+   riel punteado, y cada etapa se enciende cuando el búho llega.
+
+   TRES REGLAS QUE MANDAN AQUÍ:
+
+     1. NADA DEPENDE DE JAVASCRIPT PARA ANIMAR. Todo es CSS: `@keyframes` con `animation-duration:
+        7s`, `animation-iteration-count: infinite` y `animation-delay` por elemento. No hay un solo
+        `setTimeout`. El componente no tiene estado ni efectos: se pinta y ya.
+
+     2. NADA ARRANCA ESCONDIDO SI NO HAY ANIMACIÓN. La opacidad base de todo es 1; es la animación
+        la que esconde. Por eso, si alguien pide `prefers-reduced-motion: reduce` (o si el navegador
+        no anima), la figura queda COMPLETA y QUIETA: las siete etapas a la vez y el búho al final
+        del recorrido. Nunca un cuadro vacío.
+
+     3. EL RELOJ ES UNO SOLO: 7s. Todos los elementos de etapa usan una animación de 7s con su
+        ventana escrita en porcentajes (ver el reparto abajo). Los movimientos de vida (latidos,
+        tecleo, caída del material) son bucles cortos que dividen 7s exacto (1.4s, 1.75s, 3.5s),
+        así que al cerrar el ciclo quedan otra vez en fase y el bucle no se desalinea.
+
+   REPARTO DE LOS 7 SEGUNDOS (proporcional a lo que explica cada etapa):
+     1 SU NEGOCIO      0,00 – 0,70 s   (10,0 %)   cae el material, entra al motor
+     2 INVESTIGA       0,70 – 2,10 s   (20,0 %)   seis agentes leen el mercado
+     3 ESCRIBE         2,10 – 3,20 s   (15,7 %)   se escriben las piezas
+     4 MIROFISH PRUEBA 3,20 – 5,00 s   (25,7 %)   cinco jueces votan y el público opina
+     5 USTED APRUEBA   5,00 – 5,30 s   ( 4,3 %)   el visto bueno: un instante
+     6 SE PUBLICA      5,30 – 6,30 s   (14,3 %)   se encienden las redes
+     7 MIDE            6,30 – 7,00 s   (10,0 %)   las cifras (de ejemplo)
+   ================================================================================================== */
+
+/* ---------------------------------------------------------------------------------------------------
+   LA CAJA. `width:100%` + `height:auto`: el dibujo se adapta al ancho del contenedor y nunca saca
+   scroll horizontal. El `max-width` es para que en pantalla grande no se vuelva un cuadro enorme.
+   --------------------------------------------------------------------------------------------------- */
+.flujo-caja {
+  --flujo-fondo: #0a0a0c;
+  --flujo-violeta: #a855f7;
+  --flujo-violeta-claro: #c084fc;
+  --flujo-violeta-hondo: #7c3aed;
+  --flujo-texto: #f5f5f5;
+  --flujo-gris: #9a8fad;
+  --flujo-verde: #22c55e;
+  --flujo-panel: #12101c;
+  --flujo-borde: #3a2450;
+  width: 100%;
+  max-width: 900px;
+  margin-inline: auto;
+}
+
+.flujo-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  /* La tipografía es la de la página: el dibujo se integra, no impone otra fuente. */
+  font-family: inherit;
+  /* Nada se sale del cuadro. */
+  overflow: hidden;
+}
+
+/* ---------------------------------------------------------------------------------------------------
+   LAS PIEZAS DEL DIBUJO
+   --------------------------------------------------------------------------------------------------- */
+.flujo-tablero {
+  fill: var(--flujo-fondo);
+  stroke: var(--flujo-borde);
+  stroke-width: 1;
+}
+
+/* El riel: el recorrido punteado por donde anda el búho. Las rayas corren solas, para que se lea
+   hacia dónde va el flujo. */
+.flujo-riel {
+  fill: none;
+  stroke: var(--flujo-violeta);
+  stroke-width: 1.4;
+  stroke-opacity: 0.34;
+  stroke-dasharray: 7 9;
+  animation: flujoRiel 1.75s linear infinite;
+}
+
+.flujo-flecha {
+  fill: var(--flujo-violeta-claro);
+  fill-opacity: 0.7;
+}
+
+/* Cada etapa es un panel. El borde suave y el relleno apenas violeta: líneas finas, nada chillón. */
+.flujo-panel {
+  fill: var(--flujo-panel);
+  stroke: var(--flujo-borde);
+  stroke-width: 1.2;
+}
+
+/* La luz que se enciende en la etapa cuando el búho llega (misma ventana que el contenido). */
+.flujo-luz {
+  fill: none;
+  stroke: var(--flujo-violeta-claro);
+  stroke-width: 1.4;
+  opacity: 0;
+  filter: url(#flujo-glow);
+}
+
+.flujo-juez {
+  fill: rgba(168, 85, 247, 0.07);
+  stroke: rgba(168, 85, 247, 0.32);
+  stroke-width: 1;
+}
+
+.flujo-juez-cara {
+  fill: rgba(192, 132, 252, 0.22);
+  stroke: rgba(192, 132, 252, 0.55);
+  stroke-width: 1;
+}
+
+.flujo-voto-pista {
+  fill: #2a1a3a;
+}
+
+.flujo-voto {
+  fill: var(--flujo-violeta-claro);
+  transform-box: fill-box;
+  transform-origin: left center;
+  animation: flujoVoto 7s infinite both;
+}
+
+.flujo-burbuja {
+  fill: rgba(168, 85, 247, 0.1);
+  stroke: rgba(192, 132, 252, 0.35);
+  stroke-width: 1;
+}
+
+.flujo-burbuja-cola {
+  fill: rgba(168, 85, 247, 0.1);
+  stroke: rgba(192, 132, 252, 0.35);
+  stroke-width: 1;
+}
+
+.flujo-doc {
+  fill: rgba(168, 85, 247, 0.12);
+  stroke: rgba(192, 132, 252, 0.45);
+  stroke-width: 1;
+}
+
+.flujo-doc-linea {
+  fill: rgba(192, 132, 252, 0.5);
+}
+
+.flujo-motor {
+  fill: rgba(124, 58, 237, 0.16);
+  stroke: rgba(168, 85, 247, 0.55);
+  stroke-width: 1.2;
+}
+
+.flujo-motor-boca {
+  fill: rgba(124, 58, 237, 0.35);
+  stroke: rgba(192, 132, 252, 0.6);
+  stroke-width: 1;
+}
+
+.flujo-agente {
+  fill: var(--flujo-violeta-claro);
+  stroke: rgba(168, 85, 247, 0.7);
+  stroke-width: 1;
+}
+
+.flujo-lupa {
+  fill: rgba(168, 85, 247, 0.09);
+  stroke: var(--flujo-violeta-claro);
+  stroke-width: 1.6;
+}
+
+.flujo-eje {
+  stroke: rgba(154, 143, 173, 0.45);
+  stroke-width: 1;
+}
+
+.flujo-barra {
+  fill: rgba(168, 85, 247, 0.55);
+}
+
+.flujo-tarjeta {
+  fill: rgba(168, 85, 247, 0.07);
+  stroke: rgba(168, 85, 247, 0.3);
+  stroke-width: 1;
+}
+
+.flujo-tarjeta-titulo {
+  fill: rgba(192, 132, 252, 0.75);
+}
+
+.flujo-tarjeta-linea {
+  fill: rgba(245, 245, 245, 0.38);
+}
+
+.flujo-red-caja {
+  fill: rgba(168, 85, 247, 0.08);
+  stroke: rgba(168, 85, 247, 0.3);
+  stroke-width: 1;
+}
+
+/* Un envoltorio para teñir los trazos de las marcas (usan `currentColor`). */
+.flujo-color-violeta {
+  color: var(--flujo-violeta-claro);
+}
+
+/* Las marcas de las redes: monocromas y con `currentColor`, como pidió el dueño. */
+.flujo-glifo {
+  fill: currentColor;
+}
+
+.flujo-metrica-caja {
+  fill: rgba(168, 85, 247, 0.07);
+  stroke: rgba(168, 85, 247, 0.26);
+  stroke-width: 1;
+}
+
+.flujo-ejemplo-caja {
+  fill: rgba(168, 85, 247, 0.12);
+  stroke: rgba(192, 132, 252, 0.4);
+  stroke-width: 1;
+}
+
+/* El visto bueno del dueño: verde, y sólo verde para lo que sale bien.
+   El trazo mide ~107: el `dasharray` va holgado (130) para que se dibuje entero. */
+.flujo-cheque {
+  fill: none;
+  stroke: var(--flujo-verde);
+  stroke-width: 9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 130;
+  stroke-dashoffset: 130;
+  animation: flujoMarca 7s ease-out infinite both;
+  filter: url(#flujo-glow);
+}
+
+.flujo-cheque-halo {
+  fill: rgba(34, 197, 94, 0.1);
+  stroke: none;
+}
+
+/* El búho. La posición base es el FINAL del recorrido (etapa 7): así, si no hay animación, el búho
+   aparece al final y no en cualquier parte. */
+.flujo-buho {
+  transform: translate(143px, 392px);
+  animation: flujoBuho 7s ease-in-out infinite;
+}
+
+.flujo-buho-imagen {
+  filter: url(#flujo-glow-buho);
+}
+
+.flujo-buho-halo {
+  fill: url(#flujo-halo);
+}
+
+/* ---------------------------------------------------------------------------------------------------
+   LOS TEXTOS. Tamaños pensados para que en un celular de 390 px se lean. El dibujo mide 720 de ancho
+   y en un teléfono de 390 px se ve a ~0,5 (358 px de ancho, 298 px de alto): un tamaño de 18 px del
+   dibujo son ~9 px de pantalla. Lo que se agranda es lo que importa: el nombre de la etapa y lo que
+   dice el público. Las notas chicas se quedan chicas a propósito (son apoyo, no lectura).
+   --------------------------------------------------------------------------------------------------- */
+.flujo-nombre {
+  font-size: 16.5px;
+  font-weight: 700;
+  letter-spacing: 0;
+  fill: var(--flujo-texto);
+}
+
+.flujo-chico {
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  fill: var(--flujo-gris);
+}
+
+.flujo-dice-txt {
+  font-size: 18px;
+  fill: var(--flujo-texto);
+}
+
+.flujo-puntaje {
+  font-size: 15px;
+  font-weight: 700;
+  fill: var(--flujo-violeta-claro);
+}
+
+.flujo-metrica-rot {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  fill: var(--flujo-gris);
+}
+
+.flujo-metrica-num {
+  font-size: 23px;
+  font-weight: 700;
+  fill: var(--flujo-texto);
+}
+
+.flujo-ok-txt {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  fill: var(--flujo-verde);
+}
+
+.flujo-nota {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  fill: var(--flujo-gris);
+}
+
+.flujo-ejemplo-txt {
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  fill: var(--flujo-violeta-claro);
+}
+
+/* ---------------------------------------------------------------------------------------------------
+   LAS VENTANAS DE LAS SIETE ETAPAS (una animación de 7s por etapa, con su ventana en porcentajes).
+   Se usan en dos lugares: en el grupo del contenido y en el rectángulo de luz del panel.
+   --------------------------------------------------------------------------------------------------- */
+.flujo-e1 { animation: flujoE1 7s infinite both; }
+.flujo-e2 { animation: flujoE2 7s infinite both; }
+.flujo-e3 { animation: flujoE3 7s infinite both; }
+.flujo-e4 { animation: flujoE4 7s infinite both; }
+.flujo-e5 { animation: flujoE5 7s infinite both; }
+.flujo-e6 { animation: flujoE6 7s infinite both; }
+.flujo-e7 { animation: flujoE7 7s infinite both; }
+
+@keyframes flujoE1 {
+  0%, 1.71% { opacity: 0; }
+  3.5% { opacity: 1; }
+  8.86% { opacity: 1; }
+  10.5%, 100% { opacity: 0; }
+}
+
+@keyframes flujoE2 {
+  0%, 11.43% { opacity: 0; }
+  13.5% { opacity: 1; }
+  28.57% { opacity: 1; }
+  30.5%, 100% { opacity: 0; }
+}
+
+@keyframes flujoE3 {
+  0%, 31.43% { opacity: 0; }
+  33.5% { opacity: 1; }
+  44.29% { opacity: 1; }
+  46.5%, 100% { opacity: 0; }
+}
+
+@keyframes flujoE4 {
+  0%, 47.86% { opacity: 0; }
+  50% { opacity: 1; }
+  71.14% { opacity: 1; }
+  73%, 100% { opacity: 0; }
+}
+
+@keyframes flujoE5 {
+  0%, 71.71% { opacity: 0; }
+  73.5% { opacity: 1; }
+  78% { opacity: 1; }
+  81%, 100% { opacity: 0; }
+}
+
+@keyframes flujoE6 {
+  0%, 77.86% { opacity: 0; }
+  80% { opacity: 1; }
+  89.29% { opacity: 1; }
+  91%, 100% { opacity: 0; }
+}
+
+@keyframes flujoE7 {
+  0%, 91.43% { opacity: 0; }
+  93% { opacity: 1; }
+  98.5% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* ---------------------------------------------------------------------------------------------------
+   EL BÚHO: la ruta completa dentro de los 7 segundos. Las paradas largas son las etapas que más
+   explican (investigar, escribir, probar) y las cortas son los traslados. El último tramo (del final
+   de la etapa 7 al arranque de la 1) cierra el círculo, así que el bucle no tiene salto.
+   --------------------------------------------------------------------------------------------------- */
+@keyframes flujoBuho {
+  0% { transform: translate(70px, 268px); }      /* 1 SU NEGOCIO */
+  7.5% { transform: translate(70px, 268px); }
+  10.5% { transform: translate(210px, 268px); }  /* 2 INVESTIGA */
+  27.5% { transform: translate(210px, 268px); }
+  30.5% { transform: translate(348px, 268px); }  /* 3 ESCRIBE */
+  43.5% { transform: translate(348px, 268px); }
+  46.5% { transform: translate(563px, 268px); }  /* 4 MIROFISH PRUEBA */
+  70.5% { transform: translate(563px, 268px); }
+  71.8% { transform: translate(648px, 268px); }  /* dobla por la derecha */
+  73% { transform: translate(688px, 330px); }
+  74.2% { transform: translate(633px, 392px); }  /* 5 USTED APRUEBA */
+  76.5% { transform: translate(633px, 392px); }
+  79.5% { transform: translate(415px, 392px); }  /* 6 SE PUBLICA */
+  88.5% { transform: translate(415px, 392px); }
+  91.5% { transform: translate(143px, 392px); }  /* 7 MIDE */
+  96.5% { transform: translate(143px, 392px); }
+  97.6% { transform: translate(72px, 392px); }   /* vuelve por la izquierda */
+  98.6% { transform: translate(32px, 330px); }
+  100% { transform: translate(70px, 268px); }    /* y otra vez al principio, sin salto */
+}
+
+/* ---------------------------------------------------------------------------------------------------
+   EL PÚBLICO HABLANDO (etapa 4). Los tres bocadillos entran y salen con la misma animación; el
+   desfase se da con `animation-delay` en el componente (0s, 0,5s, 1s). Todos caben dentro de la
+   ventana de MiroFish (3,2–5,0 s).
+   --------------------------------------------------------------------------------------------------- */
+@keyframes flujoDice {
+  0%, 47.14% { opacity: 0; transform: translateY(6px); }
+  49.5% { opacity: 1; transform: translateY(0); }
+  55% { opacity: 1; transform: translateY(0); }
+  57.14%, 100% { opacity: 0; transform: translateY(-3px); }
+}
+
+.flujo-dice {
+  animation: flujoDice 7s infinite both;
+}
+
+/* ---------------------------------------------------------------------------------------------------
+   LOS CINCO JUECES: la barra del voto se llena dentro de la ventana de la etapa 4.
+   --------------------------------------------------------------------------------------------------- */
+@keyframes flujoVoto {
+  0%, 47.86% { transform: scaleX(0.02); }
+  53% { transform: scaleX(1); }
+  71.14% { transform: scaleX(1); }
+  73%, 100% { transform: scaleX(0.02); }
+}
+
+/* ---------------------------------------------------------------------------------------------------
+   EL VISTO DEL DUEÑO (etapa 5): se marca de una, con el trazo dibujándose.
+   --------------------------------------------------------------------------------------------------- */
+@keyframes flujoMarca {
+  0%, 72.5% { stroke-dashoffset: 130; }
+  76% { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: 0; }
+}
+
+/* ---------------------------------------------------------------------------------------------------
+   SE PUBLICA (etapa 6): cada red se enciende con un golpecito. El desfase (0,08 s por red) va en el
+   componente; el apagado lo hace la ventana de la etapa que envuelve al grupo.
+   --------------------------------------------------------------------------------------------------- */
+@keyframes flujoEntraRed {
+  0%, 76% { opacity: 0; transform: scale(0.55); }
+  79.5% { opacity: 1; transform: scale(1); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+.flujo-red {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: flujoEntraRed 7s infinite both;
+}
+
+/* ---------------------------------------------------------------------------------------------------
+   MIDE (etapa 7): las cifras suben (no es un contador de JavaScript: entran subiendo y se quedan).
+   --------------------------------------------------------------------------------------------------- */
+@keyframes flujoSube {
+  0%, 91.43% { opacity: 0; transform: translateY(9px); }
+  94.5% { opacity: 1; transform: translateY(0); }
+  98.5% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(0); }
+}
+
+.flujo-sube {
+  animation: flujoSube 7s infinite both;
+}
+
+/* ---------------------------------------------------------------------------------------------------
+   LOS MOVIMIENTOS DE VIDA (bucles cortos que dividen 7s exacto, para no desalinear el ciclo):
+   1,4 s (5 veces), 1,75 s (4 veces) y 3,5 s (2 veces).
+   --------------------------------------------------------------------------------------------------- */
+
+/* El material cae hacia el motor (etapa 1). */
+@keyframes flujoCae {
+  0% { transform: translateY(0); opacity: 0; }
+  14% { opacity: 1; }
+  70% { opacity: 1; }
+  84% { transform: translateY(112px); opacity: 0; }
+  100% { transform: translateY(112px); opacity: 0; }
+}
+
+.flujo-cae {
+  animation: flujoCae 1.75s linear infinite;
+}
+
+/* Los seis agentes (etapa 2) laten. */
+@keyframes flujoLatido {
+  0%, 100% { transform: scale(1); opacity: 0.7; }
+  50% { transform: scale(1.4); opacity: 1; }
+}
+
+.flujo-latido {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: flujoLatido 1.4s ease-in-out infinite;
+}
+
+/* El engranaje del motor gira. */
+@keyframes flujoGira {
+  to { transform: rotate(360deg); }
+}
+
+.flujo-gira {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: flujoGira 3.5s linear infinite;
+}
+
+/* Las piezas se escriben solas (etapa 3). */
+@keyframes flujoEscribe {
+  0% { transform: scaleX(0); }
+  55% { transform: scaleX(1); }
+  85% { transform: scaleX(1); }
+  100% { transform: scaleX(0); }
+}
+
+.flujo-escribe {
+  transform-box: fill-box;
+  transform-origin: left center;
+  animation: flujoEscribe 1.4s ease-in-out infinite;
+}
+
+/* Las barras del gráfico de mercado suben y bajan. */
+@keyframes flujoCrece {
+  0%, 100% { transform: scaleY(0.5); }
+  50% { transform: scaleY(1); }
+}
+
+.flujo-crece {
+  transform-box: fill-box;
+  transform-origin: bottom center;
+  animation: flujoCrece 1.75s ease-in-out infinite;
+}
+
+/* El cursor que titila mientras se escribe. */
+@keyframes flujoCursor {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+.flujo-cursor {
+  animation: flujoCursor 1.4s steps(1, end) infinite;
+}
+
+/* El riel: las rayas corriendo. */
+@keyframes flujoRiel {
+  to { stroke-dashoffset: -32; }
+}
+
+/* ---------------------------------------------------------------------------------------------------
+   RESPETO POR EL USUARIO: si pidió que no haya movimiento, TODO QUEDA QUIETO Y COMPLETO.
+   Las siete etapas se ven a la vez, el búho queda al final del recorrido y nada parpadea.
+   --------------------------------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .flujo-caja *,
+  .flujo-caja *::before,
+  .flujo-caja *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .flujo-etapa,
+  .flujo-dice,
+  .flujo-red,
+  .flujo-voto,
+  .flujo-sube,
+  .flujo-cae,
+  .flujo-latido,
+  .flujo-escribe,
+  .flujo-crece {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .flujo-voto {
+    transform: scaleX(1) !important;
+  }
+
+  .flujo-cheque {
+    stroke-dashoffset: 0 !important;
+  }
+
+  /* El búho, al final del recorrido (etapa 7). */
+  .flujo-buho {
+    transform: translate(143px, 392px) !important;
+  }
+
+  /* La luz de las etapas queda encendida, sin latir. */
+  .flujo-luz {
+    opacity: 0.45 !important;
+  }
+}

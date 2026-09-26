@@ -3,13 +3,67 @@
    todas las clases del armazón (el mismo negro, la misma tipografía, las mismas tarjetas). Aquí va
    sólo lo que ese archivo no podía tener porque en la vieja lo hacía JavaScript:
 
-     · la franja que se mueve (bloque 4) — en CSS, y se detiene con `prefers-reduced-motion`;
+     · la franja que se mueve (bloque 3) — en CSS, y se detiene con `prefers-reduced-motion`;
      · las 31 líneas del fondo de la portada — con CSS en vez del animation library;
+     · el título que se cambia solo (bloque 2) — las cuatro frases apiladas en la misma celda del
+       enrejado y un `@keyframes` de 14 s; sin JavaScript y sin relojes;
      · el selector ES | EN y el menú del celular (piezas nuevas de la cabecera);
      · el botón «fantasma» del tercer acceso de la portada;
      · `object-top`, para que las capturas del panel muestren su parte de arriba en las tarjetas.
    NADA de aquí esconde contenido: sin JavaScript el texto se lee igual.
    ============================================================================================= */
+
+/* =============================================================================================
+   EL TÍTULO QUE SE CAMBIA SOLO (bloque 2). Las CUATRO frases están en el HTML, una encima de la
+   otra en la misma celda del enrejado: la caja toma el alto de la más larga y nada salta. Cada
+   frase dura 3,5 s (14 s las cuatro) y se cruza con la siguiente en un desvanecido suave.
+   · Sin JavaScript y sin relojes: es sólo CSS.
+   · Con `prefers-reduced-motion: reduce` no hay animación y se ve la PRIMERA frase, quieta.
+   · Si el navegador no anima (o la hoja no carga), la primera queda visible: nada se pierde.
+   ============================================================================================= */
+.titulo-cambia {
+  display: grid;
+}
+
+.titulo-cambia-frase {
+  grid-area: 1 / 1;
+  opacity: 0;
+  animation: titulo-turno 14s linear infinite;
+}
+
+.titulo-cambia-frase:first-child {
+  opacity: 1;
+}
+
+@keyframes titulo-turno {
+  0% {
+    opacity: 0;
+  }
+  2% {
+    opacity: 1;
+  }
+  22% {
+    opacity: 1;
+  }
+  25% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .titulo-cambia-frase {
+    animation: none;
+    opacity: 0;
+  }
+
+  .titulo-cambia-frase:first-child {
+    opacity: 1;
+  }
+}
+
 
 /* La franja: la pista lleva DOS copias de la hilera, una al lado de la otra, y se desliza
    exactamente una copia por vuelta (50% + la mitad del hueco de 6rem, que es el gap-24 de la vieja)
@@ -143,7 +197,8 @@ body {
   overflow-x: hidden;
 }
 
-@media (min-width: 768px) {
+/* El menú del celular se usa hasta «lg» (en «lg» ya caben los cinco enlaces en la cabecera). */
+@media (min-width: 1024px) {
   .menu-movil {
     display: none;
   }
@@ -159,5 +214,152 @@ body {
 
   .linea-que-cae {
     opacity: 0.15;
+  }
+}
+
+/* =============================================================================================
+   LAS CLASES DE MAQUETACIÓN QUE `viejo.css` NO TRAE.
+   `viejo.css` es el Tailwind ya compilado de la landing anterior: sólo tiene las clases que
+   aquella página usaba. Los bloques nuevos necesitan unas cuantas más (los altos de las capturas,
+   los espacios entre bloques y los enlaces de la cabecera en pantalla grande), y se escriben aquí
+   con los mismos valores de Tailwind para que el armazón se vea igual que el de siempre.
+   ============================================================================================= */
+.mt-5 {
+  margin-top: 1.25rem;
+}
+
+.mt-12 {
+  margin-top: 3rem;
+}
+
+.mt-24 {
+  margin-top: 6rem;
+}
+
+.space-y-24 > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 6rem;
+}
+
+.tracking-wide {
+  letter-spacing: 0.025em;
+}
+
+.h-\[240px\] {
+  height: 240px;
+}
+
+.h-\[300px\] {
+  height: 300px;
+}
+
+.w-\[280px\] {
+  width: 280px;
+}
+
+.w-\[50\%\] {
+  width: 50%;
+}
+
+.leading-\[0\.95\] {
+  line-height: 0.95;
+}
+
+.bg-white\/\[0\.02\] {
+  background-color: rgb(255 255 255 / 0.02);
+}
+
+.hover\:border-purple-500\/40:hover {
+  border-color: rgb(168 85 247 / 0.4);
+}
+
+@media (min-width: 640px) {
+  .sm\:grid-cols-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 768px) {
+  .md\:h-\[300px\] {
+    height: 300px;
+  }
+
+  .md\:h-\[340px\] {
+    height: 340px;
+  }
+
+  .md\:h-\[460px\] {
+    height: 460px;
+  }
+
+  .md\:w-\[360px\] {
+    width: 360px;
+  }
+
+  .md\:gap-5 {
+    gap: 1.25rem;
+  }
+
+  .md\:gap-6 {
+    gap: 1.5rem;
+  }
+
+  .md\:mb-20 {
+    margin-bottom: 5rem;
+  }
+
+  .md\:mb-28 {
+    margin-bottom: 7rem;
+  }
+
+  .md\:mt-16 {
+    margin-top: 4rem;
+  }
+
+  .md\:mt-20 {
+    margin-top: 5rem;
+  }
+
+  .md\:mt-32 {
+    margin-top: 8rem;
+  }
+
+  .md\:p-8 {
+    padding: 2rem;
+  }
+
+  .md\:py-32 {
+    padding-top: 8rem;
+    padding-bottom: 8rem;
+  }
+
+  .md\:space-y-32 > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 8rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  /* Los cinco enlaces de la cabecera y el selector de idioma: en pantalla grande se ven, y el
+     botón del menú del celular se esconde. Van aquí para ganarle a `.hidden` de `viejo.css`. */
+  .lg\:flex {
+    display: flex;
+  }
+
+  .lg\:hidden {
+    display: none;
+  }
+
+  .lg\:grid-cols-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1280px) {
+  .xl\:gap-8 {
+    gap: 2rem;
+  }
+
+  .xl\:text-base {
+    font-size: 1rem;
+    line-height: 1.5rem;
   }
 }

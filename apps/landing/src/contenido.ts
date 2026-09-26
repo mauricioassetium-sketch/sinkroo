@@ -3,6 +3,14 @@
    El texto es DEL DUEÑO, LITERAL: aquí no se reescribe ni se agrega una promesa más. Si hay que
    cambiar algo, se cambia aquí y de aquí para el JSX; no se «mejora» por gusto.
    La página arranca en español (`IDIOMA_INICIAL`).
+
+   LOS DIEZ BLOQUES (el armazón de siempre, con la información de hoy):
+     1. Cabecera · 2. Portada (con el título que se cambia solo) · 3. Franja que se mueve ·
+     4. Qué hacemos · 5. Cómo lo hacemos (el flujo animado y las siete etapas) ·
+     6. Con qué trabaja · 7. Con quién se conecta (las 14) · 8. Planes · 9. Contacto · 10. Pie
+
+   NADA DE ESTE TEXTO DICE QUE EL SISTEMA PUBLIQUE SOLO, CIERRE VENTAS NI MANDE ENLACES DE COMPRA:
+   eso todavía no existe y la propia página lo dice en el bloque 7.
    ============================================================================================= */
 
 export type Idioma = 'es' | 'en';
@@ -14,31 +22,51 @@ export const IDIOMA_INICIAL: Idioma = 'es';
 export const PANEL = '/panel/';
 
 /**
- * Las cuatro capturas del panel. Viven locales en public/capturas (nada remoto).
+ * Las capturas del panel y las fotos del trabajo. Viven locales en public/ (nada remoto).
  *
  * OJO CON LA DIRECCIÓN: van en /capturas/ y NO en /panel/. En el servidor, /panel/ entero está
- * tomado por el panel del negocio, así que una imagen pedida a /panel/algo.jpg no devolvía la
- * imagen: devolvía la página del panel con un 200 y en la landing salía rota.
+ * tomado por el panel del negocio, así que una imagen pedida a /panel/algo.jpg no devuelve la
+ * imagen: devuelve la página del panel con un 200 y en la landing sale rota.
+ *
+ * CADA BLOQUE CON IMAGEN MUESTRA UNA PANTALLA DISTINTA DEL PANEL (nunca se repite una captura en
+ * dos bloques): el bloque 4 usa mercado, campanas y hoy; el bloque 6 usa motor, mirofish, cuenta,
+ * en línea y créditos; el bloque 8 usa primeros pasos. Las fotos de gente son del trabajo (no son
+ * el equipo del negocio ni el público real) y el bloque 5 lo dice con su rótulo.
  */
 export const IMAGENES = {
   buho: '/67.png',
   portada: '/6-web.jpg',
-  hoy: '/capturas/hoy.jpg',
-  campanas: '/capturas/campanas.jpg',
+  /* Bloque 4 · QUÉ HACEMOS */
   mercado: '/capturas/mercado.jpg',
+  campanas: '/capturas/campanas.jpg',
+  hoy: '/capturas/hoy.jpg',
+  /* Bloque 6 · CON QUÉ TRABAJA */
+  motor: '/capturas/motor.jpg',
+  mirofish: '/capturas/mirofish.jpg',
+  cuenta: '/capturas/cuenta.jpg',
+  enLinea: '/capturas/en-linea.jpg',
   creditos: '/capturas/creditos.jpg',
+  /* Bloque 8 · PLANES */
+  primerosPasos: '/capturas/primeros-pasos.jpg',
+  /* Bloque 5 · las fotos del trabajo */
+  gente1: '/gente/gente-1.jpg',
+  gente3: '/gente/gente-3.jpg',
 } as const;
 
 type Cifra = { etiqueta: string; valor: string };
-type TarjetaTrabajo = { numero: string; titulo: string; texto: string; enlace: string; imagen: string; alt: string };
-type Modulo = { numero: string; titulo: string; texto: string; imagen: string; alt: string };
-type TarjetaCifra = { etiqueta: string; valor: string; subtitulo: string; texto: string; imagen?: string; alt?: string };
+type Enlace = { texto: string; href: string };
+type TarjetaExplica = { numero: string; titulo: string; texto: string; imagen: string; alt: string };
+type Etapa = { numero: string; titulo: string; texto: string };
+type Herramienta = { numero: string; nombre: string; texto: string; imagen: string; alt: string };
+type Conexion = { nombre: string; texto: string };
+type Plan = { nombre: string; precio: string; creditos: string };
 
 export type Contenido = {
   /* 1 · CABECERA */
   cabecera: {
     marca: string;
-    menu: { comoFunciona: string; planes: string; entrar: string };
+    enlaces: Enlace[];
+    entrar: string;
     idioma: { etiqueta: string; es: string; en: string };
     abrirMenu: string;
     altBuho: string;
@@ -46,46 +74,37 @@ export type Contenido = {
   /* 2 · PORTADA */
   portada: {
     linea: string;
-    titulo: { uno: string; dos: string };
+    /** Las cuatro frases del título que se cambian solas (con el HTML y sin JavaScript). */
+    titulos: string[];
     bajada: string;
-    accesos: { panel: string; comoFunciona: string; planes: string };
+    accesos: { panel: string; comoFunciona: string; conexiones: string };
     cifras: Cifra[];
+    indiceTitulo: string;
+    indice: Enlace[];
     altPortada: string;
   };
-  /* 3 · LOS DOS PÁRRAFOS */
-  introduccion: { uno: string; dos: string };
-  /* 4 · LA FRANJA QUE SE MUEVE */
-  franja: { palabras: string[]; frases: string[] };
-  /* 5 · CÓMO FUNCIONA */
-  comoFunciona: {
-    etiqueta: string;
+  /* 3 · LA FRANJA QUE SE MUEVE */
+  franja: { palabras: string[] };
+  /* 4 · QUÉ HACEMOS */
+  queHacemos: { titulo: string; parrafo: string; tarjetas: TarjetaExplica[] };
+  /* 5 · CÓMO LO HACEMOS */
+  comoLoHacemos: {
     titulo: { uno: string; dos: string };
-    parrafos: { uno: string; dos: string };
-    linea: string;
+    etapas: Etapa[];
+    genteEtiqueta: string;
+    gente: { imagen: string; alt: string }[];
+  };
+  /* 6 · CON QUÉ TRABAJA */
+  conQueTrabaja: { titulo: { uno: string; dos: string }; herramientas: Herramienta[] };
+  /* 7 · CON QUIÉN SE CONECTA */
+  conexiones: { titulo: string; bajada: string; lista: Conexion[]; honestidad: string };
+  /* 8 · PLANES */
+  planes: {
+    titulo: string;
+    lista: Plan[];
+    incluye: string;
+    nota: string;
     boton: string;
-    tarjetas: TarjetaTrabajo[];
-  };
-  /* 6 · LOS SIETE MÓDULOS */
-  modulosTitulo: { uno: string; dos: string };
-  modulos: Modulo[];
-  /* 7 · LA DIFERENCIA ES EL ORDEN */
-  cifras: {
-    etiqueta: string;
-    titulo: { uno: string; dos: string };
-    parrafo: string;
-    tarjetas: TarjetaCifra[];
-    linea1: string;
-    linea2: string;
-    enlace: string;
-  };
-  /* 8 · BLOQUE NUMERADO */
-  investigacion: {
-    numero: string;
-    etiqueta: string;
-    titulo: { uno: string; dos: string };
-    subtitulo: [string, string];
-    texto: string;
-    enlace: string;
     alt: string;
   };
   /* 9 · CONTACTO */
@@ -100,7 +119,7 @@ export type Contenido = {
     marca: string;
     frase: string;
     enlacesTitulo: string;
-    enlaces: { texto: string; href: string }[];
+    enlaces: Enlace[];
     escribir: string;
     derechos: string;
     direccion: string[];
@@ -110,176 +129,247 @@ export type Contenido = {
 const ES: Contenido = {
   cabecera: {
     marca: 'Sinkroo',
-    menu: { comoFunciona: 'Cómo funciona', planes: 'Planes', entrar: 'Entrar' },
+    enlaces: [
+      { texto: 'Qué hacemos', href: '#que-hacemos' },
+      { texto: 'Cómo funciona', href: '#como-funciona' },
+      { texto: 'Con qué trabaja', href: '#con-que-trabaja' },
+      { texto: 'Conexiones', href: '#conexiones' },
+      { texto: 'Planes', href: '#planes' },
+    ],
+    entrar: 'Entrar al panel',
     idioma: { etiqueta: 'Idioma', es: 'ES', en: 'EN' },
     abrirMenu: 'Abrir el menú',
     altBuho: 'Sinkroo: el búho',
   },
   portada: {
-    linea: 'CINCO JUECES · QUINIENTAS PERSONAS · CERO PESOS ANTES DEL VEREDICTO',
-    titulo: { uno: 'TU EQUIPO DE MARKETING,', dos: 'TRABAJANDO SOLO 24/7' },
+    linea: 'INVESTIGA · ESCRIBE · PRUEBA · APRUEBA · PUBLICA · MIDE',
+    titulos: [
+      'TU EQUIPO DE MARKETING, TRABAJANDO SOLO 24/7',
+      'INVESTIGA SU MERCADO Y ESCRIBE LAS PIEZAS',
+      'LAS PRUEBA CON 500 PERSONAS ANTES DE GASTAR',
+      'Y MIDE CADA PESO QUE ENTRÓ',
+    ],
     bajada:
-      'Investiga su mercado, escribe las piezas, las prueba con quinientas personas simuladas y cinco jueces, y mide cada peso. El trabajo queda hecho: sólo queda aprobar.',
-    accesos: { panel: 'ENTRAR A MI PANEL', comoFunciona: 'CÓMO FUNCIONA', planes: 'VER LOS PLANES' },
+      'Sinkroo monta el equipo completo de marketing de su negocio: investiga el mercado, escribe las piezas de cada red, las prueba antes de que usted gaste un peso y mide lo que pasó. Usted aprueba lo que sale.',
+    accesos: {
+      panel: 'ENTRAR A MI PANEL',
+      comoFunciona: 'CÓMO FUNCIONA',
+      conexiones: 'CON QUÉ SE CONECTA',
+    },
     cifras: [
       { etiqueta: 'JUECES POR PIEZA', valor: '5' },
-      { etiqueta: 'PERSONAS DEL PÚBLICO', valor: '500' },
+      { etiqueta: 'PERSONAS SIMULADAS', valor: '500' },
       { etiqueta: 'PESOS ANTES DEL VEREDICTO', valor: '0' },
+    ],
+    indiceTitulo: 'EN ESTA PÁGINA',
+    indice: [
+      { texto: 'Qué hacemos', href: '#que-hacemos' },
+      { texto: 'Cómo lo hacemos', href: '#como-funciona' },
+      { texto: 'Con qué trabaja', href: '#con-que-trabaja' },
+      { texto: 'Conexiones', href: '#conexiones' },
+      { texto: 'Planes', href: '#planes' },
     ],
     altPortada: 'Sinkroo: la tarjeta de marca',
   },
-  introduccion: {
-    uno: 'Sinkroo lee su negocio, su material y sus cuentas. De ahí en adelante trabaja solo: investiga el mercado donde compite, escribe las piezas de cada red y las prueba antes de que usted gaste un peso.',
-    dos: 'No adivina. Cada pieza se somete a su público simulado y a cinco jueces: la que no convence vuelve a corregirse y queda guardada con el voto de cada juez. Lo que sale, sale con veredicto.',
-  },
   franja: {
     palabras: ['INVESTIGA', 'ESCRIBE', 'PRUEBA', 'APRUEBA', 'MIDE', 'APRENDE'],
-    frases: [
-      'SEIS AGENTES DE INVESTIGACIÓN',
-      'CINCO JUECES',
-      'QUINIENTAS PERSONAS',
-      'UN PANEL PARA USTED',
-    ],
   },
-  comoFunciona: {
-    etiqueta: 'CÓMO TRABAJA',
-    titulo: { uno: 'EL FIN DE', dos: 'ADIVINAR' },
-    parrafos: {
-      uno: 'Hoy el marketing se decide por intuición y el error se paga después: se produce, se publica y sólo entonces se sabe si funcionó.',
-      dos: 'Sinkroo le da vuelta al orden. Primero investiga, después escribe, y sólo sale lo que pasó el filtro. Cada decisión queda escrita, con su dato y con de dónde salió.',
-    },
-    linea: 'SISTEMÁTICO · PREDECIBLE · MEDIBLE',
-    boton: 'ENTRAR A MI PANEL',
+  queHacemos: {
+    titulo: 'QUÉ HACEMOS',
+    parrafo:
+      'Un negocio sin equipo de marketing tiene tres problemas: no sabe qué está funcionando en su mercado, no alcanza a producir todo lo que habría que publicar, y gasta a ciegas. Sinkroo hace las tres cosas, con el material que usted ya tiene.',
     tarjetas: [
       {
         numero: '01',
-        titulo: 'EL EQUIPO INVESTIGA',
+        titulo: 'LA INVESTIGACIÓN',
         texto:
-          'Seis agentes leen el mercado: qué publica su competencia, con qué colores, qué ganchos y qué precios. Cada hallazgo queda guardado con su fuente.',
-        enlace: 'Ver la investigación',
+          'Seis agentes leen su mercado y guardan cada hallazgo con su fuente: qué publica la competencia, con qué colores, en qué duración, con qué gancho y a qué precio.',
         imagen: IMAGENES.mercado,
         alt: 'Panel de Sinkroo: la pantalla «Mercado», donde quedan los hallazgos con su fuente.',
       },
       {
         numero: '02',
-        titulo: 'EL MOTOR ESCRIBE',
+        titulo: 'LA CREACIÓN',
         texto:
-          'De esos hallazgos salen las piezas de cada red, con su formato y su texto. Nada se inventa de la nada: cada pieza nace de un hallazgo.',
-        enlace: 'Ver las piezas',
+          'Con esos hallazgos, el motor escribe las piezas de cada red en su formato y con su texto. Cada pieza nace de un hallazgo, no de una corazonada.',
         imagen: IMAGENES.campanas,
-        alt: 'Panel de Sinkroo: la pantalla «Campañas» con el flujo por etapas.',
+        alt: 'Panel de Sinkroo: la pantalla «Campañas», con el flujo por etapas del motor.',
       },
       {
         numero: '03',
-        titulo: 'MIROFISH DECIDE',
+        titulo: 'EL FILTRO',
         texto:
-          'Cinco jueces y quinientas personas simuladas votan cada pieza. La que no pasa el filtro no se publica y no gasta un peso.',
-        enlace: 'Ver el veredicto',
+          'Antes de gastar, cada pieza se prueba: cinco jueces la puntúan y quinientas personas simuladas reaccionan. La que no convence vuelve a corregirse y no gasta un peso.',
         imagen: IMAGENES.hoy,
-        alt: 'Panel de Sinkroo: la pantalla «Hoy» con los cinco jueces y las quinientas personas del público por pieza.',
+        alt: 'Panel de Sinkroo: la pantalla «Hoy» del negocio, con el trabajo del motor.',
       },
     ],
   },
-  modulosTitulo: { uno: 'LOS SIETE', dos: 'MÓDULOS' },
-  modulos: [
-    {
-      numero: 'M1',
-      titulo: 'SU NEGOCIO',
-      texto:
-        'El sistema lee su negocio, su material y sus productos: qué vende, a quién y con qué tono.',
-      imagen: IMAGENES.hoy,
-      alt: 'Panel de Sinkroo: la pantalla «Hoy» de la cuenta de demostración.',
-    },
-    {
-      numero: 'M2',
-      titulo: 'SU PÚBLICO',
-      texto:
-        'Con eso arma el público con el que se prueba: quinientas personas simuladas con la edad, la zona y el comportamiento de su mercado.',
-      imagen: IMAGENES.hoy,
-      alt: 'Panel de Sinkroo: la pantalla «Hoy», con los cinco jueces y las quinientas personas del público por pieza.',
-    },
-    {
-      numero: 'M3',
-      titulo: 'LA INVESTIGACIÓN',
-      texto:
-        'Seis agentes leen el mercado y guardan cada hallazgo con la fuente: de ahí salen los colores, los ganchos y los precios.',
-      imagen: IMAGENES.mercado,
-      alt: 'Panel de Sinkroo: la pantalla «Mercado», con los hallazgos y su fuente.',
-    },
-    {
-      numero: 'M4',
-      titulo: 'LAS PIEZAS',
-      texto:
-        'El motor escribe las piezas de cada red, cada una en su formato y con su texto, partiendo de los hallazgos.',
-      imagen: IMAGENES.campanas,
-      alt: 'Panel de Sinkroo: la pantalla «Campañas», con las piezas que el motor crea.',
-    },
-    {
-      numero: 'M5',
-      titulo: 'EL FILTRO',
-      texto:
-        'Cinco jueces las puntúan y quinientas personas reaccionan. La que no convence vuelve a corregirse y no gasta un peso.',
-      imagen: IMAGENES.hoy,
-      alt: 'Panel de Sinkroo: la pantalla «Hoy», donde se ve el filtro de cinco jueces y quinientas personas.',
-    },
-    {
-      numero: 'M6',
-      titulo: 'SU APROBACIÓN',
-      texto:
-        'Lo que pasa el filtro queda listo para salir y usted decide qué se publica. Nada sale de sus cuentas sin su OK.',
-      imagen: IMAGENES.campanas,
-      alt: 'Panel de Sinkroo: la pantalla «Campañas», donde el flujo termina en su decisión.',
-    },
-    {
-      numero: 'M7',
-      titulo: 'LA MEDICIÓN',
-      texto:
-        'Se mide qué rindió cada pieza y cuánto costó, y se compara con lo que el modelo había predicho: de ahí sale el desvío.',
-      imagen: IMAGENES.mercado,
-      alt: 'Panel de Sinkroo: la pantalla «Mercado», con el desvío del modelo frente a lo que pasó.',
-    },
-  ],
-  cifras: {
-    etiqueta: 'LA DIFERENCIA ES EL ORDEN',
-    titulo: { uno: 'PRIMERO SE PRUEBA.', dos: 'DESPUÉS SE GASTA.' },
-    parrafo:
-      'En el marketing corriente el dinero sale primero y el aprendizaje llega después, cuando ya se gastó. Acá es al revés: lo que se gasta ya pasó por quinientas personas y cinco jueces.',
-    tarjetas: [
+  comoLoHacemos: {
+    titulo: { uno: 'CÓMO LO HACEMOS,', dos: 'PASO POR PASO' },
+    etapas: [
       {
-        etiqueta: 'EL FILTRO',
-        valor: '5 jueces',
-        subtitulo: 'Cada pieza recibe el voto de cinco jueces',
-        texto: 'Claridad, Gancho, Deseo, Prueba y Llamada.',
+        numero: '1',
+        titulo: 'SU NEGOCIO',
+        texto: 'Conecta su negocio y sube lo que ya tiene: su logo, sus fotos, su catálogo y sus precios.',
       },
       {
-        etiqueta: 'EL PÚBLICO',
-        valor: '500 personas',
-        subtitulo: 'Reaccionan a cada pieza antes de que salga.',
-        texto: 'Su reacción y el sentimiento del mercado se ven en vivo mientras el motor trabaja.',
+        numero: '2',
+        titulo: 'INVESTIGA',
+        texto: 'Los seis agentes salen a leer el mercado y vuelven con hallazgos con fuente.',
       },
       {
-        etiqueta: 'EL GASTO',
-        valor: '0 pesos',
-        subtitulo: 'Antes del veredicto no se gasta nada.',
+        numero: '3',
+        titulo: 'ESCRIBE',
+        texto: 'El motor redacta la pieza de cada red en el formato de esa red.',
+      },
+      {
+        numero: '4',
+        titulo: 'PRUEBA',
+        texto: 'MiroFish la pone a prueba: cinco jueces con su nota y quinientas personas opinando en vivo.',
+      },
+      {
+        numero: '5',
+        titulo: 'APRUEBA',
+        texto: 'Usted mira el veredicto y da el OK. Nada sale sin su aprobación.',
+      },
+      {
+        numero: '6',
+        titulo: 'PUBLICA',
+        texto: 'La pieza queda lista para sus cuentas y usted decide dónde entra.',
+      },
+      {
+        numero: '7',
+        titulo: 'MIDE',
+        texto: 'Alcance, clics, costo por venta y el desvío del modelo contra lo que había predicho.',
+      },
+    ],
+    genteEtiqueta: 'IMÁGENES DEL TRABAJO',
+    gente: [
+      { imagen: IMAGENES.gente1, alt: 'Imágenes del trabajo: una sala de trabajo.' },
+      { imagen: IMAGENES.gente3, alt: 'Imágenes del trabajo: una reunión de trabajo.' },
+    ],
+  },
+  conQueTrabaja: {
+    titulo: { uno: 'CON QUÉ', dos: 'TRABAJA' },
+    herramientas: [
+      {
+        numero: '01',
+        nombre: 'EL EQUIPO DE INVESTIGACIÓN',
         texto:
-          'Lo que no convence vuelve a corregirse y se guarda con el voto de cada juez.',
+          'Seis agentes que leen el mercado y dejan todo por escrito con su fuente. Cada hallazgo que usan después las piezas viene de ahí.',
+        imagen: IMAGENES.motor,
+        alt: 'Panel de Sinkroo: la pantalla «Campañas», donde arranca el trabajo del motor.',
+      },
+      {
+        numero: '02',
+        nombre: 'MIROFISH',
+        texto:
+          'El mercado simulado. Cinco jueces (Claridad, Gancho, Deseo, Prueba y Llamada) y quinientas personas con el comportamiento de su público. Es lo que se interpone entre su dinero y la publicación.',
+        imagen: IMAGENES.mirofish,
+        alt: 'Panel de Sinkroo: la pestaña «MiroFish», con la nota de una pieza y lo que votó cada juez.',
+      },
+      {
+        numero: '03',
+        nombre: 'EL PANEL',
+        texto:
+          'Su día, campañas, mercado, conversaciones, créditos y autonomía. Todo lo que el motor hace queda ahí, con su fecha y su motivo.',
+        imagen: IMAGENES.cuenta,
+        alt: 'Panel de Sinkroo: la pantalla «Cuenta y autonomía», con el negocio, sus créditos y lo que decide la IA.',
+      },
+      {
+        numero: '04',
+        nombre: 'LAS MEDICIONES',
+        texto:
+          'Lo que las plataformas reportan de verdad (alcance, clics, gasto, ventas) y la comparación con lo que el modelo había predicho: el desvío.',
+        imagen: IMAGENES.enLinea,
+        alt: 'Panel de Sinkroo: la pestaña «En línea», con el monitoreo en vivo de lo que va corriendo.',
+      },
+      {
+        numero: '05',
+        nombre: 'LOS CRÉDITOS',
+        texto:
+          'Un crédito es una unidad de trabajo del motor. Cada análisis, cada pieza y cada prueba consumen, y usted ve en qué se va.',
         imagen: IMAGENES.creditos,
-        alt: 'Panel de Sinkroo: la pantalla «Créditos», que muestra qué tiene, en qué se va y cómo cargarlo.',
+        alt: 'Panel de Sinkroo: la pantalla «Créditos», con lo que tiene, en qué se va y cómo cargarlo.',
       },
     ],
-    linea1: 'NADA SALE SIN VEREDICTO',
-    linea2: 'Cero pesos en lo que no pasó el filtro.',
-    enlace: 'VER CÓMO FUNCIONA →',
   },
-  investigacion: {
-    numero: '03 —',
-    etiqueta: 'LA INVESTIGACIÓN DEL MERCADO',
-    titulo: { uno: 'QUÉ ESTÁ FUNCIONANDO EN SU MERCADO,', dos: 'CON LA FUENTE' },
-    subtitulo: ['Alta fidelidad', 'Referencia del mercado'],
-    texto:
-      'Los seis agentes estudian su mercado y dejan por escrito lo que encontraron: qué publica la competencia, con qué colores, en qué duración, con qué gancho y a qué precio. Cada hallazgo queda guardado con su fuente, y el desvío del modelo le dice qué tan cerca estuvo de lo que pasó de verdad.',
-    enlace: 'Ver la investigación',
-    alt: 'Panel de Sinkroo: la pantalla «Mercado», con los hallazgos del mercado y su fuente.',
+  conexiones: {
+    titulo: 'CONECTA SUS CUENTAS',
+    bajada:
+      'El motor trabaja con sus cuentas, no con las nuestras; cada conexión es suya y la puede revocar cuando quiera desde el panel.',
+    lista: [
+      {
+        nombre: 'Instagram',
+        texto:
+          'Quiénes son sus seguidores de verdad —edad, género y las ciudades donde están— y cómo rinde cada publicación.',
+      },
+      {
+        nombre: 'Facebook',
+        texto: 'La Página del negocio y cuánta gente la sigue.',
+      },
+      {
+        nombre: 'WhatsApp',
+        texto:
+          'El número por el que entran los clientes y el estado del canal que atiende esas conversaciones.',
+      },
+      {
+        nombre: 'TikTok',
+        texto:
+          'Cuánta gente ve sus videos y cómo rinde cada uno: vistas, me gusta, comentarios y veces compartido.',
+      },
+      {
+        nombre: 'YouTube',
+        texto: 'El público que de verdad ve sus videos y cómo rinde cada video.',
+      },
+      {
+        nombre: 'Google',
+        texto:
+          'Lo que entra al sitio desde Google y cómo rinden las campañas: sesiones, usuarios y conversiones.',
+      },
+      {
+        nombre: 'Correo',
+        texto: 'El correo desde el que salen los informes del negocio: el resumen semanal y los avisos.',
+      },
+      {
+        nombre: 'Meta Ads',
+        texto: 'Lo que de verdad costó y rindió la pauta: gasto, resultados, CTR y CPM por campaña.',
+      },
+      {
+        nombre: 'Tienda',
+        texto:
+          'El catálogo con sus precios y las ventas reales por producto: la métrica más honesta, porque es plata que entró.',
+      },
+      {
+        nombre: 'Píxel del sitio',
+        texto: 'Los eventos que de verdad ocurrieron en la página: visitas, carritos y compras.',
+      },
+      {
+        nombre: 'bundle.social',
+        texto:
+          'Publica en las cuentas que usted conecte —Instagram, Facebook, TikTok, YouTube, LinkedIn, Threads y Pinterest— sin crear una app ni pedir permisos de desarrollador en cada plataforma.',
+      },
+      {
+        nombre: 'LinkedIn · Threads · Pinterest',
+        texto: 'Se conectan por la vía de bundle.social.',
+      },
+    ],
+    honestidad:
+      'Publicar en las redes todavía no está conectado: por ahora el sistema deja las piezas listas, con su veredicto, y usted decide cuándo entran.',
+  },
+  planes: {
+    titulo: 'PLANES',
+    lista: [
+      { nombre: 'Base', precio: '$39', creditos: '2.000 créditos por mes' },
+      { nombre: 'Pro', precio: '$79', creditos: '5.000 créditos por mes' },
+      { nombre: 'Estudio', precio: '$149', creditos: '12.000 créditos por mes' },
+    ],
+    incluye:
+      'Los tres planes incluyen: el motor, la investigación del mercado, el filtro de MiroFish, el panel y los créditos del mes.',
+    nota: 'El detalle y la carga de créditos están adentro del panel.',
+    boton: 'ENTRAR AL PANEL',
+    alt: 'Panel de Sinkroo: «Primeros pasos», donde se ve el plan con sus créditos del mes.',
   },
   contacto: {
     titulo: { uno: 'ANTES DE INVERTIR,', dos: 'VEA CÓMO PIENSA EL SISTEMA' },
@@ -299,9 +389,10 @@ const ES: Contenido = {
     frase: 'Prueba antes de gastar. Porque vender no es una apuesta.',
     enlacesTitulo: 'Accesos rápidos',
     enlaces: [
-      { texto: 'Cómo funciona', href: '#como-funciona' },
-      { texto: 'La investigación', href: '#investigacion' },
-      { texto: 'Planes', href: PANEL },
+      { texto: 'Qué hacemos', href: '#que-hacemos' },
+      { texto: 'Cómo lo hacemos', href: '#como-funciona' },
+      { texto: 'Conexiones', href: '#conexiones' },
+      { texto: 'Planes', href: '#planes' },
       { texto: 'Entrar al panel', href: PANEL },
     ],
     escribir: 'Para escribirnos:',
@@ -314,168 +405,255 @@ const ES: Contenido = {
   },
 };
 
+/* La traducción es literal: mismo contenido, mismas mayúsculas en los títulos, nada de más ni de
+   menos. Lo que no se puede traducir sin cambiarle el sentido se queda como está. */
 const EN: Contenido = {
   cabecera: {
     marca: 'Sinkroo',
-    menu: { comoFunciona: 'How it works', planes: 'Plans', entrar: 'Enter' },
+    enlaces: [
+      { texto: 'What we do', href: '#que-hacemos' },
+      { texto: 'How it works', href: '#como-funciona' },
+      { texto: 'What it works with', href: '#con-que-trabaja' },
+      { texto: 'Connections', href: '#conexiones' },
+      { texto: 'Plans', href: '#planes' },
+    ],
+    entrar: 'Enter the panel',
     idioma: { etiqueta: 'Language', es: 'ES', en: 'EN' },
     abrirMenu: 'Open the menu',
     altBuho: 'Sinkroo: the owl',
   },
   portada: {
-    linea: 'FIVE JUDGES · FIVE HUNDRED PEOPLE · ZERO SPENT BEFORE THE VERDICT',
-    titulo: { uno: 'YOUR MARKETING TEAM,', dos: 'WORKING ON ITS OWN 24/7' },
+    linea: 'RESEARCHES · WRITES · TESTS · APPROVES · PUBLISHES · MEASURES',
+    titulos: [
+      'YOUR MARKETING TEAM, WORKING ON ITS OWN 24/7',
+      'IT RESEARCHES YOUR MARKET AND WRITES THE PIECES',
+      'IT TESTS THEM WITH 500 PEOPLE BEFORE YOU SPEND',
+      'AND MEASURES EVERY PESO THAT CAME IN',
+    ],
     bajada:
-      'It researches your market, writes the pieces, tests them with five hundred simulated people and five judges, and measures every peso. The work gets done: it is only waiting for your approval.',
-    accesos: { panel: 'ENTER MY PANEL', comoFunciona: 'HOW IT WORKS', planes: 'SEE THE PLANS' },
+      'Sinkroo builds the complete marketing team for your business: it researches the market, writes the pieces for each network, tests them before you spend a single peso and measures what happened. You approve what goes out.',
+    accesos: {
+      panel: 'ENTER MY PANEL',
+      comoFunciona: 'HOW IT WORKS',
+      conexiones: 'WHAT IT CONNECTS TO',
+    },
     cifras: [
       { etiqueta: 'JUDGES PER PIECE', valor: '5' },
-      { etiqueta: 'PEOPLE IN THE AUDIENCE', valor: '500' },
-      { etiqueta: 'SPENT BEFORE THE VERDICT', valor: '0' },
+      { etiqueta: 'SIMULATED PEOPLE', valor: '500' },
+      { etiqueta: 'PESOS BEFORE THE VERDICT', valor: '0' },
+    ],
+    indiceTitulo: 'ON THIS PAGE',
+    indice: [
+      { texto: 'What we do', href: '#que-hacemos' },
+      { texto: 'How we do it', href: '#como-funciona' },
+      { texto: 'What it works with', href: '#con-que-trabaja' },
+      { texto: 'Connections', href: '#conexiones' },
+      { texto: 'Plans', href: '#planes' },
     ],
     altPortada: 'Sinkroo: the brand card',
   },
-  introduccion: {
-    uno: 'Sinkroo reads your business, your material and your accounts. From there it works on its own: it researches the market you compete in, writes the pieces for each network and tests them before you spend a single peso.',
-    dos: "It does not guess. Every piece faces your simulated audience and five judges: the one that does not convince goes back to be fixed and stays on file with each judge's vote. What goes out, goes out with a verdict.",
-  },
   franja: {
     palabras: ['RESEARCHES', 'WRITES', 'TESTS', 'APPROVES', 'MEASURES', 'LEARNS'],
-    frases: ['SIX RESEARCH AGENTS', 'FIVE JUDGES', 'FIVE HUNDRED PEOPLE', 'ONE PANEL FOR YOU'],
   },
-  comoFunciona: {
-    etiqueta: 'HOW IT WORKS',
-    titulo: { uno: 'THE END OF', dos: 'GUESSWORK' },
-    parrafos: {
-      uno: 'Today marketing is decided by intuition and the mistake is paid later: you produce, you publish, and only then you find out whether it worked.',
-      dos: 'Sinkroo flips the order. First it researches, then it writes, and only what passed the filter goes out. Every decision is on file, with its data and where it came from.',
-    },
-    linea: 'SYSTEMATIC · PREDICTABLE · MEASURABLE',
-    boton: 'ENTER MY PANEL',
+  queHacemos: {
+    titulo: 'WHAT WE DO',
+    parrafo:
+      'A business with no marketing team has three problems: it does not know what is working in its market, it cannot produce everything that should be published, and it spends blind. Sinkroo does all three, with the material you already have.',
     tarjetas: [
       {
         numero: '01',
-        titulo: 'THE TEAM RESEARCHES',
+        titulo: 'THE RESEARCH',
         texto:
-          'Six agents read the market: what your competitors publish, with which colours, which hooks and which prices. Every finding is kept with its source.',
-        enlace: 'See the research',
+          'Six agents read your market and keep every finding with its source: what the competition publishes, in which colours, at what length, with which hook and at what price.',
         imagen: IMAGENES.mercado,
         alt: 'Sinkroo panel: the “Mercado” screen, where the findings are kept with their source.',
       },
       {
         numero: '02',
-        titulo: 'THE ENGINE WRITES',
+        titulo: 'THE CREATION',
         texto:
-          'From those findings come the pieces for each network, each in its own format and with its own text. Nothing is invented out of thin air: every piece is born from a finding.',
-        enlace: 'See the pieces',
+          'With those findings, the engine writes the pieces for each network in its format and with its text. Every piece is born from a finding, not from a hunch.',
         imagen: IMAGENES.campanas,
-        alt: 'Sinkroo panel: the “Campañas” screen with the flow by stages.',
+        alt: 'Sinkroo panel: the “Campañas” screen, with the engine flow by stages.',
       },
       {
         numero: '03',
-        titulo: 'MIROFISH DECIDES',
+        titulo: 'THE FILTER',
         texto:
-          'Five judges and five hundred simulated people vote on every piece. The one that does not pass the filter is not published and does not spend a peso.',
-        enlace: 'See the verdict',
+          'Before spending, every piece is tested: five judges score it and five hundred simulated people react. The one that does not convince goes back to be fixed and does not spend a peso.',
         imagen: IMAGENES.hoy,
-        alt: 'Sinkroo panel: the “Hoy” screen with the five judges and the five hundred people per piece.',
+        alt: 'Sinkroo panel: the “Hoy” screen of the business, with the work of the engine.',
       },
     ],
   },
-  modulosTitulo: { uno: 'THE SEVEN', dos: 'MODULES' },
-  modulos: [
-    {
-      numero: 'M1',
-      titulo: 'YOUR BUSINESS',
-      texto: 'The system reads your business, your material and your products: what you sell, to whom, and in what tone.',
-      imagen: IMAGENES.hoy,
-      alt: 'Sinkroo panel: the “Hoy” screen of the demo account.',
-    },
-    {
-      numero: 'M2',
-      titulo: 'YOUR AUDIENCE',
-      texto:
-        'With that it builds the audience it tests with: five hundred simulated people with the age, the area and the behaviour of your market.',
-      imagen: IMAGENES.hoy,
-      alt: 'Sinkroo panel: the “Hoy” screen, with the five judges and the five hundred people per piece.',
-    },
-    {
-      numero: 'M3',
-      titulo: 'THE RESEARCH',
-      texto: 'Six agents read the market and keep every finding with its source: from there come the colours, the hooks and the prices.',
-      imagen: IMAGENES.mercado,
-      alt: 'Sinkroo panel: the “Mercado” screen, with the findings and their source.',
-    },
-    {
-      numero: 'M4',
-      titulo: 'THE PIECES',
-      texto: 'The engine writes the pieces for each network, each in its own format and with its own text, starting from the findings.',
-      imagen: IMAGENES.campanas,
-      alt: 'Sinkroo panel: the “Campañas” screen, with the pieces the engine creates.',
-    },
-    {
-      numero: 'M5',
-      titulo: 'THE FILTER',
-      texto: 'Five judges score them and five hundred people react. The one that does not convince goes back to be fixed and does not spend a peso.',
-      imagen: IMAGENES.hoy,
-      alt: 'Sinkroo panel: the “Hoy” screen, where the filter of five judges and five hundred people is shown.',
-    },
-    {
-      numero: 'M6',
-      titulo: 'YOUR APPROVAL',
-      texto: 'What passes the filter is ready to go out and you decide what gets published. Nothing leaves your accounts without your OK.',
-      imagen: IMAGENES.campanas,
-      alt: 'Sinkroo panel: the “Campañas” screen, where the flow ends in your decision.',
-    },
-    {
-      numero: 'M7',
-      titulo: 'THE MEASUREMENT',
-      texto:
-        'What each piece delivered and what it cost is measured, and compared with what the model had predicted: from there comes the deviation.',
-      imagen: IMAGENES.mercado,
-      alt: 'Sinkroo panel: the “Mercado” screen, with the model deviation against what actually happened.',
-    },
-  ],
-  cifras: {
-    etiqueta: 'THE DIFFERENCE IS THE ORDER',
-    titulo: { uno: 'FIRST IT IS TESTED.', dos: 'THEN IT IS SPENT.' },
-    parrafo:
-      'In ordinary marketing the money goes out first and the learning arrives later, when it is already spent. Here it is the other way around: what is spent has already faced five hundred people and five judges.',
-    tarjetas: [
+  comoLoHacemos: {
+    titulo: { uno: 'HOW WE DO IT,', dos: 'STEP BY STEP' },
+    etapas: [
       {
-        etiqueta: 'THE FILTER',
-        valor: '5 judges',
-        subtitulo: 'Every piece gets the vote of five judges',
-        texto: 'Clarity, Hook, Desire, Proof and Call.',
+        numero: '1',
+        titulo: 'YOUR BUSINESS',
+        texto:
+          'Connect your business and upload what you already have: your logo, your photos, your catalogue and your prices.',
       },
       {
-        etiqueta: 'THE AUDIENCE',
-        valor: '500 people',
-        subtitulo: 'They react to every piece before it goes out.',
-        texto: 'Their reaction and the market sentiment are seen live while the engine works.',
+        numero: '2',
+        titulo: 'RESEARCHES',
+        texto: 'The six agents go out to read the market and come back with findings and their source.',
       },
       {
-        etiqueta: 'THE SPEND',
-        valor: '0 pesos',
-        subtitulo: 'Nothing is spent before the verdict.',
-        texto: "What does not convince goes back to be fixed and stays on file with each judge's vote.",
+        numero: '3',
+        titulo: 'WRITES',
+        texto: "The engine writes the piece for each network in that network's format.",
+      },
+      {
+        numero: '4',
+        titulo: 'TESTS',
+        texto:
+          'MiroFish puts it to the test: five judges with their score and five hundred people giving their opinion live.',
+      },
+      {
+        numero: '5',
+        titulo: 'APPROVES',
+        texto: 'You look at the verdict and give the OK. Nothing goes out without your approval.',
+      },
+      {
+        numero: '6',
+        titulo: 'PUBLISHES',
+        texto: 'The piece is left ready for your accounts and you decide where it goes in.',
+      },
+      {
+        numero: '7',
+        titulo: 'MEASURES',
+        texto: 'Reach, clicks, cost per sale and the deviation of the model against what it had predicted.',
+      },
+    ],
+    genteEtiqueta: 'PICTURES OF THE WORK',
+    gente: [
+      { imagen: IMAGENES.gente1, alt: 'Pictures of the work: a work room.' },
+      { imagen: IMAGENES.gente3, alt: 'Pictures of the work: a work meeting.' },
+    ],
+  },
+  conQueTrabaja: {
+    titulo: { uno: 'WHAT IT', dos: 'WORKS WITH' },
+    herramientas: [
+      {
+        numero: '01',
+        nombre: 'THE RESEARCH TEAM',
+        texto:
+          'Six agents that read the market and leave everything in writing with its source. Every finding the pieces use afterwards comes from there.',
+        imagen: IMAGENES.motor,
+        alt: 'Sinkroo panel: the “Campañas” screen, where the work of the engine starts.',
+      },
+      {
+        numero: '02',
+        nombre: 'MIROFISH',
+        texto:
+          'The simulated market. Five judges (Clarity, Hook, Desire, Proof and Call) and five hundred people with your audience’s behaviour. It is what stands between your money and publishing.',
+        imagen: IMAGENES.mirofish,
+        alt: 'Sinkroo panel: the “MiroFish” tab, with the score of a piece and what each judge voted.',
+      },
+      {
+        numero: '03',
+        nombre: 'THE PANEL',
+        texto:
+          'Your day, campaigns, market, conversations, credits and autonomy. Everything the engine does is there, with its date and its reason.',
+        imagen: IMAGENES.cuenta,
+        alt: 'Sinkroo panel: the “Cuenta y autonomía” screen, with the business, its credits and what the AI decides.',
+      },
+      {
+        numero: '04',
+        nombre: 'THE MEASUREMENTS',
+        texto:
+          'What the platforms report for real (reach, clicks, spend, sales) and the comparison with what the model had predicted: the deviation.',
+        imagen: IMAGENES.enLinea,
+        alt: 'Sinkroo panel: the “En línea” tab, with live monitoring of what is running.',
+      },
+      {
+        numero: '05',
+        nombre: 'THE CREDITS',
+        texto:
+          'A credit is a unit of work of the engine. Every analysis, every piece and every test consume, and you see where it goes.',
         imagen: IMAGENES.creditos,
-        alt: 'Sinkroo panel: the “Créditos” screen, which shows what you have, where it goes and how to load it.',
+        alt: 'Sinkroo panel: the “Créditos” screen, with what you have, where it goes and how to load it.',
       },
     ],
-    linea1: 'NOTHING GOES OUT WITHOUT A VERDICT',
-    linea2: 'Zero pesos on what did not pass the filter.',
-    enlace: 'SEE HOW IT WORKS →',
   },
-  investigacion: {
-    numero: '03 —',
-    etiqueta: 'MARKET RESEARCH',
-    titulo: { uno: 'WHAT IS WORKING IN YOUR MARKET,', dos: 'WITH THE SOURCE' },
-    subtitulo: ['High fidelity', 'Market benchmark'],
-    texto:
-      "The six agents study your market and write down what they found: what competitors publish, in which colours, at what length, with which hook and at what price. Every finding is kept with its source, and the model's deviation tells you how close it was to what actually happened.",
-    enlace: 'See the research',
-    alt: 'Sinkroo panel: the “Mercado” screen, with the market findings and their source.',
+  conexiones: {
+    titulo: 'CONNECT YOUR ACCOUNTS',
+    bajada:
+      'The engine works with your accounts, not with ours; every connection is yours and you can revoke it whenever you want from the panel.',
+    lista: [
+      {
+        nombre: 'Instagram',
+        texto:
+          'Who your followers really are —age, gender and the cities they are in— and how each post performs.',
+      },
+      {
+        nombre: 'Facebook',
+        texto: 'The business Page and how many people follow it.',
+      },
+      {
+        nombre: 'WhatsApp',
+        texto:
+          'The number clients come in through and the state of the channel that answers those conversations.',
+      },
+      {
+        nombre: 'TikTok',
+        texto:
+          'How many people see your videos and how each one performs: views, likes, comments and times shared.',
+      },
+      {
+        nombre: 'YouTube',
+        texto: 'The audience that really watches your videos and how each video performs.',
+      },
+      {
+        nombre: 'Google',
+        texto:
+          'What comes into the site from Google and how the campaigns perform: sessions, users and conversions.',
+      },
+      {
+        nombre: 'Email',
+        texto:
+          'The email the business reports go out from: the weekly summary and the notices.',
+      },
+      {
+        nombre: 'Meta Ads',
+        texto: 'What the ads really cost and delivered: spend, results, CTR and CPM per campaign.',
+      },
+      {
+        nombre: 'Store',
+        texto:
+          'The catalogue with its prices and the real sales per product: the most honest metric, because it is money that came in.',
+      },
+      {
+        nombre: 'Site pixel',
+        texto: 'The events that really happened on the page: visits, carts and purchases.',
+      },
+      {
+        nombre: 'bundle.social',
+        texto:
+          'Publishes in the accounts you connect —Instagram, Facebook, TikTok, YouTube, LinkedIn, Threads and Pinterest— without creating an app or asking for developer permissions on each platform.',
+      },
+      {
+        nombre: 'LinkedIn · Threads · Pinterest',
+        texto: 'They connect through bundle.social.',
+      },
+    ],
+    honestidad:
+      'Publishing on the networks is not connected yet: for now the system leaves the pieces ready, with their verdict, and you decide when they go in.',
+  },
+  planes: {
+    titulo: 'PLANS',
+    lista: [
+      { nombre: 'Base', precio: '$39', creditos: '2,000 credits per month' },
+      { nombre: 'Pro', precio: '$79', creditos: '5,000 credits per month' },
+      { nombre: 'Studio', precio: '$149', creditos: '12,000 credits per month' },
+    ],
+    incluye:
+      'The three plans include: the engine, the market research, the MiroFish filter, the panel and the credits of the month.',
+    nota: 'The detail and the loading of credits are inside the panel.',
+    boton: 'ENTER THE PANEL',
+    alt: 'Sinkroo panel: “Primeros pasos”, where the plan with its credits of the month is shown.',
   },
   contacto: {
     titulo: { uno: 'BEFORE YOU INVEST,', dos: 'SEE HOW THE SYSTEM THINKS' },
@@ -495,9 +673,10 @@ const EN: Contenido = {
     frase: 'Tests before spending. Because selling is not a bet.',
     enlacesTitulo: 'Quick access',
     enlaces: [
-      { texto: 'How it works', href: '#como-funciona' },
-      { texto: 'The research', href: '#investigacion' },
-      { texto: 'Plans', href: PANEL },
+      { texto: 'What we do', href: '#que-hacemos' },
+      { texto: 'How we do it', href: '#como-funciona' },
+      { texto: 'Connections', href: '#conexiones' },
+      { texto: 'Plans', href: '#planes' },
       { texto: 'Enter the panel', href: PANEL },
     ],
     escribir: 'To write to us:',
