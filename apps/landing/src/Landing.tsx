@@ -171,7 +171,7 @@ export function Landing() {
   return (
     <div className="bg-primary flex flex-col min-h-screen">
       {/* ========================= 1 · CABECERA ========================= */}
-      <header className="fixed top-0 left-0 right-0 z-50 h-16 md:h-20 flex items-center border-b border-white/10">
+      <header className="cabecera-fija fixed top-0 left-0 right-0 z-50 h-16 md:h-20 flex items-center border-b border-white/10">
         <nav className="w-full max-w-7xl mx-auto px-4 md:px-6 flex items-center justify-between gap-4">
           <a href="/" className="flex items-center gap-2 active">
             <img src={IMAGENES.buho} className="w-10 h-10 md:w-12 md:h-12" alt={t.cabecera.altBuho} />
