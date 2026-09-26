@@ -378,7 +378,7 @@ export function Landing() {
           </div>
 
           <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-16 md:gap-20 items-center relative z-10">
-            {/* El modelo animado del flujo: doce segundos en bucle (el búho por las siete etapas). */}
+            {/* El modelo animado del flujo: trece segundos en bucle (el búho por las siete etapas). */}
             <div className="relative w-full">
               <FlujoAnimado />
             </div>

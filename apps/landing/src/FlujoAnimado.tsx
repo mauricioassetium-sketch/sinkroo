@@ -1,5 +1,5 @@
 // ==================================================================================================
-// EL FLUJO ANIMADO — el modelo de Sinkroo, explicado en un dibujo de SIETE SEGUNDOS que se repite.
+// EL FLUJO ANIMADO — el modelo de Sinkroo, explicado en un dibujo de TRECE SEGUNDOS que se repite.
 //
 // QUÉ ES: UN SOLO <svg> en línea (nada de imágenes de terceros salvo el propio logo del búho, que es
 // un archivo que ya está en `public/`) donde el búho de Sinkroo recorre las siete etapas del modelo:
@@ -12,11 +12,14 @@
 //      6. SE PUBLICA      los iconos de las redes se encienden uno por uno
 //      7. MIDE            las cifras (de ejemplo) suben
 //
+// Las seis primeras etapas duran lo mismo que siempre; MIDE se estiró un segundo (de 1,20 s a
+// 2,20 s), así que el recorrido completo pasó de 12 s a 13 s. Todo el reloj vive en `flujo.css`.
+//
 // LO QUE NO HACE, Y NO PUEDE DECIR QUE HAGA: el sistema no publica solo en las cuentas de nadie. La
 // etapa 6 dice «SE PUBLICA» porque es el nombre de la etapa del modelo, y adentro aclara «USTED DA EL
 // OK ANTES DE PUBLICAR». Ninguna cifra de la etapa 7 es una medición: van rotuladas como ejemplo.
 //
-// CÓMO SE ANIMA: 100 % CSS (`src/flujo.css`), con `@keyframes` de 12s e `infinite`. Este componente no
+// CÓMO SE ANIMA: 100 % CSS (`src/flujo.css`), con `@keyframes` de 13s e `infinite`. Este componente no
 // tiene estado, ni efectos, ni un solo `setTimeout`: se monta y queda andando. Si no hay animación
 // —o si alguien pidió `prefers-reduced-motion`— el dibujo se ve COMPLETO y QUIETO, con las siete
 // etapas a la vez y el búho al final del recorrido.
@@ -36,6 +39,15 @@
 
 import './flujo.css';
 import { MARCAS, type Marca } from './flujo-marcas';
+
+/** EL RELOJ DEL DIBUJO: el ciclo duró 12 s y ahora dura 13 s (la etapa MIDE se estiró 1 s). Los
+ *  desfases absolutos de las seis primeras etapas NO cambian: se estiran en la misma proporción,
+ *  13/12 = 1,083333. Los de la etapa 7 (MIDE) no van por acá: se reparten en la ventana nueva. */
+const RELOJ = 13 / 12;
+
+/** Un desfase en segundos ya escalado al ciclo de 13 s. Se escribe igual que antes (0,99 / 0,394 /
+ *  0,171…), así que cada elemento cae en el mismo instante absoluto de siempre dentro del ciclo. */
+const desfase = (segundos: number): string => `${(segundos * RELOJ).toFixed(2)}s`;
 
 /** Las marcas por nombre: así se pide un trazo concreto sin depender del orden del arreglo. */
 const POR_NOMBRE: Record<string, Marca> = {};
@@ -137,7 +149,7 @@ function Pieza({ marca, x, y }: { marca: Marca; x: number; y: number }) {
         width={54}
         height={3}
         rx={1.5}
-        style={{ animationDelay: '0.6s' }}
+        style={{ animationDelay: desfase(0.6) }}
       />
       <rect className="flujo-cursor" x={x + 68} y={y + 41} width={4} height={5} rx={1} />
     </g>
@@ -240,11 +252,11 @@ export function FlujoAnimado() {
         xmlns="http://www.w3.org/2000/svg"
       >
         <title id="flujo-titulo">
-          El modelo de Sinkroo en un recorrido de siete segundos: su negocio, la investigación, la
+          El modelo de Sinkroo en un recorrido de trece segundos: su negocio, la investigación, la
           escritura, la prueba con MiroFish, su aprobación, la publicación y la medición.
         </title>
         <desc id="flujo-desc">
-          Dibujo animado del modelo de Sinkroo. El búho recorre siete etapas en siete segundos: 1) SU
+          Dibujo animado del modelo de Sinkroo. El búho recorre siete etapas en trece segundos: 1) SU
           NEGOCIO: el material del negocio cae al motor. 2) INVESTIGA: seis agentes leen el mercado.
           3) ESCRIBE: se escriben las piezas, una por red. 4) MIROFISH PRUEBA: cinco jueces votan con
           su nota y el público opina, por ejemplo «me engancha el arranque», «no entiendo qué
@@ -302,9 +314,9 @@ export function FlujoAnimado() {
           <text className="flujo-chico" x={20} y={46}>
             MATERIAL
           </text>
-          <Documento x={24} y={52} retraso="0s" />
-          <Documento x={54} y={52} retraso="0.99s" />
-          <Documento x={84} y={52} retraso="2.01s" />
+          <Documento x={24} y={52} retraso={desfase(0)} />
+          <Documento x={54} y={52} retraso={desfase(0.99)} />
+          <Documento x={84} y={52} retraso={desfase(2.01)} />
           {/* El motor: la boca por donde entra el material y el cuerpo que lo muele. */}
           <path className="flujo-motor-boca" d="M 36,166 L 104,166 L 94,180 L 46,180 Z" />
           <rect className="flujo-motor" x={22} y={178} width={96} height={58} rx={10} />
@@ -322,7 +334,7 @@ export function FlujoAnimado() {
             rx={2}
             fill="#c084fc"
             fillOpacity={0.55}
-            style={{ animationDelay: '0.34s' }}
+            style={{ animationDelay: desfase(0.34) }}
           />
           <rect
             className="flujo-escribe"
@@ -333,7 +345,7 @@ export function FlujoAnimado() {
             rx={2}
             fill="#c084fc"
             fillOpacity={0.55}
-            style={{ animationDelay: '0.69s' }}
+            style={{ animationDelay: desfase(0.69) }}
           />
           <rect className="flujo-luz flujo-e1" x={12} y={28} width={116} height={248} rx={12} />
         </g>
@@ -357,7 +369,7 @@ export function FlujoAnimado() {
               cx={cx}
               cy={cy}
               r={5.5}
-              style={{ animationDelay: `${(i * 0.394).toFixed(2)}s` }}
+              style={{ animationDelay: desfase(i * 0.394) }}
             />
           ))}
           {/* La lupa. */}
@@ -374,7 +386,7 @@ export function FlujoAnimado() {
               width={14}
               height={alto}
               rx={2}
-              style={{ animationDelay: `${(i * 0.257).toFixed(2)}s` }}
+              style={{ animationDelay: desfase(i * 0.257) }}
             />
           ))}
           <rect className="flujo-luz flujo-e2" x={140} y={28} width={140} height={248} rx={12} />
@@ -411,7 +423,7 @@ export function FlujoAnimado() {
               x={421 + i * 58}
               nota={juez.nota}
               texto={juez.texto}
-              retraso={`${(i * 0.171).toFixed(2)}s`}
+              retraso={desfase(i * 0.171)}
             />
           ))}
           <text className="flujo-chico" x={424} y={122}>
@@ -423,7 +435,7 @@ export function FlujoAnimado() {
               x={421}
               y={130 + i * 36}
               texto={voz}
-              retraso={`${(i * 0.857).toFixed(2)}s`}
+              retraso={desfase(i * 0.857)}
             />
           ))}
           <rect className="flujo-luz flujo-e4" x={416} y={28} width={294} height={248} rx={12} />
@@ -454,7 +466,7 @@ export function FlujoAnimado() {
               marca={marca}
               x={293 + (i % 5) * 52}
               y={i < 5 ? 432 : 502}
-              retraso={`${(i * 0.137).toFixed(2)}s`}
+              retraso={desfase(i * 0.137)}
             />
           ))}
           <text className="flujo-nota" x={415} y={556} textAnchor="middle">
@@ -468,6 +480,9 @@ export function FlujoAnimado() {
             ========================================================================================== */}
         <g className="flujo-etapa flujo-e7">
           <Panel x={12} y={380} w={262} h={200} />
+          {/* Las cifras se reparten en la ventana nueva de MIDE (10,80–13,00 s): una cada 0,37 s, la
+              última a 1,11 s. Antes el desfase era de 0,171 s por cifra dentro de una ventana de
+              1,20 s; ahora la ventana es de 2,20 s y el desfase acompaña. */}
           {CIFRAS.map((cifra, i) => (
             <Cifra
               key={cifra.rotulo}
@@ -475,7 +490,7 @@ export function FlujoAnimado() {
               y={i < 2 ? 430 : 498}
               rotulo={cifra.rotulo}
               valor={cifra.valor}
-              retraso={`${(i * 0.171).toFixed(2)}s`}
+              retraso={`${(i * 0.37).toFixed(2)}s`}
             />
           ))}
           <rect className="flujo-ejemplo-caja" x={20} y={560} width={246} height={18} rx={9} />
