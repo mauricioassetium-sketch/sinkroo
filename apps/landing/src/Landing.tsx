@@ -542,7 +542,7 @@ export function Landing() {
                 {t.planes.titulo}
               </h2>
 
-              <div className="grid sm:grid-cols-3 gap-4 md:gap-5 mb-10">
+              <div className="planes-cartas grid sm:grid-cols-3 gap-4 md:gap-5 mb-10">
                 {t.planes.lista.map((plan) => (
                   <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6" key={plan.nombre}>
                     <p className="text-[10px] font-bold tracking-[0.2em] text-purple-300 uppercase mb-3">{plan.nombre}</p>

@@ -157,9 +157,23 @@
   /* El ancho va contra la PANTALLA y no contra el contenedor: la columna de este bloque se mide por
      su contenido, así que un `max-width: 100%` no la hacía encoger y en el celular el monitor se
      salía de la pantalla. Con `86vw` entra siempre.
-     Los 572 son los 400 del principio + 30 % + 10 %: los dos agrandados que pidió el dueño. */
-  width: min(572px, 86vw);
+     Los 686 son los 400 del principio + 30 % + 10 % + 20 %: los tres agrandados que pidió el dueño. */
+  width: min(686px, 86vw);
   margin-inline: auto;
+}
+
+/* LAS TRES TARJETAS DE PLANES CUANDO EL MONITOR ES GRANDE.
+   El precio va en 36 px: eso le pone un ancho mínimo a cada tarjeta (unos 200 px) y, con el monitor
+   a 686, en una pantalla de 1280 las tres no entran y la de Estudio se corta. Debajo de 1400 se
+   apilan: una por línea, con todo el ancho, y no se corta nada.
+   La rejilla la arma una utilidad de Tailwind (`sm:grid-cols-3`, ya compilada en `viejo.css`), y el
+   armado deja esa utilidad MÁS ABAJO en el archivo que estas reglas: con la misma especificidad gana
+   la última, así que hubo que subirla con el id del bloque. (Con solo `.planes-cartas` la regla
+   estaba escrita, se leía en el paquete, y no hacía nada.) */
+@media (max-width: 1400px) {
+  #planes .planes-cartas {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 /* La caja decorada donde va el monitor (el círculo punteado y el resplandor).
@@ -171,7 +185,7 @@
      las que se acomodan. */
 .pc-caja {
   flex: 0 0 auto;
-  width: min(640px, 86vw);
+  width: min(780px, 86vw);
   max-width: none;
 }
 
