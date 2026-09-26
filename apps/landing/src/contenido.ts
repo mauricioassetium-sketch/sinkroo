@@ -4,13 +4,15 @@
    cambiar algo, se cambia aquí y de aquí para el JSX; no se «mejora» por gusto.
    La página arranca en español (`IDIOMA_INICIAL`).
 
-   LOS DIEZ BLOQUES (el armazón de siempre, con la información de hoy):
+   LOS ONCE BLOQUES (el armazón de siempre, con la información de hoy):
      1. Cabecera · 2. Portada (con el título que se cambia solo) · 3. Franja que se mueve ·
      4. Qué hacemos · 5. Cómo lo hacemos (el flujo animado y las siete etapas) ·
-     6. Con qué trabaja · 7. Con quién se conecta (las 14) · 8. Planes · 9. Contacto · 10. Pie
+     6. Con qué trabaja · 7. Con quién se conecta (las 14) · 8. Planes ·
+     9. Palabras de nuestra CEO (la foto de María Paula y su cita) · 10. Contacto · 11. Pie
 
    NADA DE ESTE TEXTO DICE QUE EL SISTEMA PUBLIQUE SOLO, CIERRE VENTAS NI MANDE ENLACES DE COMPRA:
-   eso todavía no existe y la propia página lo dice en el bloque 7.
+   eso todavía no existe. (El bloque 7 decía con todas las letras que publicar en las redes todavía no
+   estaba conectado; el dueño mandó borrar esa línea el 2026-09-26 y ya no está en ningún idioma.)
    ============================================================================================= */
 
 export type Idioma = 'es' | 'en';
@@ -48,6 +50,8 @@ export const IMAGENES = {
   creditos: '/capturas/creditos.jpg',
   /* Bloque 8 · PLANES */
   primerosPasos: '/capturas/primeros-pasos.jpg',
+  /* Bloque 9 · PALABRAS DE NUESTRA CEO */
+  ceo: '/ceo/maria-paula-castanos.webp',
   /* Bloque 5 · las fotos del trabajo */
   gente1: '/gente/gente-1.jpg',
   gente3: '/gente/gente-3.jpg',
@@ -58,7 +62,7 @@ type Enlace = { texto: string; href: string };
 type TarjetaExplica = { numero: string; titulo: string; texto: string; imagen: string; alt: string };
 type Etapa = { numero: string; titulo: string; texto: string };
 type Herramienta = { numero: string; nombre: string; texto: string; imagen: string; alt: string };
-type Conexion = { nombre: string; texto: string };
+type Conexion = { nombre: string; texto: string; /** Los `id` de `redes.ts` que van como icono delante del nombre. */ redes: string[] };
 type Plan = { nombre: string; precio: string; creditos: string };
 
 export type Contenido = {
@@ -79,10 +83,10 @@ export type Contenido = {
     bajada: string;
     accesos: { panel: string; comoFunciona: string; conexiones: string };
     cifras: Cifra[];
-    indiceTitulo: string;
-    indice: Enlace[];
     altPortada: string;
   };
+  /** Los dos párrafos de la columna derecha de la portada. */
+  introduccion: { uno: string; dos: string };
   /* 3 · LA FRANJA QUE SE MUEVE */
   franja: { palabras: string[] };
   /* 4 · QUÉ HACEMOS */
@@ -97,7 +101,7 @@ export type Contenido = {
   /* 6 · CON QUÉ TRABAJA */
   conQueTrabaja: { titulo: { uno: string; dos: string }; herramientas: Herramienta[] };
   /* 7 · CON QUIÉN SE CONECTA */
-  conexiones: { titulo: string; bajada: string; lista: Conexion[]; honestidad: string };
+  conexiones: { titulo: string; bajada: string; lista: Conexion[] };
   /* 8 · PLANES */
   planes: {
     titulo: string;
@@ -107,7 +111,16 @@ export type Contenido = {
     boton: string;
     alt: string;
   };
-  /* 9 · CONTACTO */
+  /* 9 · PALABRAS DE NUESTRA CEO */
+  ceo: {
+    etiqueta: string;
+    /** Las palabras de ella, un párrafo por línea. Se citan tal cual. */
+    cita: string[];
+    firma: string;
+    cargo: string;
+    alt: string;
+  };
+  /* 10 · CONTACTO */
   contacto: {
     titulo: { uno: string; dos: string };
     bajada: string;
@@ -159,17 +172,16 @@ const ES: Contenido = {
     cifras: [
       { etiqueta: 'JUECES POR PIEZA', valor: '5' },
       { etiqueta: 'PERSONAS SIMULADAS', valor: '500' },
-      { etiqueta: 'PESOS ANTES DEL VEREDICTO', valor: '0' },
-    ],
-    indiceTitulo: 'EN ESTA PÁGINA',
-    indice: [
-      { texto: 'Qué hacemos', href: '#que-hacemos' },
-      { texto: 'Cómo lo hacemos', href: '#como-funciona' },
-      { texto: 'Con qué trabaja', href: '#con-que-trabaja' },
-      { texto: 'Conexiones', href: '#conexiones' },
-      { texto: 'Planes', href: '#planes' },
+      { etiqueta: 'PESOS ANTES DEL VEREDICTO', valor: '$0' },
     ],
     altPortada: 'Sinkroo: la tarjeta de marca',
+  },
+  /* Los DOS párrafos de la columna derecha de la portada. Estuvieron fuera un tiempo (en su lugar
+     iba el índice «EN ESTA PÁGINA») y el dueño pidió que volvieran: se restauran LITERALES, tal
+     como estaban antes. */
+  introduccion: {
+    uno: 'Sinkroo lee su negocio, su material y sus cuentas. De ahí en adelante trabaja solo: investiga el mercado donde compite, escribe las piezas de cada red y las prueba antes de que usted gaste un peso.',
+    dos: 'No adivina. Cada pieza se somete a su público simulado y a cinco jueces: la que no convence vuelve a corregirse y queda guardada con el voto de cada juez. Lo que sale, sale con veredicto.',
   },
   franja: {
     palabras: ['INVESTIGA', 'ESCRIBE', 'PRUEBA', 'APRUEBA', 'MIDE', 'APRENDE'],
@@ -302,61 +314,71 @@ const ES: Contenido = {
     lista: [
       {
         nombre: 'Instagram',
+        redes: ['instagram'],
         texto:
           'Quiénes son sus seguidores de verdad —edad, género y las ciudades donde están— y cómo rinde cada publicación.',
       },
       {
         nombre: 'Facebook',
+        redes: ['facebook'],
         texto: 'La Página del negocio y cuánta gente la sigue.',
       },
       {
         nombre: 'WhatsApp',
+        redes: ['whatsapp'],
         texto:
           'El número por el que entran los clientes y el estado del canal que atiende esas conversaciones.',
       },
       {
         nombre: 'TikTok',
+        redes: ['tiktok'],
         texto:
           'Cuánta gente ve sus videos y cómo rinde cada uno: vistas, me gusta, comentarios y veces compartido.',
       },
       {
         nombre: 'YouTube',
+        redes: ['youtube'],
         texto: 'El público que de verdad ve sus videos y cómo rinde cada video.',
       },
       {
         nombre: 'Google',
+        redes: ['google'],
         texto:
           'Lo que entra al sitio desde Google y cómo rinden las campañas: sesiones, usuarios y conversiones.',
       },
       {
         nombre: 'Correo',
+        redes: ['correo'],
         texto: 'El correo desde el que salen los informes del negocio: el resumen semanal y los avisos.',
       },
       {
         nombre: 'Meta Ads',
+        redes: ['meta-ads'],
         texto: 'Lo que de verdad costó y rindió la pauta: gasto, resultados, CTR y CPM por campaña.',
       },
       {
         nombre: 'Tienda',
+        redes: ['tienda'],
         texto:
           'El catálogo con sus precios y las ventas reales por producto: la métrica más honesta, porque es plata que entró.',
       },
       {
         nombre: 'Píxel del sitio',
+        redes: ['pixel'],
         texto: 'Los eventos que de verdad ocurrieron en la página: visitas, carritos y compras.',
       },
       {
         nombre: 'bundle.social',
+        redes: ['bundle-social'],
         texto:
           'Publica en las cuentas que usted conecte —Instagram, Facebook, TikTok, YouTube, LinkedIn, Threads y Pinterest— sin crear una app ni pedir permisos de desarrollador en cada plataforma.',
       },
       {
         nombre: 'LinkedIn · Threads · Pinterest',
+        redes: ['linkedin', 'threads', 'pinterest'],
         texto: 'Se conectan por la vía de bundle.social.',
       },
     ],
-    honestidad:
-      'Publicar en las redes todavía no está conectado: por ahora el sistema deja las piezas listas, con su veredicto, y usted decide cuándo entran.',
   },
   planes: {
     titulo: 'PLANES',
@@ -371,6 +393,24 @@ const ES: Contenido = {
     boton: 'ENTRAR AL PANEL',
     alt: 'Panel de Sinkroo: «Primeros pasos», donde se ve el plan con sus créditos del mes.',
   },
+  /* Las palabras son de ella: las escribe el dueño de producto y aquí quedaron reescritas (él dejó las
+     suyas como ejemplo). Debajo, el bloque `ceo` explica qué se conservó y qué no. */
+  ceo: {
+    etiqueta: 'PALABRAS DE NUESTRA CEO',
+    /* Las tres ideas que pidió el dueño (el mercado cambió y lo de antes ya no puede seguir · la IA es un
+       cambio de paradigma · una sola plataforma frente a la mejor agencia), escritas por nosotros: la
+       versión que él dejó era un ejemplo. «Mil veces más» no se afirma: es lo único de ese texto que la
+       página no podría sostener con un dato. */
+    cita: [
+      'Vengo del marketing de antes: el de la intuición, el del presupuesto que se quema primero y explica después. Ese marketing ya no aguanta. El mercado cambió, y seguir haciendo lo de ayer es la forma más cara de quedarse quieto.',
+      'La inteligencia artificial no es una herramienta nueva: es un cambio de paradigma. Lo que antes exigía un equipo entero, hoy una sola plataforma lo investiga, lo escribe, lo prueba y lo mide por una fracción de lo que cuesta la mejor agencia, y con resultados que se pueden ver.',
+      'Lo que hace dos años era imposible, hoy es una decisión. De eso se trata Sinkroo.',
+    ],
+    firma: 'María Paula Castaños',
+    cargo: 'CEO de Sinkroo · Experta en marketing',
+    alt: 'María Paula Castaños, CEO de Sinkroo, con el suéter de punto.',
+  },
+  /* 10 · CONTACTO */
   contacto: {
     titulo: { uno: 'ANTES DE INVERTIR,', dos: 'VEA CÓMO PIENSA EL SISTEMA' },
     bajada:
@@ -440,17 +480,16 @@ const EN: Contenido = {
     cifras: [
       { etiqueta: 'JUDGES PER PIECE', valor: '5' },
       { etiqueta: 'SIMULATED PEOPLE', valor: '500' },
-      { etiqueta: 'PESOS BEFORE THE VERDICT', valor: '0' },
-    ],
-    indiceTitulo: 'ON THIS PAGE',
-    indice: [
-      { texto: 'What we do', href: '#que-hacemos' },
-      { texto: 'How we do it', href: '#como-funciona' },
-      { texto: 'What it works with', href: '#con-que-trabaja' },
-      { texto: 'Connections', href: '#conexiones' },
-      { texto: 'Plans', href: '#planes' },
+      { etiqueta: 'PESOS BEFORE THE VERDICT', valor: '$0' },
     ],
     altPortada: 'Sinkroo: the brand card',
+  },
+  /* The TWO paragraphs of the right-hand column of the hero. They were out for a while (the
+     «ON THIS PAGE» index went in their place) and the owner asked for them back: restored
+     VERBATIM, exactly as they were before. */
+  introduccion: {
+    uno: 'Sinkroo reads your business, your material and your accounts. From there it works on its own: it researches the market you compete in, writes the pieces for each network and tests them before you spend a single peso.',
+    dos: "It does not guess. Every piece faces your simulated audience and five judges: the one that does not convince goes back to be fixed and stays on file with each judge's vote. What goes out, goes out with a verdict.",
   },
   franja: {
     palabras: ['RESEARCHES', 'WRITES', 'TESTS', 'APPROVES', 'MEASURES', 'LEARNS'],
@@ -585,62 +624,72 @@ const EN: Contenido = {
     lista: [
       {
         nombre: 'Instagram',
+        redes: ['instagram'],
         texto:
           'Who your followers really are —age, gender and the cities they are in— and how each post performs.',
       },
       {
         nombre: 'Facebook',
+        redes: ['facebook'],
         texto: 'The business Page and how many people follow it.',
       },
       {
         nombre: 'WhatsApp',
+        redes: ['whatsapp'],
         texto:
           'The number clients come in through and the state of the channel that answers those conversations.',
       },
       {
         nombre: 'TikTok',
+        redes: ['tiktok'],
         texto:
           'How many people see your videos and how each one performs: views, likes, comments and times shared.',
       },
       {
         nombre: 'YouTube',
+        redes: ['youtube'],
         texto: 'The audience that really watches your videos and how each video performs.',
       },
       {
         nombre: 'Google',
+        redes: ['google'],
         texto:
           'What comes into the site from Google and how the campaigns perform: sessions, users and conversions.',
       },
       {
         nombre: 'Email',
+        redes: ['correo'],
         texto:
           'The email the business reports go out from: the weekly summary and the notices.',
       },
       {
         nombre: 'Meta Ads',
+        redes: ['meta-ads'],
         texto: 'What the ads really cost and delivered: spend, results, CTR and CPM per campaign.',
       },
       {
         nombre: 'Store',
+        redes: ['tienda'],
         texto:
           'The catalogue with its prices and the real sales per product: the most honest metric, because it is money that came in.',
       },
       {
         nombre: 'Site pixel',
+        redes: ['pixel'],
         texto: 'The events that really happened on the page: visits, carts and purchases.',
       },
       {
         nombre: 'bundle.social',
+        redes: ['bundle-social'],
         texto:
           'Publishes in the accounts you connect —Instagram, Facebook, TikTok, YouTube, LinkedIn, Threads and Pinterest— without creating an app or asking for developer permissions on each platform.',
       },
       {
         nombre: 'LinkedIn · Threads · Pinterest',
+        redes: ['linkedin', 'threads', 'pinterest'],
         texto: 'They connect through bundle.social.',
       },
     ],
-    honestidad:
-      'Publishing on the networks is not connected yet: for now the system leaves the pieces ready, with their verdict, and you decide when they go in.',
   },
   planes: {
     titulo: 'PLANS',
@@ -655,6 +704,21 @@ const EN: Contenido = {
     boton: 'ENTER THE PANEL',
     alt: 'Sinkroo panel: “Primeros pasos”, where the plan with its credits of the month is shown.',
   },
+  /* These are her words: the idea is the one the owner dictated (the market changed, it cannot keep
+     going the same way, and AI brings another paradigm: one platform does a thousand times more than
+     the best agency at a tiny cost and with real results). Ordered to be read in one breath. */
+  ceo: {
+    etiqueta: 'WORDS FROM OUR CEO',
+    cita: [
+      'I come from the marketing of before: the one of intuition, of the budget you burn first and explain later. That marketing no longer holds. The market changed, and repeating yesterday is the most expensive way to stand still.',
+      'Artificial intelligence is not a new tool: it is a paradigm shift. What used to take a whole team, today a single platform researches, writes, tests and measures for a fraction of what the best agency costs, and with results you can see.',
+      'What two years ago was impossible is now a decision. That is what Sinkroo is about.',
+    ],
+    firma: 'María Paula Castaños',
+    cargo: 'CEO of Sinkroo · Marketing expert',
+    alt: 'María Paula Castaños, CEO of Sinkroo, in a knit sweater.',
+  },
+  /* 10 · CONTACT */
   contacto: {
     titulo: { uno: 'BEFORE YOU INVEST,', dos: 'SEE HOW THE SYSTEM THINKS' },
     bajada:

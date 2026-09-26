@@ -29,8 +29,15 @@
 //      import { FlujoAnimado } from './FlujoAnimado';
 //      <FlujoAnimado />
 //
-// Es responsive: `width: 100%` y `height: auto`, con un `viewBox` de 720x600 (en un celular de 390 px
-// queda de unos 325 px de alto). No saca scroll horizontal ni se sale de su caja.
+// Es responsive: `width: 100%` y `height: auto`, con un `viewBox` de 720x664 (en un celular de 390 px
+// queda de unos 360 px de alto). No saca scroll horizontal ni se sale de su caja.
+//
+// EL CARRIL TIENE SU PROPIO ESPACIO: el recorrido punteado va entre las dos filas con 26 unidades de
+// aire arriba y abajo, y ningún panel ni ningún rótulo lo toca (antes el carril entraba en los
+// paneles de las dos filas y los rótulos de abajo quedaban pegados a la línea). Por eso la fila de
+// arriba mide 222 de alto, la de abajo empieza 26 unidades más abajo que el carril y los tres rótulos
+// de abajo (MIDE · SE PUBLICA · USTED · APRUEBA) quedan en la misma línea, a la misma distancia de su
+// panel. El carril y el reloj del búho NO se movieron: siguen en las mismas coordenadas.
 //
 // OJO: los `id` de los gradientes y los filtros son fijos (`flujo-glow`, `flujo-halo`…). Si algún día
 // se montara el componente DOS veces en la misma página, conviene pasar a `useId()` para no repetir
@@ -245,7 +252,7 @@ export function FlujoAnimado() {
     <div className="flujo-caja">
       <svg
         className="flujo-svg"
-        viewBox="0 0 720 600"
+        viewBox="0 0 720 664"
         role="img"
         aria-labelledby="flujo-titulo"
         aria-describedby="flujo-desc"
@@ -294,23 +301,23 @@ export function FlujoAnimado() {
         </defs>
 
         {/* ---------- EL TABLERO ---------- */}
-        <rect className="flujo-tablero" x={0} y={0} width={720} height={600} rx={16} />
-        <rect x={0} y={0} width={720} height={600} rx={16} fill="url(#flujo-brillo-fondo)" />
+        <rect className="flujo-tablero" x={0} y={0} width={720} height={664} rx={16} />
+        <rect x={0} y={0} width={720} height={664} rx={16} fill="url(#flujo-brillo-fondo)" />
 
         {/* ---------- LOS RÓTULOS DE LAS SIETE ETAPAS (arriba de cada panel) ---------- */}
         <Etiqueta x={12} y={18}>SU NEGOCIO</Etiqueta>
         <Etiqueta x={140} y={18}>INVESTIGA</Etiqueta>
         <Etiqueta x={292} y={18}>ESCRIBE</Etiqueta>
         <Etiqueta x={416} y={18}>MIROFISH PRUEBA</Etiqueta>
-        <Etiqueta x={556} y={344} linea2="APRUEBA">USTED</Etiqueta>
-        <Etiqueta x={286} y={364}>SE PUBLICA</Etiqueta>
-        <Etiqueta x={12} y={364}>MIDE</Etiqueta>
+        <Etiqueta x={556} y={410} linea2="APRUEBA">USTED</Etiqueta>
+        <Etiqueta x={286} y={428}>SE PUBLICA</Etiqueta>
+        <Etiqueta x={12} y={428}>MIDE</Etiqueta>
 
         {/* ==========================================================================================
             ETAPA 1 — SU NEGOCIO. El material cae y entra al motor.
             ========================================================================================== */}
         <g className="flujo-etapa flujo-e1">
-          <Panel x={12} y={28} w={116} h={248} />
+          <Panel x={12} y={28} w={116} h={222} />
           <text className="flujo-chico" x={20} y={46}>
             MATERIAL
           </text>
@@ -347,14 +354,14 @@ export function FlujoAnimado() {
             fillOpacity={0.55}
             style={{ animationDelay: desfase(0.69) }}
           />
-          <rect className="flujo-luz flujo-e1" x={12} y={28} width={116} height={248} rx={12} />
+          <rect className="flujo-luz flujo-e1" x={12} y={28} width={116} height={222} rx={12} />
         </g>
 
         {/* ==========================================================================================
             ETAPA 2 — INVESTIGA. Seis agentes leyendo el mercado, con lupa y gráfico.
             ========================================================================================== */}
         <g className="flujo-etapa flujo-e2">
-          <Panel x={140} y={28} w={140} h={248} />
+          <Panel x={140} y={28} w={140} h={222} />
           <text className="flujo-chico" x={152} y={42}>
             6 AGENTES
           </text>
@@ -389,14 +396,14 @@ export function FlujoAnimado() {
               style={{ animationDelay: desfase(i * 0.257) }}
             />
           ))}
-          <rect className="flujo-luz flujo-e2" x={140} y={28} width={140} height={248} rx={12} />
+          <rect className="flujo-luz flujo-e2" x={140} y={28} width={140} height={222} rx={12} />
         </g>
 
         {/* ==========================================================================================
             ETAPA 3 — ESCRIBE. Una pieza por red, escribiéndose sola.
             ========================================================================================== */}
         <g className="flujo-etapa flujo-e3">
-          <Panel x={292} y={28} w={112} h={248} />
+          <Panel x={292} y={28} w={112} h={222} />
           <text className="flujo-chico" x={300} y={42}>
             ESCRIBE
           </text>
@@ -406,14 +413,14 @@ export function FlujoAnimado() {
           {PIEZAS.map((nombre, i) => (
             <Pieza key={nombre} marca={POR_NOMBRE[nombre]} x={300} y={62 + i * 62} />
           ))}
-          <rect className="flujo-luz flujo-e3" x={292} y={28} width={112} height={248} rx={12} />
+          <rect className="flujo-luz flujo-e3" x={292} y={28} width={112} height={222} rx={12} />
         </g>
 
         {/* ==========================================================================================
             ETAPA 4 — MIROFISH PRUEBA. Los cinco jueces y el público hablando.
             ========================================================================================== */}
         <g className="flujo-etapa flujo-e4">
-          <Panel x={416} y={28} w={294} h={248} />
+          <Panel x={416} y={28} w={294} h={222} />
           <text className="flujo-chico" x={424} y={44}>
             5 JUECES · VOTAN
           </text>
@@ -438,20 +445,20 @@ export function FlujoAnimado() {
               retraso={desfase(i * 0.857)}
             />
           ))}
-          <rect className="flujo-luz flujo-e4" x={416} y={28} width={294} height={248} rx={12} />
+          <rect className="flujo-luz flujo-e4" x={416} y={28} width={294} height={222} rx={12} />
         </g>
 
         {/* ==========================================================================================
             ETAPA 5 — USTED APRUEBA. El visto bueno del dueño: un instante, y se marca.
             ========================================================================================== */}
         <g className="flujo-etapa flujo-e5">
-          <Panel x={556} y={380} w={154} h={200} />
-          <circle className="flujo-cheque-halo" cx={633} cy={478} r={40} />
-          <path className="flujo-cheque" d="M 606,482 L 626,502 L 668,446" />
-          <text className="flujo-ok-txt" x={633} y={546} textAnchor="middle">
+          <Panel x={556} y={444} w={154} h={200} />
+          <circle className="flujo-cheque-halo" cx={633} cy={542} r={40} />
+          <path className="flujo-cheque" d="M 606,546 L 626,566 L 668,510" />
+          <text className="flujo-ok-txt" x={633} y={610} textAnchor="middle">
             APROBADO
           </text>
-          <rect className="flujo-luz flujo-e5" x={556} y={380} width={154} height={200} rx={12} />
+          <rect className="flujo-luz flujo-e5" x={556} y={444} width={154} height={200} rx={12} />
         </g>
 
         {/* ==========================================================================================
@@ -459,27 +466,27 @@ export function FlujoAnimado() {
             (El rótulo de abajo aclara que el OK es del dueño: el sistema no publica solo.)
             ========================================================================================== */}
         <g className="flujo-etapa flujo-e6">
-          <Panel x={286} y={380} w={258} h={200} />
+          <Panel x={286} y={444} w={258} h={200} />
           {MARCAS.map((marca, i) => (
             <Red
               key={marca.nombre}
               marca={marca}
               x={293 + (i % 5) * 52}
-              y={i < 5 ? 432 : 502}
+              y={i < 5 ? 496 : 566}
               retraso={desfase(i * 0.137)}
             />
           ))}
-          <text className="flujo-nota" x={415} y={556} textAnchor="middle">
+          <text className="flujo-nota" x={415} y={620} textAnchor="middle">
             USTED DA EL OK ANTES DE PUBLICAR
           </text>
-          <rect className="flujo-luz flujo-e6" x={286} y={380} width={258} height={200} rx={12} />
+          <rect className="flujo-luz flujo-e6" x={286} y={444} width={258} height={200} rx={12} />
         </g>
 
         {/* ==========================================================================================
             ETAPA 7 — MIDE. Las cifras suben. Todas son de EJEMPLO.
             ========================================================================================== */}
         <g className="flujo-etapa flujo-e7">
-          <Panel x={12} y={380} w={262} h={200} />
+          <Panel x={12} y={444} w={262} h={200} />
           {/* Las cifras se reparten en la ventana nueva de MIDE (10,80–13,00 s): una cada 0,37 s, la
               última a 1,11 s. Antes el desfase era de 0,171 s por cifra dentro de una ventana de
               1,20 s; ahora la ventana es de 2,20 s y el desfase acompaña. */}
@@ -487,17 +494,17 @@ export function FlujoAnimado() {
             <Cifra
               key={cifra.rotulo}
               x={i % 2 === 0 ? 20 : 148}
-              y={i < 2 ? 430 : 498}
+              y={i < 2 ? 494 : 562}
               rotulo={cifra.rotulo}
               valor={cifra.valor}
               retraso={`${(i * 0.37).toFixed(2)}s`}
             />
           ))}
-          <rect className="flujo-ejemplo-caja" x={20} y={560} width={246} height={18} rx={9} />
-          <text className="flujo-ejemplo-txt" x={143} y={573} textAnchor="middle">
+          <rect className="flujo-ejemplo-caja" x={20} y={624} width={246} height={18} rx={9} />
+          <text className="flujo-ejemplo-txt" x={143} y={637} textAnchor="middle">
             CIFRAS Y NOTAS DE EJEMPLO
           </text>
-          <rect className="flujo-luz flujo-e7" x={12} y={380} width={262} height={200} rx={12} />
+          <rect className="flujo-luz flujo-e7" x={12} y={444} width={262} height={200} rx={12} />
         </g>
 
         {/* ---------- EL RIEL: por acá anda el búho. Las flechas dicen hacia dónde va el flujo. ---------- */}

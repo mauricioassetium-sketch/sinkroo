@@ -363,3 +363,164 @@ body {
     line-height: 1.5rem;
   }
 }
+
+/* =============================================================================================
+   EL ICONO DE LA RED, DELANTE DEL NOMBRE (bloque 7 · CONECTA SUS CUENTAS).
+   Va en clase propia y no con utilidades de Tailwind porque `viejo.css` es Tailwind ya compilado y
+   no trae `items-center` ni `gap-2`. Los TRES iconos que pida la tarjeta (la de LinkedIn · Threads ·
+   Pinterest lleva tres) salen del mismo trazo de `redes.ts`, y todos van en MORADO (#a855f7), el de
+   la casa: NO se usa el color de marca de cada red.
+
+   El bloque de iconos va `inline-flex` dentro del propio <h3>: el nombre sigue siendo un título
+   normal, en una línea de texto, y los iconos se alinean con él sin descuadrar la tarjeta. Si en el
+   celular no caben detrás del nombre, el bloque entero baja a la línea siguiente: nada se sale ni
+   abre scroll horizontal.
+   ============================================================================================= */
+.conexion-iconos {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-right: 0.5rem;
+  vertical-align: middle;
+  color: #a855f7;
+}
+
+.conexion-icono {
+  display: block;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+}
+
+/* =============================================================================================
+   BLOQUE 9 · PALABRAS DE NUESTRA CEO (el retrato y la cita).
+   El armazón es el mismo de los otros bloques: el negro `#050505`, las esquinas redondeadas, el
+   filete de un pelo y el violeta de la casa. Acá va lo que `viejo.css` no traía:
+     · el pliego (retrato a un lado, la cita al otro) — en el celular, uno debajo del otro;
+     · el marco del retrato, con el resplandor violeta y el filo de abajo DESVANECIDO: así el
+       recorte no termina en una línea recta (el retrato es un WebP con fondo transparente).
+   Nada de esto esconde texto: sin CSS se lee igual, sólo se ve más simple.
+   ============================================================================================= */
+.ceo-pliego {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2.5rem;
+  align-items: center;
+}
+
+@media (min-width: 1024px) {
+  .ceo-pliego {
+    grid-template-columns: minmax(0, 4fr) minmax(0, 7fr);
+    gap: 4rem;
+  }
+}
+
+.ceo-retrato-caja {
+  position: relative;
+  width: 100%;
+  max-width: 340px;
+  margin-inline: auto;
+  aspect-ratio: 4 / 5;
+  border-radius: 26px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background:
+    radial-gradient(78% 52% at 50% 22%, rgba(168, 85, 247, 0.34) 0%, rgba(168, 85, 247, 0.09) 48%, rgba(10, 10, 12, 0) 72%),
+    linear-gradient(180deg, #130b1e 0%, #0a0a0c 62%, #08080a 100%);
+}
+
+.ceo-retrato {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: bottom center;
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 68%, rgba(0, 0, 0, 0) 97%);
+  mask-image: linear-gradient(to bottom, #000 0%, #000 68%, rgba(0, 0, 0, 0) 97%);
+}
+
+.ceo-etiqueta {
+  margin: 0 0 1.5rem;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: #d8b4fe;
+}
+
+.ceo-cita {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.ceo-cita::before {
+  content: '«';
+  display: block;
+  font-size: 3.25rem;
+  line-height: 0.55;
+  color: #a855f7;
+  margin-bottom: 0.75rem;
+}
+
+.ceo-cita p {
+  margin: 0 0 1rem;
+  font-size: 1.125rem;
+  line-height: 1.7;
+  color: #e5e7eb;
+}
+
+.ceo-cita p:last-child {
+  margin-bottom: 0;
+  color: #d8b4fe;
+  font-weight: 600;
+}
+
+.ceo-firma {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.ceo-nombre {
+  font-size: 1.125rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: #ffffff;
+}
+
+.ceo-cargo {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #9ca3af;
+}
+
+@media (min-width: 768px) {
+  .ceo-retrato-caja {
+    max-width: 400px;
+  }
+
+  .ceo-cita p {
+    font-size: 1.375rem;
+    line-height: 1.6;
+  }
+
+  .ceo-cita::before {
+    font-size: 4.25rem;
+  }
+
+  .ceo-nombre {
+    font-size: 1.375rem;
+  }
+
+  .ceo-cargo {
+    font-size: 0.8125rem;
+  }
+}

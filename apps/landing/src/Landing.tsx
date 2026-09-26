@@ -3,11 +3,11 @@
    Es EL MISMO ARMAZÓN de la landing anterior (las mismas clases y su mismo CSS: `viejo.css`), con
    la información de hoy adentro.
 
-   LOS DIEZ BLOQUES, EN ORDEN:
+   LOS ONCE BLOQUES, EN ORDEN:
      1. Cabecera · 2. Portada (con el título que se cambia solo) · 3. Franja que se mueve ·
      4. Qué hacemos · 5. Cómo lo hacemos (el flujo animado + las siete etapas) ·
      6. Con qué trabaja (cinco herramientas) · 7. Con quién se conecta (las 14) · 8. Planes ·
-     9. Contacto · 10. Pie
+     9. Palabras de nuestra CEO (la foto y la cita) · 10. Contacto · 11. Pie
 
    REGLAS QUE LA MANDAN:
      · EL TEXTO ES DEL DUEÑO, LITERAL. Vive en `contenido.ts` (español e inglés) y no se reescribe
@@ -15,7 +15,9 @@
      · NADA SE REPITE. Cada bloque dice algo nuevo y cada bloque con imagen muestra una pantalla
        DISTINTA del panel (ninguna captura se usa dos veces).
      · NADA PROMETE LO QUE EL SISTEMA NO HACE. El panel todavía no publica en las redes: las piezas
-       quedan listas y usted aprueba. El bloque 7 lo dice con todas las letras.
+       quedan listas y usted aprueba. El bloque 7 cerraba con una línea que lo decía («Publicar en las
+       redes todavía no está conectado…») y el dueño la mandó borrar: ya no está en la página, en
+       ningún idioma. No se reemplaza por otra frase.
      · NADA SE ESCONDE POR JAVASCRIPT: no hay animación de entrada ni estado invisible que alguien
        tenga que destapar. Lo que se mueve (el título de la portada, la franja, la marquesina de
        redes y el flujo) va en CSS y se detiene solo para quien pidió menos movimiento en su
@@ -30,6 +32,7 @@ import './viejo.css';
 import './landing-extra.css';
 import { CONTENIDO, IDIOMA_INICIAL, PANEL, IMAGENES } from './contenido';
 import type { Idioma } from './contenido';
+import { REDES } from './redes';
 import { FlujoAnimado } from './FlujoAnimado';
 import { MarquesinaRedes } from './MarquesinaRedes';
 
@@ -80,6 +83,36 @@ function Flecha({ ancho = 18 }: { ancho?: number }) {
     >
       <path d="M5 12h14" />
       <path d="m13 6 6 6-6 6" />
+    </svg>
+  );
+}
+
+/* Los trazos de `redes.ts` por `id`: los iconos del bloque 7 salen SIEMPRE de ahí, tal cual —24x24,
+   `fill="currentColor"`—, y NO se dibuja ningún logo nuevo. Si un `id` no existiera en `REDES`,
+   esa tarjeta se queda sin ese icono y el nombre (que ya está escrito) no se toca. */
+const TRAZO_POR_ID = new Map(REDES.map((red) => [red.id, red.trazo]));
+
+/**
+ * El icono de una red, delante del nombre en las tarjetas del bloque 7.
+ * Va en MORADO y no del color de marca de cada red: el dueño los pidió todos iguales. El color lo
+ * pone la ficha (`.conexion-iconos`), no el trazo. Es `aria-hidden` a propósito: la red ya está
+ * escrita al lado y el lector de pantalla no tiene que decirla dos veces.
+ */
+function IconoRed({ id }: { id: string }) {
+  const trazo = TRAZO_POR_ID.get(id);
+  if (!trazo) return null;
+
+  return (
+    <svg
+      className="conexion-icono"
+      viewBox="0 0 24 24"
+      width={22}
+      height={22}
+      fill="currentColor"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d={trazo} />
     </svg>
   );
 }
@@ -292,27 +325,17 @@ export function Landing() {
               </div>
             </div>
 
-            {/* La columna derecha de la portada: el índice de la página (los mismos nombres del
-                menú). No repite ninguna promesa: sólo dice qué hay más abajo. */}
+            {/* La columna derecha de la portada: los DOS PÁRRAFOS de siempre. Aquí hubo un índice
+                («EN ESTA PÁGINA») y el dueño pidió sacarlo y devolver el texto que había antes. */}
             <div className="md:col-span-5 flex items-center justify-end">
               <div className="relative">
                 <div className="absolute -left-8 top-0 bottom-0 w-[1px] bg-gradient-to-b from-purple-400 to-transparent hidden md:block"></div>
-                <p className="text-[10px] font-bold tracking-[0.3em] text-purple-300 uppercase mb-6">
-                  {t.portada.indiceTitulo}
+                <p className="text-white/50 text-sm md:text-base max-w-xs md:max-w-sm mr-auto text-left leading-relaxed font-light">
+                  {t.introduccion.uno}
+                  <br />
+                  <br />
+                  {t.introduccion.dos}
                 </p>
-                <ul className="space-y-4">
-                  {t.portada.indice.map((enlace) => (
-                    <li key={enlace.href}>
-                      <a
-                        href={enlace.href}
-                        className="group flex items-center gap-3 text-white/50 hover:text-white text-sm md:text-base font-light transition-colors"
-                      >
-                        <span>{enlace.texto}</span>
-                        <span className="text-purple-400 transition-transform group-hover:translate-x-1">→</span>
-                      </a>
-                    </li>
-                  ))}
-                </ul>
               </div>
             </div>
           </div>
@@ -487,15 +510,22 @@ export function Landing() {
                   className="bg-[#0b0b0b] border border-white/10 rounded-2xl p-6 hover:border-purple-500/40 transition-colors"
                   key={conexion.nombre}
                 >
-                  <h3 className="text-white font-bold mb-2">{conexion.nombre}</h3>
+                  <h3 className="text-white font-bold mb-2">
+                    <span className="conexion-iconos" aria-hidden="true">
+                      {conexion.redes.map((id) => (
+                        <IconoRed key={id} id={id} />
+                      ))}
+                    </span>
+                    {conexion.nombre}
+                  </h3>
                   <p className="text-gray-400 text-sm leading-relaxed">{conexion.texto}</p>
                 </div>
               ))}
             </div>
 
-            <div className="mt-12 md:mt-16 rounded-2xl border border-purple-500/30 bg-purple-500/5 p-6 md:p-8">
-              <p className="text-purple-200 text-sm md:text-base leading-relaxed">{t.conexiones.honestidad}</p>
-            </div>
+            {/* Aquí cerraba el recuadro morado que decía que publicar en las redes todavía no estaba
+                conectado. El dueño lo mandó borrar y NO se reemplaza por nada: el bloque termina en
+                las tarjetas. */}
           </div>
         </section>
 
@@ -550,7 +580,45 @@ export function Landing() {
           </div>
         </div>
 
-        {/* ========================= 9 · CONTACTO ========================= */}
+        {/* ========================= 9 · PALABRAS DE NUESTRA CEO =========================
+            La cita y el retrato de María Paula, entre los planes y el contacto: es el cierre
+            humano antes del pedido. La foto va recortada y sin fondo (PNG/WebP con
+            transparencia) sobre el mismo negro del bloque, con el resplandor violeta de la casa
+            y el borde de abajo desvanecido en `landing-extra.css`; no es una captura del panel,
+            así que no rompe la regla de una pantalla distinta por bloque. */ }
+        <section id="ceo" className="relative bg-[#050505] text-white py-28 px-5 md:px-8 overflow-hidden">
+          <div className="absolute -top-[10%] -left-[10%] w-[50%] h-[50%] bg-purple-600/10 blur-[140px] rounded-full"></div>
+          <div className="max-w-7xl mx-auto relative z-10">
+            <div className="ceo-pliego">
+              <figure className="ceo-retrato-caja">
+                <img
+                  className="ceo-retrato"
+                  src={IMAGENES.ceo}
+                  alt={t.ceo.alt}
+                  width={720}
+                  height={900}
+                  loading="lazy"
+                  decoding="async"
+                />
+              </figure>
+
+              <div className="ceo-dicho">
+                <p className="ceo-etiqueta">{t.ceo.etiqueta}</p>
+                <blockquote className="ceo-cita">
+                  {t.ceo.cita.map((parrafo) => (
+                    <p key={parrafo}>{parrafo}</p>
+                  ))}
+                </blockquote>
+                <figcaption className="ceo-firma">
+                  <span className="ceo-nombre">{t.ceo.firma}</span>
+                  <span className="ceo-cargo">{t.ceo.cargo}</span>
+                </figcaption>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ========================= 10 · CONTACTO ========================= */}
         <section id="contacto" className="relative bg-[#000] text-white py-16 md:py-24 lg:py-32 px-4 sm:px-6 overflow-hidden">
           <div className="absolute inset-0 opacity-[0.15] md:opacity-[0.2]"></div>
           <div className="absolute -top-[10%] -left-[10%] w-[70%] md:w-[50%] h-[50%] bg-purple-600/10 blur-[100px] md:blur-[140px] rounded-full"></div>
@@ -665,7 +733,7 @@ export function Landing() {
         </section>
       </main>
 
-      {/* ========================= 10 · PIE ========================= */}
+      {/* ========================= 11 · PIE ========================= */}
       <div className="bg-black pt-24">
         <footer className="relative bg-gradient-to-br from-white via-[#fafafa] to-[#f5f3ff] pt-20 pb-10 rounded-t-[60px] md:rounded-t-[100px] border-t border-purple-200">
           <div className="max-w-[1400px] mx-auto px-6 lg:px-12">
