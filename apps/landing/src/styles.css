@@ -1,0 +1,338 @@
+/* =============================================================================================
+   LA LANDING — la hoja de estilos.
+   Los colores, la tipografía y el lenguaje visual son LOS MISMOS DEL PANEL (apps/dashboard-v2):
+   los tokens de `globals.css`, el violeta #a855f7 y su familia, los fondos oscuros y las tarjetas
+   con borde suave. Lo que cambia es el uso: aquí todo es UNA COLUMNA y todo está pensado para el
+   celular, que es como lo va a ver el dueño.
+
+   Dos reglas que no se negocian:
+     · NADA ARRANCA ESCONDIDO. Ningún `opacity: 0` de entrada, ninguna animación que dependa de
+       JavaScript: si se abre sin JavaScript, el texto igual se lee (y no hay «watchdog anti-blank»).
+     · SIN SCROLL HORIZONTAL. `overflow-x: hidden` en el body y palabras largas que se parten.
+   ============================================================================================= */
+
+:root {
+  --bg: #000000;
+  --bg2: #070707;
+  --bg3: #0e0e0e;
+  --card: #0a0a0a;
+  --border: #2a1a3a;
+  --border2: #3a2450;
+  --txt: #f5f5f5;
+  --muted: #9a8fad;
+  --muted2: #756a86;
+  --purple: #9333ea;
+  --purple2: #a855f7;
+  --purple4: #c084fc;
+  --radius: 16px;
+  --grad: linear-gradient(135deg, #9333ea 0%, #a855f7 45%, #a78bfa 75%, #c084fc 100%);
+}
+
+* { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--txt);
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  /* 16px: el cuerpo se lee en celular sin agrandar con los dedos. */
+  font-size: 16px;
+  line-height: 1.55;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: inherit; }
+
+/* Una sola columna, con un ancho máximo: en un computador no se estira hasta el infinito, en el
+   celular ocupa todo el ancho con un margen que deja respirar. */
+.page {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 28px 18px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.bloque {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  /* Palabras y textos largos (correos, «500 personas del público») se parten antes de empujar el
+     ancho de la página y sacar el scroll horizontal. */
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+.tarjeta {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 22px 20px;
+}
+
+/* ===== BLOQUE 1 — PORTADA ===== */
+.portada { text-align: center; padding: 6px 0 4px; }
+
+.marca {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.buho {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  border-radius: 16px;
+  display: block;
+}
+
+/* El nombre de la marca. Primero el respaldo en violeta claro: si el navegador no sabe recortar el
+   fondo dentro del texto, se lee igual. Nunca queda invisible. */
+.marca-nombre {
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: -.4px;
+  color: var(--purple4);
+}
+
+@supports ((-webkit-background-clip: text) or (background-clip: text)) {
+  .marca-nombre {
+    background: var(--grad);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+}
+
+.titular {
+  margin: 0;
+  font-size: 30px;
+  line-height: 1.15;
+  font-weight: 900;
+  letter-spacing: -.8px;
+}
+
+.bajada {
+  margin: 0;
+  font-size: 16.5px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+/* El gris claro (--muted), no el oscuro: estas líneas son las más pequeñas de la página y tienen
+   que pasar el contraste mínimo (6.9:1 contra el negro). */
+.linea-chica {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+/* ===== EL BOTÓN (los tres van a /panel/) ===== */
+.cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 56px;
+  padding: 15px 20px;
+  border-radius: 14px;
+  background: var(--grad);
+  color: #ffffff;
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -.2px;
+  text-decoration: none;
+  box-shadow: 0 10px 28px rgba(168, 85, 247, .28);
+  transition: filter .15s ease;
+}
+
+.cta:hover { filter: brightness(1.12); }
+.cta:active { filter: brightness(.95); }
+.cta:focus-visible { outline: 3px solid var(--purple4); outline-offset: 3px; }
+
+/* ===== TÍTULOS Y TEXTO DE LOS BLOQUES ===== */
+.titulo-bloque {
+  margin: 0;
+  font-size: 23px;
+  line-height: 1.2;
+  font-weight: 900;
+  letter-spacing: -.6px;
+}
+
+.cuerpo {
+  margin: 0;
+  font-size: 15.5px;
+  line-height: 1.6;
+  color: #d9d2e6;
+}
+
+.linea { color: var(--muted); }
+
+/* ===== BLOQUE 2 — LOS TRES DATOS ===== */
+.datos {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dato {
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -.2px;
+  text-align: center;
+  color: var(--purple4);
+}
+
+/* ===== BLOQUE 3 — LOS SEIS PASOS ===== */
+.pasos {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.paso {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.paso-num {
+  width: 26px;
+  height: 26px;
+  border-radius: 9px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--grad);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.paso-texto {
+  font-size: 15.5px;
+  line-height: 1.5;
+}
+
+/* ===== BLOQUE 5 — LOS PLANES ===== */
+.planes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.plan {
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.plan-elegido {
+  border-color: var(--purple2);
+  background: rgba(168, 85, 247, .1);
+  box-shadow: inset 0 0 0 1px rgba(168, 85, 247, .25);
+}
+
+.plan-encabezado {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.plan-nombre {
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -.3px;
+}
+
+/* La píldora del plan más vendido. Dice eso y nada más: no dice que sea «el suyo». */
+.pildora {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 11px;
+  border-radius: 99px;
+  background: rgba(168, 85, 247, .18);
+  border: 1px solid rgba(168, 85, 247, .35);
+  color: var(--purple4);
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: .2px;
+  white-space: nowrap;
+}
+
+.plan-precio {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 900;
+  letter-spacing: -.6px;
+}
+
+.plan-creditos {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--purple4);
+}
+
+.plan-detalle {
+  margin: 0;
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+/* ===== BLOQUE 6 — CIERRE Y PIE ===== */
+.cierre { gap: 16px; }
+
+.pie {
+  text-align: center;
+  font-size: 13px;
+  color: var(--muted);
+  padding: 4px 0 8px;
+}
+
+.pie a { color: var(--muted); text-decoration: underline; }
+.pie a:hover { color: var(--purple4); }
+
+/* ===== AJUSTES DE PANTALLA GRANDE =====
+   La página es para el celular; en un computador sólo se le da un poco más de aire. Nunca cambia
+   a dos columnas: se lee igual de corta. */
+@media (min-width: 620px) {
+  .page { padding: 44px 24px 56px; gap: 22px; }
+  .titular { font-size: 36px; }
+  .tarjeta { padding: 26px 24px; }
+}
+
+/* Quien pide menos movimiento, no ve movimiento: aquí no hay animaciones de entrada, sólo los
+   cambios de color de los botones. */
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}
