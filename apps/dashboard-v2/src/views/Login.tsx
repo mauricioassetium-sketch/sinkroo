@@ -7,6 +7,7 @@ import {
   crearCuenta, entrar as entrarApi, hayApi, leerSeguridad, guardarToken,
   correoConfigurado, faltaDeCorreo, faltaEnlaces,
   type AvisoDeCorreo, type ErrorApi, type EstadoSeguridad,
+  quiereCrearCuenta,
 } from '../api/cliente';
 // La vuelta del correo la atiende App.tsx con el mismo mecanismo de `VueltaDeConexion` (llamar al
 // back una sola vez y dejar limpia la dirección). Aquí sólo se dice cómo salió, con `textoDeVuelta`.
@@ -59,7 +60,9 @@ const cuentaDe = (email: string) =>
   CUENTAS_REGISTRADAS.find(c => c.email.toLowerCase() === email.trim().toLowerCase());
 
 export function PantallaLogin({ onEntrar, vuelta }: { onEntrar: (s: Sesion) => void; vuelta?: VueltaCorreo }) {
-  const [modo, setModo] = useState<'entrar' | 'crear'>('entrar');
+  /* El modo con el que abre: el de siempre (entrar), o el de crear cuenta si la dirección lo pide
+     (…?cuenta=nueva, el botón «SIGN IN» del sitio de afuera). */
+  const [modo, setModo] = useState<'entrar' | 'crear'>(() => (quiereCrearCuenta() ? 'crear' : 'entrar'));
   const [nombre, setNombre] = useState('');
   const [email, setEmail] = useState('');
   const [clave, setClave] = useState('');

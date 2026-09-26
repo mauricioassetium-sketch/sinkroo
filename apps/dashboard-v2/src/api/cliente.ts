@@ -360,6 +360,20 @@ const redDeLaMarca = (marca: string) => (/-callback$|-not-enough/.test(marca)
  * con el token de la confirmación: `?token=…`. Es una vuelta distinta de la del proveedor (no trae código
  * ni marca de red) y por eso se lee aparte. Devuelve '' si la dirección no trae ninguna.
  */
+/**
+ * Si la dirección pide el formulario de CREAR CUENTA (…?cuenta=nueva).
+ * Es para los botones del sitio de afuera: el de «SIGN IN» trae a quien no tiene cuenta y tiene que
+ * caer en el formulario de crear, no en el de entrar. Sin el parámetro, la pantalla abre en entrar,
+ * como siempre.
+ */
+export function quiereCrearCuenta(): boolean {
+  try {
+    const q = new URLSearchParams(window.location.search);
+    const v = (q.get('cuenta') || q.get('registro') || '').trim().toLowerCase();
+    return v === 'nueva' || v === 'nuevo' || v === 'crear';
+  } catch { return false; }
+}
+
 export function tokenDeVerificacion(): string {
   try {
     const q = new URLSearchParams(window.location.search);
