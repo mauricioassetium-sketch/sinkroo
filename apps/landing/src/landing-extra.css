@@ -157,16 +157,22 @@
   /* El ancho va contra la PANTALLA y no contra el contenedor: la columna de este bloque se mide por
      su contenido, así que un `max-width: 100%` no la hacía encoger y en el celular el monitor se
      salía de la pantalla. Con `86vw` entra siempre.
-     El 520 son los 400 de antes + 30 %, que es lo que pidió el dueño para que se lea la pantalla. */
-  width: min(520px, 86vw);
+     Los 572 son los 400 del principio + 30 % + 10 %: los dos agrandados que pidió el dueño. */
+  width: min(572px, 86vw);
   margin-inline: auto;
 }
 
-/* La caja decorada donde va el monitor (el círculo punteado y el resplandor). Su tope lo pone esta
-   clase y no la utilidad de Tailwind del armazón (`max-w-[450px]`, ya compilada en `viejo.css`): al
-   agrandar el monitor, el círculo tiene que crecer con él o el monitor se sale del adorno. */
+/* La caja decorada donde va el monitor (el círculo punteado y el resplandor).
+   · Su ancho lo pone esta clase y no la utilidad de Tailwind del armazón (`max-w-[450px]`, ya
+     compilada en `viejo.css`): al agrandar el monitor, el círculo tiene que crecer con él.
+   · Y va con `flex: 0 0 auto` para que NO se encoja: sin eso, la fila le daba el sobrante que dejaban
+     las tarjetas de planes y el monitor quedaba más chico justo en las pantallas más angostas — al
+     agrandarlo un 30 % había terminado 6 px MÁS chico en 1280. Ahora pide su ancho y son las tarjetas
+     las que se acomodan. */
 .pc-caja {
-  max-width: 580px;
+  flex: 0 0 auto;
+  width: min(640px, 86vw);
+  max-width: none;
 }
 
 /* El bisel: de dónde sale la pantalla. */
