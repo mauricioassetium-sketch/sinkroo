@@ -226,7 +226,9 @@ export function Asistente({ sesion, setVista }: { sesion: Sesion; setVista: (v: 
 
         {/* Lo que va a pasar al terminar: en la bienvenida, que tiene lugar. En los pasos, no. */}
         <div className="asist-pie-2" style={fase > 0 ? { display: 'none' } : undefined}>
-          <I_Play size={12} /> Al terminar, el motor arranca con los {plan.creditosMes.toLocaleString('es-CO')} créditos del plan {plan.nombre}.
+          <I_Play size={12} /> {plan
+            ? `Al terminar, el motor arranca con los ${plan.creditosMes.toLocaleString('es-CO')} créditos del plan ${plan.nombre}.`
+            : 'Al terminar, el motor arranca con los créditos de su plan.'}
         </div>
       </div>
     </div>

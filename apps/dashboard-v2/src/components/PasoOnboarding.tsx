@@ -585,7 +585,9 @@ export function BloqueArranque({ enAsistente, alCerrar }: { enAsistente?: boolea
           ))}
           <div className="onb-etapa-total">
             <span>Total del arranque</span>
-            <span><b>{COSTO_ARRANQUE} créditos</b> de los {plan.creditosMes.toLocaleString('es-CO')} del plan {plan.nombre} · publicar es aparte</span>
+            <span><b>{COSTO_ARRANQUE} créditos</b> {plan
+              ? <>de los {plan.creditosMes.toLocaleString('es-CO')} del plan {plan.nombre}</>
+              : 'de los créditos de su plan'} · publicar es aparte</span>
           </div>
         </div>
         {enAsistente && (

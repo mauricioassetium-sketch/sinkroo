@@ -19,7 +19,7 @@ import { ViewCuenta } from './views/Cuenta';
 import { ViewCreditos } from './views/Creditos';
 import { ViewReferidos } from './views/Referidos';
 import { ViewKyc } from './views/Kyc';
-import { TENANT, type Modo } from './data/demo';
+import type { Modo } from './data/demo';
 
 /** El nombre de una red para los avisos, sin depender del catálogo del back: `instagram` → «Instagram». */
 const redBonita = (red: string) => {
@@ -108,7 +108,10 @@ export default function App() {
 
   const [vista, setVista] = useState<Vista>('hoy');
   const [toast, setToast] = useState('');
-  const [modo, setModo] = useState<Modo>(TENANT.modoActual);
+  // El modo con el que arranca el panel: «Compartido» (decide y le pide OK antes de hacer). Es el más
+  // prudente de los tres y es una decisión del producto, no el modo de ningún negocio de ejemplo: el back
+  // todavía no guarda el modo de cada cuenta, así que no se le atribuye uno a nadie.
+  const [modo, setModo] = useState<Modo>('shared');
   const { theme, cycle } = useTheme();
 
   const avisar = (t: string) => {

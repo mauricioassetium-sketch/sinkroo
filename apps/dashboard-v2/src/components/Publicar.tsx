@@ -9,7 +9,7 @@ import { FlujoMiroFish } from './FlujoMiroFish';
 import { TIPOS_CAMPANA, type ObjetivoCampana } from '../data/campana';
 import { FORMATOS, MATERIAL, NO_SE_PUBLICA, type CampoPublicacion, type FormatoKey } from '../data/publicaciones';
 import type { Modo } from '../data/demo';
-import { CARPETA } from '../data/demo';
+import { useDatos } from '../api/datos';
 import { useDetalle } from './Detalle';
 
 type Archivo = { nombre: string; peso: string; url: string | null; esImagen: boolean; deCarpeta?: boolean };
@@ -73,6 +73,8 @@ function IconoCampo({ tipo }: { tipo: CampoPublicacion['tipo'] }) {
 export function Publicar({ setToast, modo, irAConversaciones, soloIngesta }: {
   setToast: (t: string) => void; modo: Modo; irAConversaciones: () => void; soloIngesta?: boolean;
 }) {
+  // La carpeta del negocio, del back: lo que ya subió y se puede volver a usar sin subirlo otra vez.
+  const { archivos } = useDatos();
   const [formatoKey, setFormatoKey] = useState<FormatoKey>('anuncio');
   const [objetivo, setObjetivo] = useState<ObjetivoCampana>('ventas');
   const [valores, setValores] = useState<Record<string, Valor>>({});
@@ -155,9 +157,18 @@ export function Publicar({ setToast, modo, irAConversaciones, soloIngesta }: {
     );
   };
 
-  /** La carpeta del negocio: lo que ya subió antes, para sumarlo a esta campaña sin volver a subirlo. */
+  /**
+   * La carpeta del negocio: lo que YA subió a su carpeta del servidor (GET /api/archivos), para sumarlo a
+   * esta campaña sin volver a subirlo. Antes esta lista salía de una carpeta de ejemplo: archivos de un
+   * negocio ajeno, ofrecidos como si fueran suyos. Sin archivos —o sin back— no se muestra el bloque.
+   * El back todavía no dice a qué campo de la publicación pertenece cada archivo, así que se ofrecen los
+   * que el negocio subió, sin atribuirle a ninguno un campo que no consta.
+   */
   const carpetaDe = (campo: CampoPublicacion) => {
-    const yaEsta = CARPETA[campo.id] || [];
+    const yaEsta = archivos.map(a => ({
+      nombre: a.nombre,
+      peso: a.tamano > 1048576 ? (a.tamano / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(a.tamano / 1024)) + ' KB',
+    }));
     if (!yaEsta.length) return null;
     const puestos = material[campo.id] || [];
     return (

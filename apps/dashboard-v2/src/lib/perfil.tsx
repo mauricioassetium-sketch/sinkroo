@@ -34,12 +34,22 @@ export interface Perfil {
   col2: string;
 }
 
+/**
+ * El perfil de FÁBRICA, que es un perfil VACÍO.
+ *
+ * Antes nacía con el negocio de ejemplo cargado («María Paula», «Skincare Natural», su teléfono y su
+ * zona) y por eso cualquier panel saludaba con el nombre de esa señora: el perfil del navegador arrancaba
+ * lleno con datos que no eran de nadie. Ahora arranca en blanco y se llena con lo que la cuenta traiga
+ * (nombre, correo, negocio, zona). Lo que no llegue, queda vacío: vacío es «sin dato», y el panel lo dice.
+ * La moneda queda en peso colombiano porque es la que el panel usa para mostrar cualquier cifra: es una
+ * decisión del producto, no un dato de un negocio.
+ */
 export const PERFIL_INICIAL: Perfil = {
-  nombre: 'María Paula',
-  marca: 'Skincare Natural',
-  email: 'hola@skincarenatural.com',
-  telefono: '+57 300 555 2341',
-  zona: 'Medellín · GMT-5',
+  nombre: '',
+  marca: '',
+  email: '',
+  telefono: '',
+  zona: '',
   moneda: 'Peso colombiano',
   color: '#a855f7',
   logo: '',
@@ -445,8 +455,20 @@ export function leerLogo(archivo: File, lado = 320): Promise<string> {
 // Lo que el cliente escribió en «Haga suyo este panel» se respeta tal cual, aunque no coincida con nada.
 // =============================================================================================
 
-/** ¿El valor es el del ejemplo (o está vacío, que también es «sin dato»)? */
-const deEjemplo = (valor: string, ejemplo: string) => !valor.trim() || valor.trim() === ejemplo.trim();
+/**
+ * LOS VALORES CON LOS QUE NACÍA LA MAQUETA. El negocio de ejemplo venía escrito en el perfil de fábrica,
+ * así que un navegador que ya lo tenía guardado lo seguiría mostrando aunque el de fábrica ya esté vacío
+ * (el guardado manda). Estos valores se tratan como «de fábrica» igual: se escriben encima con los de la
+ * cuenta, o se vacían. Sin esto, el panel de la demostración seguía diciendo «Hola María».
+ */
+const DE_FABRICA = [
+  'María Paula', 'Skincare Natural', 'hola@skincarenatural.com',
+  '+57 300 555 2341', 'Medellín · GMT-5',
+];
+
+/** ¿El valor es el del ejemplo, uno de los de fábrica, o está vacío (que también es «sin dato»)? */
+const deEjemplo = (valor: string, ejemplo: string) =>
+  !valor.trim() || valor.trim() === ejemplo.trim() || DE_FABRICA.includes(valor.trim());
 
 /**
  * DE QUÉ CUENTA ES EL PERFIL GUARDADO.

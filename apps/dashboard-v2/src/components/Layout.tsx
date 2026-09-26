@@ -1,9 +1,8 @@
 import { useState, type ReactNode } from 'react';
 import { SinkrooMark, I_Home, I_Megaphone, I_Whatsapp, I_Globe, I_Settings, I_Bell, I_Sun, I_Moon, I_Zap, I_Clock, I_Vote, I_Robot, I_Credit, I_Gift, I_Shield, I_User, I_Palette, I_Menu, I_X, I_Rocket } from './icons';
-import { TENANT, AGENTES, ALARMAS, DECISIONES, MODOS, PLANES, type Modo } from '../data/demo';
+import { MODOS, PLANES, type Modo } from '../data/demo';
 import { Progress } from './ui';
 import { usePerfil, inicialesDe } from '../lib/perfil';
-import { usePlan } from '../lib/plan';
 import { useDatos } from '../api/datos';
 import { useOnboarding } from '../lib/onboarding';
 import { PerfilModal } from './PerfilModal';
@@ -64,26 +63,32 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
   // consumo del plan que usa la vista de Créditos (150 créditos por día, `Math.round(saldo / 150)`).
   // Si el saldo cambia, el menú y la vista dicen lo mismo; si el número estuviera fijo, se
   // desincronizaría en la primera recarga.
-  // Con el back encendido, los créditos, el plan y el nombre salen del negocio real. Sin back, siguen
-  // saliendo de la demostración: son las dos únicas fuentes y no se mezclan nunca.
+  // TODO SALE DE SU CUENTA: los créditos, el plan y el nombre del negocio los manda el back. Sin back
+  // no hay cuenta que leer, así que el encabezado queda neutro («Su negocio», los créditos en «—») en
+  // vez de mostrar otro negocio.
   const datos = useDatos();
-  const { plan } = usePlan();
-  const esReal = datos.real && !!datos.negocio;
-  const creditos = esReal ? (datos.negocio as any).creditos : TENANT.creditos;
-  const marca = esReal ? ((datos.negocio as any).name || perfil.marca) : perfil.marca;
-  const planDelNegocio = esReal ? PLANES.find((pl: { key: string }) => pl.key === (datos.negocio as any).plan) : undefined;
-  const planNombre = planDelNegocio?.nombre ?? plan.nombre;
-  const creditosMes = planDelNegocio?.creditosMes ?? plan.creditosMes;
-  const dias = Math.max(0, Math.round(creditos / 150));
+  // La fuente la decide el BACK, no el negocio: si el back está encendido, de esta pantalla no sale
+  // ni un dato de ejemplo (y si el negocio todavía no llegó, va «—»). Sin back no hay cuenta que leer:
+  // el encabezado queda neutro hasta que la haya.
+  const esReal = datos.real;
+  const planDelNegocio = esReal ? PLANES.find((pl: { key: string }) => pl.key === (datos.negocio?.plan || '')) : undefined;
+  const creditos: number | null = esReal ? (datos.negocio?.creditos ?? 0) : null;
+  const marca = esReal ? (datos.negocio?.name || 'Su negocio') : 'Su negocio';
+  const planNombre = planDelNegocio?.nombre ?? (esReal ? (datos.negocio?.plan || null) : null);
+  // El tope del mes: el del plan del back sólo si el catálogo lo tiene. Si no, no se sabe y no se
+  // dibuja ninguna barra contra un número que no conocemos.
+  const creditosMes = planDelNegocio?.creditosMes ?? null;
+  const dias: number | null = creditos === null ? null : Math.max(0, Math.round(creditos / 150));
   const onb = useOnboarding();
-  const todosLosDias = Math.round(creditosMes / 150);
-  const pctCreditos = Math.min(100, Math.round((creditos / creditosMes) * 100));
-  // La barra de arriba: con el back encendido cuenta lo que hay de verdad (un negocio nuevo no tiene
-  // nada trabajando, ni decisiones, ni alarmas). Sin back, sigue contando la demostración.
-  const trabajando = esReal ? (datos.resumen ? (datos.resumen.corridas > 0 ? 1 : 0) : 0) : AGENTES.filter(a => a.estado === 'trabajando').length;
-  const esperando = esReal ? 0 : DECISIONES.length;
-  const criticas = esReal ? 0 : ALARMAS.filter(a => a.severidad === 'critico').length;
-  const conversacionesSinLeer = esReal ? (datos.resumen?.conversaciones ?? 0) : esperando;
+  const todosLosDias = creditosMes ? Math.round(creditosMes / 150) : 0;
+  const pctCreditos = creditosMes && creditos !== null ? Math.min(100, Math.round((creditos / creditosMes) * 100)) : 0;
+  // La barra de arriba cuenta lo que hay de verdad: un negocio nuevo no tiene nada trabajando, ni
+  // decisiones, ni alarmas. Sin back no hay cuenta que leer, así que también es cero: nunca se
+  // rellena con agentes, decisiones ni alarmas de ejemplo.
+  const trabajando = esReal && datos.resumen ? (datos.resumen.corridas > 0 ? 1 : 0) : 0;
+  const esperando = 0;
+  const criticas = 0;
+  const conversacionesSinLeer = esReal ? (datos.resumen?.conversaciones ?? 0) : 0;
   // Ir a una vista del menú y cerrar la bandeja en celular: el mismo gesto para la tarjeta de
   // plan y para los ítems de navegación.
   const irA = (v: Vista) => { setVista(v); setMenuAbierto(false); };
@@ -114,26 +119,43 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
           <div className="sb-plan-top">
             <div className="sb-plan-name" title={`${marca}: este panel es de su negocio`}>{marca}</div>
             <span className="badge badge-purple sb-plan-badge"
-              title={`Plan ${planNombre}: ${creditosMes.toLocaleString('es-CO')} créditos por mes, unos ${todosLosDias} días de motor. Se cambia desde Créditos.`}>
-              Plan {planNombre}
+              title={planNombre
+                ? (creditosMes
+                  ? `Plan ${planNombre}: ${creditosMes.toLocaleString('es-CO')} créditos por mes, unos ${todosLosDias} días de motor. Se ve desde Créditos.`
+                  : `Plan ${planNombre}. Los créditos por mes todavía no están cargados: se ven desde Créditos.`)
+                : 'Los planes y sus precios se ven desde Créditos. El de su cuenta sale de su cuenta.'}>
+              {planNombre ? `Plan ${planNombre}` : 'Sin plan cargado'}
             </span>
           </div>
 
           <div className="sb-plan-block" role="button" tabIndex={0}
             onClick={() => irA('creditos')}
             onKeyDown={e => { if (e.key === 'Enter') irA('creditos'); }}
-            title={`Créditos: le quedan ${creditos.toLocaleString('es-CO')} de ${creditosMes.toLocaleString('es-CO')} del plan del mes. Tóquelo para ver en qué se va cada crédito`}>
+            title={creditos === null
+              ? 'Créditos: su saldo sale de su cuenta. Tóquelo para ver en qué se va cada crédito'
+              : (creditosMes
+                ? `Créditos: le quedan ${creditos.toLocaleString('es-CO')} de ${creditosMes.toLocaleString('es-CO')} del plan del mes. Tóquelo para ver en qué se va cada crédito`
+                : `Créditos: le quedan ${creditos.toLocaleString('es-CO')}. Tóquelo para ver en qué se va cada crédito`)}>
             <div className="sb-plan-cred">
-              <span className="sb-plan-num">{creditos.toLocaleString('es-CO')}</span>
+              <span className="sb-plan-num">{creditos === null ? '—' : creditos.toLocaleString('es-CO')}</span>
               <span className="sb-plan-unit">créditos</span>
               <span className="sb-plan-dias"
-                title={`Autonomía: al consumo actual (150 créditos por día) al motor le quedan ${dias} días sin que recargue`}>
-                {dias} días
+                title={dias === null
+                  ? 'La autonomía sale de los créditos que haya en su cuenta: todavía no se leyeron'
+                  : `Autonomía: al consumo actual (150 créditos por día) al motor le quedan ${dias} días sin que recargue`}>
+                {dias === null ? '—' : `${dias} días`}
               </span>
             </div>
-            <div className="sb-plan-bar">
-              <Progress pct={pctCreditos} color={pctCreditos <= 25 ? 'amber' : 'purple'} />
-            </div>
+            {/* La barra del mes sólo se dibuja si se conoce el tope del mes: sin tope no hay porcentaje. */}
+            {creditosMes ? (
+              <div className="sb-plan-bar">
+                <Progress pct={pctCreditos} color={pctCreditos <= 25 ? 'amber' : 'purple'} />
+              </div>
+            ) : (
+              <div className="sb-plan-lb" style={{ color: 'var(--muted)' }}>
+                Créditos por mes de su plan: sin dato
+              </div>
+            )}
           </div>
 
           <div className="sb-plan-block sb-plan-modo" role="button" tabIndex={0}
@@ -235,7 +257,7 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
             <div className="ticker" style={{ marginLeft: 8 }}>
               <span className="ticker-label">MOTOR</span>
               <span className="ticker-text">
-                {(esReal ? 'Su negocio está conectado al motor: lo que hace aparece en Hoy' : `${AGENTES.find(a => a.estado === 'trabajando')?.accion} · ${AGENTES[3].accion}`)}
+                {esReal ? 'Su negocio está conectado al motor: lo que hace aparece en Hoy' : 'Conecte su cuenta para ver acá lo que hace el motor'}
               </span>
             </div>
 
@@ -292,21 +314,14 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
           <div className="notif-panel" style={{ top: 118 }}>
             <div className="row spread" style={{ marginBottom: 10 }}>
               <div style={{ fontWeight: 800, fontSize: 13 }}>Lo que necesita su atención</div>
-              <span className="badge badge-red" style={{ fontSize: 10 }}>{criticas} críticas</span>
+              {criticas > 0
+                ? <span className="badge badge-red" style={{ fontSize: 10 }}>{criticas} críticas</span>
+                : <span className="badge badge-muted" style={{ fontSize: 10 }}>sin alarmas</span>}
             </div>
-            {ALARMAS.slice(0, esReal ? 0 : 3).map(a => (
-              <div key={a.id} className="notif" onClick={() => { setNotif(false); setVista('hoy'); }} style={{ cursor: 'pointer' }}>
-                <div className="notif-ico" style={{ color: a.severidad === 'critico' ? 'var(--red)' : 'var(--amber)' }}>
-                  {a.severidad === 'critico' ? '🔴' : '🟠'}
-                </div>
-                <div>
-                  <div className="tiny" style={{ fontWeight: 700, lineHeight: 1.4 }}>{a.titulo}</div>
-                  <div className="notif-time">{a.cuando}</div>
-                </div>
-              </div>
-            ))}
             <div className="tiny muted" style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <I_Robot size={13} /> El resto está resuelto en la bitácora de «Su día».
+              <I_Robot size={13} /> {esReal
+                ? 'No hay alarmas abiertas: cuando el motor necesite su atención, queda aquí.'
+                : 'El resto está resuelto en la bitácora de «Su día».'}
             </div>
           </div>
         )}

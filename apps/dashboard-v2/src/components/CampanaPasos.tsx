@@ -1,13 +1,24 @@
 import { useState } from 'react';
 import { Card, Badge, Button } from './ui';
-import { I_Check, I_Upload, I_Image, I_Film, I_Vote, I_Rocket, I_Play, I_Refresh, I_Sparkle, I_ChevDn, I_ChevUp, I_Plus, I_Eye, I_X, I_Target } from './icons';
-import { OPCIONES, ranking, puntaje, CUANTAS_PASAN, type Opcion } from '../data/mirofish';
+import { I_Check, I_Upload, I_Image, I_Film, I_Vote, I_Rocket, I_Play, I_Sparkle, I_ChevDn, I_ChevUp, I_Plus, I_Eye, I_X, I_Target } from './icons';
+import { CUANTAS_PASAN, PERFILES } from '../data/mirofish';
 import type { Modo } from '../data/demo';
+import { useDatos, type Pieza as PiezaBack } from '../api/datos';
+import { EstadoVacio } from './EstadoVacio';
+import { fechaCorta } from './mirofishDatos';
 
 // =============================================================================================
 // CAMPAÑAS POR ETAPAS — cada paso es su propia pantalla, así no hay que scrollear media hora.
-// El camino fácil es el primero: dice qué quiere y Sinkroo elige el tipo, crea todo y usted
-// decidís mirando las piezas.
+// El camino fácil es el primero: dice qué quiere y Sinkroo elige el tipo, crea todo y usted decide
+// mirando las piezas.
+//
+// DE DÓNDE SALEN LAS PIEZAS DE LA GALERÍA (la regla de la casa):
+//   · Son las piezas de este negocio (`/api/piezas`), con el puntaje que les dio MiroFish (el de sus
+//     evaluaciones). Lo que el back no manda —el prompt, el texto del anuncio, la medida— no se
+//     rellena con nada: no se muestra.
+//   · Sin piezas no hay galería de ejemplo: va el estado vacío que dice qué hacer para tenerlas.
+//   · Lo único fijo es el catálogo del producto: los tipos de campaña, los formatos y la regla de que
+//     las tres primeras pasan. Eso no es dato de ningún negocio.
 // =============================================================================================
 
 export type PasoCampana = 1 | 2 | 3 | 4 | 5;
@@ -41,9 +52,10 @@ export function Stepper({ actual, ir, listos }: { actual: PasoCampana; ir: (p: P
 }
 
 // ---------------------------------------------------------------------------------------------
-// PASO 1 — Ingesta manual: el usuario sube todo listo
+// PASO 1 — Ingesta manual: el negocio sube lo que ya tiene
 // ---------------------------------------------------------------------------------------------
 export function IngestaManual({ setToast, ir }: { setToast: (t: string) => void; ir: (p: PasoCampana) => void }) {
+  const d = useDatos();
   const [piezas, setPiezas] = useState<{ n: string; tipo: string; url: string | null }[]>([]);
 
   const subir = (files: FileList | null) => {
@@ -96,11 +108,23 @@ export function IngestaManual({ setToast, ir }: { setToast: (t: string) => void;
             </div>
           )}
           <div className="row" style={{ gap: 9, flexWrap: 'wrap' }}>
+            {/* La subida todavía no llega al servidor: el botón no puede decir que las piezas entraron
+                a MiroFish, porque no entraron. Dice lo que sí va a pasar. */}
             <Button className="btn-sm" disabled={!piezas.length}
-              title={piezas.length ? 'Manda sus piezas a MiroFish: las votan y quedan ordenadas del 1 al 5' : 'Primero suba al menos una pieza'}
-              onClick={() => { setToast(`${piezas.length} piezas entraron a MiroFish`); ir(2); }}>
-              <I_Vote size={13} /> Mandarlas a MiroFish
+              title={!piezas.length
+                ? 'Primero suba al menos una pieza'
+                : 'Lo lleva a MiroFish con lo que su negocio tiene evaluado. Los archivos que eligió aquí son una vista previa en su navegador: todavía no se envían al servidor y por eso no aparecen como piezas evaluadas.'}
+              onClick={() => {
+                setToast('MiroFish muestra lo que su negocio ya tiene evaluado: los archivos elegidos aquí todavía no se envían al servidor');
+                ir(2);
+              }}>
+              <I_Vote size={13} /> Ver MiroFish
             </Button>
+          </div>
+          <div className="acc-why" style={{ color: 'var(--amber)' }}>
+            <b>Todavía no se envían al servidor.</b> Lo que sube aquí queda en su navegador: ni se
+            evalúa ni se publica. MiroFish y la galería muestran lo que su negocio ya tiene evaluado
+            en el back, que es lo único real.
           </div>
           <div className="acc-why">
             Sube material terminado cuando ya sabe qué quiere publicar. Es el camino más corto:
@@ -112,16 +136,31 @@ export function IngestaManual({ setToast, ir }: { setToast: (t: string) => void;
           title={<span className="row" style={{ gap: 8 }}><I_Eye size={14} style={{ color: 'var(--green)' }} /> Qué miran los 5 jueces en sus piezas</span>}
           action={<Badge tone="purple">5 jueces</Badge>}
         >
+          {/* Los 5 jueces como explicación del producto: qué mira cada uno, sin puntaje ni opinión de nadie. */}
           <div className="guards">
-            <div className="guard"><span style={{ color: 'var(--purple3)', flexShrink: 0 }}><I_Target size={14} /></span>
-              <span className="guard-lb">Si se entiende en 3 segundos<small>El comprador impulsivo decide ahí: si no entiende qué vende, se va</small></span></div>
-            <div className="guard"><span style={{ color: 'var(--purple3)', flexShrink: 0 }}><I_Target size={14} /></span>
-              <span className="guard-lb">Si el color deja leer el texto<small>Muchas piezas se pierden por eso: se ven bien en el computador y no en el celular al sol</small></span></div>
-            <div className="guard"><span style={{ color: 'var(--purple3)', flexShrink: 0 }}><I_Target size={14} /></span>
-              <span className="guard-lb">Si dice el precio o lo esconde<small>El que compara se va cuando no lo encuentra</small></span></div>
-            <div className="guard"><span style={{ color: 'var(--purple3)', flexShrink: 0 }}><I_Target size={14} /></span>
-              <span className="guard-lb">Si parece real o parece armado<small>El desconfiado castiga las fotos de banco de imágenes</small></span></div>
+            {PERFILES.map(p => (
+              <div key={p.k} className="guard">
+                <span style={{ color: 'var(--purple3)', flexShrink: 0 }}><I_Target size={14} /></span>
+                <span className="guard-lb">{p.nombre}<small>{p.mira}</small></span>
+              </div>
+            ))}
           </div>
+          {d.real && (
+            <div className="datos-row" style={{ marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--border)' }}>
+              <div className="dato" title="Las piezas de este negocio que el back tiene guardadas">
+                <span className="dato-l">Sus piezas</span>
+                <span className="dato-v">{d.piezas.length}</span>
+              </div>
+              <div className="dato" title="Las que ya pasaron por los 5 jueces de MiroFish">
+                <span className="dato-l">Evaluadas</span>
+                <span className="dato-v" style={{ color: 'var(--purple3)' }}>{d.evaluaciones.length}</span>
+              </div>
+              <div className="dato" title="Las que llegaron al mínimo de 80 y se pueden publicar">
+                <span className="dato-l">Pasan el mínimo</span>
+                <span className="dato-v" style={{ color: 'var(--green)' }}>{d.evaluaciones.filter(e => Number(e.puntaje) >= 80).length}</span>
+              </div>
+            </div>
+          )}
           <div className="acc-why">
             Los mismos 5 jueces de MiroFish miran <b>cualquier pieza, la haya creado usted o el motor</b>.
             No se publica nada que no pase el mínimo.
@@ -133,21 +172,85 @@ export function IngestaManual({ setToast, ir }: { setToast: (t: string) => void;
 }
 
 // ---------------------------------------------------------------------------------------------
-// PASO 4 — La galería: las piezas creadas, para mirarlas y decidir
+// PASO 3 — La galería: las piezas del negocio, para mirarlas y decidir
 // ---------------------------------------------------------------------------------------------
-export function Galeria({ modo, setToast, ir }: { modo: Modo; setToast: (t: string) => void; ir: (p: PasoCampana) => void }) {
-  const orden = ranking();
-  const [salen, setSalen] = useState<string[]>(orden.slice(0, CUANTAS_PASAN).map(o => o.id));
-  const [abierta, setAbierta] = useState<Opcion | null>(null);
-  // Pedir que rehaga una pieza: queda a la vista mientras el motor la reescribe.
-  const [rehaciendo, setRehaciendo] = useState<string[]>([]);
 
-  const toggle = (id: string) => setSalen(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id]);
-  const esVideo = (o: Opcion) => o.formato === 'Video vertical' || o.formato === 'Reel';
+/** Una pieza de la galería, con lo que el back manda de ella. Nada más: no hay campos de ejemplo. */
+type PiezaGal = {
+  id: string;
+  titulo: string;
+  /** El puntaje de MiroFish. null = el back todavía no la evaluó: se muestra «—», no un cero. */
+  puntaje: number | null;
+  formato: string;
+  estado: string;
+  fecha: string;
+};
 
-  const accionDice = modo === 'auto'
-    ? 'Salen solas y quedan en la bitácora, reversibles 24 h'
-    : modo === 'shared' ? 'Kai le pide el OK antes de publicarlas' : 'Quedan listas para que las publique usted';
+const esVideo = (f: string) => /video|reel/i.test(f);
+
+/** La fecha del back, en corto: «creada el 12 de septiembre». */
+const creada = (iso: string) => `creada el ${fechaCorta(iso)}`;
+
+export function Galeria({ setToast, ir }: { modo: Modo; setToast: (t: string) => void; ir: (p: PasoCampana) => void }) {
+  const d = useDatos();
+
+  // --- Las piezas son las del negocio, tal como están en el servidor. El puntaje es el de MiroFish: el
+  // que el back ya trae con la pieza o, si no viene, el de su evaluación (emparejada por id o título).
+  const piezas: PiezaGal[] = d.piezas.map((p: PiezaBack) => {
+    const ev = d.evaluaciones.find(e => e.id === p.id || e.titulo.trim().toLowerCase() === p.titulo.trim().toLowerCase());
+    const punto = p.puntaje ?? ev?.puntaje ?? null;
+    return {
+      id: p.id, titulo: p.titulo, puntaje: punto == null ? null : Number(punto),
+      formato: p.formato || 'sin formato', estado: p.estado || 'sin estado',
+      fecha: p.created_at ? creada(p.created_at) : '',
+    };
+  });
+
+  // --- El orden de la galería: del puntaje más alto al más bajo. Las que no tienen puntaje van al final.
+  const orden = [...piezas].sort((a, b) => (b.puntaje ?? -1) - (a.puntaje ?? -1));
+  const evaluadas = orden.filter(o => o.puntaje !== null);
+  const [salen, setSalen] = useState<string[] | null>(null);
+  const [abierta, setAbierta] = useState<string | null>(null);
+  // La selección arranca con las que mejor votaron, que son las que pasarían el mínimo. La decisión es
+  // suya: si desmarca todas, queda sin ninguna y el botón de marcar se apaga.
+  const porDefecto = orden.slice(0, CUANTAS_PASAN).filter(o => o.puntaje !== null).map(o => o.id);
+  const seleccion = salen ?? porDefecto;
+
+  const toggle = (id: string) => setSalen(
+    seleccion.includes(id) ? seleccion.filter(x => x !== id) : [...seleccion, id],
+  );
+  const pieza = orden.find(o => o.id === abierta) ?? null;
+
+  // --- Sin piezas: aquí no va ni una pieza de ejemplo. Dice qué hacer para tener la primera.
+  if (piezas.length === 0) {
+    return d.cargando ? (
+      <EstadoVacio
+        icono={<I_Sparkle size={22} />}
+        titulo="Leyendo sus piezas…"
+        texto="Un segundo: el panel está trayendo del servidor las piezas que este negocio tiene creadas, con su formato y su puntaje."
+      />
+    ) : (
+      <EstadoVacio
+        icono={<I_Sparkle size={22} />}
+        titulo="Todavía no hay piezas"
+        texto="El motor arma la primera cuando usted sube el material: elige el tipo de campaña, el ángulo y el público, y crea las piezas. En cuanto existan, aparecen aquí con el puntaje que les dieron los 5 jueces."
+        accion="Ir al paso 1" onAccion={() => ir(1)}
+      />
+    );
+  }
+
+  // --- Sus piezas existen pero ninguna pasó por los jueces: sin puntaje no hay nada que decidir, y el
+  // panel lo dice en vez de rellenar la galería con un ejemplo.
+  if (evaluadas.length === 0) {
+    return (
+      <EstadoVacio
+        icono={<I_Vote size={22} />}
+        titulo="Sus piezas todavía no pasaron por MiroFish"
+        texto={`Tiene ${piezas.length} ${piezas.length === 1 ? 'pieza' : 'piezas'} sin puntaje: así no se puede decidir. Mándelas a MiroFish y vuelva: cada una aparece aquí con el voto de los 5 jueces, su puesto en el lote y si pasa el mínimo de 80.`}
+        accion="Ver MiroFish" onAccion={() => ir(2)}
+      />
+    );
+  }
 
   return (
     <>
@@ -156,16 +259,25 @@ export function Galeria({ modo, setToast, ir }: { modo: Modo; setToast: (t: stri
           <div className="row" style={{ gap: 11, flex: 1, minWidth: 240 }}>
             <span style={{ color: 'var(--green)', flexShrink: 0 }}><I_Sparkle size={20} /></span>
             <div style={{ minWidth: 0 }}>
-              <div className="bt">Las {OPCIONES.length} piezas ya están creadas</div>
-              <div className="bs">Mire cada una y elija. <b>Las 3 primeras vienen marcadas</b> porque son las que mejor votaron los 5 jueces, pero la decisión es suya.</div>
+              <div className="bt">
+                Sus {evaluadas.length} {evaluadas.length === 1 ? 'pieza evaluada' : 'piezas evaluadas'}
+              </div>
+              <div className="bs">
+                El puntaje de cada una es el que le dio MiroFish. <b>Las {Math.min(CUANTAS_PASAN, evaluadas.length)} de arriba pasan el mínimo</b>, pero la decisión es suya: marque las que quiera.
+              </div>
             </div>
           </div>
           <div className="row" style={{ gap: 9, flexWrap: 'wrap' }}>
-            <Badge tone="purple">{salen.length} seleccionadas</Badge>
-            <Button className="btn-sm" disabled={!salen.length}
-              title={salen.length ? accionDice : 'Elija al menos una pieza'}
-              onClick={() => { setToast(`${salen.length} ${salen.length === 1 ? 'pieza' : 'piezas'}: ${accionDice}`); ir(4); }}>
-              <I_Rocket size={13} /> {salen.length === 1 ? 'Publicar la elegida' : `Publicar las ${salen.length}`}
+            <Badge tone="purple">{seleccion.length} seleccionadas</Badge>
+            <Button className="btn-sm" disabled={!seleccion.length}
+              title={!seleccion.length
+                ? 'Elija al menos una pieza'
+                : `Deja marcadas las ${seleccion.length} para que las publique usted. No sale nada a sus redes desde esta pantalla y no gasta un peso. Reversible: puede desmarcarlas.`}
+              onClick={() => {
+                setToast(`${seleccion.length} ${seleccion.length === 1 ? 'pieza quedó marcada' : 'piezas quedaron marcadas'}: todavía no salió nada a sus redes`);
+                ir(4);
+              }}>
+              <I_Rocket size={13} /> {seleccion.length === 1 ? 'Dejar lista la elegida' : `Dejar listas las ${seleccion.length}`}
             </Button>
           </div>
         </div>
@@ -173,52 +285,49 @@ export function Galeria({ modo, setToast, ir }: { modo: Modo; setToast: (t: stri
 
       <div className="gal">
         {orden.map((o, i) => {
-          const seleccionada = salen.includes(o.id);
+          const sel = seleccion.includes(o.id);
+          const sinPunto = o.puntaje === null;
           return (
-            <div key={o.id} className={`pz ${seleccionada ? 'sel' : ''}`}>
-              <div className="pz-frame" style={{ background: `linear-gradient(150deg, ${o.color}, ${o.color}22 70%, var(--bg3))` }}>
+            <div key={o.id} className={`pz ${sel ? 'sel' : ''}`}>
+              <div className="pz-frame" style={{ background: 'linear-gradient(150deg, var(--bg3), var(--bg2) 70%, var(--bg3))' }}>
                 <span className="pz-pos">{i + 1}</span>
-                <span className="pz-formato">{esVideo(o) ? <><I_Film size={12} /> video</> : <><I_Image size={12} /> imagen</>}</span>
-                <span className="pz-ico">{esVideo(o) ? <I_Film size={30} /> : <I_Image size={30} />}</span>
-                <span className="pz-gancho">{o.gancho}</span>
-                <span className="pz-medida">{o.medida}</span>
+                <span className="pz-formato">{esVideo(o.formato) ? <><I_Film size={12} /> {o.formato.toLowerCase()}</> : <><I_Image size={12} /> {o.formato.toLowerCase()}</>}</span>
+                <span className="pz-ico">{esVideo(o.formato) ? <I_Film size={30} /> : <I_Image size={30} />}</span>
               </div>
               <div className="pz-body">
                 <div className="row spread" style={{ gap: 8 }}>
                   <span className="pz-t">{o.titulo}</span>
-                  <span className="pz-avg">{puntaje(o)}</span>
+                  <span className="pz-avg" style={{ color: sinPunto ? 'var(--muted)' : undefined }} title={sinPunto ? 'Esta pieza todavía no pasó por los 5 jueces: no tiene puntaje' : `El puntaje que le dio MiroFish a «${o.titulo}»`}>{sinPunto ? '—' : o.puntaje}</span>
                 </div>
                 <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
-                  {salen.includes(o.id) && i < 3 && <span className="badge badge-green" style={{ fontSize: 9 }}>la eligieron los jueces</span>}
+                  {o.estado && <span className="badge badge-muted" style={{ fontSize: 9 }}>{o.estado}</span>}
+                  {sinPunto && <span className="badge badge-amber" style={{ fontSize: 9 }}>sin puntaje</span>}
+                  {sel && i < CUANTAS_PASAN && o.puntaje !== null && <span className="badge badge-green" style={{ fontSize: 9 }}>{`puesto ${i + 1} del ranking`}</span>}
                 </div>
                 <div className="row" style={{ gap: 7, flexWrap: 'wrap', marginTop: 'auto' }}>
-                  <Button className="btn-sm" variant={seleccionada ? 'primary' : 'outline'}
-                    title={seleccionada ? 'La saca de la selección' : 'La suma a las que se publican'}
+                  <Button className="btn-sm" variant={sel ? 'primary' : 'outline'}
+                    title={sel
+                      ? 'La saca de la lista de marcadas: no queda lista para publicar'
+                      : 'La suma a las piezas que quedan listas para publicar'}
                     onClick={() => toggle(o.id)}>
-                    {seleccionada ? <><I_Check size={12} /> Sale</> : 'Que salga'}
+                    {sel ? <><I_Check size={12} /> Marcada</> : 'Marcar'}
                   </Button>
-                  <Button variant="ghost" className="btn-sm" title="Ver el prompt, el texto y el botón de esta pieza"
-                    onClick={() => setAbierta(abierta?.id === o.id ? null : o)}>
-                    {abierta?.id === o.id ? <I_ChevUp size={12} /> : <I_ChevDn size={12} />} Ver ficha
+                  <Button variant="ghost" className="btn-sm"
+                    title="Ver lo que el servidor manda de esta pieza: su formato, su estado, su fecha y su puntaje. No cambia nada."
+                    onClick={() => setAbierta(abierta === o.id ? null : o.id)}>
+                    {abierta === o.id ? <I_ChevUp size={12} /> : <I_ChevDn size={12} />} Ver ficha
                   </Button>
                 </div>
-                {abierta?.id === o.id && (
+                {pieza && pieza.id === o.id && (
                   <div className="pz-ficha">
-                    <div className="op-label">El prompt</div>
-                    <div className="op-prompt">{o.prompt}</div>
-                    <div className="op-row"><span className="op-k">Texto</span><span className="bs">{o.copy}</span></div>
-                    <div className="op-row"><span className="op-k">Botón</span><span className="bs">{o.cta}</span></div>
-                    {rehaciendo.includes(o.id) ? (
-                      <div className="tiny" style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--purple3)', fontWeight: 700 }}>
-                        <I_Refresh size={12} /> Nia la está rehaciendo con lo que objetaron los 5 jueces.
-                      </div>
-                    ) : (
-                      <Button variant="ghost" className="btn-sm" style={{ marginTop: 10 }}
-                        title="Le pide al motor que rehaga esta pieza en particular, con lo que objetaron los 5 jueces. Reversible: la pieza que tiene no se pierde."
-                        onClick={() => { setRehaciendo(r => [...r, o.id]); setToast(`Nia rehace «${o.titulo}» con lo que objetaron los 5 jueces`); }}>
-                        <I_Refresh size={12} /> Que la rehaga
-                      </Button>
-                    )}
+                    <div className="op-row"><span className="op-k">Formato</span><span className="bs">{o.formato}</span></div>
+                    <div className="op-row"><span className="op-k">Estado</span><span className="bs">{o.estado}</span></div>
+                    {o.fecha && <div className="op-row"><span className="op-k">Fecha</span><span className="bs">{o.fecha}</span></div>}
+                    <div className="op-row"><span className="op-k">Puntaje de MiroFish</span><span className="bs">{sinPunto ? '— todavía no la evaluaron' : `${o.puntaje} de 100`}</span></div>
+                    <div className="tiny muted" style={{ marginTop: 8 }}>
+                      Esto es lo que el servidor manda de la pieza. El prompt, el texto del anuncio y la
+                      medida todavía no llegan: por eso no se muestran.
+                    </div>
                   </div>
                 )}
               </div>
@@ -229,25 +338,28 @@ export function Galeria({ modo, setToast, ir }: { modo: Modo; setToast: (t: stri
 
       <div className="duo" style={{ marginTop: 16 }}>
         <Card
-          title={<span className="row" style={{ gap: 8 }}><I_Vote size={14} style={{ color: 'var(--amber)' }} /> El veredicto de los 5 jueces, pieza por pieza</span>}
-          action={<Badge tone="muted">1 a {OPCIONES.length}</Badge>}
+          title={<span className="row" style={{ gap: 8 }}><I_Vote size={14} style={{ color: 'var(--amber)' }} /> El ranking de MiroFish</span>}
+          action={<Badge tone="muted">1 a {orden.length}</Badge>}
         >
-          <div className="bs">Así votó cada juez. El promedio es el puesto, y el puesto es el orden de la galería.</div>
+          <div className="bs">
+            Así quedaron ordenadas sus piezas por el puntaje que les dio MiroFish. El veredicto juez por
+            juez de cada una está en MiroFish, en el paso 2.
+          </div>
           <div className="rank">
             {orden.map((o, i) => (
-              <div key={o.id} className={`rank-row ${i < CUANTAS_PASAN ? 'pasa' : ''}`}>
-                <span className={`rank-pos ${i < CUANTAS_PASAN ? 'pasa' : ''}`}>{i + 1}</span>
+              <div key={o.id} className={`rank-row ${i < CUANTAS_PASAN && o.puntaje !== null ? 'pasa' : ''}`}>
+                <span className={`rank-pos ${i < CUANTAS_PASAN && o.puntaje !== null ? 'pasa' : ''}`}>{i + 1}</span>
                 <span style={{ flex: 1, minWidth: 0 }}>
                   <span className="rank-t">{o.titulo}</span>
-                  <span className="rank-m">{o.formato} · {o.medida}</span>
+                  <span className="rank-m">{o.formato}</span>
                 </span>
-                <span className="rank-avg">{puntaje(o)}</span>
+                <span className="rank-avg" style={{ color: o.puntaje === null ? 'var(--muted)' : undefined }}>{o.puntaje === null ? '—' : o.puntaje}</span>
               </div>
             ))}
           </div>
           <div className="acc-why">
-            Si <b>no le gusta ninguna</b>, puede pedir otra ronda: el motor investiga de nuevo y crea
-            5 opciones más. Nada se publica hasta que decida.
+            El puntaje sale de los 5 jueces y del público, y es lo que ordena esta lista.
+            <b> El que no tiene puntaje todavía no pasó por MiroFish</b>: no se puede decidir con eso.
           </div>
         </Card>
 
@@ -268,7 +380,7 @@ export function Galeria({ modo, setToast, ir }: { modo: Modo; setToast: (t: stri
           </div>
           <div className="acc-why">
             La galería es la pantalla de decisión: <b>todo lo demás ya está resuelto</b>. Lo que marque
-            aquí sale a sus redes.
+            aquí queda listo para salir a sus redes.
           </div>
         </Card>
       </div>

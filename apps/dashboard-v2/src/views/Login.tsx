@@ -3,7 +3,6 @@ import { Button, Badge } from '../components/ui';
 import {
   SinkrooMark, I_Mail, I_Lock, I_Check, I_ArrowRight, I_User, I_Shield, I_Sparkle, I_Clock,
 } from '../components/icons';
-import { TENANT } from '../data/demo';
 import {
   crearCuenta, entrar as entrarApi, hayApi, leerSeguridad, guardarToken,
   correoConfigurado, faltaDeCorreo, faltaEnlaces,
@@ -42,9 +41,15 @@ const CAPACIDADES = [
 ];
 
 
+/**
+ * La demostración, sin inventar nada: es el panel TAL COMO LO VE un negocio que acaba de entrar, con
+ * todo vacío. No es un negocio de ejemplo con campañas y ventas cargadas (eso ya no existe en ninguna
+ * parte del panel): lo que se ve ahí es lo mismo que ve alguien que se acaba de registrar, y sirve para
+ * conocer el panel sin crear una cuenta.
+ */
 const CUENTAS_DEMO: { nombre: string; email: string; clave: string; etiqueta: string; quien: string }[] = [
-  { nombre: 'María Paula', email: 'maria@skincarenatural.com', clave: 'demo2026',
-    etiqueta: 'Cuenta de demostración', quien: 'Un negocio real de ejemplo, con campañas y ventas cargadas.' },
+  { nombre: '', email: 'demostracion@sinkroo.com', clave: 'demo2026',
+    etiqueta: 'Entrar sin cuenta', quien: 'El panel tal como lo ve un negocio que acaba de entrar: sin datos cargados.' },
 ];
 
 /** El registro de correos que ya tienen cuenta. En producción esto lo responde el servidor. */
@@ -113,7 +118,7 @@ export function PantallaLogin({ onEntrar, vuelta }: { onEntrar: (s: Sesion) => v
           ? 'Ese correo ya tiene una cuenta: entre con ese correo, o cree la cuenta con uno distinto.'
           : err.codigo === 'clave_mala'
             ? 'El correo o la contraseña no son correctos.'
-            : `No se pudo conectar con el servidor (${err.message}). El panel sigue andando con los datos de demostración.`,
+            : `No se pudo conectar con el servidor (${err.message}). Sin servidor no hay datos: el panel queda vacío hasta que responda.`,
       );
     } finally {
       setEntrando('');
@@ -128,7 +133,7 @@ export function PantallaLogin({ onEntrar, vuelta }: { onEntrar: (s: Sesion) => v
       return;
     }
     if (!email.trim() || !clave.trim()) {
-      setError('Necesitamos su correo y su contraseña para entrar. Si quiere ver un panel ya cargado, entre con la cuenta de demostración.');
+      setError('Necesitamos su correo y su contraseña para entrar. Si quiere ver el panel sin cuenta, entre con la demostración.');
       return;
     }
     const cuenta = cuentaDe(email);
@@ -298,8 +303,8 @@ export function PantallaLogin({ onEntrar, vuelta }: { onEntrar: (s: Sesion) => v
               </div>
             ) : (
               <div className="login-ok">
-                <I_Check size={13} /> Le enviamos el enlace para cambiar la contraseña a <b>{email}</b>. En la
-                demostración no se envía ningún correo: entre con la cuenta que ya está cargada.
+                <I_Check size={13} /> Anotado. Sin servidor no se envía ningún correo: la contraseña de
+                <b> {email}</b> sigue siendo la misma.
               </div>
             )
           )}
@@ -362,7 +367,7 @@ export function PantallaLogin({ onEntrar, vuelta }: { onEntrar: (s: Sesion) => v
       </div>
 
       <div className="login-pie-legal">
-        {TENANT.cuenta} · el panel que va a ver funciona con datos reales de un negocio de ejemplo.
+        El panel arranca vacío: se va llenando con lo que su negocio haga, paso por paso.
       </div>
     </div>
   );

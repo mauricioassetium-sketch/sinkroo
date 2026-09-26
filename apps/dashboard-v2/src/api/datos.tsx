@@ -87,6 +87,19 @@ export type Integraciones = {
   resumen: { conectadas: number; total: number };
 };
 
+/** Las métricas reales del negocio, tal como las reporta la plataforma. `hay: false` = no llegó ninguna. */
+export type Metricas = {
+  hay: boolean;
+  filas: number;
+  ultima: string | null;
+  totales: { metrica: string; total: string }[];
+  por_red: { red: string; metrica: string; total: string }[];
+  por_pieza: { pieza: string; metrica: string; total: string }[];
+};
+
+/** Un archivo que el negocio subió a su carpeta del servidor. */
+export type Archivo = { id: string; nombre: string; tipo: string; tamano: number; created_at: string };
+
 export type Datos = {
   /** true cuando los datos son del back. Si es false, el panel está en modo demostración. */
   real: boolean;
@@ -102,6 +115,8 @@ export type Datos = {
   corridas: Corrida[];
   publico: Publico | null;
   conversaciones: Conversacion[];
+  /** El material que el negocio subió a su carpeta del servidor (imágenes, videos, PDF). */
+  archivos: Archivo[];
   creditos: { saldo: number; movimientos: Movimiento[] } | null;
   /** El público calibrado del back: cómo está repartido y de dónde salió cada peso. null = sin back. */
   calibracion: Calibracion | null;
@@ -111,6 +126,9 @@ export type Datos = {
    *  conectada y cuándo se sincronizaron, más el resumen (`conectadas` de `total`). null = sin back, o
    *  el servidor no respondió a la consulta. */
   integraciones: Integraciones | null;
+  /** Las mediciones reales de las plataformas (alcance, clics, ventas, gasto). Sin ninguna, `hay` es
+   *  false y la pantalla de resultados lo dice: el número no se finge. */
+  metricas: Metricas | null;
   desvioPct: number;
   refrescar: () => Promise<void>;
   /** Guarda el onboarding en el back (mezcla los campos) y refresca. */
@@ -122,7 +140,8 @@ const VACIO: Datos = {
   real: false, cargando: false, error: '',
   negocio: null, resumen: null, onboarding: null,
   campanas: [], piezas: [], evaluaciones: [], hallazgos: [], corridas: [],
-  publico: null, conversaciones: [], creditos: null, calibracion: null, backtest: null, integraciones: null, desvioPct: 0,
+  publico: null, conversaciones: [], archivos: [], creditos: null, calibracion: null, backtest: null, integraciones: null,
+  metricas: null, desvioPct: 0,
   refrescar: async () => {}, guardar: async () => {}, arrancar: async () => {},
 };
 
@@ -146,7 +165,7 @@ export function ProveedorDatos({ children, modoDemo = false }: { children: React
     // En modo demostración no se lee el back ni con sesión abierta: la demostración no es la cuenta.
     if (!hayApi() || !token() || modoDemo) { setEstado(VACIO); return; }
     setEstado(e => ({ ...e, real: true, cargando: true, error: '' }));
-    const [neg, onb, camp, piez, eval_, hall, corr, publ, conv, cred, calib, back, integ] = await Promise.all([
+    const [neg, onb, camp, piez, eval_, hall, corr, publ, conv, arch, cred, calib, back, integ, metr] = await Promise.all([
       traer<{ negocio: Negocio; resumen: Resumen; onboarding: { hechos: number[]; arrancado: boolean } } | null>('/api/negocio', null),
       traer<{ datos: Record<string, unknown>; hechos: number[]; arrancado: boolean }>('/api/onboarding', { datos: {}, hechos: [], arrancado: false }),
       traer<{ campanas: Campana[] }>('/api/campanas', { campanas: [] }),
@@ -156,10 +175,12 @@ export function ProveedorDatos({ children, modoDemo = false }: { children: React
       traer<{ corridas: Corrida[] }>('/api/agentes/corridas', { corridas: [] }),
       traer<Publico | null>('/api/publico', null),
       traer<{ conversaciones: Conversacion[] }>('/api/conversaciones', { conversaciones: [] }),
+      traer<{ archivos: Archivo[] }>('/api/archivos', { archivos: [] }),
       traer<{ saldo: number; movimientos: Movimiento[] }>('/api/creditos', { saldo: 0, movimientos: [] }),
       traer<Calibracion | null>('/api/publico/calibracion', null),
       traer<Backtest | null>('/api/mirofish/backtest', null),
       traer<Integraciones | null>('/api/integraciones', null),
+      traer<Metricas | null>('/api/metricas', null),
     ]);
     setEstado({
       real: true, cargando: false, error: neg ? '' : 'no se pudo leer el negocio del servidor',
@@ -173,10 +194,12 @@ export function ProveedorDatos({ children, modoDemo = false }: { children: React
       corridas: corr.corridas || [],
       publico: publ,
       conversaciones: conv.conversaciones || [],
+      archivos: arch.archivos || [],
       creditos: cred,
       calibracion: calib,
       backtest: back,
       integraciones: integ,
+      metricas: metr,
       desvioPct: hall.desvio_actual_pct || 0,
       refrescar: async () => {},
       guardar: async () => {},

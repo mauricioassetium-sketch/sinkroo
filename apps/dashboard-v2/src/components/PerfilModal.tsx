@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Modal, Button, Badge } from './ui';
 import { I_User, I_Check, I_Palette, I_Search, I_Globe, I_Bank } from './icons';
 import {
-  usePerfil, inicialesDe, ZONAS, MONEDAS, COLORES_AVATAR, buscarLugares, monedaDe, conversionDelDia,
+  usePerfil, inicialesDe, ZONAS, MONEDAS, COLORES_AVATAR, buscarLugares, monedaDe,
   type Perfil, type Lugar,
 } from '../lib/perfil';
 import { useDatos } from '../api/datos';
@@ -25,7 +25,7 @@ import { PLANES } from '../data/demo';
 export function PerfilModal({ abierto, cerrar, avisar }: { abierto: boolean; cerrar: () => void; avisar?: (t: string) => void }) {
   const { perfil, guardar } = usePerfil();
   // De dónde salen el nombre del negocio, su plan y sus créditos: con el back encendido, del negocio real
-  // (`neg`); sin back, `neg` es null y todo queda como hasta hoy, con los valores de ejemplo. Las dos
+  // (`neg`); sin back, `neg` es null y el bloque no aparece. Las dos
   // fuentes no se mezclan.
   const d = useDatos();
   const neg = d.real ? d.negocio : null;
@@ -68,7 +68,6 @@ export function PerfilModal({ abierto, cerrar, avisar }: { abierto: boolean; cer
 
   // ---------- La moneda y su conversión del día ----------
   const mon = monedaDe(borrador.moneda);
-  const conv = conversionDelDia(borrador.moneda);
 
   const volverAlPerfil = () => setBorrador(perfil);
   const hayCambios = JSON.stringify(borrador) !== JSON.stringify(perfil);
@@ -127,7 +126,7 @@ export function PerfilModal({ abierto, cerrar, avisar }: { abierto: boolean; cer
       </div>
 
       {/* Con el back encendido, aquí se ve lo que hay en el servidor y no un ejemplo: el negocio, su plan
-          y sus créditos. Sin back (modo demostración) este bloque no existe y todo queda igual que hoy. */}
+          y sus créditos. Es lo que hay en su cuenta: si el back no lo manda, el bloque no aparece. */}
       {neg && (
         <div className="datos-row" style={{ marginTop: 12, paddingTop: 11, borderTop: '1px solid var(--border)' }}>
           <div className="dato"><span className="dato-l">Negocio</span><span className="dato-v">{neg.name}</span></div>
@@ -214,17 +213,18 @@ export function PerfilModal({ abierto, cerrar, avisar }: { abierto: boolean; cer
       </div>
       <div className="tiny muted" style={{ marginTop: 6 }}>Con esta moneda se muestran los presupuestos y las ventas.</div>
 
-      {/* ================= LA CONVERSIÓN DEL DÍA ================= */}
-      <div className={`conv-dia ${conv.esBase ? 'conv-base' : ''}`}>
+      {/* ================= LA CONVERSIÓN DEL DÍA =================
+          El tipo de cambio es un dato del día que publica el banco central: mientras el panel no lo
+          tenga, acá no hay ningún número. Un tipo de cambio escrito a mano sería inventar un dato. */}
+      <div className="conv-dia conv-base">
         <div className="conv-top">
           <span className="conv-lb"><I_Bank size={13} /> Conversión al día</span>
-          <span className="conv-fecha">tipo de cambio del {conv.fecha}</span>
+          <span className="conv-fecha">sin dato cargado</span>
         </div>
-        <div className="conv-titulo">{conv.titulo}</div>
-        <div className="conv-det">{conv.detalle} <span className="conv-banco">Publica el dato: {conv.banco}.</span></div>
-        <div className="conv-disc">
-          Los valores son los que publica el banco central del país al tipo de cambio del día. La conversión es informativa,
-          puede variar y se actualiza todos los días.
+        <div className="conv-titulo">Su moneda: {mon.nombre} ({mon.codigo})</div>
+        <div className="conv-det">
+          El tipo de cambio del día todavía no está cargado en el panel, por eso aquí no hay ningún número.
+          Cuando esté, aparece acá con el banco que lo publica.
         </div>
       </div>
 

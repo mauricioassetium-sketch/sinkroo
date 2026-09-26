@@ -23,6 +23,35 @@ export async function campanaRoutes(app: FastifyInstance, db: Pool) {
     return { campanas: r.rows, creditos: credito.rows[0].saldo };
   });
 
+  // LAS MÉTRICAS REALES DEL NEGOCIO. Lo que de verdad pasó en las plataformas (alcance, clics, ventas,
+  // gasto), agrupado por métrica, por red y por pieza. El panel de resultados en vivo lee de acá: antes
+  // mostraba cifras escritas a mano y el negocio creía que eran suyas. Sin filas, `hay` va en false y la
+  // pantalla dice que todavía no llegó ninguna medición — que es la verdad, no un cero fingido.
+  app.get('/api/metricas', async (req, reply) => {
+    const u = await exigirSesion(req, reply); if (!u || !u.business_id) return;
+    const totales = await db.query(
+      `SELECT metrica, sum(valor)::numeric AS total FROM metricas_reales
+        WHERE business_id = $1 GROUP BY metrica ORDER BY metrica`, [u.business_id]);
+    const porRed = await db.query(
+      `SELECT red, metrica, sum(valor)::numeric AS total FROM metricas_reales
+        WHERE business_id = $1 GROUP BY 1, 2 ORDER BY 1, 2`, [u.business_id]);
+    const porPieza = await db.query(
+      `SELECT pieza, metrica, sum(valor)::numeric AS total FROM metricas_reales
+        WHERE business_id = $1 AND pieza <> '' GROUP BY 1, 2 ORDER BY 1, 2`, [u.business_id]);
+    const resumen = await db.query(
+      `SELECT count(*)::int AS filas, max(created_at) AS ultima FROM metricas_reales WHERE business_id = $1`,
+      [u.business_id]);
+    const filas = Number(resumen.rows[0].filas) || 0;
+    return {
+      hay: filas > 0,
+      filas,
+      ultima: resumen.rows[0].ultima ?? null,
+      totales: totales.rows,
+      por_red: porRed.rows,
+      por_pieza: porPieza.rows,
+    };
+  });
+
   app.post('/api/campanas', async (req, reply) => {
     const u = await exigirSesion(req, reply); if (!u || !u.business_id) return;
     const c = exigirCuerpo<{ nombre?: string }>(req.body, ['nombre'], reply); if (!c) return;

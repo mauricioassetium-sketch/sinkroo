@@ -1,212 +1,45 @@
-import { useState, useEffect, useRef } from 'react';
-import { Card, Badge, Button } from './ui';
-import {
-  I_Robot, I_Search, I_Sparkle, I_Vote, I_Rocket, I_Check, I_Refresh,
-  I_ChevDn, I_ChevUp, I_Film, I_Image, I_File, I_Target, I_Camera,
-  I_Credit, I_X, I_Plus, I_Trophy,
-} from './icons';
-import {
-  INVESTIGACION, OPCIONES, PERFILES, rankingDe, puntaje, objeciones, CUANTAS_PASAN,
-  CUANTAS_VARIANTES, COSTO_RONDA, TARIFA, costoMejora, variantesDe,
-  type Opcion, type CostoRonda, type Objecion,
-} from '../data/mirofish';
+import { useMemo } from 'react';
+import { Card, Badge } from './ui';
+import { I_Robot, I_Search, I_Sparkle, I_Vote, I_Rocket, I_Check, I_Target, I_File, I_Credit } from './icons';
+import { COSTO_RONDA } from '../data/mirofish';
 import type { Modo } from '../data/demo';
+import { useDatos } from '../api/datos';
+import { EstadoVacio } from './EstadoVacio';
+import { useEvaluacion, fechaCorta } from './mirofishDatos';
+import type { PasoCampana } from './CampanaPasos';
 
 // =============================================================================================
-// EL FLUJO DE MIROFISH — la cadena completa, en 4 etapas encadenadas:
-//   1. Sinkroo investiga el mercado y detecta los colores del competidor que mejor convierte.
-//   2. Con eso crea el material: 5 opciones, cada una con su prompt de imagen o video.
-//   3. MiroFish las vota y quedan ordenadas del 1 al 5.
-//   4. Las 3 primeras pasan a producción: se publican o esperan su aprobación, según el modo.
+// EL FLUJO DE MIROFISH — la cadena completa de una pieza, etapa por etapa:
+//   1. Sinkroo investiga el mercado y guarda los hallazgos.
+//   2. Con eso crea el material: las piezas, con su formato y su prompt.
+//   3. MiroFish las vota y quedan ordenadas por puntaje.
+//   4. Las que pasan el mínimo de 80 quedan listas para publicar.
 //
-// Y encima de eso, las dos cosas que el dueño pidió ver:
-//   · EL COSTO DE LA RONDA, en el encabezado y con su desglose (160 = 120 crear + 40 evaluar), más
-//     el acumulado cuando ya hubo más de una ronda. El público no cuesta: eso se dice siempre.
-//   · «OTRA RONDA» NO ARRANCA SOLA: abre un panel chico que pregunta qué mejorar o sumar de la
-//     ronda anterior, con opciones para tocar (nunca campos obligatorios) y con una ronda de mejora
-//     MÁS BARATA: 3 variantes de la que ganó = 48 de creación + 24 de evaluación = 72 créditos.
+// DE DÓNDE SALE CADA COSA (la regla de la casa):
+//   · Todo lo que se muestra acá sale del back: los hallazgos, las piezas creadas, las evaluaciones
+//     ordenadas y cuáles pasan el mínimo. Si un dato no existe, no se muestra.
+//   · Sin datos, cada tarjeta dice qué hacer para tenerlos. No hay ronda de ejemplo, ni piezas de
+//     ejemplo, ni votos inventados: acá no vive un solo número que nadie haya producido.
+//   · Lo único fijo es el catálogo del producto —las etapas del flujo y lo que cuesta una ronda en
+//     créditos—, que no es dato de ningún negocio.
 // =============================================================================================
 
-type Etapa = 'inicio' | 'investiga' | 'crea' | 'vota' | 'listo';
-const NIVEL: Record<Etapa, number> = { inicio: 0, investiga: 1, crea: 2, vota: 3, listo: 4 };
-const PASOS = [
-  { n: 1, t: 'Investiga', d: 'Mercado y colores que convierten' },
-  { n: 2, t: 'Crea', d: '5 opciones con sus prompts' },
-  { n: 3, t: 'Vota', d: 'MiroFish las ordena 1 a 5' },
-  { n: 4, t: 'Publica', d: 'Las 3 primeras salen' },
-];
 
-function IconoFormato({ f }: { f: Opcion['formato'] }) {
-  if (f === 'Video vertical') return <I_Film size={15} />;
-  if (f === 'Reel') return <I_Camera size={15} />;
-  if (f === 'Carrusel') return <I_File size={15} />;
-  return <I_Image size={15} />;
-}
+/** El color del puntaje, con el mismo mínimo de 80 que usa todo el producto. */
+const colorDePuntaje = (p: number) => (p >= 80 ? 'var(--green)' : p >= 60 ? 'var(--amber)' : 'var(--red)');
 
-// Las mejoras que se pueden pedir para la ronda nueva. NO son piezas sueltas: son INSTRUCCIONES
-// que llevan las 3 variantes. Por eso elegir varias no cambia el precio: la ronda sale 72 igual.
-interface ChipMejora { k: string; t: string; d: string; cr?: number; sub?: Objecion[]; }
-
-export function FlujoMiroFish({ modo, setToast, esAnuncio }: {
-  modo: Modo; setToast: (t: string) => void; esAnuncio: boolean;
-}) {
-  const [etapa, setEtapa] = useState<Etapa>('inicio');
-  const [abierta, setAbierta] = useState<string | null>('op1');
-  const [publicado, setPublicado] = useState(false);
-  // Rehacer lo que no pasó: el motor reescribe esas piezas y quedan a la vista mientras trabaja.
-  const [rehaciendo, setRehaciendo] = useState(false);
-
-  // ---- La ronda y su costo: es lo que hay que poder ver antes de gastar ----
-  const [lote, setLote] = useState<Opcion[]>(OPCIONES);
-  const [costo, setCosto] = useState<CostoRonda>(COSTO_RONDA);
-  const [historial, setHistorial] = useState<CostoRonda[]>([COSTO_RONDA]);
-  const [mejoraRonda, setMejoraRonda] = useState(false);
-  const [base, setBase] = useState<string | null>(null);
-  const [pedidos, setPedidos] = useState<string[]>([]);
-
-  // ---- El panel de la ronda nueva: se abre al apretar «Otra ronda», no arranca nada solo ----
-  const [panel, setPanel] = useState(false);
-  const [elegidas, setElegidas] = useState<string[]>([]);
-  const [ojElegidas, setOjElegidas] = useState<string[]>([]);
-  const [otra, setOtra] = useState('');
-
-  const nivel = NIVEL[etapa];
-  const orden = rankingDe(lote);
-  const pasan = orden.slice(0, CUANTAS_PASAN);
-  const quedan = orden.slice(CUANTAS_PASAN);
-
-  const mejor = orden[0];                              // la 1ª del ranking: de aquí sale la mejora
-  const ojs = objeciones(mejor);                       // lo que dejó el panel, de la más dura a la más blanda
-  const oj = ojs[0];
-  const rondaMejora = costoMejora(CUANTAS_VARIANTES);   // 48 + 24 = 72
-  const rondas = historial.length;
-  const gastado = historial.reduce((a, r) => a + r.total, 0);
-
-  const timers = useRef<number[]>([]);
-  const limpiarTimers = () => {
-    timers.current.forEach(t => window.clearTimeout(t));
-    timers.current = [];
-  };
-
-  // La corrida del flujo: los mismos 4 tiempos para una ronda de cero y para una de mejora.
-  const correr = (msgs: [string, string, string, string]) => {
-    limpiarTimers();
-    setPublicado(false);
-    setEtapa('investiga');
-    setToast(msgs[0]);
-    timers.current = [
-      window.setTimeout(() => { setEtapa('crea'); setToast(msgs[1]); }, 1200),
-      window.setTimeout(() => { setEtapa('vota'); setToast(msgs[2]); }, 2500),
-      window.setTimeout(() => { setEtapa('listo'); setToast(msgs[3]); }, 3900),
-    ];
-  };
-
-  // Al llegar aquí el trabajo ya arrancó solo: en el paso 1 el usuario apretó Iniciar.
-  // No hay botón para empezar en esta pantalla: eso era lo que confundía.
-  useEffect(() => {
-    correr([
-      'Sinkroo está investigando el mercado…',
-      'Ahora está creando las 5 opciones y sus prompts…',
-      'Las 5 entraron a MiroFish: los agentes están votando…',
-      'MiroFish las ordenó del 1 al 5: las 3 primeras quedaron seleccionadas',
-    ]);
-    return limpiarTimers;
-    /* eslint-disable-next-line react-hooks/exhaustive-deps */
-  }, []);
-
-  // Las opciones del panel, con los datos reales de la ronda anterior adentro: la pieza que ganó,
-  // su objeción y el costo de la ronda de mejora con el desglose.
-  const chips: ChipMejora[] = [
-    {
-      k: 'ganadora', t: 'Seguir con la que ganó', cr: rondaMejora.total,
-      d: `${rondaMejora.piezas} variantes de «${mejor.titulo}»: ${rondaMejora.crear} por crearlas (${TARIFA.crearVariante} cada una) + ${rondaMejora.evaluar} por evaluarlas (${TARIFA.evaluarPieza} cada una) = ${rondaMejora.total} créditos. Salen ${rondaMejora.piezas} en vez de ${TARIFA.piezasRonda}.`,
-    },
-    {
-      k: 'objecion', t: 'Resolver lo que objetaron',
-      d: `Que las variantes contesten lo que objetó ${oj.juez} (le puso ${oj.voto}): «${oj.texto}»`,
-      sub: ojs,
-    },
-    { k: 'angulo', t: 'Cambiar el ángulo', d: 'Mismo producto y mismo formato, otro gancho: la variante arranca por otra razón y se vota contra las otras dos.' },
-    { k: 'formato', t: 'Cambiar el formato', d: 'Más video o más imagen: cambia cómo se ve la pieza, no lo que dice.' },
-    { k: 'prueba', t: 'Sumar prueba social', d: 'Que entren reseñas y clientes reales: es lo que sube el voto del desconfiado.' },
-    { k: 'otra', t: 'Otra cosa', d: 'La cuenta usted en una línea y el motor la suma como instrucción. Es opcional: puede dejarla vacía.' },
-  ];
-
-  const pedidosTxt = [
-    ...chips.filter(c => elegidas.includes(c.k)).map(c => c.t),
-    ...(otra.trim() ? [`«${otra.trim()}»`] : []),
-  ];
-  const soloOtra = elegidas.length === 1 && elegidas[0] === 'otra' && !otra.trim();
-  const listoParaCrear = elegidas.length > 0 && !soloOtra;
-
-  const toggleChip = (k: string) => {
-    const ya = elegidas.includes(k);
-    setElegidas(ya ? elegidas.filter(x => x !== k) : [...elegidas, k]);
-    if (!ya && k === 'objecion' && ojElegidas.length === 0) setOjElegidas([oj.k]);
-  };
-
-  const toggleObjecion = (k: string) => {
-    setOjElegidas(prev => prev.includes(k) ? prev.filter(x => x !== k) : [...prev, k]);
-  };
-
-  const titleChip = (c: ChipMejora, sel: boolean) =>
-    `${c.t}: ${c.d} ${sel
-      ? 'Ya está elegida: tóquela de nuevo para sacarla y no cambia nada.'
-      : 'Toquela para sumarla a la ronda nueva.'} No se gasta nada hasta que presione «Crear la ronda nueva», y la ronda anterior queda guardada y sin tocar.`;
-
-  // La ronda nueva: 3 variantes de la que ganó. Reusa la corrida completa, mostrando su costo.
-  const crearRonda = () => {
-    const pieza = mejor;
-    const nueva = costoMejora(CUANTAS_VARIANTES);
-    const loteNuevo = variantesDe(pieza);
-    setLote(loteNuevo);
-    setAbierta(rankingDe(loteNuevo)[0].id);
-    setCosto(nueva);
-    setMejoraRonda(true);
-    setBase(pieza.titulo);
-    setPedidos(pedidosTxt);
-    setHistorial(h => [...h, nueva]);
-    setPanel(false);
-    setElegidas([]);
-    setOjElegidas([]);
-    setOtra('');
-    correr([
-      `Sinkroo reutiliza la investigación y retoma «${pieza.titulo}» (${puntaje(pieza)})…`,
-      `Ahora escribe las ${nueva.piezas} variantes y sus prompts, con lo que pidió…`,
-      `Las ${nueva.piezas} variantes entraron a MiroFish: los agentes están votando…`,
-      `Listo: las ${nueva.piezas} variantes quedaron ordenadas y la ronda salió ${nueva.total} créditos`,
-    ]);
-  };
-
-  const accionDice = modo === 'auto'
-    ? 'Se publican solas y quedan en la bitácora, reversibles 24 h'
-    : modo === 'shared'
-      ? 'Kai le va a pedir el OK antes de publicarlas'
-      : 'Quedan listas para que las publique usted';
-
-  const espera = (n: number, icono: React.ReactNode, t: string, d: string) => (
-    <div className="flujo-espera">
-      {nivel >= n ? null : <span className="flujo-espera-ico">{icono}</span>}
-      {nivel < n ? (<><div className="bt">{t}</div><div className="bs">{d}</div></>) : null}
-    </div>
-  );
-
-  const trabajando = (n: number, t: string) => nivel === n && n < 4
-    ? <div className="flujo-work"><span className="dot-live" /> {t}<span className="flujo-puntos"><i /><i /><i /></span></div>
-    : null;
-
-  // Lo que dice la línea del costo: en curso muestra el precio antes de gastarlo, y cuando la ronda
-  // terminó confirma lo gastado. Las dos partes suman siempre el total (160 = 120 + 40 · 72 = 48 + 24).
-  const enCurso = nivel < 4;
-  const creaTx = mejoraRonda
-    ? `las ${costo.piezas} variantes de «${base}»`
-    : `las ${costo.piezas} opciones`;
-  const pasos = PASOS.map(p => {
-    if (!mejoraRonda) return p;
-    if (p.n === 2) return { ...p, t: 'Crea', d: `${costo.piezas} variantes de la que ganó` };
-    if (p.n === 3) return { ...p, d: `MiroFish las ordena 1 a ${costo.piezas}` };
-    return p;
-  });
+function FlujoReal({ modo, ir }: { modo: Modo; ir?: (p: PasoCampana) => void }) {
+  const d = useDatos();
+  const evaluaciones = useMemo(() => [...d.evaluaciones]
+    .sort((a, b) => (a.orden ?? 999) - (b.orden ?? 999) || (Number(b.puntaje) || 0) - (Number(a.puntaje) || 0)),
+  [d.evaluaciones]);
+  const mejor = evaluaciones[0] ?? null;
+  // El voto juez por juez se pide para la primera del ranking: es la que se está mirando.
+  const { dato, cargando } = useEvaluacion(mejor ? mejor.id : null);
+  const pasan = evaluaciones.filter(e => Number(e.puntaje) >= 80);
+  const noPasan = evaluaciones.filter(e => Number(e.puntaje) < 80);
+  const saldo = d.creditos ? d.creditos.saldo : null;
+  const irAlPaso1 = ir ? { accion: 'Ir al paso 1', onAccion: () => ir(1) } : {};
 
   return (
     <>
@@ -216,32 +49,28 @@ export function FlujoMiroFish({ modo, setToast, esAnuncio }: {
           <div className="row" style={{ gap: 11, flex: 1, minWidth: 240 }}>
             <span style={{ color: 'var(--purple3)', flexShrink: 0, marginTop: 2 }}><I_Robot size={20} /></span>
             <div style={{ minWidth: 0 }}>
-              <div className="bt">Todo arranca con un solo botón: <b>Iniciar</b>, en el paso 1</div>
+              <div className="bt">El camino de una pieza, de la investigación al veredicto</div>
               <div className="bs">
-                Suba la información y presione <b>Iniciar</b>. Ahí no hay nada que tocar: Sinkroo investiga
-                quién trae más leads y <b>con qué colores</b>, escribe los prompts de cada imagen y video,
-                arma <b>5 opciones</b> y MiroFish las vota y las ordena <b>del 1 al 5</b>.
-                Usted decide después, en la galería.
+                Esto es lo que su negocio tiene hoy en cada etapa, tal como está en el servidor: lo que
+                encontró la investigación, las piezas que el motor creó y cómo las ordenaron los 5 jueces.
+                <b> Nada de lo que se ve aquí es un ejemplo.</b>
               </div>
             </div>
           </div>
-          <div className="row" style={{ gap: 9, flexWrap: 'wrap' }}>
-            {nivel === 4
-              ? <Button variant={panel ? 'ghost' : 'outline'} className="btn-sm"
-                  title={panel
-                    ? 'Cierra el panel sin crear ninguna ronda: no se gasta un crédito y queda todo como está'
-                    : 'Abre el panel para decir qué mejorar o sumar de la ronda anterior. No arranca nada ni gasta nada hasta que presione «Crear la ronda nueva»'}
-                  onClick={() => setPanel(p => !p)}>
-                  {panel ? <><I_X size={13} /> Cancelar</> : <><I_Refresh size={13} /> Otra ronda</>}
-                </Button>
-              : <Badge tone="purple">{nivel === 0 ? 'arrancando…' : 'trabajando solo…'}</Badge>}
-          </div>
+          <Badge tone="purple">
+            {evaluaciones.length} {evaluaciones.length === 1 ? 'pieza evaluada' : 'piezas evaluadas'}
+          </Badge>
         </div>
 
         <div className="flujo-pasos">
-          {pasos.map(p => (
-            <div key={p.n} className={`flujo-paso ${nivel > p.n ? 'done' : nivel === p.n ? 'on' : ''}`}>
-              <span className="flujo-paso-n">{nivel > p.n ? <I_Check size={13} /> : p.n}</span>
+          {[
+            { n: 1, t: 'Investiga', d: `${d.hallazgos.length} ${d.hallazgos.length === 1 ? 'hallazgo' : 'hallazgos'} del mercado` },
+            { n: 2, t: 'Crea', d: `${d.piezas.length} ${d.piezas.length === 1 ? 'pieza guardada' : 'piezas guardadas'}` },
+            { n: 3, t: 'Vota', d: `${evaluaciones.length} ${evaluaciones.length === 1 ? 'evaluación' : 'evaluaciones'} de MiroFish` },
+            { n: 4, t: 'Publica', d: `${pasan.length} ${pasan.length === 1 ? 'pasa' : 'pasan'} el mínimo de 80` },
+          ].map(p => (
+            <div key={p.n} className="flujo-paso">
+              <span className="flujo-paso-n">{p.n}</span>
               <span style={{ minWidth: 0 }}>
                 <span className="flujo-paso-t">{p.t}</span>
                 <span className="flujo-paso-d">{p.d}</span>
@@ -250,218 +79,94 @@ export function FlujoMiroFish({ modo, setToast, esAnuncio }: {
           ))}
         </div>
 
-        {/* ---- EL COSTO DE LA RONDA: visible, con su desglose, y la suma acumulada ---- */}
+        {/* ---- EL COSTO: el precio de una ronda y el saldo que el servidor manda de verdad ---- */}
         <div className="flujo-costo">
           <span className="flujo-costo-ico"><I_Credit size={15} /></span>
           <span className="flujo-costo-tx">
-            {enCurso ? 'Esta ronda:' : 'Esta ronda gastó'} <b>{costo.total} créditos</b> — {costo.crear} por crear
-            {' '}{creaTx} y {costo.evaluar} por evaluarlas. <b>El público no cuesta.</b>
+            Una ronda cuesta <b>{COSTO_RONDA.total} créditos</b> — {COSTO_RONDA.crear} por crear las {COSTO_RONDA.piezas} opciones
+            y {COSTO_RONDA.evaluar} por evaluarlas. <b>El público no cuesta.</b>{' '}
+            {saldo === null
+              ? 'Su saldo todavía no llegó del servidor.'
+              : <>Su saldo hoy: <b>{saldo} créditos</b>.</>}
           </span>
-          {rondas > 1 && (
-            <span className="flujo-costo-acum"
-              title={`Van ${rondas} rondas desde que arrancó la campaña: ${historial.map(r => r.total).join(' + ')} = ${gastado} créditos. Se gasta una sola vez por ronda, y publicar es lo único que gasta dinero.`}>
-              <I_Trophy size={13} /> {rondas} rondas: {gastado} créditos
-            </span>
-          )}
         </div>
-
-        {/* ---- EL PANEL DE LA RONDA NUEVA: chico, adentro del flujo, con opciones para tocar ---- */}
-        {panel && (
-          <div className="ronda-panel">
-            <div className="ronda-panel-h">
-              <span className="ronda-panel-t"><I_Sparkle size={14} /> ¿Qué quiere mejorar o sumar de la ronda anterior?</span>
-              <button className="icon-btn" title="Cierra el panel sin crear ninguna ronda: no se gasta nada"
-                onClick={() => setPanel(false)}><I_X size={15} /></button>
-            </div>
-
-            <div className="ronda-dejo">
-              La ronda anterior dejó <b>«{mejor.titulo}»</b> como la mejor ({puntaje(mejor)}) y una objeción
-              de {oj.juez} ({oj.voto}): «{oj.texto}» Por eso la ronda nueva no arranca de cero: sale de aquí.
-            </div>
-
-            <div className="ronda-chips">
-              {chips.map(c => {
-                const sel = elegidas.includes(c.k);
-                return (
-                  <div key={c.k} className={`ronda-chip ${sel ? 'sel' : ''}`}>
-                    <button className="ronda-chip-btn" title={titleChip(c, sel)} onClick={() => toggleChip(c.k)}>
-                      <span className="ronda-chip-t">
-                        <span className="ronda-chip-ico">{sel ? <I_Check size={13} /> : <I_Plus size={13} />}</span>
-                        {c.t}
-                        {c.cr !== undefined && (
-                          <span className={`ronda-chip-cr ${sel ? '' : 'off'}`} title={`${c.cr} créditos por la ronda completa: ${rondaMejora.crear} de creación + ${rondaMejora.evaluar} de evaluación`}>
-                            {c.cr} créditos
-                          </span>
-                        )}
-                      </span>
-                      <span className="ronda-chip-d">{c.d}</span>
-                    </button>
-
-                    {c.k === 'objecion' && sel && c.sub && (
-                      <div className="ronda-sub">
-                        {c.sub.map(o => {
-                          const on = ojElegidas.includes(o.k);
-                          return (
-                            <button key={o.k} className={`ronda-sub-chip ${on ? 'on' : ''}`}
-                              title={`Objeción de ${o.juez}, que le puso ${o.voto}: «${o.texto}» ${on ? 'Ya está adentro de la ronda: tóquela para sacarla.' : 'Toquela para que la variante la conteste.'}`}
-                              onClick={() => toggleObjecion(o.k)}>
-                              <I_Target size={12} /> {o.juez} · {o.voto}: «{o.texto}»
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
-
-                    {c.k === 'otra' && sel && (
-                      <input className="ronda-input" value={otra}
-                        placeholder="Opcional: en una línea, qué quiere cambiar o sumar…"
-                        title="Es opcional: si la deja vacía no pasa nada, la ronda igual se crea con lo demás que eligió"
-                        onChange={e => setOtra(e.target.value)} />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="ronda-foot">
-              <span className="ronda-costo">
-                Ronda de mejora: <b>{rondaMejora.total} créditos</b> — {rondaMejora.crear} por crear
-                {' '}las {rondaMejora.piezas} variantes de «{mejor.titulo}» ({TARIFA.crearVariante} cada una) y
-                {' '}{rondaMejora.evaluar} por evaluarlas ({TARIFA.evaluarPieza} cada una). <b>El público no cuesta.</b>
-                <small>Sumar más pedidos no sube el precio: son las mismas {rondaMejora.piezas} variantes, con todas las instrucciones adentro. Contra {COSTO_RONDA.total} de empezar de cero, esta ronda sale {COSTO_RONDA.total - rondaMejora.total} créditos menos.</small>
-              </span>
-              {listoParaCrear ? (
-                <Button className="btn-sm"
-                  title={`Crea la ronda de mejora por ${rondaMejora.total} créditos: ${rondaMejora.piezas} variantes de «${mejor.titulo}» (${rondaMejora.crear} de creación + ${rondaMejora.evaluar} de evaluación). Se gasta una sola vez y la ronda anterior queda guardada sin tocar: puede volver a mirarla cuando quiera.`}
-                  onClick={crearRonda}>
-                  <I_Refresh size={13} /> Crear la ronda nueva · {rondaMejora.total} créditos
-                </Button>
-              ) : (
-                <span className="ronda-hint">
-                  {soloOtra
-                    ? 'Escriba en una línea qué quiere cambiar, o desmarque «Otra cosa»: no se gasta nada por tocar las opciones.'
-                    : 'Elija una opción para armar la ronda nueva. No se gasta nada hasta que presione el botón.'}
-                </span>
-              )}
-            </div>
-          </div>
-        )}
       </Card>
 
       {/* ==================== FILA 1: INVESTIGACIÓN Y CREACIÓN ==================== */}
       <div className="duo" style={{ marginTop: 16 }}>
         <Card
-          title={<span className="row" style={{ gap: 8 }}><I_Search size={14} style={{ color: 'var(--purple3)' }} /> 1 · Lo que investigaron los 6 agentes</span>}
-          action={nivel >= 1 ? <Badge tone="purple">{INVESTIGACION.colores.length} colores detectados</Badge> : <Badge tone="muted">sin empezar</Badge>}
+          title={<span className="row" style={{ gap: 8 }}><I_Search size={14} style={{ color: 'var(--purple3)' }} /> 1 · Lo que investigó el motor</span>}
+          action={d.hallazgos.length
+            ? <Badge tone="purple">{d.hallazgos.length} {d.hallazgos.length === 1 ? 'hallazgo' : 'hallazgos'}</Badge>
+            : <Badge tone="muted">sin hallazgos</Badge>}
         >
-          {nivel < 1
-            ? espera(1, <I_Search size={22} />, 'Aquí aparece la investigación', 'Quién trae más leads, con qué colores y por qué. Toque «Que Sinkroo lo haga».')
-            : (
-              <>
-                {trabajando(1, 'Leyendo la biblioteca de anuncios de sus competidores')}
-                <div>
-                  <div className="paleta">
-                    {INVESTIGACION.colores.map(c => (
-                      <div key={c.hex} className="swatch">
-                        <span className="swatch-color" style={{ background: c.hex }} />
-                        <span style={{ minWidth: 0 }}>
-                          <span className="swatch-n">{c.nombre}</span>
-                          <span className="swatch-hex">{c.hex}</span>
-                        </span>
-                      </div>
-                    ))}
+          {d.hallazgos.length === 0 ? (
+            <EstadoVacio
+              icono={<I_Search size={22} />}
+              titulo="El motor todavía no investigó su mercado"
+              texto="Cuando corra la investigación, cada hallazgo queda aquí con el dato, su porqué y de dónde salió. Todavía no hay ninguno guardado para este negocio."
+              {...(d.cargando ? {} : irAlPaso1)}
+            />
+          ) : (
+            <>
+              <div className="bs">Lo que encontró la investigación sobre su mercado y su competencia, tal como quedó guardado:</div>
+              <div className="guards">
+                {d.hallazgos.map(h => (
+                  <div key={h.id} className="guard">
+                    <span style={{ color: 'var(--purple3)', flexShrink: 0 }}><I_Target size={14} /></span>
+                    <span className="guard-lb">
+                      {h.titulo} <span className="tiny muted">· {h.tipo}</span>
+                      <small>{[h.dato, h.porque].filter(Boolean).join(' · ')}</small>
+                      <small>De dónde salió: {h.fuente || 'el motor no dijo la fuente'}{h.created_at ? ` · ${fechaCorta(h.created_at)}` : ''}</small>
+                    </span>
                   </div>
-                  <div className="bs" style={{ marginTop: 10 }}>
-                    Son los colores de <b>{INVESTIGACION.competidor.nombre}</b>, el competidor que mejor convierte.
-                    {INVESTIGACION.competidor.detalle} El motor los usa como base: no para copiar, para parecerse
-                    a lo que el mercado ya demostró que funciona.
-                  </div>
-                </div>
-                <div className="guards">
-                  {INVESTIGACION.hallazgos.map(h => (
-                    <div key={h.t} className="guard">
-                      <span style={{ color: 'var(--purple3)', flexShrink: 0 }}><I_Target size={14} /></span>
-                      <span className="guard-lb">{h.t}<small>{h.d}</small></span>
-                    </div>
-                  ))}
-                </div>
-                <div className="acc-why">
-                  Esto no es una opinión del motor: sale de <b>anuncios reales que están corriendo ahora</b>.
-                  Los colores que más leads traen se detectan del anuncio con más tiempo activo del competidor que mejor convierte.
-                </div>
-              </>
-            )}
+                ))}
+              </div>
+              <div className="acc-why">
+                Esto no es una opinión del motor: cada línea puede decir <b>de dónde salió</b> y cuándo se
+                encontró. Es la investigación, con su fuente.
+              </div>
+            </>
+          )}
         </Card>
 
         <Card
-          title={<span className="row" style={{ gap: 8 }}><I_Sparkle size={14} style={{ color: 'var(--purple3)' }} /> 2 · Lo que crearon los 6 agentes</span>}
-          action={nivel >= 2
-            ? <Badge tone="purple">{lote.length} {mejoraRonda ? 'variantes' : 'opciones'}</Badge>
+          title={<span className="row" style={{ gap: 8 }}><I_Sparkle size={14} style={{ color: 'var(--purple3)' }} /> 2 · Lo que el motor creó</span>}
+          action={d.piezas.length
+            ? <Badge tone="purple">{d.piezas.length} {d.piezas.length === 1 ? 'pieza' : 'piezas'}</Badge>
             : <Badge tone="muted">sin crear</Badge>}
         >
-          {nivel < 2
-            ? espera(2, <I_Sparkle size={22} />, mejoraRonda ? `Aquí aparecen las ${costo.piezas} variantes` : 'Aquí aparecen las 5 opciones',
-                'Cada una con su prompt de imagen o video, escrito por el motor, usando los colores que mejor convierten.')
-            : (
-              <>
-                {trabajando(2, mejoraRonda ? 'Escribiendo los cambios en los prompts de las variantes' : 'Escribiendo los prompts y armando las opciones')}
-                {mejoraRonda ? (
-                  <div className="bs">
-                    <b>{lote.length} variantes de «{base}», no {TARIFA.piezasRonda} opciones nuevas:</b> cada una
-                    cambia una sola cosa de la que ganó y se vota contra las otras, así ve si la mejora valió
-                    la pena. No se vuelve a investigar el mercado: se reusa lo que ya sabe del competidor.
-                    {pedidos.length > 0 && <> Lo que pidió: <b>{pedidos.join(' · ')}</b>.</>}
+          {d.piezas.length === 0 ? (
+            <EstadoVacio
+              icono={<I_Sparkle size={22} />}
+              titulo="Todavía no hay piezas creadas"
+              texto="Cuando el motor cree la primera, aparece aquí con su formato, su estado y el puntaje que le den los 5 jueces."
+              {...(d.cargando ? {} : irAlPaso1)}
+            />
+          ) : (
+            <>
+              <div className="bs">Estas son las piezas de su negocio, tal como están guardadas en el servidor:</div>
+              <div className="guards">
+                {d.piezas.map(p => (
+                  <div key={p.id} className="guard">
+                    <span style={{ color: 'var(--purple3)', flexShrink: 0 }}><I_File size={14} /></span>
+                    <span className="guard-lb">
+                      {p.titulo} <span className="tiny muted">· {p.formato}</span>
+                      <small>
+                        {p.estado}{p.created_at ? ` · creada el ${fechaCorta(p.created_at)}` : ''}
+                        {p.puntaje == null ? ' · todavía sin puntaje de MiroFish' : ` · puntaje ${Number(p.puntaje)} de 100`}
+                      </small>
+                    </span>
+                    {p.puntaje != null && <Badge tone={Number(p.puntaje) >= 80 ? 'green' : 'amber'}>{Number(p.puntaje)}</Badge>}
                   </div>
-                ) : (
-                  <div className="bs">
-                    <b>5 opciones distintas, no 5 versiones de lo mismo:</b> cambia el formato y el ángulo.
-                    Toque cualquiera para ver el prompt que escribió el motor.
-                  </div>
-                )}
-                <div className="ops">
-                  {lote.map(o => {
-                    const on = abierta === o.id;
-                    return (
-                      <div key={o.id} className={`op ${on ? 'on' : ''}`}>
-                        <div className="op-head" onClick={() => setAbierta(on ? null : o.id)}>
-                          <span className="op-color" style={{ background: o.color }} />
-                          <span className="op-ico" style={{ color: o.color }}><IconoFormato f={o.formato} /></span>
-                          <span style={{ flex: 1, minWidth: 0 }}>
-                            <span className="op-t">{o.titulo}</span>
-                            <span className="op-m">{o.formato} · {o.medida}</span>
-                          </span>
-                          <span className="op-chevron">{on ? <I_ChevUp size={14} /> : <I_ChevDn size={14} />}</span>
-                        </div>
-                        {on && (
-                          <div className="op-body">
-                            <div className="op-gancho">{o.gancho}</div>
-                            {o.queCambia && (
-                              <div className="op-row"><span className="op-k">Qué le cambia a la que ganó</span><span className="bs">{o.queCambia}</span></div>
-                            )}
-                            <div className="op-label">El prompt que escribió el motor</div>
-                            <div className="op-prompt">{o.prompt}</div>
-                            <div className="op-row"><span className="op-k">Texto del anuncio</span><span className="bs">{o.copy}</span></div>
-                            <div className="op-row"><span className="op-k">Botón</span><span className="bs">{o.cta}</span></div>
-                            <div className="op-tags">
-                              <span className="badge badge-purple" style={{ fontSize: 9 }}>usa {o.usaCompetidor}</span>
-                              <span className="badge badge-muted" style={{ fontSize: 9 }}>{o.formato}</span>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-                <div className="acc-why">
-                  {mejoraRonda
-                    ? <>Cada variante sale <b>{TARIFA.crearVariante} créditos</b> y su evaluación <b>{TARIFA.evaluarPieza}</b>:
-                      {' '}esta ronda costó {costo.total} en total, contra {COSTO_RONDA.total} de empezar de cero.
-                      La ronda anterior <b>no se toca</b>: queda guardada con sus votos.</>
-                    : <>El motor <b>no inventa de cero</b>: parte de sus fotos reales y de lo que encontró en el mercado.
-                      Cada opción tiene su prompt guardado, así que puede pedir que la rehaga o que cambie solo el color.</>}
-                </div>
-              </>
-            )}
+                ))}
+              </div>
+              <div className="acc-why">
+                De cada pieza, el servidor manda <b>su título, su formato, su estado y su puntaje</b>. El
+                prompt y el texto del anuncio todavía no llegan: por eso no se muestran.
+              </div>
+            </>
+          )}
         </Card>
       </div>
 
@@ -469,126 +174,131 @@ export function FlujoMiroFish({ modo, setToast, esAnuncio }: {
       <div className="duo" style={{ marginTop: 16 }}>
         <Card
           title={<span className="row" style={{ gap: 8 }}><I_Vote size={14} style={{ color: 'var(--amber)' }} /> 3 · Los 5 jueces las votan y las ordenan</span>}
-          action={nivel >= 4
-            ? <Badge tone="green">ordenadas 1 a {orden.length}</Badge>
+          action={evaluaciones.length
+            ? <Badge tone="green">ordenadas 1 a {evaluaciones.length}</Badge>
             : <Badge tone="muted">sin votar</Badge>}
         >
-          {nivel < 3
-            ? espera(3, <I_Vote size={22} />, 'Aquí votan los 5 jueces', `Los 5 jueces puntúan cada opción y cada uno mira algo distinto. El promedio define el puesto, del 1 al ${lote.length}.`)
-            : (
-              <>
-                {trabajando(3, 'Los 5 jueces están votando cada opción')}
-                <div className="bs">
-                  Cada perfil mira algo distinto. El <b>promedio de los 5 votos</b> es el puntaje final y define
-                  el puesto: la de arriba es la que más convence.
-                </div>
-                <div className="rank-votos-head">
-                  {PERFILES.map(p => (
-                    <span key={p.k} className="rank-voto-h" title={`${p.nombre}: ${p.mira}`}>{p.nombre.split(' ')[0].slice(0, 6)}</span>
+          {evaluaciones.length === 0 ? (
+            <EstadoVacio
+              icono={<I_Vote size={22} />}
+              titulo="Todavía no hay piezas evaluadas"
+              texto="Mande sus piezas a MiroFish y vuelva: cada una queda aquí ordenada del 1 al último, con el voto de los 5 jueces y la reacción del público."
+              {...(d.cargando ? {} : irAlPaso1)}
+            />
+          ) : (
+            <>
+              <div className="bs">
+                Cada juez mira algo distinto. <b>El puntaje es el que quedó guardado en MiroFish</b> y define
+                el puesto: la de arriba es la que más convence.
+              </div>
+              <div className="rank">
+                {evaluaciones.map((e, i) => {
+                  const p = Number(e.puntaje);
+                  const pasa = p >= 80;
+                  return (
+                    <div key={e.id} className={`rank-row ${pasa ? 'pasa' : ''}`}>
+                      <span className={`rank-pos ${pasa ? 'pasa' : ''}`}>{i + 1}</span>
+                      <span style={{ flex: 1, minWidth: 0 }}>
+                        <span className="rank-t">{e.titulo}</span>
+                        <span className="rank-m">
+                          {e.total_publico ? `los ${e.total_publico} del público` : 'sin público registrado'}
+                          {e.created_at ? ` · ${fechaCorta(e.created_at)}` : ''}
+                        </span>
+                      </span>
+                      <span className="rank-avg" style={{ color: colorDePuntaje(p) }}>{p}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              {mejor && (dato ? (
+                <div className="guards">
+                  {dato.votos.map(v => (
+                    <div key={v.juez} className="guard">
+                      <span style={{ width: 34, flexShrink: 0, textAlign: 'center', fontSize: 17, fontWeight: 900, fontVariantNumeric: 'tabular-nums', color: colorDePuntaje(v.voto) }}>{v.voto}</span>
+                      <span className="guard-lb">
+                        {v.juez} <span className="tiny muted">· {v.criterio}</span>
+                        <small>«{v.opinion}»</small>
+                      </span>
+                    </div>
                   ))}
-                  <span className="rank-voto-h" style={{ color: 'var(--purple3)' }}>prom.</span>
                 </div>
-                <div className="rank">
-                  {orden.map((o, i) => {
-                    const pasa = i < CUANTAS_PASAN;
-                    return (
-                      <div key={o.id} className={`rank-row ${pasa ? 'pasa' : ''}`}>
-                        <span className={`rank-pos ${pasa ? 'pasa' : ''}`}>{i + 1}</span>
-                        <span style={{ flex: 1, minWidth: 0 }}>
-                          <span className="rank-t">{o.titulo}</span>
-                          <span className="rank-m">{o.formato} · {o.medida}</span>
-                        </span>
-                        <span className="rank-votos">
-                          {PERFILES.map(p => (
-                            <span key={p.k} className={`rank-voto ${o.votos[p.k] >= 85 ? 'hi' : o.votos[p.k] < 70 ? 'lo' : ''}`}
-                              title={`${p.nombre}: ${o.votos[p.k]}`}>{o.votos[p.k]}</span>
-                          ))}
-                        </span>
-                        <span className="rank-avg">{puntaje(o)}</span>
-                      </div>
-                    );
-                  })}
+              ) : (
+                <div className="tiny muted">
+                  {cargando ? `Leyendo el voto de los 5 jueces de «${mejor.titulo}»…` : `El servidor no devolvió el voto de los 5 jueces de «${mejor.titulo}».`}
                 </div>
-                <div className="acc-why">
-                  {quedan.length > 0
-                    ? <>Del 1 al {orden.length}: <b>las {CUANTAS_PASAN} primeras pasan</b>, las otras {quedan.length} quedan guardadas con el voto de cada perfil,
-                      así sabe exactamente qué les faltó.</>
-                    : <>Las {orden.length} variantes van del 1 al {orden.length} y pasan las {pasan.length}: son la misma pieza que ganó, mejorada.
-                      La 1ª es la que más convenció con los cambios que pidió, y las tres quedan con el voto de cada juez.</>}
-                </div>
-              </>
-            )}
+              ))}
+              <div className="acc-why">
+                Arriba están el puesto y el puntaje de cada pieza evaluada; <b>el voto juez por juez de la
+                primera</b> se ve aquí abajo. El de las demás se ve al elegirlas en el motor, en el paso 2.
+              </div>
+            </>
+          )}
         </Card>
 
         <Card
-          title={<span className="row" style={{ gap: 8 }}><I_Rocket size={14} style={{ color: 'var(--green)' }} /> 4 · Las {pasan.length} que salen</span>}
-          action={nivel >= 4 ? <Badge tone="green">{pasan.length} seleccionadas</Badge> : <Badge tone="muted">sin seleccionar</Badge>}
+          title={<span className="row" style={{ gap: 8 }}><I_Rocket size={14} style={{ color: 'var(--green)' }} /> 4 · Las que pasan el mínimo</span>}
+          action={pasan.length
+            ? <Badge tone="green">{pasan.length} {pasan.length === 1 ? 'seleccionada' : 'seleccionadas'}</Badge>
+            : <Badge tone="muted">sin seleccionar</Badge>}
         >
-          {nivel < 4
-            ? espera(4, <I_Rocket size={22} />, 'Aquí salen las 3 mejores', 'Cuando MiroFish termina de votar, las 3 primeras quedan listas para publicar.')
-            : (
-              <>
-                {pasan.map((o, i) => (
-                  <div key={o.id} className="sale">
-                    <span className="sale-pos">{i + 1}º</span>
-                    <span className="sale-prev" style={{ background: `${o.color}22`, borderColor: `${o.color}66` }}>
-                      <span style={{ color: o.color }}><IconoFormato f={o.formato} /></span>
-                    </span>
-                    <span style={{ flex: 1, minWidth: 0 }}>
-                      <span className="rank-t">{o.titulo}</span>
-                      <span className="rank-m">{o.formato} · {o.medida} · {puntaje(o)} puntos</span>
-                    </span>
-                    <Badge tone="green">sale</Badge>
-                  </div>
-                ))}
-
-                {quedan.length > 0 && (
-                  <div className="bs" style={{ marginTop: 4 }}>
-                    <b>Las {quedan.length} que no pasaron:</b> {quedan.map(o => `«${o.titulo}» (${puntaje(o)})`).join(' y ')}.
-                    Quedan guardadas, no se pierden.
-                  </div>
-                )}
-
-                <div className="row" style={{ gap: 9, flexWrap: 'wrap' }}>
-                  {publicado ? (
-                    <Badge tone="green">
-                      {modo === 'auto' ? 'Publicadas y en la bitácora' : modo === 'shared' ? 'Esperando su OK en la bitácora' : 'Listas para que las publique'}
-                    </Badge>
-                  ) : (
-                    <Button className="btn-sm" title={accionDice}
-                      onClick={() => { setPublicado(true); setToast(accionDice); }}>
-                      <I_Rocket size={13} /> {esAnuncio ? 'Publicar las 3' : 'Programar las 3'}
-                    </Button>
-                  )}
-                  {quedan.length > 0 && (
-                    rehaciendo ? (
-                      <div className="tiny" style={{ display: 'flex', alignItems: 'center', gap: 7, color: 'var(--purple3)', fontWeight: 700 }}>
-                        <I_Refresh size={13} /> El motor está rehaciendo las {quedan.length} que no pasaron, con lo que objetó cada juez: vuelven a votarse en la ronda 2.
-                      </div>
-                    ) : (
-                      <Button variant="ghost" className="btn-sm" title="Le pide al motor que rehaga solo las que no pasaron, con lo que objetaron los 5 jueces. Cuesta una ronda más."
-                        onClick={() => { setRehaciendo(true); setToast(`El motor rehace las ${quedan.length} que no pasaron con lo que objetaron los 5 jueces`); }}>
-                        <I_Refresh size={13} /> Rehacer las {quedan.length} que no pasaron
-                      </Button>
-                    )
-                  )}
+          {evaluaciones.length === 0 ? (
+            <EstadoVacio
+              icono={<I_Rocket size={22} />}
+              titulo="Todavía no hay nada que publicar"
+              texto="Cuando MiroFish termine de votar, cada pieza que llegue al mínimo de 80 aparece aquí, lista para salir a sus redes."
+              {...(d.cargando ? {} : irAlPaso1)}
+            />
+          ) : (
+            <>
+              {pasan.length === 0 && (
+                <div className="bs">
+                  <b>Ninguna de las {evaluaciones.length} evaluadas llega al mínimo de 80.</b> Así no se
+                  publica: el motor las devuelve con la objeción del juez que votó más bajo.
                 </div>
-
-                <div className="acc-why">
-                  {modo === 'manual'
-                    ? <><b>Está en Manual:</b> el motor le deja las 3 listas y las publica usted cuando quiera.</>
-                    : modo === 'auto'
-                      ? <><b>Está en Automático:</b> las 3 salen solas y quedan en la bitácora, reversibles 24 h.</>
-                      : <><b>Está en Compartido:</b> el motor prepara todo y le pide el OK antes de publicarlas.</>}
-                  {' '}{mejoraRonda
-                    ? <>Esta ronda costó <b>{costo.total} créditos</b>: {costo.crear} por crear las {costo.piezas} variantes y {costo.evaluar} por evaluarlas.</>
-                    : <>Crear las {costo.piezas} opciones costó {costo.crear} créditos y evaluarlas {costo.evaluar}.</>}
-                  {' '}El público no cuesta. Publicar es lo único que gasta dinero.
+              )}
+              {pasan.map((e, i) => (
+                <div key={e.id} className="sale">
+                  <span className="sale-pos">{i + 1}º</span>
+                  <span className="sale-prev" style={{ background: 'var(--bg3)', borderColor: 'var(--border2)' }}>
+                    <span style={{ color: 'var(--green)' }}><I_Check size={15} /></span>
+                  </span>
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <span className="rank-t">{e.titulo}</span>
+                    <span className="rank-m">{Number(e.puntaje)} de 100 · pasa el mínimo</span>
+                  </span>
+                  <Badge tone="green">sale</Badge>
                 </div>
-              </>
-            )}
+              ))}
+              {noPasan.length > 0 && (
+                <div className="bs" style={{ marginTop: 4 }}>
+                  <b>Las {noPasan.length} que no llegan al mínimo:</b> {noPasan.map(e => `«${e.titulo}» (${Number(e.puntaje)})`).join(' y ')}.
+                  Quedan guardadas con el voto de cada juez, así se ve qué les faltó.
+                </div>
+              )}
+              <div className="acc-why">
+                {modo === 'shared'
+                  ? <><b>Está en Compartido:</b> el motor le pide el OK antes de publicarlas.</>
+                  : modo === 'auto'
+                    ? <><b>Está en Automático:</b> las que pasan el mínimo salen solas y quedan en la bitácora, reversibles 24 h.</>
+                    : <><b>Está en Manual:</b> el motor se las deja listas y las publica usted cuando quiera.</>}
+                {' '}Crear una ronda de {COSTO_RONDA.piezas} opciones cuesta {COSTO_RONDA.crear} créditos y
+                evaluarlas {COSTO_RONDA.evaluar}. El público no cuesta. Publicar es lo único que gasta dinero.
+              </div>
+            </>
+          )}
         </Card>
       </div>
     </>
   );
+}
+
+/**
+ * El flujo de MiroFish: la cadena de la pieza con los datos que el negocio tiene en el servidor.
+ * Sin nada del negocio, cada etapa muestra su estado vacío. No hay una versión de ejemplo: el
+ * mismo camino se muestra siempre, con sus datos o con la invitación a tenerlos.
+ */
+export function FlujoMiroFish({ modo, ir }: {
+  modo: Modo; ir?: (p: PasoCampana) => void; setToast?: (t: string) => void; esAnuncio?: boolean;
+}) {
+  return <FlujoReal modo={modo} ir={ir} />;
 }

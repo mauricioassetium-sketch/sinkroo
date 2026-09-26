@@ -65,7 +65,7 @@ export function ViewOnboarding({ setToast, setVista }: { setToast: (t: string) =
         nums={[
           { v: `${listos.length} de ${onb.pasos.length}`, l: 'pasos hechos', c: listos.length === onb.pasos.length ? 'var(--green)' : 'var(--purple3)' },
           { v: arrancado ? 'En marcha' : 'Sin arrancar', l: 'el motor', c: arrancado ? 'var(--green)' : 'var(--amber)' },
-          { v: `Plan ${plan.nombre}`, l: `${plan.creditosMes.toLocaleString('es-CO')} créditos por mes` },
+          { v: plan ? `Plan ${plan.nombre}` : 'Sin plan leído', l: plan ? `${plan.creditosMes.toLocaleString('es-CO')} créditos por mes` : 'sale de su cuenta' },
           { v: String(COSTO_ARRANQUE), l: 'créditos del arranque' },
         ]}
       />

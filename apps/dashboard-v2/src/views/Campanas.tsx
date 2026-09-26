@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Card, Badge, Button, Dinero, NotaMoneda } from '../components/ui';
-import { ViewHead, Bars, Ring, Gauge } from '../components/viz';
+import { ViewHead, Bars, Ring } from '../components/viz';
 import { Publicar } from '../components/Publicar';
 import { FlujoMiroFish } from '../components/FlujoMiroFish';
 import { Stepper, IngestaManual, Galeria, PASOS_CAMPANA, type PasoCampana } from '../components/CampanaPasos';
@@ -9,25 +9,25 @@ import { EnLinea } from '../components/EnLinea';
 import { CampanaViva } from '../components/CampanaViva';
 import { I_Megaphone, I_Check, I_Refresh, I_Vote, I_File, I_Zap, I_Trend, I_Eye, I_Robot, I_Play, I_Upload, I_Pause, I_Plus } from '../components/icons';
 import type { Vista } from '../components/Layout';
-import { CAMPANAS, TENANT, type Campana, type Modo } from '../data/demo';
-import { usePlan } from '../lib/plan';
-import { PERFILES, puntaje, ranking, objeciones, TARIFA } from '../data/mirofish';
+import type { Campana, Modo } from '../data/demo';
+import { TARIFA } from '../data/mirofish';
 import { useDetalle } from '../components/Detalle';
 import { numeroConMiles } from '../lib/perfil';
 import { useDatos, type Campana as CampanaBack } from '../api/datos';
 import { EstadoVacio } from '../components/EstadoVacio';
 import { baseApi, token } from '../api/cliente';
+import { useEvaluacion } from '../components/mirofishDatos';
 
 // =============================================================================================
 // DE DÓNDE SALEN LAS CAMPAÑAS DE ESTA PANTALLA
 //
-// Con el back encendido (`?api=…` y sesión) la lista sale de las campañas del negocio; sin back,
-// sigue la demo de siempre, que es el respaldo del link de revisión. La decisión se toma una sola
-// vez, en `fuente`, dentro de la pantalla: de ahí para abajo todo lee lo mismo.
+// La lista sale de las campañas del negocio, tal como están en el servidor. No hay respaldo de
+// ejemplo: sin campañas, la pantalla muestra su estado vacío. La decisión se toma una sola vez, en
+// `fuente`: de ahí para abajo todo lee lo mismo.
 //
-// Lo que el back no manda todavía (el texto del anuncio, el alcance, el costo por venta) no se
-// inventa: queda en «—» o en cero y la pantalla lo dice. Mezclar campañas del back con las de
-// ejemplo sería mentir sobre lo que hay.
+// Lo que el back no manda todavía (el techo del mes, el alcance, las conversiones, el costo por
+// venta) no se inventa: queda en «—» y la pantalla lo dice. Rellenarlo con un número de ejemplo
+// sería mentir sobre lo que hay.
 // =============================================================================================
 
 /** El número detrás del ROAS como se lee en la pantalla: «7,3x» → 7.3. Sin dato, cero. */
@@ -60,15 +60,6 @@ const estadoDeBack = (estado: string): Campana['estado'] => {
   return 'Borrador';
 };
 
-/** El formato de la pieza que se ve en el marco de la tarjeta en vivo, leído de la forma de la campaña. */
-const formatoDeBack = (forma: string): Campana['formato'] => {
-  const f = (forma || '').toLowerCase();
-  if (f.includes('reel')) return 'Reel';
-  if (f.includes('video') || f.includes('historia')) return 'Video vertical';
-  if (f.includes('carrusel')) return 'Carrusel';
-  return 'Imagen';
-};
-
 /** La fecha del back, en corto: «creada el 12 de septiembre». */
 const fechaDeBack = (iso: string) => {
   const f = new Date(iso);
@@ -76,8 +67,31 @@ const fechaDeBack = (iso: string) => {
 };
 
 /**
+ * Una pieza juzgada, con lo que se muestra en la lista y en el veredicto del paso 5: el título y el
+ * puntaje de su evaluación en el back, y el voto de sus jueces, que se pide aparte con el detalle.
+ */
+type PiezaJuzgada = {
+  id: string;
+  titulo: string;
+  formato: string;
+  medida: string;
+  puntaje: number;
+};
+
+/** Los días que le quedan al mes: sale del calendario, no de un número escrito a mano. */
+const diasQueQuedanDelMes = () => {
+  const hoy = new Date();
+  const fin = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0);
+  return Math.max(0, fin.getDate() - hoy.getDate());
+};
+
+/**
  * Una campaña del back, con la forma que ya usa esta pantalla: nombre, forma, estado, presupuesto,
  * destinos, piezas, ROAS y gasto son los del back, tal como vienen.
+ *
+ * Lo que el back todavía no manda de una campaña no se rellena con un dato inventado: va en «—» o en
+ * blanco, y la pantalla lo dice. `formato` y `medida` de la pieza que corre no llegan en la ficha de
+ * la campaña, así que quedan vacíos; `color` no es un dato del negocio, es sólo el tono del marco.
  */
 const campanaDeBack = (c: CampanaBack): Campana => ({
   id: c.id,
@@ -92,11 +106,13 @@ const campanaDeBack = (c: CampanaBack): Campana => ({
   pct: 0,
   score: 0,
   artefactos: Number(c.piezas) || 0,
-  formato: formatoDeBack(c.forma),
-  medida: c.forma || 'sin definir',
-  copy: c.objetivo || 'Todavía no hay una pieza publicada para esta campaña.',
+  // El formato y la medida de la pieza que corre no llegan en la ficha de la campaña: quedan vacíos y
+  // la tarjeta lo dice. Poner acá uno deducido de la forma de la campaña sería inventar un dato suyo.
+  formato: '' as Campana['formato'],
+  medida: '',
+  copy: c.objetivo || '',
   cta: '—',
-  color: '#4A7C59',
+  color: 'var(--bg3)',
   plataforma: (c.destinos || []).join(' + ') || 'sin destinos cargados',
   publico: '—',
   fechas: `creada el ${fechaDeBack(c.created_at)}`,
@@ -107,31 +123,27 @@ const campanaDeBack = (c: CampanaBack): Campana => ({
 /** Lo que una campaña tiene asignado por día, leído de sus propios datos: '$40/día' → 40. */
 const presuDelTexto = (presupuesto: string) => Number(presupuesto.replace(/[^0-9]/g, ''));
 const presuBase = (c: Campana) => presuDelTexto(c.presupuesto);
-/** El día de hoy: es lo que queda escrito cuando una pieza sale a sus redes. */
-const hoy = () => new Date().toLocaleDateString('es-CO', { day: 'numeric', month: 'long' });
+
 
 type EstadoCamp = Campana['estado'];
 
 export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: string) => void; modo: Modo; setVista: (v: Vista) => void }) {
   const detalle = useDetalle();
-  const { plan } = usePlan();
   const d = useDatos();
-  // --- La fuente de esta pantalla: el back si hay sesión, la demo si no. De aquí salen la lista,
-  // el gasto por día, el conteo de artefactos y las dos campañas que nombran las recomendaciones.
-  // El demo queda intacto para cuando no hay back: es el respaldo del link de revisión.
-  const fuente: Campana[] = d.real ? d.campanas.map(campanaDeBack) : CAMPANAS;
-  // Un negocio conectado que todavía no tiene campañas no muestra la demo: muestra su estado vacío.
-  const sinNada = d.real && fuente.length === 0;
+  // --- La fuente de esta pantalla: las campañas del negocio, tal como están en el servidor. De aquí
+  // salen la lista, el gasto por día, el conteo de artefactos y las dos campañas que nombran las
+  // recomendaciones. Sin campañas no hay nada de ejemplo: va el estado vacío que dice cómo crear la
+  // primera.
+  const fuente: Campana[] = d.campanas.map(campanaDeBack);
+  const sinNada = fuente.length === 0;
   const { pack: PACK, marca: MARCA } = mejorYPeor(fuente);
   const gastoLb = fuente.map(c => c.nombre.split(' ')[0]);
-  // El ROAS que corona la cabecera: en la demo es el 3,8x del negocio de ejemplo; con el back es el
-  // promedio de las campañas que ya devuelven algo, y «—» mientras ninguna lo mida.
+  // El ROAS que corona la cabecera: el promedio de las campañas que ya devuelven algo, y «—» mientras
+  // ninguna lo mida. Sale de sus propios datos.
   const conRetorno = fuente.filter(c => c.roas !== '—');
-  const roasMes = !d.real
-    ? '3,8x'
-    : conRetorno.length
-      ? `${(conRetorno.reduce((s, c) => s + roasNum(c.roas), 0) / conRetorno.length).toFixed(1).replace('.', ',')}x`
-      : '—';
+  const roasMes = conRetorno.length
+    ? `${(conRetorno.reduce((s, c) => s + roasNum(c.roas), 0) / conRetorno.length).toFixed(1).replace('.', ',')}x`
+    : '—';
   const [paso, setPaso] = useState<PasoCampana>(1);
   const [manual, setManual] = useState(false);
   // --- Lo que un botón cambia en la pantalla. Nada de avisos que se van solos: la campaña se muda
@@ -139,39 +151,52 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
   // el botón que la deshace al lado. Los avisos (setToast) acompañan; el estado es lo que queda.
   const [estados, setEstados] = useState<Record<string, EstadoCamp>>({});
   const [presuExtra, setPresuExtra] = useState<Record<string, number>>({});
-  const [techo, setTecho] = useState(1640);
   const [aplicadas, setAplicadas] = useState<string[]>([]);
   const [publicadas, setPublicadas] = useState<string[]>([]);
   const [corregidas, setCorregidas] = useState<string[]>([]);
   const [aviso, setAviso] = useState<{ t: string; tono: 'green' | 'amber' } | null>(null);
-  // --- Crear una campaña de verdad. Sólo existe con el panel conectado (`d.real`): sin back no hay
-  // servidor al que mandarla, así que el botón no se muestra y la demo crea sus campañas como hasta hoy.
+  // --- Crear una campaña de verdad: nace en el back, en borrador. Sin servidor no hay dónde crearla,
+  // así que el botón aparece cuando hay con quién hablar.
   const [nueva, setNueva] = useState(false);
   const [borradorNuevo, setBorradorNuevo] = useState({ nombre: '', forma: 'ventas', presupuesto: '20', destinos: 'Instagram', objetivo: '' });
   const [creando, setCreando] = useState(false);
   const [errorCrear, setErrorCrear] = useState('');
   const listos = PASOS_CAMPANA.filter(p => p.n < paso).map(p => p.n) as PasoCampana[];
-  // --- Última fila del paso 5: LISTA + DETALLE con una sola fuente de datos.
-  // Las piezas y los jueces salen de mirofish.ts: las mismas 5 opciones de la galería del paso 3
-  // y los mismos 5 perfiles que las votaron. El puntaje es el promedio de esos 5 votos.
-  const piezasJuzgadas = ranking();                       // las 5, de mayor a menor puntaje
-  const [elegida, setElegida] = useState<string>(() => piezasJuzgadas[0].id);
-  const pieza = piezasJuzgadas.find(o => o.id === elegida) ?? piezasJuzgadas[0];
-  const scorePieza = puntaje(pieza);
+  // --- Última fila del paso 5: LISTA + DETALLE con una sola fuente de datos: las evaluaciones del
+  // negocio, ordenadas por el puesto que les dio MiroFish, y el voto de los 5 jueces de la elegida,
+  // leído de `GET /api/mirofish/:id`. Sin evaluaciones, cada tarjeta muestra su estado vacío.
+  const juzgadas: PiezaJuzgada[] = [...d.evaluaciones]
+    .sort((a, b) => (a.orden ?? 999) - (b.orden ?? 999) || (Number(b.puntaje) || 0) - (Number(a.puntaje) || 0))
+    .map(e => ({
+      id: e.id, titulo: e.titulo, formato: '', medida: '',
+      puntaje: Number(e.puntaje) || 0,
+    }));
+  const [elegida, setElegida] = useState<string | null>(null);
+  const idPieza = elegida ?? juzgadas[0]?.id ?? null;
+  const pieza = juzgadas.find(o => o.id === idPieza) ?? juzgadas[0] ?? null;
+  // El veredicto de la elegida: se pide el detalle real de esa evaluación, y el voto juez por juez con
+  // su opinión es lo que se muestra.
+  const { dato: veredicto, cargando: leyendoVeredicto } = useEvaluacion(idPieza ? idPieza : null);
+  const votosPieza: { nombre: string; mira: string; score: number; opinion: string }[] = (veredicto?.votos ?? [])
+    .map(v => ({ nombre: v.juez, mira: v.criterio, score: v.voto, opinion: v.opinion }));
+  const scorePieza = pieza ? pieza.puntaje : 0;
   const pasaPieza = scorePieza >= 80;
-  const votosPieza = PERFILES.map(per => ({
-    k: per.k, nombre: per.nombre, mira: per.mira,
-    score: pieza.votos[per.k], opinion: pieza.opiniones[per.k],
-  }));
-  const votoMasBajo = votosPieza.reduce((a, b) => (b.score < a.score ? b : a));
+  const votoMasBajo = votosPieza.length ? votosPieza.reduce((a, b) => (b.score < a.score ? b : a)) : null;
+  // Cuántos jueces votaron y qué objetó cada uno: sale de los votos de esta pieza, que son los del back.
+  const nJueces = votosPieza.length || 5;
+  const conObjecion = [...votosPieza].filter(v => v.score < 80).sort((a, b) => a.score - b.score);
+  const objecionesPieza = (conObjecion.length ? conObjecion : votosPieza.slice(0, 1))
+    .map(v => ({ juez: v.nombre, texto: v.opinion, voto: v.score }));
   const colorScore = (s: number) => (s >= 80 ? 'var(--green)' : s >= 60 ? 'var(--amber)' : 'var(--red)');
   const palabraVeredicto = (s: number) => (s >= 80 ? 'Lista' : s >= 60 ? 'Revisar' : 'No lanzar');
   const tonoVeredicto = (s: number): 'green' | 'amber' | 'red' => (s >= 80 ? 'green' : s >= 60 ? 'amber' : 'red');
-  const criterioPieza = (s: number) => s >= 80
-    ? `Pasa: arriba de 80 se publica. El promedio de los ${PERFILES.length} jueces dio ${s}.`
-    : s >= 60
-      ? `Vuelve con la objeción: entre 60 y 80 no gasta un peso hasta corregir eso. El promedio dio ${s}.`
-      : `No se lanza: abajo de 60 no se gasta. El promedio de los ${PERFILES.length} jueces dio ${s}.`;
+  // El puntaje es el que quedó guardado en MiroFish: se dice tal cual, sin atribuirle una cuenta que no
+  // es la suya.
+  const criterioDePieza = (s: number) => `El puntaje es el que le dio MiroFish: ${s} de 100. El voto juez por juez está abajo.`;
+  // Cuántas piezas juzgó el negocio y cuántas pasaron el mínimo: sale de sus evaluaciones, contado aquí.
+  const juzgadasTotal = d.evaluaciones.length;
+  const pasarondelMes = d.evaluaciones.filter(e => Number(e.puntaje) >= 80).length;
+  const frenadas = d.evaluaciones.filter(e => Number(e.puntaje) < 80).length;
   const artefactos = fuente.reduce((s, c) => s + c.artefactos, 0);
 
   // --- Las campañas, con el estado y el presupuesto que tienen AHORA (no los de la data original).
@@ -188,21 +213,34 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
   const diario = gasto.reduce((s, v) => s + v, 0);
   const vivas = campanas.filter(c => c.estado === 'Activa');
   const otras = campanas.filter(c => c.estado !== 'Activa');
-  // --- El techo del mes: el medidor, el badge y la línea de abajo salen de este único número.
-  const invertido = 1240;
-  const pctTecho = Math.round((invertido / techo) * 100);
-  const quedaTecho = 100 - pctTecho;
-  const cierreProyectado = 1580;
-  const techoAviso = techo < cierreProyectado
-    ? `Ojo: el cierre proyectado es $${numeroConMiles(cierreProyectado)} y el techo quedó en $${numeroConMiles(techo)}. El motor frena cuando lo alcance: esos $${numeroConMiles(cierreProyectado - techo)} no se gastan.`
-    : `El cierre proyectado es $${numeroConMiles(cierreProyectado)}: con el techo en $${numeroConMiles(techo)} le quedan $${numeroConMiles(techo - cierreProyectado)} de aire si el mes se sale de lo previsto.`;
+  // --- El dinero del mes. Lo invertido sale de sus campañas —lo gastado, tal como está en el
+  // servidor— y el techo del mes y el cierre proyectado todavía no llegan: van en «—», nunca en un
+  // número escrito a mano.
+  const invertido = d.campanas.reduce((s, c) => s + (Number(c.gasto) || 0), 0);
+  const gastadoPorCampana = d.campanas.map(c => Number(c.gasto) || 0);
+  const diasQueQuedan = diasQueQuedanDelMes();
+  // Lo que cambiaría el presupuesto por día si marca las acciones de arriba. Sale de los presupuestos
+  // suyos que están cargados, sumados acá: es cuenta sobre datos del negocio, no una cifra de ejemplo.
+  const efectoPresu = (PACK && MARCA)
+    ? (aplicadas.includes('presu') ? 5 : 0) - (aplicadas.includes('pausar') && MARCA.id !== PACK.id ? presuBase(MARCA) : 0)
+    : 0;
+  const techoAviso = 'El techo del mes y el cierre proyectado todavía no llegan del servidor: van en «—». Lo que sí llega —lo invertido, el presupuesto por día y lo gastado campaña por campaña— se muestra tal cual, sin rellenar nada.';
 
-  const lblAccion = (e: EstadoCamp) => (e === 'Borrador' ? 'Publicar' : e === 'En pausa' ? 'Reactivar' : e === 'Finalizada' ? 'Ver el informe' : 'Pausar');
+  // El rótulo del botón de cada fila. No dice «Publicar»: dice «Marcar activa», porque el panel
+  // todavía no le manda ese cambio al servidor.
+  const lblAccion = (e: EstadoCamp) => (e === 'Finalizada'
+    ? 'Ver el informe'
+    : e === 'Activa'
+      ? 'Marcar en pausa'
+      : 'Marcar activa');
   const titleAccion = (e: EstadoCamp) =>
-    e === 'Borrador' ? 'Publica la campaña: sale a sus redes y empieza a gastar su presupuesto diario. Es reversible: la pausa cuando quiera y no pierde el historial.'
-      : e === 'En pausa' ? 'La vuelve a poner en marcha: sigue desde donde estaba, con la misma pieza y el mismo historial. Reversible: la vuelve a pausar cuando quiera.'
-        : e === 'Finalizada' ? 'Abre el informe final: qué rindió, cuánto gastó y qué dejó para la próxima.'
-          : 'Pausa la campaña y deja de gastar. Es reversible: la reactiva cuando quiera y no pierde nada.';
+    e === 'Borrador'
+      ? 'Marca la campaña como activa en el panel. El cambio todavía no llega al servidor: por esto no sale a sus redes ni empieza a gastar. Es reversible.'
+      : e === 'En pausa'
+        ? 'La marca como activa en el panel. El cambio todavía no llega al servidor: la campaña sigue donde está en el back. Es reversible.'
+        : e === 'Finalizada'
+          ? 'Abre el informe final: qué rindió, cuánto gastó y qué dejó para la próxima.'
+          : 'La marca en pausa en el panel. El cambio todavía no llega al servidor: no se pierde nada del historial y es reversible.';
 
   // ============================ LOS BOTONES QUE HACEN (y se ve en la pantalla) ============================
 
@@ -217,12 +255,14 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
           { tipo: 'datos', filas: [
             { k: 'Cómo terminó', v: 'Finalizada', s: `corrió ${c.fechas}` },
             { k: 'Gastado en total', v: c.gastado, s: 'lo que costó la campaña completa' },
-            { k: 'Devolvió por peso invertido', v: c.roas, tono: 'green', s: 'contra el 3,8x de su promedio' },
-            { k: 'Conversiones', v: String(c.conversiones), s: `a ${c.costo} cada una` },
-            { k: 'Alcance', v: c.alcance, s: 'personas distintas que la vieron' },
+            { k: 'Devolvió por peso invertido', v: c.roas, tono: c.roas === '—' ? 'muted' : 'green', s: c.roas === '—'
+              ? 'el servidor todavía no lo mide para esta campaña'
+              : 'lo que devolvió, tal como está en el servidor' },
+            { k: 'Conversiones', v: '— todavía no llegan', s: 'la ficha de la campaña todavía no las manda' },
+            { k: 'Alcance', v: '— todavía no llega', s: 'personas distintas que la vieron' },
             { k: 'Piezas que dejó', v: String(c.artefactos), s: 'quedan guardadas para reusar' },
           ] },
-          { tipo: 'texto', texto: `Salió en ${c.plataforma} para ${c.publico}.` },
+          { tipo: 'texto', texto: `Salió en ${c.plataforma}. Lo que el servidor todavía no manda de esta campaña —las conversiones y el alcance— va en «—»: aquí no se rellena con un número inventado.` },
           { tipo: 'aviso', texto: 'Lo que funcionó se puede volver a publicar: la campaña no se borra y sus piezas quedan.' },
         ],
         fuente: 'Los números finales de la campaña, tal como quedaron al terminar.',
@@ -232,10 +272,10 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
     const nuevo: EstadoCamp = e === 'Activa' ? 'En pausa' : 'Activa';
     setEstados(s => ({ ...s, [c.id]: nuevo }));
     setAviso(nuevo === 'Activa'
-      ? { tono: 'green', t: `«${c.nombre}» quedó activa: sale a sus redes y gasta $${presuDia(c)} por día desde ahora.` }
-      : { tono: 'amber', t: `«${c.nombre}» quedó en pausa: deja de gastar sus $${presuDia(c)} por día y no pierde el historial.` });
+      ? { tono: 'green', t: `«${c.nombre}» quedó activa en el panel: el cambio todavía no llega al servidor, así que la campaña sigue como está en el back.` }
+      : { tono: 'amber', t: `«${c.nombre}» quedó en pausa en el panel: el cambio todavía no llega al servidor y no se pierde nada del historial.` });
     setToast(nuevo === 'Activa'
-      ? `«${c.nombre}» salió a sus redes: gasta $${presuDia(c)} por día`
+      ? `«${c.nombre}» quedó activa en el panel: el estado real lo sigue mandando el servidor`
       : `«${c.nombre}» en pausa: la reactiva cuando quiera`);
   };
 
@@ -245,62 +285,56 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
     setPresuExtra(s => ({ ...s, [PACK.id]: 5 }));
     setEstados(s => ({ ...s, [PACK.id]: 'Activa' }));
     setAplicadas(a => (a.includes('presu') ? a : [...a, 'presu']));
-    setToast(`${PACK.nombre}: de $${antes} a $${antes + 5} por día y vuelve a correr`);
+    setToast(`${PACK.nombre}: de $${antes} a $${antes + 5} por día en el panel. El servidor sigue igual: todavía no le llega el cambio`);
   };
   const deshacerSubir = () => {
     setPresuExtra(s => { const n = { ...s }; delete n[PACK.id]; return n; });
     setEstados(s => { const n = { ...s }; delete n[PACK.id]; return n; });
     setAplicadas(a => a.filter(k => k !== 'presu'));
-    setToast(`${PACK.nombre} queda como estaba: $${presuBase(PACK)} por día, en pausa`);
+    setToast(`${PACK.nombre} queda como estaba en el panel: $${presuBase(PACK)} por día`);
   };
 
-  /** Recomendación 2: pausar la que va abajo del promedio. Deja de gastar en ese mismo momento. */
+  /** Recomendación 2: marcar en pausa la que va abajo del promedio. No le manda nada al servidor. */
   const aplicarPausar = () => {
     setEstados(s => ({ ...s, [MARCA.id]: 'En pausa' }));
     setAplicadas(a => (a.includes('pausar') ? a : [...a, 'pausar']));
-    setToast(`${MARCA.nombre}: en pausa, deja de gastar $${presuDia(MARCA)} por día`);
+    setToast(`${MARCA.nombre}: marcada en pausa en el panel. El servidor sigue igual hasta que le llegue el cambio`);
   };
   const deshacerPausar = () => {
     setEstados(s => { const n = { ...s }; delete n[MARCA.id]; return n; });
     setAplicadas(a => a.filter(k => k !== 'pausar'));
-    setToast(`${MARCA.nombre} vuelve a correr como estaba: $${presuBase(MARCA)} por día`);
+    setToast(`${MARCA.nombre} queda activa en el panel, como estaba`);
   };
 
-  /** Recomendación 3: Nia escribe 3 variantes del mismo mensaje para rotar el creativo. */
+  /** Recomendación 3: marcar 3 variantes del mismo mensaje para rotar el creativo. Nada se escribe acá. */
   const aplicarVariantes = () => {
     setAplicadas(a => (a.includes('variantes') ? a : [...a, 'variantes']));
-    setToast(`Nia está escribiendo 3 variantes de ${PACK.nombre}: ${3 * TARIFA.crearVariante} créditos`);
+    setToast(`Marcado: 3 variantes de ${PACK.nombre} por ${3 * TARIFA.crearVariante} créditos. Pedírselas al motor todavía no sale de esta pantalla`);
   };
   const deshacerVariantes = () => {
     setAplicadas(a => a.filter(k => k !== 'variantes'));
-    setToast('Se canceló la escritura: no se escribió ninguna variante y no se gastó ningún crédito');
+    setToast('Se quitó la marca: no se escribió ninguna variante y no se gastó ningún crédito');
   };
 
-  /** El techo del mes: subirlo o bajarlo cambia el medidor, el badge y lo que queda por gastar. */
+  /** El techo del mes: qué manda hoy el servidor y qué todavía no llega. No se cambia desde acá. */
   const cambiarTecho = () => detalle({
     titulo: 'El techo del mes',
-    sub: 'Es el freno de gasto: el motor mueve dinero solo, pero nunca pasa este número sin su permiso. Puede subirlo o bajarlo y volver atrás cuando quiera.',
+    sub: 'El techo es el freno de gasto del mes: el motor no lo pasa sin su permiso. El servidor todavía no manda el techo en la ficha, así que acá va en «—» y no se cambia desde esta pantalla.',
     bloques: [
       { tipo: 'datos', filas: [
-        { k: 'Techo de este mes', v: `$${numeroConMiles(techo)}`, s: techo === 1640 ? 'el que tenía puesto' : 'el que acaba de poner' },
-        { k: 'Invertido hasta hoy', v: `$${numeroConMiles(invertido)}`, s: `el ${pctTecho}% del techo` },
-        { k: 'Le queda', v: `$${numeroConMiles(techo - invertido)}`, s: `${quedaTecho}% del techo por gastar`, tono: quedaTecho <= 15 ? 'red' : quedaTecho <= 25 ? 'amber' : 'green' },
-        { k: 'Cierre proyectado', v: `$${numeroConMiles(cierreProyectado)}`, s: 'a dónde llega el mes si todo sigue igual' },
-        { k: 'Días que quedan', v: '8', s: 'hasta el cierre del mes' },
+        { k: 'Techo de este mes', v: '— todavía no llega', s: 'el servidor todavía no manda el techo del mes' },
+        { k: 'Invertido hasta hoy', v: `$${numeroConMiles(invertido)}`, s: 'lo gastado por sus campañas, tal como está en el servidor' },
+        { k: 'Le queda', v: '— todavía no llega', s: 'sin el techo no se puede calcular' },
+        { k: 'Cierre proyectado', v: '— todavía no llega', s: 'el servidor todavía no lo proyecta' },
+        { k: 'Días que quedan', v: String(diasQueQuedan), s: 'hasta el cierre del mes' },
         { k: 'Campañas que lo comparten', v: String(fuente.length), s: `$${numeroConMiles(diario)} por día entre todas` },
       ] },
       { tipo: 'texto', texto: `Cada campaña tiene su presupuesto por día y el motor los reparte según lo que rinde: hoy son $${numeroConMiles(diario)} por día entre las ${fuente.length}.` },
-      { tipo: 'aviso', tono: techo < cierreProyectado ? 'amber' : 'green', texto: techoAviso },
+      { tipo: 'aviso', tono: 'amber', texto: techoAviso },
     ],
-    fuente: 'Sale de lo invertido por sus campañas del mes y del techo que tiene configurado.',
-    acciones: techo === 1640 ? [
-      { label: 'Subirlo a $1.800', variante: 'primary', onClick: () => { setTecho(1800); setToast('Techo del mes en $1.800: el cierre proyectado entra con aire'); } },
-      { label: 'Bajarlo a $1.500', onClick: () => { setTecho(1500); setToast('Techo del mes en $1.500: le quedan $260'); } },
-    ] : [
-      { label: 'Volver al techo de $1.640', variante: 'primary', onClick: () => { setTecho(1640); setToast('Techo del mes de vuelta en $1.640'); } },
-      techo === 1800
-        ? { label: 'Bajarlo a $1.500', onClick: () => { setTecho(1500); setToast('Techo del mes en $1.500: le quedan $260'); } }
-        : { label: 'Subirlo a $1.800', onClick: () => { setTecho(1800); setToast('Techo del mes en $1.800: el cierre proyectado entra con aire'); } },
+    fuente: 'Lo invertido sale de lo gastado por sus campañas en el servidor. El techo del mes y el cierre proyectado todavía no llegan del back: por eso van en «—».',
+    acciones: [
+      { label: 'Entendido', variante: 'primary', onClick: () => setToast('El techo del mes todavía no llega del servidor: lo que se ve acá es lo que sí llegó') },
     ],
   });
 
@@ -311,7 +345,7 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
     bloques: [
       { tipo: 'filas', items: campanas.map(c => ({
         t: c.nombre,
-        s: `${c.estado === 'Activa' ? 'corriendo' : c.estado.toLowerCase()} · ${c.roas === '—' ? 'todavía sin datos de retorno' : `devuelve ${c.roas}`} · ${c.pct}% del presupuesto consumido`,
+        s: `${c.estado === 'Activa' ? 'corriendo' : c.estado.toLowerCase()} · ${c.roas === '—' ? 'todavía sin datos de retorno' : `devuelve ${c.roas}`}`,
         etiqueta: `$${presuDia(c)}/día`,
         tono: c.estado === 'Activa' ? 'green' : 'muted',
       })) },
@@ -319,36 +353,43 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
         { k: 'Total por día', v: `$${numeroConMiles(diario)}`, s: 'lo que sale por día con sus campañas así' },
         { k: 'Por semana', v: `$${numeroConMiles(diario * 7)}`, s: '7 días al mismo ritmo' },
         { k: 'Por mes', v: `$${numeroConMiles(diario * 30)}`, s: '30 días al mismo ritmo' },
-        { k: 'La que más rinde', v: `${PACK.nombre} · ${PACK.roas}`, tono: 'green', s: 'contra el 3,8x de su promedio' },
-        { k: 'La que menos rinde', v: `${MARCA.nombre} · ${MARCA.roas}`, tono: 'amber', s: 'por eso encabeza las acciones de abajo' },
+        { k: 'La que más rinde', v: `${PACK.nombre} · ${PACK.roas}`, tono: 'green', s: roasMes === '—'
+          ? 'todavía sin promedio de retorno entre sus campañas'
+          : `${roasMes} es el promedio de sus campañas` },
+        ...(MARCA.id !== PACK.id
+          ? [{ k: 'La que menos rinde', v: `${MARCA.nombre} · ${MARCA.roas}`, tono: 'amber' as const, s: 'por eso encabeza las acciones de abajo' }]
+          : []),
       ] },
-      { tipo: 'aviso', texto: 'Ninguna campaña gasta más de lo que tiene asignado y el techo del mes manda sobre todas: es el freno que no se puede desactivar.' },
+      { tipo: 'aviso', texto: 'El reparto sale de los presupuestos que el servidor tiene cargados, campaña por campaña. El techo del mes todavía no llega: cuando llegue, manda sobre todas.' },
     ],
     fuente: 'Los presupuestos que tiene asignados hoy, campaña por campaña.',
   });
 
-  /** La pieza que no llegó a 80: se corrige con la objeción del juez más duro y el panel la vuelve a votar. */
+  /** La pieza que no llegó al mínimo: se muestra qué objetó cada juez, con su voto guardado en MiroFish. */
   const corregirPieza = () => detalle({
-    titulo: `Corregir «${pieza.titulo}» y volver a juzgarla`,
-    sub: `Los ${PERFILES.length} jueces le dieron ${scorePieza}: abajo de 80 no se gasta un peso. Aquí está lo que objetó cada uno y lo que cambia Nia.`,
+    titulo: `Lo que hay que corregir en «${pieza?.titulo ?? 'esta pieza'}»`,
+    sub: `Los ${nJueces} jueces le dieron ${scorePieza}: abajo de 80 no se gasta un peso. Aquí está lo que objetó cada uno, como quedó guardado en MiroFish.`,
     bloques: [
-      { tipo: 'filas', items: objeciones(pieza).map(o => ({
+      { tipo: 'filas', items: objecionesPieza.map(o => ({
         t: o.juez,
         s: `«${o.texto}»`,
         etiqueta: `${o.voto} de 100`,
         tono: o.voto < 60 ? 'red' : 'amber',
       })) },
       { tipo: 'datos', filas: [
-        { k: 'Qué cambia Nia', v: 'la objeción, nada más', s: 'mismo formato, mismo producto y mismo público' },
-        { k: 'Quién la vuelve a juzgar', v: `${PERFILES.length} jueces + 500 del público`, s: 'al público no se le cobra nunca' },
-        { k: 'Lo que cuesta', v: `${TARIFA.crearVariante + TARIFA.evaluarPieza} créditos`, s: `1 variante (${TARIFA.crearVariante}) + volver a juzgarla (${TARIFA.evaluarPieza})` },
-        { k: 'Créditos que tiene', v: String(TENANT.creditos), s: `Plan ${plan.nombre}` },
+        { k: 'Qué hay que cambiar', v: 'la objeción, nada más', s: 'mismo formato, mismo producto y mismo público' },
+        { k: 'Quién la volvería a juzgar', v: `${nJueces} jueces + 500 del público`, s: 'al público no se le cobra nunca' },
+        { k: 'Lo que costaría', v: `${TARIFA.crearVariante + TARIFA.evaluarPieza} créditos`, s: `1 variante (${TARIFA.crearVariante}) + volver a juzgarla (${TARIFA.evaluarPieza})` },
+        { k: 'Créditos que tiene', v: d.creditos ? String(d.creditos.saldo) : '— todavía no llegan del servidor', s: d.creditos ? 'el saldo que trae el servidor' : 'el servidor todavía no manda el saldo' },
       ] },
-      { tipo: 'aviso', texto: 'La versión de ahora no se pierde: si le gustaba más, puede volver a ella cuando quiera.' },
+      { tipo: 'aviso', texto: 'La versión de ahora no se pierde: queda guardada con el voto de cada juez. Pedirle la corrección al motor es un paso aparte, y todavía no sale desde esta pantalla.' },
     ],
     fuente: 'Las objeciones salen del voto de cada juez en MiroFish, sobre esta pieza.',
     acciones: [
-      { label: 'Que la corrija y la vuelva a juzgar', variante: 'primary', onClick: () => { setCorregidas(p => [...p, pieza.id]); setToast(`Nia corrigió «${pieza.titulo}»: los ${PERFILES.length} jueces la votan de nuevo`); } },
+      { label: 'Marcar para corrección', variante: 'primary', onClick: () => {
+        setCorregidas(p => (p.includes(pieza?.id ?? '') ? p : [...p, pieza?.id ?? '']));
+        setToast(`«${pieza?.titulo ?? 'la pieza'}» quedó marcada para corrección: todavía no se le pidió nada al motor`);
+      } },
       { label: 'Dejarla como está', onClick: () => setToast('Sin cambios: la pieza queda como está') },
     ],
   });
@@ -394,7 +435,7 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
         nums={[
           { v: String(fuente.length), l: 'campañas' },
           { v: <Dinero monto={diario} />, l: 'invertido por día', c: 'var(--green)' },
-          { v: roasMes, l: d.real ? 'ROAS promedio de sus campañas' : 'ROAS del mes' },
+          { v: roasMes, l: 'ROAS promedio de sus campañas' },
           { v: String(artefactos), l: 'artefactos producidos', c: 'var(--purple3)' },
         ]}
       />
@@ -415,9 +456,9 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
               </div>
               <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
                 {!manual && (
-                  <Button title="Empiece por el camino automático: Sinkroo elige el tipo de campaña, el ángulo y el público, crea las 5 opciones y las manda a MiroFish"
-                    onClick={() => { setToast('Sinkroo empezó: mire el paso 2'); setPaso(2); }}>
-                    <I_Play size={14} /> Iniciar
+                  <Button title="Lo lleva al paso 2, donde se ve el mercado trabajando con lo que su negocio tenga evaluado en MiroFish. Todavía no le pide nada al motor: para eso hay que subir el material y mandarlo a evaluar."
+                    onClick={() => { setToast('El paso 2 muestra lo que su negocio tenga evaluado en MiroFish: todavía no se le pidió nada al motor'); setPaso(2); }}>
+                    <I_Play size={14} /> Ir al paso 2
                   </Button>
                 )}
                 <Button variant="outline" className="btn-sm" title={manual ? 'Volver al camino con Sinkroo' : 'Si ya tiene las imágenes o los videos hechos, súbalos y MiroFish los puntúa'}
@@ -442,8 +483,8 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
             <span className="csec-c purple">{'5 jueces · 500 del público'}</span>
             <span className="csec-s">Todo lo que suba cae aquí: el mercado lo mira, vota y lo ordena del 1 al 5</span>
           </div>
-          <MotorEnVivo setToast={setToast} />
-          <FlujoMiroFish modo={modo} setToast={setToast} esAnuncio />
+          <MotorEnVivo setToast={setToast} ir={setPaso} />
+          <FlujoMiroFish modo={modo} setToast={setToast} esAnuncio ir={setPaso} />
         </>
       )}
 
@@ -456,8 +497,8 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
         <span className="csec-n">5</span>
         <span className="csec-t">Sus campañas y el panel</span>
         <span className="csec-s">Primero lo que está corriendo ahora, después los gráficos del mes y al final el veredicto de la última pieza</span>
-        {/* Con el panel conectado la campaña se crea de verdad: nace en el back, en borrador. Sin back
-            no hay servidor al que mandarla, así que el botón no está y la demo queda como estaba. */}
+        {/* La campaña se crea de verdad: nace en el back, en borrador. Sin servidor con sesión no hay
+            a quién mandársela, así que el botón no está y la pantalla queda en su estado vacío. */}
         {d.real && (
           <Button variant="outline" className="btn-sm csec-act" onClick={() => setNueva(n => !n)}
             title="Crea una campaña nueva en el servidor y la deja en borrador: aparece en esta pantalla y no sale a sus redes ni gasta un peso hasta que usted la publique.">
@@ -472,7 +513,7 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
           action={<Badge tone="muted">queda en borrador</Badge>}
         >
           <div className="row" style={{ gap: 9, flexWrap: 'wrap' }}>
-            <input className="input" style={{ flex: '2 1 220px', minWidth: 0 }} placeholder="Nombre: «Serum · septiembre»"
+            <input className="input" style={{ flex: '2 1 220px', minWidth: 0 }} placeholder="Nombre: «Mi campaña de septiembre»"
               value={borradorNuevo.nombre} onChange={e => setBorradorNuevo({ ...borradorNuevo, nombre: e.target.value })} />
             <select className="input" style={{ flex: '1 1 150px', minWidth: 0 }} value={borradorNuevo.forma}
               title="El tipo de campaña: es la forma con la que el motor la arma y la que después se lee en la fila."
@@ -506,8 +547,8 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
       )}
 
 
-      {d.real && d.cargando && fuente.length === 0 ? (
-        /* El panel está trayendo lo que hay en el back: todavía no se sabe si hay campañas o no, así
+      {d.cargando && fuente.length === 0 ? (
+        /* El panel está trayendo lo que hay en el servidor: todavía no se sabe si hay campañas o no, así
            que no se muestra ni el estado vacío ni una campaña de ejemplo. */
         <EstadoVacio
           titulo="Leyendo sus campañas…"
@@ -540,6 +581,16 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
           Todavía no hay ninguna campaña corriendo: las de abajo están en borrador o en pausa.
           <b> Una campaña sale a sus redes sólo cuando usted la publica</b>: ninguna arranca sola.
         </div>
+      )}
+      {/* Un negocio conectado que todavía no tiene piezas: la tarjeta en vivo no tiene nada que mostrar,
+          así que en vez de rellenarla con una pieza de ejemplo se dice qué hacer para tener la primera. */}
+      {d.piezas.length === 0 && (
+        <EstadoVacio
+          titulo="Todavía no hay piezas para mostrar"
+          texto="La tarjeta de arriba muestra la pieza que está viendo su público, su texto y cómo rinde. Aparece cuando el motor cree la primera: súbale el material en el paso 1 y MiroFish la puntúa antes de que gaste un peso."
+          accion="Ir al paso 1" onAccion={() => setPaso(1)}
+          icono={<I_File size={22} />}
+        />
       )}
 
       {/* ============ 2. LAS QUE NO ESTÁN CORRIENDO — en fila compacta, sin ocupar media pantalla ============ */}
@@ -609,107 +660,132 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
       <div className="duo">
         <Card
           title={<span className="row" style={{ gap: 8 }}><I_Zap size={14} style={{ color: 'var(--amber)' }} /> Su presupuesto del mes</span>}
-          action={<Badge tone={quedaTecho <= 15 ? 'red' : quedaTecho <= 25 ? 'amber' : 'green'}>queda {quedaTecho}%</Badge>}
+          action={<Badge tone="muted">lo que manda el servidor</Badge>}
         >
-          <Gauge pct={pctTecho} label="Invertido del techo del mes"
-            detalle={<><Dinero monto={invertido} equivalente={false} /> de <Dinero monto={techo} equivalente={false} /></>} color="var(--grad)" />
-          <div className="datos-row" style={{ marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--border)' }}>
-            <div className="dato"><span className="dato-l">Cierre proyectado</span><span className="dato-v"><Dinero monto={cierreProyectado} /></span></div>
-            <div className="dato"><span className="dato-l">Días que quedan</span><span className="dato-v">8</span></div>
-            <div className="dato"><span className="dato-l">Techo por día</span><span className="dato-v" style={{ color: 'var(--green)' }}><Dinero monto={diario} /></span></div>
+          {/* Lo invertido y lo gastado son los del servidor; el techo del mes y el cierre proyectado
+              —que el back todavía no manda— van en «—» con la línea que lo explica. */}
+          <div className="datos-row">
+            <div className="dato" title="Lo que sus campañas llevan gastado, tal como está en el servidor">
+              <span className="dato-l">Invertido hasta hoy</span>
+              <span className="dato-v"><Dinero monto={invertido} /></span>
+            </div>
+            <div className="dato" title="Lo que sale por día con los presupuestos que tiene cargados">
+              <span className="dato-l">Presupuesto por día</span>
+              <span className="dato-v" style={{ color: 'var(--green)' }}><Dinero monto={diario} /></span>
+            </div>
+            <div className="dato" title="Los días que le quedan al mes, contados desde hoy">
+              <span className="dato-l">Días que quedan</span>
+              <span className="dato-v">{diasQueQuedan}</span>
+            </div>
           </div>
           <div>
-            <div className="bs" style={{ marginBottom: 8 }}>Invertido por semana:</div>
-            <Bars data={[280, 300, 320, 340]} labels={['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4']} color="#a855f7" fmt={v => <Dinero monto={v} equivalente={false} />} />
+            <div className="bs" style={{ marginBottom: 8 }}>Lo gastado, campaña por campaña:</div>
+            {gastadoPorCampana.some(v => v > 0)
+              ? <Bars data={gastadoPorCampana} labels={gastoLb} color="#a855f7" fmt={v => <Dinero monto={v} equivalente={false} />} />
+              : <div className="bs">Todavía no hay gasto registrado en ninguna campaña: cuando el servidor lo registre, aquí se ve el reparto.</div>}
+          </div>
+          <div className="datos-row" style={{ paddingTop: 13, borderTop: '1px solid var(--border)' }}>
+            <div className="dato" title="El techo del mes todavía no llega en la lectura del servidor">
+              <span className="dato-l">Techo del mes</span>
+              <span className="dato-v" style={{ color: 'var(--muted)' }}>—</span>
+            </div>
+            <div className="dato" title="El cierre proyectado todavía no llega en la lectura del servidor">
+              <span className="dato-l">Cierre proyectado</span>
+              <span className="dato-v" style={{ color: 'var(--muted)' }}>—</span>
+            </div>
+            <div className="dato" title="Las campañas que comparten ese presupuesto">
+              <span className="dato-l">Campañas</span>
+              <span className="dato-v">{fuente.length}</span>
+            </div>
           </div>
           <div className="row" style={{ gap: 9, flexWrap: 'wrap' }}>
-            <Button variant="outline" className="btn-sm" title="Cambia el techo mensual: puede subirlo o bajarlo y volver al valor de antes cuando quiera. El motor nunca lo pasa sin su permiso."
-              onClick={cambiarTecho}>Cambiar el techo</Button>
             <Button variant="ghost" className="btn-sm" title="Muestra en qué se va cada peso del día, campaña por campaña, y cuánto devuelve cada una"
               onClick={verDetalleGasto}>Ver el detalle</Button>
+            <Button variant="ghost" className="btn-sm" title="Muestra lo que el servidor manda hoy del techo del mes. El techo todavía no llega en la ficha, así que va en «—» y no se cambia desde esta pantalla."
+              onClick={cambiarTecho}>Qué falta del techo</Button>
           </div>
-          {techo !== 1640 && (
-            <div className="tiny" style={{ marginTop: 9, fontWeight: 700, color: techo < cierreProyectado ? 'var(--amber)' : 'var(--green)' }}>
-              Techo del mes en ${numeroConMiles(techo)}: usó {pctTecho}% y le quedan ${numeroConMiles(techo - invertido)}. {techo < cierreProyectado
-                ? `El cierre proyectado ($${numeroConMiles(cierreProyectado)}) no entra: el motor frena antes de esa diferencia.`
-                : `El cierre proyectado ($${numeroConMiles(cierreProyectado)}) entra con $${numeroConMiles(techo - cierreProyectado)} de aire.`}
-            </div>
-          )}
-          <div className="acc-why">
-            Este es el <b>freno de gasto</b>: el motor mueve dinero solo, pero nunca más allá del techo que puso.
-            Si no cambia nada, esta campaña se frena sola el día 30.
-          </div>
+          <div className="acc-why">{techoAviso}</div>
           <NotaMoneda />
         </Card>
 
         <Card
           title={<span className="row" style={{ gap: 8 }}><I_Zap size={14} style={{ color: 'var(--green)' }} /> Qué conviene hacer ahora</span>}
-          action={<Badge tone="amber">{aplicadas.length === 0 ? '3 acciones' : `${aplicadas.length} de 3 aplicadas`}</Badge>}
+          action={<Badge tone="amber">{aplicadas.length === 0 ? '3 marcas' : `${aplicadas.length} de 3 marcadas`}</Badge>}
         >
           <div className="guards">
             <div className="guard">
               <span style={{ color: 'var(--green)', flexShrink: 0 }}><I_Trend size={14} /></span>
               <span className="guard-lb">Subirle $5 por día a {PACK.nombre}
-                <small>Rinde {PACK.roas} contra el 3,8x de su promedio: es la que mejor devuelve y está parada, con el presupuesto más bajo (${presuBase(PACK)} por día).</small>
+                <small>{`Es la que mejor devuelve de sus campañas${PACK.roas === '—' ? ' (todavía sin dato de retorno)' : ` (${PACK.roas})`} y gasta $${presuBase(PACK)} por día.`}</small>
                 {aplicadas.includes('presu') && (
                   <small style={{ color: 'var(--green)', fontWeight: 700 }}>
-                    Aplicado: quedó en ${presuBase(PACK) + 5} por día (era ${presuBase(PACK)}) y volvió a correr. A {PACK.roas}, esos $5 devuelven unos ${Math.floor(5 * 7.3)} por día.
+                    {`Marcado: quedó en $${presuBase(PACK) + 5} por día (era $${presuBase(PACK)}). Es una marca suya en el panel: el cambio todavía no llega al servidor.`}
                   </small>
                 )}
               </span>
               {aplicadas.includes('presu') ? (
-                <Button variant="ghost" className="btn-sm" title={`Deshace el aumento: vuelve a los $${presuBase(PACK)} por día y a la pausa. No se pierde nada del historial.`}
+                <Button variant="ghost" className="btn-sm" title={`Deshace el aumento: vuelve a los $${presuBase(PACK)} por día. No se pierde nada del historial.`}
                   onClick={deshacerSubir}><I_Refresh size={12} /> Deshacer</Button>
               ) : (
-                <Button className="btn-sm" title={`Sube el presupuesto de ${PACK.nombre} de $${presuBase(PACK)} a $${presuBase(PACK) + 5} por día y la vuelve a poner en marcha. Es reversible: con Deshacer vuelve a quedar como estaba.`}
+                <Button className="btn-sm" title={`Sube el presupuesto de ${PACK.nombre} de $${presuBase(PACK)} a $${presuBase(PACK) + 5} por día. Es una marca en el panel y es reversible: con Deshacer vuelve como estaba.`}
                   onClick={aplicarSubir}>+<Dinero monto={5} equivalente={false} />/día</Button>
               )}
             </div>
-            <div className="guard">
-              <span style={{ color: 'var(--red)', flexShrink: 0 }}><I_Zap size={14} /></span>
-              <span className="guard-lb">Pausar {MARCA.nombre}
-                <small>Gasta ${presuBase(MARCA)} por día y devuelve {MARCA.roas}, abajo del 3,8x de su promedio: ese dinero rinde más en la que devuelve {PACK.roas}.</small>
-                {aplicadas.includes('pausar') && (
-                  <small style={{ color: 'var(--green)', fontWeight: 700 }}>
-                    Aplicada: quedó en pausa. Deja de gastar ${presuBase(MARCA)} por día y sus {MARCA.artefactos} piezas y su historial quedan intactos.
-                  </small>
+            {MARCA.id !== PACK.id && (
+              <div className="guard">
+                <span style={{ color: 'var(--red)', flexShrink: 0 }}><I_Zap size={14} /></span>
+                <span className="guard-lb">Pausar {MARCA.nombre}
+                  <small>{`Gasta $${presuBase(MARCA)} por día y devuelve ${MARCA.roas === '—' ? 'todavía sin dato de retorno' : MARCA.roas}: ese dinero rinde más en la que devuelve ${PACK.roas}.`}</small>
+                  {aplicadas.includes('pausar') && (
+                    <small style={{ color: 'var(--green)', fontWeight: 700 }}>
+                      {`Marcado: quedaría en pausa. Deja de gastar $${presuBase(MARCA)} por día y sus ${MARCA.artefactos} piezas y su historial quedan intactos. La pausa todavía no llega al servidor.`}
+                    </small>
+                  )}
+                </span>
+                {aplicadas.includes('pausar') ? (
+                  <Button variant="ghost" className="btn-sm" title="Quita la marca: la campaña vuelve a quedar activa en el panel, como estaba. Es reversible y no le pide nada al servidor."
+                    onClick={deshacerPausar}><I_Refresh size={12} /> Deshacer</Button>
+                ) : (
+                  <Button variant="ghost" className="btn-sm" title={`Marca ${MARCA.nombre} en pausa y deja de contar sus $${presuBase(MARCA)} por día. La pausa todavía no llega al servidor y es reversible: con Deshacer vuelve como estaba.`}
+                    onClick={aplicarPausar}>Pausar</Button>
                 )}
-              </span>
-              {aplicadas.includes('pausar') ? (
-                <Button variant="ghost" className="btn-sm" title="La vuelve a poner en marcha: sigue desde donde estaba, con la misma pieza y el mismo historial."
-                  onClick={deshacerPausar}><I_Refresh size={12} /> Deshacer</Button>
-              ) : (
-                <Button variant="ghost" className="btn-sm" title={`Pausa ${MARCA.nombre} ahora y deja de gastar sus $${presuBase(MARCA)} por día. Es reversible: con Deshacer vuelve a correr como estaba.`}
-                  onClick={aplicarPausar}>Pausar</Button>
-              )}
-            </div>
+              </div>
+            )}
             <div className="guard">
               <span style={{ color: 'var(--amber)', flexShrink: 0 }}><I_Eye size={14} /></span>
               <span className="guard-lb">Refrescar el creativo de {PACK.nombre}
-                <small>Es la que trae cada venta más barata ({PACK.costo}) y su pieza ya lleva {PACK.artefactos} versiones: refrescar el mensaje es lo que sostiene ese costo.</small>
+                <small>{`Su pieza lleva ${PACK.artefactos} ${PACK.artefactos === 1 ? 'versión' : 'versiones'}: rotar el mensaje es lo que sostiene el costo por venta.`}</small>
                 {aplicadas.includes('variantes') && (
                   <small style={{ color: 'var(--green)', fontWeight: 700 }}>
-                    Aplicado: Nia está escribiendo 3 variantes del mismo mensaje. Cuestan {3 * TARIFA.crearVariante} créditos de los {TENANT.creditos} que tiene y aparecen en la galería, en el paso 3.
+                    {`Marcado: van 3 variantes del mismo mensaje. Cuestan ${3 * TARIFA.crearVariante} créditos de los ${d.creditos ? d.creditos.saldo : '—'} que tiene. Pedirlas al motor todavía no sale desde aquí.`}
                   </small>
                 )}
               </span>
               {aplicadas.includes('variantes') ? (
-                <Button variant="ghost" className="btn-sm" title="Cancela la escritura: no se escribe ninguna variante y no se gasta ningún crédito."
+                <Button variant="ghost" className="btn-sm" title="Quita la marca: no se encarga ninguna variante y no se gasta ningún crédito. Es reversible."
                   onClick={deshacerVariantes}><I_Refresh size={12} /> Deshacer</Button>
               ) : (
-                <Button variant="ghost" className="btn-sm" title={`Nia escribe 3 variantes del mismo mensaje para rotar el creativo. Cuesta ${3 * TARIFA.crearVariante} créditos y no toca el presupuesto. Es reversible: si no le sirven, se descartan y no se gasta nada.`}
+                <Button variant="ghost" className="btn-sm" title={`Marca 3 variantes del mismo mensaje para rotar el creativo. Cuestan ${3 * TARIFA.crearVariante} créditos y no tocan el presupuesto. Nada se le pide al motor desde esta pantalla y la marca se quita cuando quiera.`}
                   onClick={aplicarVariantes}>3 variantes</Button>
               )}
             </div>
           </div>
           <div className="datos-row" style={{ marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--border)' }}>
-            <div className="dato"><span className="dato-l">{aplicadas.length === 0 ? 'Si aplica las 3' : `Aplicadas ${aplicadas.length} de 3`}</span><span className="dato-v" style={{ color: 'var(--green)' }}>+<Dinero monto={36} />/día</span></div>
-            <div className="dato"><span className="dato-l">Riesgo</span><span className="dato-v">ninguno</span></div>
-            <div className="dato"><span className="dato-l">Se deshace en</span><span className="dato-v" style={{ color: 'var(--purple3)' }}>24 h</span></div>
+            <div className="dato" title="Lo que cambiaría el presupuesto por día si marca las acciones de arriba">
+              <span className="dato-l">{aplicadas.length === 0 ? 'Si marca las acciones' : `Marcadas ${aplicadas.length}`}</span>
+              <span className="dato-v" style={{ color: 'var(--green)' }}>
+                {efectoPresu >= 0 ? '+' : '−'}<Dinero monto={Math.abs(efectoPresu)} />/día
+              </span>
+            </div>
+            <div className="dato" title="Nada de esto sale a sus redes ni gasta un peso hasta que usted lo confirme en el servidor">
+              <span className="dato-l">Riesgo</span><span className="dato-v">ninguno</span>
+            </div>
+            <div className="dato" title="Las marcas se quitan cuando quiera, con Deshacer">
+              <span className="dato-l">Se deshace en</span><span className="dato-v" style={{ color: 'var(--purple3)' }}>un clic</span>
+            </div>
           </div>
           <div className="acc-why">
-            Sale de sus propios números: compara cada campaña contra su promedio.
-            <b> Ninguna mueve más del 20% del presupuesto</b>, que es un freno duro que no se puede desactivar.
+            <>Sale de sus propios números: compara cada campaña contra el promedio de sus campañas. <b>Estas marcas no le piden nada al servidor todavía</b>: el gasto y los presupuestos que ve arriba son los que ya están cargados, sin tocar.</>
           </div>
         </Card>
       </div>
@@ -725,11 +801,13 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
             <div className="datos-row">
               <div className="dato"><span className="dato-l">Por semana</span><span className="dato-v"><Dinero monto={diario * 7} /></span></div>
               <div className="dato"><span className="dato-l">Por mes</span><span className="dato-v"><Dinero monto={diario * 30} /></span></div>
-              <div className="dato"><span className="dato-l">La que más rinde</span><span className="dato-v" style={{ color: 'var(--green)' }}>{PACK.nombre} · {PACK.roas}</span></div>
+              <div className="dato" title={PACK.roas === '—' ? 'Todavía no hay datos de retorno de sus campañas' : 'La campaña que mejor devuelve por peso invertido'}>
+                <span className="dato-l">{PACK.roas === '—' ? 'La que más gasta' : 'La que más rinde'}</span>
+                <span className="dato-v" style={{ color: PACK.roas === '—' ? 'var(--muted)' : 'var(--green)' }}>{PACK.nombre}{PACK.roas === '—' ? '' : ` · ${PACK.roas}`}</span>
+              </div>
             </div>
             <div className="acc-why">
-              El presupuesto se reparte según lo que rinde, no según lo que ya estaba cargado.
-              <b> El motor mueve dinero solo</b> cuando el modo está en Automático y dentro de los frenos.
+              <>El reparto sale de los presupuestos por día que usted tiene cargados, campaña por campaña. <b>El techo del mes todavía no llega del servidor</b>: cuando llegue, manda sobre todas.</>
             </div>
           </div>
         </div>
@@ -739,45 +817,60 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
       <div className="csec">
         <span className="csec-n">4</span>
         <span className="csec-t">El veredicto y sus piezas</span>
-        <span className="csec-c purple">{PERFILES.length} jueces · {piezasJuzgadas.length} piezas</span>
+        <span className="csec-c purple">{nJueces} jueces · {juzgadas.length} {juzgadas.length === 1 ? 'pieza' : 'piezas'}</span>
         <span className="csec-s">Elija una pieza de la lista y al lado ve, voto por voto, cómo la juzgaron los 5 jueces y qué hay que corregirle</span>
       </div>
+
+      {juzgadas.length === 0 ? (
+        /* Un negocio conectado que todavía no mandó nada a MiroFish: aquí no va ni una pieza de ejemplo. */
+        <EstadoVacio
+          titulo="Todavía no hay piezas juzgadas"
+          texto="El veredicto aparece cuando manda sus piezas a MiroFish: los 5 jueces las votan una por una y el puntaje queda guardado. Empiece por el paso 1 y en la próxima corrida están aquí, con su voto y su objeción."
+          accion="Ir al paso 1" onAccion={() => setPaso(1)}
+          icono={<I_Vote size={22} />}
+        />
+      ) : (
       <div className="duo">
         <Card
           title={<span className="row" style={{ gap: 8 }}><I_File size={14} style={{ color: 'var(--purple3)' }} /> Sus piezas, juzgadas</span>}
-          action={<Badge tone="muted">{piezasJuzgadas.length} en el lote</Badge>}
+          action={<Badge tone="muted">{juzgadas.length} evaluadas</Badge>}
         >
           <div className="datos-row">
-            <div className="dato" title="Todas las piezas que pasaron por los jueces este mes, no solo las de este lote">
-              <span className="dato-l">Juzgadas este mes</span>
-              <span className="dato-v">31</span>
+            <div className="dato" title="Todas las piezas de este negocio que pasaron por los jueces">
+              <span className="dato-l">Juzgadas hasta hoy</span>
+              <span className="dato-v">{juzgadasTotal}</span>
             </div>
-            <div className="dato" title="Las que pasaron el mínimo de 80 y salieron a sus redes. Sube cada vez que publica una de la lista.">
+            <div className="dato" title="Las que pasaron el mínimo de 80">
               <span className="dato-l">Pasaron</span>
-              <span className="dato-v" style={{ color: 'var(--green)' }}>{18 + publicadas.length}</span>
+              <span className="dato-v" style={{ color: 'var(--green)' }}>{pasarondelMes}</span>
             </div>
             <div className="dato" title="Las que volvieron con la objeción antes de gastar un peso">
               <span className="dato-l">Frenadas a tiempo</span>
-              <span className="dato-v" style={{ color: 'var(--amber)' }}>13</span>
+              <span className="dato-v" style={{ color: 'var(--amber)' }}>{frenadas}</span>
             </div>
           </div>
 
           <div className="pz-filas">
-            {piezasJuzgadas.map(o => {
-              const s = puntaje(o);
+            {juzgadas.map(o => {
+              const s = o.puntaje;
+              const esLaElegida = o.id === idPieza;
               return (
-                <button key={o.id} className={`pz-fila ${o.id === pieza.id ? 'on' : ''}`}
-                  title={`Muestra en la tarjeta de al lado cómo la votaron los ${PERFILES.length} jueces, uno por uno. No publica nada: aquí no se gasta un peso.`}
+                <button key={o.id} className={`pz-fila ${esLaElegida ? 'on' : ''}`}
+                  title={`Muestra en la tarjeta de al lado cómo la votaron los ${nJueces} jueces, uno por uno. No publica nada: aquí no se gasta un peso.`}
                   onClick={() => setElegida(o.id)}>
                   <span className="pz-fila-n" style={{ color: colorScore(s) }}>{s}</span>
                   <span className="pz-fila-txt">
                     <span className="pz-fila-t">{o.titulo}</span>
-                    <span className="pz-fila-m">{o.formato} · {o.medida}</span>
-                    <span className="pz-fila-v">Los {PERFILES.length} votos: {PERFILES.map(per => o.votos[per.k]).join(' · ')}</span>
+                    <span className="pz-fila-m">
+                      {[o.formato, o.medida].filter(Boolean).join(' · ') || 'pieza del servidor'}
+                    </span>
+                    {esLaElegida && votosPieza.length > 0 && (
+                      <span className="pz-fila-v">Los {nJueces} votos: {votosPieza.map(v => v.score).join(' · ')}</span>
+                    )}
                   </span>
                   <span className="row" style={{ gap: 6, alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-                    {publicadas.includes(o.id) && <Badge tone="green">publicada</Badge>}
-                    {corregidas.includes(o.id) && <Badge tone="purple">corregida</Badge>}
+                    {publicadas.includes(o.id) && <Badge tone="green">lista</Badge>}
+                    {corregidas.includes(o.id) && <Badge tone="purple">marcada</Badge>}
                     <Badge tone={tonoVeredicto(s)}>{palabraVeredicto(s)}</Badge>
                   </span>
                 </button>
@@ -790,8 +883,7 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
             objeción del juez que votó más bajo, y abajo de 60 no se gasta un peso.
           </div>
           <div className="acc-why">
-            <b>Las {piezasJuzgadas.length} de arriba son las últimas que votó el panel</b> y son las mismas de la galería
-            del paso 3. El mes entero son 31: {18 + publicadas.length} salieron y 13 volvieron con la objeción antes de gastar.
+            <><b>Estas {juzgadas.length} son las piezas de su negocio que ya pasaron por MiroFish</b>, con el puntaje que quedó guardado en el servidor. El voto juez por juez se pide al elegir una y es el de verdad: aquí no hay ningún puntaje de ejemplo.</>
           </div>
         </Card>
 
@@ -802,84 +894,92 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
           <div className="row" style={{ gap: 20, marginBottom: 22, flexWrap: 'wrap' }}>
             <Ring valor={scorePieza} label="SCORE" sub="mínimo 80 para publicar" />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div className="bt">{pieza.titulo}</div>
+              <div className="bt">{pieza?.titulo}</div>
               <div className="bs" style={{ marginTop: 5 }}>
-                {pieza.formato} · {pieza.medida} · los {PERFILES.length} jueces la miraron 8 segundos.
+                {`Puntaje guardado en MiroFish · ${leyendoVeredicto ? 'trayendo el voto de los jueces…' : `los ${nJueces} jueces y el público ya votaron`}`}
               </div>
-              <div className="bs" style={{ marginTop: 8 }}><b>{criterioPieza(scorePieza)}</b></div>
+              <div className="bs" style={{ marginTop: 8 }}><b>{criterioDePieza(scorePieza)}</b></div>
             </div>
           </div>
 
-          <div className="guards">
-            {votosPieza.map(v => (
-              <div key={v.k} className="guard">
-                <span style={{ width: 34, flexShrink: 0, textAlign: 'center', fontSize: 17, fontWeight: 900, fontVariantNumeric: 'tabular-nums', color: colorScore(v.score) }}>{v.score}</span>
-                <span className="guard-lb">
-                  {v.nombre} <span className="tiny muted">· {v.mira}</span>
-                  <small>«{v.opinion}»</small>
-                </span>
-              </div>
-            ))}
-          </div>
+          {leyendoVeredicto && votosPieza.length === 0 ? (
+            <div className="bs">Trayendo del servidor el voto de cada juez sobre «{pieza?.titulo}»…</div>
+          ) : votosPieza.length === 0 ? (
+            <div className="bs">El servidor todavía no tiene el detalle de los votos de esta pieza: en cuanto llegue, aparece aquí juez por juez.</div>
+          ) : (
+            <div className="guards">
+              {votosPieza.map(v => (
+                <div key={v.nombre} className="guard">
+                  <span style={{ width: 34, flexShrink: 0, textAlign: 'center', fontSize: 17, fontWeight: 900, fontVariantNumeric: 'tabular-nums', color: colorScore(v.score) }}>{v.score}</span>
+                  <span className="guard-lb">
+                    {v.nombre} <span className="tiny muted">· {v.mira}</span>
+                    <small>«{v.opinion}»</small>
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
 
-          <div className="alarm atencion">
-            <div className="alarm-head">
-              <span className="alarm-sev atencion">{pasaPieza ? 'EL VOTO MÁS BAJO' : 'LO QUE HAY QUE ARREGLAR'}</span>
-              <span className="alarm-title">{votoMasBajo.nombre} fue el más duro: le puso {votoMasBajo.score} de 100.</span>
+          {votoMasBajo && (
+            <div className="alarm atencion">
+              <div className="alarm-head">
+                <span className="alarm-sev atencion">{pasaPieza ? 'EL VOTO MÁS BAJO' : 'LO QUE HAY QUE ARREGLAR'}</span>
+                <span className="alarm-title">{votoMasBajo.nombre} fue el más duro: le puso {votoMasBajo.score} de 100.</span>
+              </div>
+              <div className="alarm-sug">
+                «{votoMasBajo.opinion}» <b>{pasaPieza
+                  ? `No frena la publicación: es lo que hay que resolver si quiere subirla de ${scorePieza}.`
+                  : 'Es la objeción a corregir antes de gastar un peso.'}</b>
+              </div>
             </div>
-            <div className="alarm-sug">
-              «{votoMasBajo.opinion}» <b>{pasaPieza
-                ? `No frena la publicación: es lo que hay que resolver si quiere subirla de ${scorePieza}.`
-                : 'Es la objeción a corregir antes de gastar un peso.'}</b>
-            </div>
-          </div>
+          )}
 
           <div className="row" style={{ gap: 9, flexWrap: 'wrap' }}>
             {pasaPieza ? (
-              publicadas.includes(pieza.id) ? (
+              publicadas.includes(idPieza ?? '') ? (
                 <>
                   <span className="tiny" style={{ display: 'flex', alignItems: 'center', gap: 7, color: 'var(--green)', fontWeight: 700 }}>
-                    <I_Check size={13} /> «{pieza.titulo}» salió a sus redes el {hoy()}: la saca cuando quiera y no pierde el historial.
+                    <I_Check size={13} /> {`«${pieza?.titulo}» quedó marcada como lista para publicar. Todavía no salió a sus redes desde el panel.`}
                   </span>
-                  <Button variant="ghost" className="btn-sm" title="La baja de sus redes. Es reversible: la vuelve a publicar cuando quiera, con el mismo texto aprobado por los jueces."
-                    onClick={() => { setPublicadas(p => p.filter(x => x !== pieza.id)); setToast(`«${pieza.titulo}» volvió a borrador: no está en sus redes`); }}>
-                    Sacarla de sus redes
+                  <Button variant="ghost" className="btn-sm" title="Quita la marca: la pieza vuelve a la lista como estaba. No llama al servidor y no cambia nada de lo que está publicado."
+                    onClick={() => { setPublicadas(p => p.filter(x => x !== idPieza)); setToast(`«${pieza?.titulo}» quedó sin la marca`); }}>
+                    Quitar la marca
                   </Button>
                 </>
               ) : (
                 <Button className="btn-sm"
-                  title={`Publica esta pieza en sus redes (${pieza.formato}, ${pieza.medida}) con el texto que ya aprobaron los ${PERFILES.length} jueces. Es reversible: la saca cuando quiera y no pierde el historial.`}
-                  onClick={() => { setPublicadas(p => [...p, pieza.id]); setToast(`«${pieza.titulo}» salió a sus redes con el texto que aprobó el panel`); }}>
-                  <I_Check size={13} /> Publicar esta
+                  title={`Marca esta pieza (${pieza?.titulo}) como lista para publicar, con el puntaje que ya le dio MiroFish. Es reversible y no llama al servidor: sacarla a sus redes desde el panel todavía no está disponible.`}
+                  onClick={() => { setPublicadas(p => [...p, idPieza ?? '']); setToast(`«${pieza?.titulo}» quedó marcada como lista para publicar: todavía no sale a sus redes`); }}>
+                  <I_Check size={13} /> Marcar como lista
                 </Button>
               )
             ) : (
-              corregidas.includes(pieza.id) ? (
+              corregidas.includes(idPieza ?? '') ? (
                 <>
                   <span className="tiny" style={{ display: 'flex', alignItems: 'center', gap: 7, color: 'var(--green)', fontWeight: 700 }}>
-                    <I_Refresh size={13} /> «{pieza.titulo}» corregida: Nia contestó la objeción de {votoMasBajo.nombre} y los {PERFILES.length} jueces la están votando otra vez. Costó {TARIFA.crearVariante + TARIFA.evaluarPieza} créditos.
+                    <I_Refresh size={13} /> {`«${pieza?.titulo}» quedó marcada para corrección: hay que contestar la objeción de ${votoMasBajo?.nombre ?? 'el juez más duro'}. Al servidor todavía no se le pidió nada.`}
                   </span>
-                  <Button variant="ghost" className="btn-sm" title="Vuelve a la versión que los jueces vieron primero. No se pierde nada: la corrección queda guardada."
-                    onClick={() => { setCorregidas(p => p.filter(x => x !== pieza.id)); setToast(`«${pieza.titulo}» volvió a la versión de antes`); }}>
-                    Volver a la de antes
+                  <Button variant="ghost" className="btn-sm" title="Quita la marca: la pieza queda como estaba. No se pierde nada."
+                    onClick={() => { setCorregidas(p => p.filter(x => x !== idPieza)); setToast(`«${pieza?.titulo}» quedó sin la marca`); }}>
+                    Quitar la marca
                   </Button>
                 </>
               ) : (
                 <Button className="btn-sm"
-                  title={`Nia corrige «${pieza.titulo}» con la objeción de ${votoMasBajo.nombre} y los ${PERFILES.length} jueces la vuelven a juzgar. Cuesta ${TARIFA.crearVariante + TARIFA.evaluarPieza} créditos. Es reversible: si le gustaba más la versión de ahora, puede volver a ella.`}
+                  title={`Marca «${pieza?.titulo}» para corrección, con la objeción de ${votoMasBajo?.nombre ?? 'el juez más duro'} a la vista. Es reversible y todavía no le pide nada al servidor.`}
                   onClick={corregirPieza}>
-                  <I_Refresh size={13} /> Corregir eso y volver a juzgarla
+                  <I_Refresh size={13} /> Marcar para corrección
                 </Button>
               )
             )}
           </div>
 
           <div className="acc-why">
-            <b>Ninguna pieza se publica sin pasar el mínimo.</b> Cuando corrige una, los 5 jueces la vuelven a votar
-            y el voto nuevo queda al lado del anterior: así se ve si la objeción se resolvió.
+            <b>Ninguna pieza se publica sin pasar el mínimo.</b> Los votos que ve arriba son los que quedaron guardados en MiroFish, con el puntaje que le dio el mercado. Lo que se marca desde el panel no le pide nada al servidor todavía.
           </div>
         </Card>
       </div>
+      )}
       </>
       )}
       </>)}

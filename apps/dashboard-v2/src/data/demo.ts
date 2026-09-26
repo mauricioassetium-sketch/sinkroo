@@ -9,20 +9,15 @@
 export type Source = 'live' | 'demo' | 'simulated';
 export type Modo = 'auto' | 'shared' | 'manual';
 
-export const TENANT = {
-  cuenta: 'Skincare Natural',
-  usuario: 'María Paula',
-  plan: 'Pro',
-  creditos: 1760,
-  creditosMes: 5000,
-  diasAutonomia: 12,
-  modoActual: 'shared' as Modo,
-};
+// NO HAY NEGOCIO DE EJEMPLO. Acá vivía `TENANT` («Skincare Natural» / «María Paula», su plan y sus
+// créditos) y era el origen de que el panel de cualquiera mostrara ese negocio. El negocio sale de la
+// cuenta (`d.negocio`); si no hay cuenta, no hay negocio: el panel dice que no se leyó. El único dato que
+// queda acá es el catálogo del producto.
 
 // ---------------------------------------------------------------------------------------------
 // LOS PLANES — lo que se contrata por mes. Cada uno dice para quién es y qué incluye, para que
-// cambiar de plan sea una decisión y no una apuesta. El «Pro» es el que la cuenta tiene hoy
-// (TENANT.plan): si el usuario cambia, la pantalla y el menú lo reflejan al instante.
+// cambiar de plan sea una decisión y no una apuesta. Es una lista de precios, no el plan de nadie:
+// cuál tiene la cuenta lo dice el back (`d.negocio.plan`).
 // ---------------------------------------------------------------------------------------------
 export const PLANES: {
   key: string; nombre: string; precio: number; creditosMes: number; paraQuien: string;

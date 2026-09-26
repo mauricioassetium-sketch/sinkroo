@@ -1,15 +1,28 @@
 import { useState } from 'react';
 import { Card, Badge, Button, Dinero, NotaMoneda } from '../components/ui';
 import { ViewHead, Gauge } from '../components/viz';
-import { I_Credit, I_Wallet, I_Zap, I_Download, I_Shield, I_Plus, I_ArrowRight } from '../components/icons';
-import { TENANT, CREDITOS_MOV, PLANES } from '../data/demo';
+import { I_Credit, I_Wallet, I_Zap, I_Shield, I_Plus, I_ArrowRight } from '../components/icons';
+import { PLANES } from '../data/demo';
 import { useDetalle } from '../components/Detalle';
-import { usePlan } from '../lib/plan';
 import { useDatos } from '../api/datos';
 import { baseApi, token } from '../api/cliente';
 import { EstadoVacio } from '../components/EstadoVacio';
 
-// Paquetes de recarga. El precio por crédito baja cuanto más grande el paquete.
+// =============================================================================================
+// CRÉDITOS — con el back encendido, TODO sale de su cuenta: el saldo y el libro de movimientos
+// (`d.creditos`), y el plan, del negocio (`d.negocio.plan`). Lo que el back todavía no manda va en
+// «—» con la línea que lo explica: nunca se rellena con un número de ejemplo.
+//
+// Sin back (modo demostración) no hay cuenta que leer, así que la pantalla es la misma: el estado
+// vacío honesto, sin saldo, sin movimientos y sin consumo de ejemplo.
+//
+// LO ÚNICO QUE NO ES DATO SUYO es el catálogo del producto, y va como tal: los paquetes de recarga
+// con su precio por crédito y los planes con lo que incluye cada uno, sin marcar ninguno como el
+// suyo (el suyo sale del back).
+// =============================================================================================
+
+// Paquetes de recarga. El precio por crédito baja cuanto más grande el paquete: es la lista de
+// precios de lo que se puede contratar, no lo que este negocio tenga contratado.
 const PAQUETES = [
   { nombre: 'Mini', creditos: 500, precio: 15, unidad: '0,030', popular: false },
   { nombre: 'Estándar', creditos: 1000, precio: 25, unidad: '0,025', popular: false },
@@ -17,25 +30,9 @@ const PAQUETES = [
   { nombre: 'Máximo', creditos: 5000, precio: 99, unidad: '0,020', popular: false },
 ];
 
-const FACTURAS = [
-  { id: 'INV-2041', fecha: '01 Sep 2026', concepto: 'Plan Pro · septiembre', monto: 79, estado: 'Pagada' },
-  { id: 'INV-1987', fecha: '01 Ago 2026', concepto: 'Plan Pro · agosto', monto: 79, estado: 'Pagada' },
-  { id: 'INV-1822', fecha: '15 Sep 2026', concepto: 'Recarga · paquete Pro', monto: 39, estado: 'Pendiente' },
-];
-
-// Qué generó cada movimiento: es el «en qué» que la lista de la tarjeta no dice. Los que carga el
-// usuario desde aquí (una recarga, por ejemplo) no están en la tabla y caen en el texto por defecto,
-// que explica de dónde salen los créditos según el signo del movimiento.
-const ORIGEN_MOV: Record<string, string> = {
-  'Recarga de plan Pro': 'la carga del plan Pro del mes: entra completa y no se descuenta de a poco',
-  'Campaña: Lanzamiento D2C': 'los días que estuvo publicando la campaña Lanzamiento D2C',
-  'Análisis IA: competencia': 'el análisis de competencia que abrió el 16 de Sep',
-  'Referido: Valeria Gómez': 'el premio por referida: 250 créditos por cada una que paga su primer mes',
-  'Campaña: Retargeting': 'los anuncios para quienes miraron y no compraron',
-};
-
-// Qué es cada movimiento que llega del back: su nombre para la lista y qué lo generó para el historial.
-// Los motivos son los códigos que escribe el back (`plan`, `evaluacion`, `recarga`…), no texto para mostrar.
+// Qué es cada movimiento que llega del back: su nombre para la lista y qué lo generó para el
+// historial. Los motivos son los códigos que escribe el back (`plan`, `evaluacion`, `recarga`…),
+// no texto para mostrar.
 const MOTIVOS: Record<string, { nombre: string; origen: string }> = {
   plan: { nombre: 'plan del mes', origen: 'la carga de su plan del mes: entra completa y el motor la descuenta a medida que trabaja' },
   evaluacion: { nombre: 'evaluación', origen: 'cada pieza que pasa por los 5 jueces y los 500 del público cuesta 48 créditos' },
@@ -46,8 +43,6 @@ const MOTIVOS: Record<string, { nombre: string; origen: string }> = {
 };
 
 // Un movimiento con la forma que muestra la pantalla: qué fue, cuándo, cuánto sumó (o restó) y su motivo.
-// Los del back llegan como { motivo, detalle, delta, saldo, created_at } y los de la demostración como
-// { detalle, fecha, cantidad, tipo }: acá los dos quedan iguales y la pantalla no sabe de dónde vinieron.
 type MovCredito = { detalle: string; fecha: string; cantidad: number; tipo: 'entrada' | 'salida'; motivo?: string };
 
 /** La fecha del libro del back, en corto y en hora local («24 de sept»). */
@@ -55,6 +50,9 @@ const fechaCorta = (iso: string) => {
   const f = new Date(iso);
   return isNaN(+f) ? '' : f.toLocaleDateString('es-CO', { day: 'numeric', month: 'short' });
 };
+
+/** La primera letra en mayúscula: los motivos del back vienen en minúscula («campaña»). */
+const capitalizar = (t: string) => (t ? t.charAt(0).toUpperCase() + t.slice(1) : '');
 
 const movsDelBack = (movs: { delta: number; motivo: string; detalle: string; created_at: string }[]): MovCredito[] =>
   movs.map(m => ({
@@ -65,30 +63,23 @@ const movsDelBack = (movs: { delta: number; motivo: string; detalle: string; cre
     motivo: m.motivo,
   }));
 
-// En qué se van los créditos del mes. Cada rubro es una porción del anillo y su `costo` es el
-// precio por unidad: es el dato que permite decidir si el rubro vale la pena, así que va visible
-// en la leyenda y no como nota al pie.
-const CONSUMO = [
-  { l: 'Campañas', v: 180, c: 'var(--purple2)', costo: '$60', detalle: 'por campaña activa al mes' },
-  { l: 'Piezas y videos', v: 96, c: '#ec4899', costo: '16', detalle: 'por pieza con video' },
-  { l: 'Análisis de mercado', v: 40, c: 'var(--green)', costo: '10', detalle: 'por informe profundo' },
-  { l: 'Conversaciones', v: 0, c: 'var(--muted)', costo: '0', detalle: 'por conversación: incluidas en su plan' },
-];
+/** Un rubro del anillo: qué se consumió, cuánto y de cuántos movimientos sale. */
+type Rubro = { l: string; v: number; c: string; detalle: string };
 
-// El número que cierra la tarjeta: el anillo, la leyenda y el título muestran ESTE total. Los rubros
-// de arriba están anclados a cargos reales (2 campañas de 120 y 60, un análisis de 40 en Movimientos;
-// 6 videos × 16), así que el total es su suma y no el plan menos el saldo.
-const CONSUMO_TOTAL = CONSUMO.reduce((a, c) => a + c.v, 0);
+/** Los colores del anillo, en orden: los rubros se arman con el libro, así que el color se reparte. */
+const PALETA_RUBROS = ['var(--purple2)', '#ec4899', 'var(--green)', '#06b6d4', '#f59e0b', '#8b5cf6'];
 
-// Las porciones del anillo, en grados. El anillo arranca arriba (-90deg) y cierra en 360.
-const PORCIONES = (() => {
+// Las porciones del anillo, en grados. El anillo arranca arriba (-90deg) y cierra en 360. Se arma
+// con los rubros que se estén mostrando, y el anillo, la leyenda y el título usan el MISMO total:
+// así el reparto nunca dice una cosa distinta de los números de al lado.
+const porcionesDe = (rubros: Rubro[], total: number) => {
   let acum = 0;
-  return CONSUMO.map(c => {
-    const desde = (acum / CONSUMO_TOTAL) * 360;
-    acum += c.v;
-    return `${c.c} ${desde.toFixed(3)}deg ${(acum / CONSUMO_TOTAL * 360).toFixed(3)}deg`;
+  return rubros.filter(r => r.v > 0).map(r => {
+    const desde = (acum / (total || 1)) * 360;
+    acum += r.v;
+    return `${r.c} ${desde.toFixed(3)}deg ${(acum / (total || 1) * 360).toFixed(3)}deg`;
   }).join(', ');
-})();
+};
 
 // =============================================================================================
 // CRÉDITOS, SEGÚN LA PIEL DE LA CUENTA — el mismo bloque del motor, con dos idiomas.
@@ -97,8 +88,6 @@ const PORCIONES = (() => {
 // antes de montar nada. Si el `if` viviera adentro de la pantalla de negocio (después de sus
 // useState), cambiar de piel con Créditos abierto cambiaría la cantidad de hooks del mismo
 // componente y React cortaría el render; aquí el único hook es leer la piel, y se lee siempre.
-//
-// La pantalla de negocio queda tal cual estaba: sólo cambia el nombre de la función.
 // =============================================================================================
 
 export function ViewCreditos({ setToast }: { setToast: (t: string) => void }) {
@@ -107,202 +96,133 @@ export function ViewCreditos({ setToast }: { setToast: (t: string) => void }) {
 
 function ViewCreditosNegocio({ setToast }: { setToast: (t: string) => void }) {
   const detalle = useDetalle();
-  // De dónde salen los datos: del back cuando hay back, de la demostración cuando no. Nunca de los dos.
+  // De dónde sale todo: del back. Sin back no hay cuenta, así que la pantalla es el estado vacío.
   const d = useDatos();
   const esReal = d.real;
-  const { plan: planDelPanel, cambiarPlan } = usePlan();
-  // El plan del negocio según el back (el mismo que pinta el menú) y el que se elige desde acá: con el
-  // back encendido manda el del negocio hasta que el usuario cambie de plan, y desde ahí el elegido.
+  // EL PLAN DEL NEGOCIO ES EL QUE MANDA EL BACK (`d.negocio.plan`). El catálogo de planes —precio,
+  // créditos por mes y qué incluye— es del producto, no de la cuenta: se usa para explicar lo que
+  // hay contratado y para mostrar la lista de precios, y NUNCA para decir que el suyo es uno de
+  // ejemplo. Si el plan del back no está en el catálogo, lo que no se sabe va en «—».
   const planDelBack = esReal ? PLANES.find(p => p.key === d.negocio?.plan) : undefined;
-  const [planElegido] = useState<typeof PLANES[number] | null>(null);
-  const plan = planElegido ?? planDelBack ?? planDelPanel;
-  // El plan recién cambiado: la tarjeta lo deja a la vista con lo que cambió, no en un aviso.
-  const [avisoPlan, setAvisoPlan] = useState<{ de: string; a: string; creditos: number } | null>(null);
-  const [saldoDemo, setSaldoDemo] = useState(TENANT.creditos);
-  const [movsDemo, setMovsDemo] = useState<MovCredito[]>(CREDITOS_MOV);
-  const [autoRecarga, setAutoRecarga] = useState(true);
-  const [metodo, setMetodo] = useState('Visa ···· 4242');
-  const [facturas, setFacturas] = useState(FACTURAS);
+  const planNombre = planDelBack?.nombre ?? (esReal ? (d.negocio?.plan || null) : null);
+  const creditosMes: number | null = planDelBack?.creditosMes ?? null;
 
-  // El saldo y el libro que se ven: los del back cuando hay back, los de la demostración cuando no.
-  const saldo = esReal ? (d.creditos?.saldo ?? 0) : saldoDemo;
-  const movs = esReal ? movsDelBack(d.creditos?.movimientos ?? []) : movsDemo;
-  // Un negocio nuevo tiene la carga del plan y nada más: mientras no haya consumo, la tarjeta de
-  // movimientos dice qué hay y qué hacer, en vez de quedar con la lista pelada.
-  const sinConsumo = esReal && !d.cargando && !movs.some(m => m.tipo === 'salida');
+  // La auto-recarga: una decisión de esta visita. El back todavía no la guarda, así que ni el
+  // estado ni lo que se encienda desde acá se presentan como algo que ya esté puesto en la cuenta.
+  const [autoRecarga, setAutoRecarga] = useState(false);
 
-  const pct = Math.min(100, Math.round((saldo / (plan.creditosMes || 1)) * 100));
-  const usados = Math.max(0, plan.creditosMes - saldo);
-  const dias = Math.max(0, Math.round(saldo / 150));
-
-  const recargar = (p: typeof PAQUETES[number]) => {
-    // Con el back encendido la recarga se escribe en el libro del negocio y el saldo se vuelve a leer
-    // del servidor: el número que queda en pantalla es el del back, no uno de esta tarjeta.
-    if (esReal) {
-      void fetch(baseApi() + '/api/creditos/cargar', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token() },
-        body: JSON.stringify({ monto: p.creditos, motivo: 'recarga' }),
-      })
-        .then(r => (r.ok ? d.refrescar() : Promise.reject(new Error(`error ${r.status}`))))
-        .then(() => setToast(`${p.creditos.toLocaleString('es-CO')} créditos cargados con ${metodo}`))
-        .catch(() => setToast('No se pudo cargar: el servidor no respondió'));
-      return;
-    }
-    // Sin back, la recarga se suma al saldo de la demostración, como hasta hoy.
-    setSaldoDemo(s => s + p.creditos);
-    setMovsDemo(prev => [{ detalle: `Recarga · paquete ${p.nombre}`, fecha: 'Hoy', cantidad: p.creditos, tipo: 'entrada' as const, motivo: 'recarga' }, ...prev]);
-    setToast(`${p.creditos.toLocaleString('es-CO')} créditos cargados con ${metodo}`);
-  };
+  // El saldo y el libro: los del back cuando hay back; sin back no se sabe, y va en «—».
+  const saldo: number | null = esReal ? (d.creditos?.saldo ?? 0) : null;
+  const movs: MovCredito[] = esReal ? movsDelBack(d.creditos?.movimientos ?? []) : [];
+  // Mientras lee no se afirma nada; con el libro vacío, la tarjeta dice qué va a quedar acá.
+  const leyendo = d.cargando && movs.length === 0;
+  const sinMovimientos = !d.cargando && movs.length === 0;
 
   const entradas = movs.filter(m => m.tipo === 'entrada').reduce((a, b) => a + b.cantidad, 0);
   const salidas = movs.filter(m => m.tipo === 'salida').reduce((a, b) => a + Math.abs(b.cantidad), 0);
+  // Lo consumido: la suma de las salidas REALES del libro. No es el plan menos el saldo: eso
+  // supondría que todo lo que falta se gastó.
+  const usados = salidas;
+
+  const pct = creditosMes && saldo !== null ? Math.min(100, Math.round((saldo / creditosMes) * 100)) : 0;
+  const dias: number | null = saldo === null ? null : Math.max(0, Math.round(saldo / 150));
+
+  const recargar = (p: typeof PAQUETES[number]) => {
+    // Sin back no hay cuenta a la que cargarle créditos: se dice, no se suma nada a ninguna parte.
+    if (!esReal) {
+      setToast('El panel todavía no está conectado a su cuenta: cuando la conecte, la recarga entra a su saldo');
+      return;
+    }
+    // Con el back encendido la recarga se escribe en el libro del negocio y el saldo se vuelve a leer
+    // del servidor: el número que queda en pantalla es el del back, no uno de esta tarjeta.
+    void fetch(baseApi() + '/api/creditos/cargar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token() },
+      body: JSON.stringify({ monto: p.creditos, motivo: 'recarga' }),
+    })
+      .then(r => (r.ok ? d.refrescar() : Promise.reject(new Error(`error ${r.status}`))))
+      .then(() => setToast(`${p.creditos.toLocaleString('es-CO')} créditos cargados a su cuenta`))
+      .catch(() => setToast('No se pudo cargar: el servidor no respondió'));
+  };
+
+  // =========================================================================================
+  // EN QUÉ SE VAN — los rubros del anillo, armados con los movimientos REALES del libro
+  // agrupados por su motivo: cada porción es un cargo que de verdad existió y el total es la
+  // suma de su propia lista. Sin consumo, no hay anillo: va el estado vacío.
+  // =========================================================================================
+  const rubros: Rubro[] = (() => {
+    const porMotivo = new Map<string, { v: number; n: number }>();
+    for (const m of movs) {
+      if (m.tipo !== 'salida') continue;
+      const k = m.motivo || 'otro';
+      const antes = porMotivo.get(k) ?? { v: 0, n: 0 };
+      porMotivo.set(k, { v: antes.v + Math.abs(m.cantidad), n: antes.n + 1 });
+    }
+    return [...porMotivo.entries()]
+      .sort((a, b) => b[1].v - a[1].v)
+      .map(([k, x], i) => ({
+        l: capitalizar(MOTIVOS[k]?.nombre ?? k),
+        v: x.v,
+        c: PALETA_RUBROS[i % PALETA_RUBROS.length],
+        detalle: `${x.n} movimiento${x.n === 1 ? '' : 's'} de su libro de créditos`,
+      }));
+  })();
+  const totalRubros = rubros.reduce((a, r) => a + r.v, 0);
+  const porciones = porcionesDe(rubros, totalRubros);
 
   // =========================================================================================
   // LOS DOS BOTONES QUE MUESTRAN DATOS — no un aviso que se va solo.
-  // Las facturas y el historial se abren en el panel de detalle con los datos de la pantalla,
-  // uno por uno: período, monto en dólares y estado en el primer caso; qué se gastó, cuándo y en
-  // qué en el segundo. Los totales salen de la propia lista, así que nunca dicen otra cosa.
+  // El historial se abre con los movimientos de la pantalla, uno por uno, y los planes con la
+  // lista de precios del producto. Los totales salen de la propia lista, así que nunca dicen otra cosa.
   // =========================================================================================
-  const pagadas = facturas.filter(f => f.estado === 'Pagada');
-  const porCobrar = facturas.filter(f => f.estado !== 'Pagada');
-  const totalFacturado = facturas.reduce((a, f) => a + f.monto, 0);
-  const cobrado = pagadas.reduce((a, f) => a + f.monto, 0);
-  const aCobrar = porCobrar.reduce((a, f) => a + f.monto, 0);
-
-  // Cobrarla y volverla a pendiente son las dos reversibles, y lo que cambian se ve en el acto en
-  // la tarjeta: el estado de la factura pasa a «Pagada» / vuelve a «Pendiente».
-  const cobrarPendiente = () => {
-    setFacturas(fs => fs.map(f => (f.estado === 'Pagada' ? f : { ...f, estado: 'Pagada' })));
-    setToast(`Factura ${porCobrar[0].id} cobrada con ${metodo}: $${aCobrar}`);
-  };
-  const volverAPendiente = () => {
-    setFacturas(FACTURAS);
-    setToast('La factura vuelve a «Pendiente»: no se cobró nada');
-  };
-
-  const verFacturas = () => detalle({
-    titulo: 'Facturas emitidas · las 3 últimas',
-    sub: `Cada cobro de un plan o de un paquete deja su factura, con el período que cubre, el monto en dólares y su estado. Estas son las tres últimas: las de agosto y septiembre son del plan Pro, el que tenía entonces.`,
-    bloques: [
-      { tipo: 'datos', filas: [
-        { k: 'Período que cubren', v: '01 Ago – 15 Sep 2026', s: 'agosto el plan completo; septiembre, el plan y una recarga' },
-        { k: 'Facturas emitidas', v: String(facturas.length), s: `${pagadas.length} cobradas y ${porCobrar.length} por cobrar` },
-        { k: 'Total facturado', v: `$${totalFacturado}`, s: 'lo que suman las tres, en dólares' },
-        { k: 'Cobrado', v: `$${cobrado}`, tono: 'green', s: 'ya salió de su tarjeta' },
-        { k: 'Por cobrar', v: `$${aCobrar}`, tono: 'amber', s: `se cobra con ${metodo}` },
-      ] },
-      { tipo: 'filas', items: facturas.map(f => ({
-        t: `${f.concepto} · $${f.monto}`,
-        s: `período: emitida el ${f.fecha} · ${f.id}`,
-        etiqueta: f.estado,
-        tono: f.estado === 'Pagada' ? 'green' as const : 'amber' as const,
-      })) },
-      { tipo: 'texto', texto: `Las cobradas salieron de ${metodo}: el plan se cobra el primer día del mes y las recargas en el momento. El mes que viene aparece la de octubre con este mismo formato.` },
-      porCobrar.length > 0
-        ? { tipo: 'aviso' as const, tono: 'amber' as const, texto: `La ${porCobrar[0].id} quedó pendiente por la recarga del paquete Pro: son $${aCobrar} que se cobran en el próximo vencimiento, no dos veces.` }
-        : { tipo: 'aviso' as const, tono: 'green' as const, texto: 'No queda nada por cobrar: las tres facturas están pagadas.' },
-    ],
-    fuente: 'Facturación de Sinkroo: cada cobro del plan o de un paquete deja su factura con ID, período y estado. Es el mismo dato que se ve en la tarjeta Movimientos.',
-    acciones: porCobrar.length > 0
-      ? [
-          { label: `Cobrar la pendiente ($${aCobrar})`, variante: 'primary' as const, onClick: cobrarPendiente },
-          { label: 'Ver los movimientos', onClick: verHistorial },
-        ]
-      : [
-          { label: 'Volver a pendiente', onClick: volverAPendiente },
-          { label: 'Ver los movimientos', onClick: verHistorial },
-        ],
-  });
-
   const verHistorial = () => detalle({
-    titulo: `Historial completo de créditos · ${movs.length} movimientos`,
+    titulo: `Historial completo de créditos · ${movs.length} movimiento${movs.length === 1 ? '' : 's'}`,
     sub: 'Todo lo que entró y todo lo que consumió el motor, uno por uno, con la fecha y qué lo generó. El saldo de arriba es la suma de esta lista: ningún crédito queda sin explicar.',
     bloques: [
       { tipo: 'datos', filas: [
         { k: 'Movimientos registrados', v: String(movs.length), s: movs.length ? `el más viejo es del ${movs[movs.length - 1].fecha}` : 'el libro todavía no tiene movimientos' },
         { k: 'Créditos que entraron', v: `+${entradas.toLocaleString('es-CO')}`, tono: 'green', s: 'el plan, los referidos y las recargas que haga desde aquí' },
         { k: 'Créditos que consumió el motor', v: `−${salidas.toLocaleString('es-CO')}`, tono: 'amber', s: 'campañas y análisis: trabajo hecho, no tiempo de uso' },
-        { k: 'Saldo disponible hoy', v: saldo.toLocaleString('es-CO'), s: 'el mismo número de la tarjeta de arriba' },
-        { k: 'Autonomía al ritmo de hoy', v: `${dias} días`, s: 'a 150 créditos por día' },
+        { k: 'Saldo disponible hoy', v: saldo === null ? '—' : saldo.toLocaleString('es-CO'), s: saldo === null ? 'todavía no se leyó su cuenta' : 'el mismo número de la tarjeta de arriba' },
+        { k: 'Autonomía al ritmo de hoy', v: dias === null ? '—' : `${dias} días`, s: 'a 150 créditos por día' },
       ] },
       { tipo: 'filas', items: movs.map(m => ({
         t: `${m.detalle}${m.motivo ? ` · ${MOTIVOS[m.motivo]?.nombre ?? m.motivo}` : ''}`,
-        s: `${m.fecha} · ${MOTIVOS[m.motivo ?? '']?.origen || ORIGEN_MOV[m.detalle] || (m.tipo === 'entrada' ? 'créditos que entraron a su saldo' : 'créditos que consumió el motor')}`,
+        s: `${m.fecha} · ${MOTIVOS[m.motivo ?? '']?.origen || (m.tipo === 'entrada' ? 'créditos que entraron a su saldo' : 'créditos que consumió el motor')}`,
         etiqueta: `${m.cantidad > 0 ? '+' : '−'}${Math.abs(m.cantidad).toLocaleString('es-CO')}`,
         tono: m.tipo === 'entrada' ? 'green' as const : 'muted' as const,
       })) },
       { tipo: 'texto', texto: 'Cada movimiento sale de un cargo real: los de campaña son los días que estuvo publicando y los de análisis, el informe que abrió. Las conversaciones con sus clientes no figuran aquí porque están incluidas en el plan: no gastan créditos.' },
       { tipo: 'aviso' as const, tono: autoRecarga ? 'green' as const : 'amber' as const, texto: autoRecarga
-        ? 'Tiene la auto-recarga activa: cuando baja de 500 créditos se cargan 1.760 solos y el motor no se frena.'
+        ? 'Tiene la auto-recarga encendida en esta visita: cuando baja de 500 créditos se carga el próximo paquete solo y el motor no se frena. Todavía no queda guardada en su cuenta.'
         : 'Tiene la auto-recarga apagada: cuando se terminen los créditos el motor se frena solo, aunque tenga campañas corriendo.' },
     ],
-    fuente: 'Movimientos del motor de créditos: se registra cada carga y cada consumo, con la fecha y el trabajo que lo generó.',
+    fuente: 'Movimientos del motor de créditos: se registra cada carga y cada consumo, con la fecha y el trabajo que lo generó. Lo que su cuenta todavía no tiene, no aparece acá.',
     acciones: [
       { label: `Recargar ${PAQUETES[2].creditos.toLocaleString('es-CO')} por $${PAQUETES[2].precio}`, variante: 'primary' as const, onClick: () => recargar(PAQUETES[2]) },
       { label: 'Cerrar', onClick: () => {} },
     ],
   });
 
-  /** Aplica el plan nuevo: el menú y esta pantalla lo reflejan en el acto. */
-  const aplicarPlan = (key: string) => {
-    const antes = cambiarPlan(key);
-    const nuevo = PLANES.find(p => p.key === key);
-    if (nuevo && nuevo.key !== antes.key) {
-      setAvisoPlan({ de: antes.nombre, a: nuevo.nombre, creditos: nuevo.creditosMes });
-      setToast(`Ahora está en el plan ${nuevo.nombre}: ${nuevo.creditosMes.toLocaleString('es-CO')} créditos por mes`);
-    }
-  };
-
-  /** Elegir plan: los tres, con lo que incluye cada uno, y el cambio aplicado desde aquí. */
+  /** La lista de precios del producto: los tres planes, lo que incluye cada uno y lo que cuesta. */
   const verPlanes = () => detalle({
-    titulo: 'Elegir plan',
-    sub: 'Los tres planes hacen lo mismo: cambian cuántos créditos entran por mes y cuántas campañas pueden correr a la vez. Se cambia aquí y vale desde ahora.',
+    titulo: 'Planes y precios',
+    sub: 'Los tres planes hacen lo mismo: cambian cuántos créditos entran por mes y cuántas campañas pueden correr a la vez. Acá están los precios; el plan que su cuenta tiene hoy sale de su cuenta.',
     bloques: [
       ...PLANES.map(p => ({
         tipo: 'filas' as const,
         items: [
           { t: `Plan ${p.nombre} · $${p.precio} por mes`, s: `${p.creditosMes.toLocaleString('es-CO')} créditos · ${p.paraQuien}`,
-            etiqueta: p.key === plan.key ? 'el suyo' : 'elíjalo abajo', tono: p.key === plan.key ? 'purple' as const : 'muted' as const },
+            etiqueta: p.key === planDelBack?.key ? 'el de su cuenta' : 'disponible',
+            tono: p.key === planDelBack?.key ? 'purple' as const : 'muted' as const },
           ...p.incluye.map(i => ({ t: i, etiqueta: 'incluido', tono: 'green' as const })),
           ...(p.falta || []).map(f => ({ t: f, etiqueta: 'no entra', tono: 'muted' as const })),
         ],
       })),
-      { tipo: 'aviso', tono: 'amber', texto: 'Al cambiar, los créditos del mes se recalculan desde hoy y la diferencia entra prorrateada en la próxima factura: a favor si baja de plan, a cobrar si sube. Reversible: puede volver al plan anterior desde esta misma pantalla.' },
+      { tipo: 'texto', texto: 'El plan define cuántos créditos entran por mes, no cómo trabaja el motor: bajar de plan no frena nada de lo que ya está corriendo.' },
     ],
-    fuente: 'Precio por mes en dólares, con los créditos que incluye cada plan. El consumo no cambia con el plan: cambia cuánto entra por mes.',
+    fuente: 'Precio por mes en dólares y los créditos que incluye cada plan. El consumo no cambia con el plan: cambia cuánto entra por mes.',
     acciones: [
-      ...PLANES.filter(p => p.key !== plan.key).map(p => ({
-        label: `Pasar al plan ${p.nombre} · $${p.precio}/mes`,
-        variante: p.precio > plan.precio ? 'primary' as const : 'outline' as const,
-        title: `Cambia su plan al ${p.nombre}: ${p.creditosMes.toLocaleString('es-CO')} créditos por mes por $${p.precio}. Reversible: puede volver al ${plan.nombre}.`,
-        onClick: () => aplicarPlan(p.key),
-      })),
-      { label: 'Dejarlo como está', title: 'Cierra el panel sin cambiar el plan', onClick: () => {} },
-    ],
-  });
-
-  /** El plan que tiene hoy: qué incluye, qué no, y cuánto le cuesta de verdad. */
-  const verMiPlan = () => detalle({
-    titulo: `Su plan: ${plan.nombre}`,
-    sub: `${plan.paraQuien} $${plan.precio} por mes con ${plan.creditosMes.toLocaleString('es-CO')} créditos incluidos.`,
-    bloques: [
-      { tipo: 'datos', filas: [
-        { k: 'Precio por mes', v: `$${plan.precio}`, s: 'se cobra el 1º de cada mes y se cancela cuando quiera' },
-        { k: 'Créditos que incluye', v: plan.creditosMes.toLocaleString('es-CO'), s: `unos ${Math.round(plan.creditosMes / 150)} días de motor al consumo de hoy (150 por día)` },
-        { k: 'Saldo que le queda hoy', v: saldo.toLocaleString('es-CO'), s: 'el mismo número de la tarjeta de arriba' },
-        { k: 'Lo que consumió el motor este mes', v: `${usados.toLocaleString('es-CO')} créditos`, s: `equivale a $${(usados * 0.022).toFixed(0)} de trabajo hecho` },
-        { k: 'Próximo cobro', v: '1º de octubre', s: 'con agosto y septiembre ya cobrados' },
-      ] },
-      { tipo: 'filas', items: plan.incluye.map(i => ({ t: i, etiqueta: 'incluido', tono: 'green' as const })) },
-      ...(plan.falta && plan.falta.length
-        ? [{ tipo: 'pasos' as const, items: plan.falta.map(f => `En ${plan.nombre} no entra: ${f}`) }]
-        : []),
-      { tipo: 'aviso', texto: 'El plan no cambia cómo trabaja el motor: cambia cuánto puede hacer por mes. Bajar de plan no frena nada de lo que ya está corriendo.' },
-    ],
-    fuente: 'Cada pieza, análisis o campaña consume créditos: ronda 120, variante 16, imagen 12, video 60 y evaluación 8 por pieza. El plan define cuántos entran por mes.',
-    acciones: [
-      { label: 'Ver los otros planes', title: 'Abre la comparación de los tres planes para cambiar el suyo', onClick: verPlanes },
       { label: 'Cerrar', title: 'Cierra el panel sin cambiar nada', onClick: () => {} },
     ],
   });
@@ -312,84 +232,91 @@ function ViewCreditosNegocio({ setToast }: { setToast: (t: string) => void }) {
       <ViewHead
         icon={<I_Credit size={19} />}
         titulo="Créditos"
-        sub="Un crédito es una unidad de trabajo del motor: cada análisis, pieza o campaña consume. Aquí carga, ve en qué se va y cambia de plan."
+        sub="Un crédito es una unidad de trabajo del motor: cada análisis, pieza o campaña consume. Acá ve qué tiene, en qué se va y cómo cargarlo."
         nums={[
-          { v: saldo.toLocaleString('es-CO'), l: 'créditos disponibles' },
-          { v: `Plan ${plan.nombre}`, l: `${plan.creditosMes.toLocaleString('es-CO')} por mes`, c: 'var(--purple3)' },
-          { v: `${dias} días`, l: 'de autonomía al ritmo de hoy', c: dias < 10 ? 'var(--amber)' : 'var(--green)' },
-          { v: <Dinero monto={Number((usados * 0.022).toFixed(0))} />, l: 'consumido este mes' },
+          { v: saldo === null ? '—' : saldo.toLocaleString('es-CO'), l: 'créditos disponibles' },
+          { v: planNombre ? `Plan ${planNombre}` : 'Sin plan cargado', l: creditosMes ? `${creditosMes.toLocaleString('es-CO')} por mes` : 'créditos por mes: sin dato', c: 'var(--purple3)' },
+          { v: dias === null ? '—' : `${dias} días`, l: 'de autonomía al ritmo de hoy', c: dias !== null && dias < 10 ? 'var(--amber)' : 'var(--green)' },
+          { v: usados ? `${usados.toLocaleString('es-CO')} créditos` : '—', l: 'consumido este mes' },
         ]}
       />
 
-      {/* ============ Su PLAN: aquí se cambia ============
-          El dueño lo pidió porque no había dónde: el plan se veía en la píldora del menú pero no
-          se podía tocar. La tarjeta muestra el plan, lo que cuesta y lo que incluye, y el cambio
-          se aplica al instante: el menú y esta pantalla dicen lo mismo. */}
+      {/* ============ SU PLAN: el que manda el back ============
+          El plan de la cuenta es el del back; lo que el catálogo del producto sabe de él (precio y
+          créditos por mes) se muestra sólo si el back lo mandó. Sin ese dato, «—». */}
       <Card
         title={<span className="row" style={{ gap: 8 }}><I_Shield size={14} style={{ color: 'var(--purple3)' }} /> Su plan</span>}
-        action={<Badge tone="purple">Plan {plan.nombre}</Badge>}
+        action={<Badge tone="purple">{planNombre ? `Plan ${planNombre}` : 'sin plan cargado'}</Badge>}
       >
         <div className="datos-row">
-          <div className="dato"><span className="dato-l">Plan</span><span className="dato-v" style={{ color: 'var(--purple3)' }}>{plan.nombre}</span></div>
-          <div className="dato"><span className="dato-l">Precio por mes</span><span className="dato-v"><Dinero monto={plan.precio} /></span></div>
-          <div className="dato"><span className="dato-l">Créditos por mes</span><span className="dato-v">{plan.creditosMes.toLocaleString('es-CO')}</span></div>
-          <div className="dato"><span className="dato-l">Próximo cobro</span><span className="dato-v">1º de octubre</span></div>
+          <div className="dato"><span className="dato-l">Plan</span><span className="dato-v" style={{ color: 'var(--purple3)' }}>{planNombre ?? '—'}</span></div>
+          <div className="dato"><span className="dato-l">Precio por mes</span><span className="dato-v">{planDelBack ? <Dinero monto={planDelBack.precio} /> : '—'}</span></div>
+          <div className="dato"><span className="dato-l">Créditos por mes</span><span className="dato-v">{creditosMes ? creditosMes.toLocaleString('es-CO') : '—'}</span></div>
+          <div className="dato"><span className="dato-l">Próximo cobro</span><span className="dato-v">—</span></div>
         </div>
         <div className="bs" style={{ marginTop: 12 }}>
-          {plan.paraQuien} El plan define <b>cuántos créditos entran por mes</b>: cambiar de plan cambia el techo,
-          no la forma en que trabaja el motor.
+          {planDelBack
+            ? <>{planDelBack.paraQuien} El plan define <b>cuántos créditos entran por mes</b>: cambiar de plan cambia el techo, no la forma en que trabaja el motor.</>
+            : <>El precio, los créditos por mes y lo que incluye su plan todavía no están cargados: cuando lo estén, quedan a la vista acá. Los planes disponibles y sus precios se ven en «Ver los planes».</>}
         </div>
         <div className="row" style={{ gap: 9, marginTop: 12, flexWrap: 'wrap' }}>
-          <Button className="btn-sm" title="Abre los tres planes con lo que incluye cada uno y cambia el suyo desde ahí. Reversible: puede volver al que tiene."
-            onClick={verPlanes}><I_ArrowRight size={13} /> Cambiar de plan</Button>
-          <Button variant="ghost" className="btn-sm" title="Qué incluye su plan hoy, qué no entra y cuánto le costó de verdad el trabajo de este mes"
-            onClick={verMiPlan}>Qué incluye su plan</Button>
+          <Button variant="ghost" className="btn-sm"
+            title="Abre la lista de planes con lo que incluye cada uno y su precio por mes. No cambia nada de su cuenta."
+            onClick={verPlanes}><I_ArrowRight size={13} /> Ver los planes</Button>
+          {esReal && (
+            <Button variant="ghost" className="btn-sm" title="Vuelve a leer su cuenta: si el detalle de su plan ya está cargado, esta tarjeta lo muestra tal como quedó."
+              onClick={() => void d.refrescar()}>Volver a leer mi plan</Button>
+          )}
         </div>
-        {avisoPlan && (
-          <div className="tiny" style={{ marginTop: 10, color: 'var(--green)', fontWeight: 700 }}>
-            <I_Zap size={12} /> Pasó del plan {avisoPlan.de} al {avisoPlan.a}: ahora entran {avisoPlan.creditos.toLocaleString('es-CO')} créditos
-            por mes y el menú de la izquierda ya dice {avisoPlan.a}. La diferencia se prorratea en la factura del 1º de octubre.
-            {' '}Reversible: puede volver al {avisoPlan.de} desde aquí.
-          </div>
-        )}
-        <NotaMoneda />
+        {planDelBack && <NotaMoneda />}
       </Card>
 
       {/* ============ EL SALDO Y CÓMO CARGARLO ============ */}
       <div className="duo">
         <Card
           title={<span className="row" style={{ gap: 8 }}><I_Wallet size={14} style={{ color: 'var(--purple3)' }} /> Su saldo</span>}
-          action={<Badge tone="purple">Plan {plan.nombre}</Badge>}
+          action={<Badge tone="purple">{planNombre ? `Plan ${planNombre}` : 'sin plan cargado'}</Badge>}
         >
           <div>
             <div style={{ fontSize: 38, fontWeight: 900, letterSpacing: -1.4, lineHeight: 1 }}>
-              {saldo.toLocaleString('es-CO')} <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--muted)' }}>créditos</span>
+              {saldo === null ? '—' : saldo.toLocaleString('es-CO')} <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--muted)' }}>créditos</span>
             </div>
             <div className="bs" style={{ marginTop: 5 }}>
-              Alcanzan para <b style={{ color: 'var(--purple3)' }}>{dias} días</b> más con el consumo actual.
+              {saldo === null
+                ? <>El saldo sale de su cuenta: cuando el panel la lea, aparece acá con los créditos que le quedan.</>
+                : <>Alcanzan para <b style={{ color: 'var(--purple3)' }}>{dias} días</b> más con el consumo actual.</>}
             </div>
           </div>
 
           <div>
-            <Gauge pct={pct} label="Disponible del plan del mes" detalle={`${saldo.toLocaleString('es-CO')} de ${plan.creditosMes.toLocaleString('es-CO')}`} />
+            {creditosMes && saldo !== null ? (
+              <Gauge pct={pct} label="Disponible del plan del mes" detalle={`${saldo.toLocaleString('es-CO')} de ${creditosMes.toLocaleString('es-CO')}`} />
+            ) : (
+              <div className="bs">
+                El tope de créditos del mes todavía no está cargado: sin ese dato el panel no dibuja la barra
+                del mes ni calcula un porcentaje contra un número que no conoce.
+              </div>
+            )}
           </div>
 
           <div className="guard" style={{ borderTop: '1px solid var(--border)', paddingTop: 12 }}>
             <span style={{ color: 'var(--amber)', flexShrink: 0 }}><I_Zap size={15} /></span>
             <span className="guard-lb">Auto-recarga
-              <small>Cuando baja de 500 créditos, se cargan 1.760 solos</small>
+              <small>Cuando baja de 500 créditos, se carga el próximo paquete solo (lo enciende en esta visita: todavía no queda guardado en su cuenta)</small>
             </span>
-            <button className={`toggle ${autoRecarga ? 'on' : ''}`} title={autoRecarga ? 'Desactivar la carga automática' : 'Activar la carga automática'}
+            <button className={`toggle ${autoRecarga ? 'on' : ''}`}
+              title={autoRecarga
+                ? 'Apaga la auto-recarga: el motor vuelve a detenerse cuando se agoten los créditos. Reversible: la puede volver a encender.'
+                : 'Carga el próximo paquete solo cuando los créditos bajen de 500, sin que el motor se detenga. Reversible: se apaga cuando quiera.'}
               onClick={() => { setAutoRecarga(!autoRecarga); setToast(autoRecarga ? 'Auto-recarga desactivada' : 'Auto-recarga activada'); }} />
           </div>
 
           <div className="guard">
             <span style={{ color: '#818cf8', flexShrink: 0 }}><I_Credit size={15} /></span>
             <span className="guard-lb">Método de pago
-              <small>{metodo} · se cobra el 1º de cada mes</small>
+              <small>con qué se cobra su plan: todavía no está cargado</small>
             </span>
-            <Button variant="ghost" className="btn-sm" title="Cambia la tarjeta con la que se paga el plan y las recargas"
-              onClick={() => { setMetodo(m => m.startsWith('Visa') ? 'Mastercard ···· 8801' : 'Visa ···· 4242'); setToast('Método de pago cambiado'); }}>Cambiar</Button>
+            <span className="guard-val" style={{ color: 'var(--muted)' }}>—</span>
           </div>
 
           <div className="guard">
@@ -402,7 +329,7 @@ function ViewCreditosNegocio({ setToast }: { setToast: (t: string) => void }) {
 
           <div className="datos-row" style={{ marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--border)' }}>
             <div className="dato"><span className="dato-l">Consumo por día</span><span className="dato-v">150</span></div>
-            <div className="dato"><span className="dato-l">Última recarga</span><span className="dato-v">hace 12 días</span></div>
+            <div className="dato"><span className="dato-l">Última recarga</span><span className="dato-v">{movs.find(m => m.tipo === 'entrada')?.fecha || '—'}</span></div>
             <div className="dato"><span className="dato-l">Vencen</span><span className="dato-v">a los 12 meses</span></div>
           </div>
 
@@ -414,10 +341,10 @@ function ViewCreditosNegocio({ setToast }: { setToast: (t: string) => void }) {
 
         <Card
           title={<span className="row" style={{ gap: 8 }}><I_Plus size={14} style={{ color: 'var(--green)' }} /> Cargar el motor</span>}
-          action={<Badge tone="green">4 paquetes</Badge>}
+          action={<Badge tone="green">{PAQUETES.length} paquetes</Badge>}
         >
           <div className="bs">
-            Se paga con {metodo}. <b>Cuanto más grande el paquete, menos sale cada crédito</b> y más tiempo trabaja solo.
+            Se paga con el método de pago de su cuenta. <b>Cuanto más grande el paquete, menos sale cada crédito</b> y más tiempo trabaja solo.
           </div>
           {PAQUETES.map(p => (
             <div key={p.nombre} className="guard">
@@ -428,7 +355,7 @@ function ViewCreditosNegocio({ setToast }: { setToast: (t: string) => void }) {
                 <small><Dinero monto={`$${p.unidad}`} equivalente={false} /> por crédito · rinde ~{Math.round(p.creditos / 150)} días</small>
               </span>
               <span className="guard-val" style={{ flexShrink: 0 }}><Dinero monto={p.precio} /></span>
-              <Button className="btn-sm" title={`Carga ${p.creditos.toLocaleString('es-CO')} créditos por $${p.precio} con ${metodo}`}
+              <Button className="btn-sm" title={`Carga ${p.creditos.toLocaleString('es-CO')} créditos por $${p.precio} con el método de pago de su cuenta. Entran al saldo de su cuenta.`}
                 onClick={() => recargar(p)}>Recargar</Button>
             </div>
           ))}
@@ -448,31 +375,45 @@ function ViewCreditosNegocio({ setToast }: { setToast: (t: string) => void }) {
       <div className="duo" style={{ marginTop: 16 }}>
         <Card
           title={<span className="row" style={{ gap: 8 }}><I_Credit size={14} style={{ color: 'var(--purple3)' }} /> En qué se van</span>}
-          action={<Badge tone="purple">{CONSUMO_TOTAL.toLocaleString('es-CO')} usados este mes</Badge>}
+          action={<Badge tone="purple">{totalRubros ? `${totalRubros.toLocaleString('es-CO')} usados` : 'sin consumo todavía'}</Badge>}
         >
+          {leyendo && movs.length === 0 && totalRubros === 0 ? (
+            <EstadoVacio
+              titulo="Leyendo su libro de créditos…"
+              texto="El panel está leyendo el libro de créditos de su cuenta. Mientras lee no muestra ninguna cifra: en un momento dice qué hay."
+            />
+          ) : totalRubros === 0 ? (
+            /* No hay de dónde sacar el reparto: el anillo se arma con los movimientos del libro y
+               todavía no hay ninguno que haya consumido. Se dice, no se dibuja un anillo en cero. */
+            <EstadoVacio
+              titulo="Todavía no hay consumo que repartir"
+              texto="Este anillo se arma con los movimientos de su libro de créditos: cada porción es lo que consumió un trabajo del motor. Mientras no haya ninguno, no hay nada que repartir."
+            />
+          ) : (
+          <>
           <div className="como-se-lee">
-            <b>Cómo se lee:</b> el anillo es <b>el total de lo que consumió el motor este mes</b>, y cada
-            porción es un rubro. Si un rubro le sorprende, puede abrir la bitácora y ver qué lo generó.
+            <b>Cómo se lee:</b> el anillo es <b>el total de lo que consumió el motor</b>, y cada
+            porción es un rubro. Si un rubro le sorprende, puede abrir el historial y ver qué lo generó.
           </div>
 
           <div className="reparto">
-            <div className="reparto-ring" style={{ background: `conic-gradient(from -90deg, ${PORCIONES})` }}
-              title={`Reparto de los ${CONSUMO_TOTAL.toLocaleString('es-CO')} créditos que consumió el motor este mes`}>
+            <div className="reparto-ring" style={{ background: `conic-gradient(from -90deg, ${porciones})` }}
+              title={`Reparto de los ${totalRubros.toLocaleString('es-CO')} créditos que consumió el motor`}>
               <div className="reparto-hole">
                 <div>
-                  <div className="reparto-v">{CONSUMO_TOTAL.toLocaleString('es-CO')}</div>
-                  <div className="reparto-l">créditos del mes</div>
+                  <div className="reparto-v">{totalRubros.toLocaleString('es-CO')}</div>
+                  <div className="reparto-l">créditos consumidos</div>
                 </div>
               </div>
             </div>
 
             <div className="reparto-leyenda">
-              {CONSUMO.map(c => (
+              {rubros.map(c => (
                 <div key={c.l} className="reparto-item">
                   <span className="reparto-dot" style={{ background: c.c }} />
                   <span className="reparto-lb">
-                    {c.l}<span className="reparto-pct">{Math.round((c.v / CONSUMO_TOTAL) * 100)}%</span>
-                    <small><b><Dinero monto={c.costo} equivalente={false} /></b> {c.detalle}</small>
+                    {c.l}<span className="reparto-pct">{Math.round((c.v / totalRubros) * 100)}%</span>
+                    <small>{c.detalle}</small>
                   </span>
                   <span className="reparto-num" style={{ color: c.c }}>{c.v.toLocaleString('es-CO')}</span>
                 </div>
@@ -481,14 +422,18 @@ function ViewCreditosNegocio({ setToast }: { setToast: (t: string) => void }) {
           </div>
 
           <div className="acc-why">
-            Cada porción es <b>trabajo real, no una tarifa</b>: "piezas y videos" son 6 videos producidos
-            este mes. Las conversaciones con sus clientes están incluidas en el plan, por eso no gastan créditos.
+            Cada porción sale de un cargo real de su libro de créditos, agrupado por su motivo:
+            <b> ninguna cifra de este anillo está escrita a mano</b>.
           </div>
+          </>
+          )}
         </Card>
 
         <Card
           title={<span className="row" style={{ gap: 8 }}><I_Credit size={14} style={{ color: 'var(--green)' }} /> Movimientos</span>}
-          action={<Badge tone="green">+{entradas.toLocaleString('es-CO')} · −{salidas.toLocaleString('es-CO')}</Badge>}
+          action={movs.length
+            ? <Badge tone="green">+{entradas.toLocaleString('es-CO')} · −{salidas.toLocaleString('es-CO')}</Badge>
+            : <Badge tone="muted">sin movimientos</Badge>}
         >
           <div className="guards">
             {movs.map((m, i) => (
@@ -503,34 +448,29 @@ function ViewCreditosNegocio({ setToast }: { setToast: (t: string) => void }) {
               </div>
             ))}
           </div>
-          {/* Un negocio nuevo arranca con la carga de su plan y nada más: mientras el motor no consuma,
-              la tarjeta dice qué hay en el libro y cuál es el paso siguiente. */}
-          {sinConsumo && (
+          {/* Mientras lee no se afirma nada; con el libro vacío, la tarjeta dice qué va a quedar acá
+              y cuál es el paso siguiente, en vez de quedar con la lista pelada. */}
+          {leyendo && (
             <EstadoVacio
-              titulo="Su libro todavía no tiene consumo"
-              texto={`Su negocio arranca con los ${saldo.toLocaleString('es-CO')} créditos de su plan y esa carga es lo único que hay: el motor todavía no gastó ninguno. Cada análisis, pieza o campaña que corra queda aquí, con su motivo, su delta y su fecha.`}
+              titulo="Leyendo su libro de créditos…"
+              texto="El panel está leyendo el libro de créditos de su cuenta. Mientras lee no muestra ninguna cifra: en un momento dice qué hay."
+            />
+          )}
+          {sinMovimientos && (
+            <EstadoVacio
+              titulo="Su cuenta entra con el arranque"
+              texto={`Aquí va a quedar cada movimiento, con su motivo, su delta y el saldo que quedó después. Su cuenta todavía no tiene ninguno${saldo ? `: los ${saldo.toLocaleString('es-CO')} créditos con los que arrancó son el primer asiento del libro` : ''}, y cada trabajo del motor va a sumar el suyo.`}
               accion={`Recargar ${PAQUETES[2].creditos.toLocaleString('es-CO')} créditos`}
               onAccion={() => recargar(PAQUETES[2])}
             />
           )}
-          <div>
-            <div className="bs" style={{ marginBottom: 9 }}>Facturas del plan:</div>
-            <div className="guards">
-              {facturas.map(f => (
-                <div key={f.id} className="guard">
-                  <span style={{ color: 'var(--muted)', flexShrink: 0 }}><I_Shield size={14} /></span>
-                  <span className="guard-lb">{f.concepto}<small>{f.fecha} · {f.id}</small></span>
-                  <Badge tone={f.estado === 'Pagada' ? 'green' : 'amber'}>{f.estado}</Badge>
-                  <span className="guard-val"><Dinero monto={f.monto} /></span>
-                </div>
-              ))}
-            </div>
-          </div>
           <div className="row" style={{ gap: 9, flexWrap: 'wrap' }}>
-            <Button variant="outline" className="btn-sm" title="Abre las 3 facturas emitidas: qué período cubre cada una, cuánto sale en dólares y si está cobrada. Desde el panel se cobra la pendiente con el método del plan, y eso se puede volver atrás."
-              onClick={verFacturas}><I_Download size={13} /> Descargar facturas</Button>
             <Button variant="ghost" className="btn-sm" title="Abre el historial completo de créditos: cada movimiento con la fecha y qué lo generó, más lo que entró y lo que salió. Se actualiza solo cuando recarga."
               onClick={verHistorial}>Ver todo el historial</Button>
+            {esReal && (
+              <Button variant="ghost" className="btn-sm" title="Vuelve a leer el libro de créditos del servidor: el saldo y los movimientos se actualizan con lo que hay guardado. No cambia nada ni gasta créditos."
+                onClick={() => void d.refrescar()}>Volver a leer el libro</Button>
+            )}
           </div>
           <div className="acc-why">
             Los datos de su tarjeta <b>los maneja la pasarela de pago, no Sinkroo</b>:
