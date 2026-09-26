@@ -200,9 +200,20 @@ export function Landing() {
               textoEs={t.cabecera.idioma.es}
               textoEn={t.cabecera.idioma.en}
             />
+            {/* LAS DOS PUERTAS, como en el panel: el TEXTO para quien ya tiene cuenta y el BOTÓN
+                para quien no. El texto entra al panel y nada más; el botón trae el formulario de
+                crear cuenta abierto (`?cuenta=nueva`, que la pantalla de entrada entiende). */}
             <a
               href={PANEL}
+              className="text-gray-400 hover:text-white transition text-sm font-semibold whitespace-nowrap"
+              title={t.cabecera.tituloIngresar}
+            >
+              {t.cabecera.ingresar}
+            </a>
+            <a
+              href={`${PANEL}?cuenta=nueva`}
               className="px-5 py-2 bg-white text-black rounded-full font-semibold hover:bg-gray-200 transition whitespace-nowrap"
+              title={t.cabecera.tituloEntrar}
             >
               {t.cabecera.entrar}
             </a>
@@ -228,7 +239,10 @@ export function Landing() {
               {enlace.texto}
             </a>
           ))}
-          <a href={PANEL} onClick={() => setMenuAbierto(false)}>
+          <a href={PANEL} onClick={() => setMenuAbierto(false)} title={t.cabecera.tituloIngresar}>
+            {t.cabecera.ingresar}
+          </a>
+          <a href={`${PANEL}?cuenta=nueva`} onClick={() => setMenuAbierto(false)} title={t.cabecera.tituloEntrar}>
             {t.cabecera.entrar}
           </a>
           <SelectorIdioma

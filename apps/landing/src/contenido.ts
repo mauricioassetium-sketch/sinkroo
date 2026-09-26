@@ -83,7 +83,13 @@ export type Contenido = {
   cabecera: {
     marca: string;
     enlaces: Enlace[];
+    /** El botón de la cabecera: para quien TODAVÍA NO tiene cuenta (abre el formulario de crear). */
     entrar: string;
+    /** El texto de al lado del botón: para quien YA tiene cuenta (entra al panel y nada más). */
+    ingresar: string;
+    /** Lo que dicen los `title` de los dos: qué hacen y que no cambian nada. */
+    tituloEntrar: string;
+    tituloIngresar: string;
     idioma: { etiqueta: string; es: string; en: string };
     abrirMenu: string;
     altBuho: string;
@@ -166,7 +172,15 @@ const ES: Contenido = {
       { texto: 'Conexiones', href: '#conexiones' },
       { texto: 'Planes', href: '#planes' },
     ],
-    entrar: 'Entrar al panel',
+    /* Las dos puertas de la cabecera, con las palabras que pidió el dueño: el botón dice SIGN IN y
+       el texto de al lado LOG IN. El botón es para quien no está registrado (trae el formulario de
+       crear cuenta abierto) y el texto para quien ya lo está. Están en inglés en los dos idiomas a
+       propósito; si algún día se quieren en español, acá van «CREAR CUENTA» y «ENTRAR». */
+    entrar: 'SIGN IN',
+    ingresar: 'LOG IN',
+    tituloEntrar:
+      'Abre el panel en el formulario de crear una cuenta, para quien todavía no tiene. Se puede cerrar y no cambia nada.',
+    tituloIngresar: 'Abre el panel para entrar con la cuenta que ya tiene. No cambia nada.',
     idioma: { etiqueta: 'Idioma', es: 'ES', en: 'EN' },
     abrirMenu: 'Abrir el menú',
     altBuho: 'Sinkroo: el búho',
@@ -479,7 +493,11 @@ const EN: Contenido = {
       { texto: 'Connections', href: '#conexiones' },
       { texto: 'Plans', href: '#planes' },
     ],
-    entrar: 'Enter the panel',
+    entrar: 'SIGN IN',
+    ingresar: 'LOG IN',
+    tituloEntrar:
+      'Opens the panel on the create-account form, for those who do not have one yet. You can close it and nothing changes.',
+    tituloIngresar: 'Opens the panel so you can enter with the account you already have. Nothing changes.',
     idioma: { etiqueta: 'Language', es: 'ES', en: 'EN' },
     abrirMenu: 'Open the menu',
     altBuho: 'Sinkroo: the owl',
