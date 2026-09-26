@@ -414,8 +414,11 @@ export function Landing() {
 
         {/* ========================= 5 · CÓMO LO HACEMOS ========================= */}
         <section id="como-funciona" className="relative bg-[#050505] text-white px-6 py-32 overflow-hidden">
-          <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-purple-600/10 rounded-full blur-[120px] pointer-events-none"></div>
-          <div className="absolute bottom-0 right-1/4 w-[400px] h-[400px] bg-blue-600/10 rounded-full blur-[100px] pointer-events-none"></div>
+          {/* A este apartado se le quitaron los dos resplandores que tenía: un círculo violeta
+              (bg-purple-600/10, blur 120px) arriba a la izquierda y uno azul (bg-blue-600/10, blur
+              100px) abajo a la derecha. El dueño los mandó borrar —«elimina el color de fondo la
+              iluminacion»—: el fondo queda el negro parejo del apartado y nada más. El dibujo del
+              búho de atrás (al 2%) se queda: es un dibujo, no un color. */}
           <div className="absolute inset-0 flex items-center justify-center opacity-[0.02] pointer-events-none">
             <img src={IMAGENES.buho} className="w-[800px]" alt="" aria-hidden="true" />
           </div>
