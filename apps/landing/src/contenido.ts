@@ -31,14 +31,21 @@ export const PANEL = '/panel/';
  * imagen: devuelve la página del panel con un 200 y en la landing sale rota.
  *
  * CADA BLOQUE CON IMAGEN MUESTRA UNA PANTALLA DISTINTA DEL PANEL (nunca se repite una captura en
- * dos bloques): el bloque 4 usa mercado, campanas y hoy; el bloque 6 usa motor, mirofish, cuenta,
- * en línea y créditos; el bloque 8 usa primeros pasos. Las fotos de gente son del trabajo (no son
- * el equipo del negocio ni el público real) y el bloque 5 lo dice con su rótulo.
+ * dos bloques): el bloque 4 usa investigacion, creacion y jueces; el bloque 6 usa motor, mirofish,
+ * cuenta, en línea y créditos; el bloque 8 usa primeros pasos. Las fotos de gente son del trabajo (no
+ * son el equipo del negocio ni el público real) y el bloque 5 lo dice con su rótulo.
  */
 export const IMAGENES = {
   buho: '/67.png',
   portada: '/6-web.jpg',
-  /* Bloque 4 · QUÉ HACEMOS */
+  /* Bloque 4 · QUÉ HACEMOS — una pantalla por paso, y cada una con lo que dice su tarjeta: el paso 1
+     son los seis agentes investigando, el paso 2 las piezas ya creadas y el paso 3 los cinco jueces
+     ordenándolas. Las pantallas que mostraba antes (Mercado, Campañas y Su día) no hablaban de su paso. */
+  investigacion: '/capturas/investigacion.jpg',
+  creacion: '/capturas/creacion.jpg',
+  jueces: '/capturas/jueces.jpg',
+  /* Estas tres las dejó de usar el bloque 4 (el panel las sigue mostrando en su carpeta): no las usa
+     ningún bloque y quedan aquí por si otro frente vuelve a mostrarlas. */
   mercado: '/capturas/mercado.jpg',
   campanas: '/capturas/campanas.jpg',
   hoy: '/capturas/hoy.jpg',
@@ -196,24 +203,24 @@ const ES: Contenido = {
         titulo: 'LA INVESTIGACIÓN',
         texto:
           'Seis agentes leen su mercado y guardan cada hallazgo con su fuente: qué publica la competencia, con qué colores, en qué duración, con qué gancho y a qué precio.',
-        imagen: IMAGENES.mercado,
-        alt: 'Panel de Sinkroo: la pantalla «Mercado», donde quedan los hallazgos con su fuente.',
+        imagen: IMAGENES.investigacion,
+        alt: 'Panel de Sinkroo: la pantalla «Su día», con los seis agentes de la investigación y su tarea terminada.',
       },
       {
         numero: '02',
         titulo: 'LA CREACIÓN',
         texto:
           'Con esos hallazgos, el motor escribe las piezas de cada red en su formato y con su texto. Cada pieza nace de un hallazgo, no de una corazonada.',
-        imagen: IMAGENES.campanas,
-        alt: 'Panel de Sinkroo: la pantalla «Campañas», con el flujo por etapas del motor.',
+        imagen: IMAGENES.creacion,
+        alt: 'Panel de Sinkroo: la pantalla «Campañas», con las seis piezas ya escritas y su puntaje.',
       },
       {
         numero: '03',
         titulo: 'EL FILTRO',
         texto:
           'Antes de gastar, cada pieza se prueba: cinco jueces la puntúan y quinientas personas simuladas reaccionan. La que no convence vuelve a corregirse y no gasta un peso.',
-        imagen: IMAGENES.hoy,
-        alt: 'Panel de Sinkroo: la pantalla «Hoy» del negocio, con el trabajo del motor.',
+        imagen: IMAGENES.jueces,
+        alt: 'Panel de Sinkroo: la pantalla «Campañas», con los cinco jueces votando y ordenando las piezas.',
       },
     ],
   },
@@ -504,24 +511,24 @@ const EN: Contenido = {
         titulo: 'THE RESEARCH',
         texto:
           'Six agents read your market and keep every finding with its source: what the competition publishes, in which colours, at what length, with which hook and at what price.',
-        imagen: IMAGENES.mercado,
-        alt: 'Sinkroo panel: the “Mercado” screen, where the findings are kept with their source.',
+        imagen: IMAGENES.investigacion,
+        alt: 'Sinkroo panel: the “Su día” screen, with the six research agents and their finished task.',
       },
       {
         numero: '02',
         titulo: 'THE CREATION',
         texto:
           'With those findings, the engine writes the pieces for each network in its format and with its text. Every piece is born from a finding, not from a hunch.',
-        imagen: IMAGENES.campanas,
-        alt: 'Sinkroo panel: the “Campañas” screen, with the engine flow by stages.',
+        imagen: IMAGENES.creacion,
+        alt: 'Sinkroo panel: the “Campañas” screen, with the six pieces already written and their score.',
       },
       {
         numero: '03',
         titulo: 'THE FILTER',
         texto:
           'Before spending, every piece is tested: five judges score it and five hundred simulated people react. The one that does not convince goes back to be fixed and does not spend a peso.',
-        imagen: IMAGENES.hoy,
-        alt: 'Sinkroo panel: the “Hoy” screen of the business, with the work of the engine.',
+        imagen: IMAGENES.jueces,
+        alt: 'Sinkroo panel: the “Campañas” screen, with the five judges voting and ranking the pieces.',
       },
     ],
   },
