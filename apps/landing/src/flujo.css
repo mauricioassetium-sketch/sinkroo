@@ -8,7 +8,7 @@
    TRES REGLAS QUE MANDAN AQUÍ:
 
      1. NADA DEPENDE DE JAVASCRIPT PARA ANIMAR. Todo es CSS: `@keyframes` con `animation-duration:
-        7s`, `animation-iteration-count: infinite` y `animation-delay` por elemento. No hay un solo
+        12s`, `animation-iteration-count: infinite` y `animation-delay` por elemento. No hay un solo
         `setTimeout`. El componente no tiene estado ni efectos: se pinta y ya.
 
      2. NADA ARRANCA ESCONDIDO SI NO HAY ANIMACIÓN. La opacidad base de todo es 1; es la animación
@@ -16,19 +16,19 @@
         no anima), la figura queda COMPLETA y QUIETA: las siete etapas a la vez y el búho al final
         del recorrido. Nunca un cuadro vacío.
 
-     3. EL RELOJ ES UNO SOLO: 7s. Todos los elementos de etapa usan una animación de 7s con su
+     3. EL RELOJ ES UNO SOLO: 12s. Todos los elementos de etapa usan una animación de 12s con su
         ventana escrita en porcentajes (ver el reparto abajo). Los movimientos de vida (latidos,
-        tecleo, caída del material) son bucles cortos que dividen 7s exacto (1.4s, 1.75s, 3.5s),
+        tecleo, caída del material) son bucles cortos que dividen 12s exacto (2.4s, 3s, 6s),
         así que al cerrar el ciclo quedan otra vez en fase y el bucle no se desalinea.
 
-   REPARTO DE LOS 7 SEGUNDOS (proporcional a lo que explica cada etapa):
-     1 SU NEGOCIO      0,00 – 0,70 s   (10,0 %)   cae el material, entra al motor
-     2 INVESTIGA       0,70 – 2,10 s   (20,0 %)   seis agentes leen el mercado
-     3 ESCRIBE         2,10 – 3,20 s   (15,7 %)   se escriben las piezas
-     4 MIROFISH PRUEBA 3,20 – 5,00 s   (25,7 %)   cinco jueces votan y el público opina
-     5 USTED APRUEBA   5,00 – 5,30 s   ( 4,3 %)   el visto bueno: un instante
-     6 SE PUBLICA      5,30 – 6,30 s   (14,3 %)   se encienden las redes
-     7 MIDE            6,30 – 7,00 s   (10,0 %)   las cifras (de ejemplo)
+   REPARTO DE LOS 12 SEGUNDOS (proporcional a lo que explica cada etapa):
+     1 SU NEGOCIO      0,00 –  1,20 s   (10,0 %)   cae el material, entra al motor
+     2 INVESTIGA       1,20 –  3,60 s   (20,0 %)   seis agentes leen el mercado
+     3 ESCRIBE         3,60 –  5,49 s   (15,7 %)   se escriben las piezas
+     4 MIROFISH PRUEBA 5,49 –  8,57 s   (25,7 %)   cinco jueces votan y el público opina
+     5 USTED APRUEBA   8,57 –  9,09 s   ( 4,3 %)   el visto bueno: un instante
+     6 SE PUBLICA      9,09 – 10,80 s   (14,3 %)   se encienden las redes
+     7 MIDE           10,80 – 12,00 s   (10,0 %)   las cifras (de ejemplo)
    ================================================================================================== */
 
 /* ---------------------------------------------------------------------------------------------------
@@ -77,7 +77,7 @@
   stroke-width: 1.4;
   stroke-opacity: 0.34;
   stroke-dasharray: 7 9;
-  animation: flujoRiel 1.75s linear infinite;
+  animation: flujoRiel 3s linear infinite;
 }
 
 .flujo-flecha {
@@ -121,7 +121,7 @@
   fill: var(--flujo-violeta-claro);
   transform-box: fill-box;
   transform-origin: left center;
-  animation: flujoVoto 7s infinite both;
+  animation: flujoVoto 12s infinite both;
 }
 
 .flujo-burbuja {
@@ -231,7 +231,7 @@
   stroke-linejoin: round;
   stroke-dasharray: 130;
   stroke-dashoffset: 130;
-  animation: flujoMarca 7s ease-out infinite both;
+  animation: flujoMarca 12s ease-out infinite both;
   filter: url(#flujo-glow);
 }
 
@@ -244,7 +244,7 @@
    aparece al final y no en cualquier parte. */
 .flujo-buho {
   transform: translate(143px, 392px);
-  animation: flujoBuho 7s ease-in-out infinite;
+  animation: flujoBuho 12s ease-in-out infinite;
 }
 
 .flujo-buho-imagen {
@@ -324,13 +324,13 @@
    LAS VENTANAS DE LAS SIETE ETAPAS (una animación de 7s por etapa, con su ventana en porcentajes).
    Se usan en dos lugares: en el grupo del contenido y en el rectángulo de luz del panel.
    --------------------------------------------------------------------------------------------------- */
-.flujo-e1 { animation: flujoE1 7s infinite both; }
-.flujo-e2 { animation: flujoE2 7s infinite both; }
-.flujo-e3 { animation: flujoE3 7s infinite both; }
-.flujo-e4 { animation: flujoE4 7s infinite both; }
-.flujo-e5 { animation: flujoE5 7s infinite both; }
-.flujo-e6 { animation: flujoE6 7s infinite both; }
-.flujo-e7 { animation: flujoE7 7s infinite both; }
+.flujo-e1 { animation: flujoE1 12s infinite both; }
+.flujo-e2 { animation: flujoE2 12s infinite both; }
+.flujo-e3 { animation: flujoE3 12s infinite both; }
+.flujo-e4 { animation: flujoE4 12s infinite both; }
+.flujo-e5 { animation: flujoE5 12s infinite both; }
+.flujo-e6 { animation: flujoE6 12s infinite both; }
+.flujo-e7 { animation: flujoE7 12s infinite both; }
 
 @keyframes flujoE1 {
   0%, 1.71% { opacity: 0; }
@@ -410,7 +410,7 @@
 
 /* ---------------------------------------------------------------------------------------------------
    EL PÚBLICO HABLANDO (etapa 4). Los tres bocadillos entran y salen con la misma animación; el
-   desfase se da con `animation-delay` en el componente (0s, 0,5s, 1s). Todos caben dentro de la
+   desfase se da con `animation-delay` en el componente (0s, 0,86s, 1,71s). Todos caben dentro de la
    ventana de MiroFish (3,2–5,0 s).
    --------------------------------------------------------------------------------------------------- */
 @keyframes flujoDice {
@@ -421,7 +421,7 @@
 }
 
 .flujo-dice {
-  animation: flujoDice 7s infinite both;
+  animation: flujoDice 12s infinite both;
 }
 
 /* ---------------------------------------------------------------------------------------------------
@@ -456,7 +456,7 @@
 .flujo-red {
   transform-box: fill-box;
   transform-origin: center;
-  animation: flujoEntraRed 7s infinite both;
+  animation: flujoEntraRed 12s infinite both;
 }
 
 /* ---------------------------------------------------------------------------------------------------
@@ -470,7 +470,7 @@
 }
 
 .flujo-sube {
-  animation: flujoSube 7s infinite both;
+  animation: flujoSube 12s infinite both;
 }
 
 /* ---------------------------------------------------------------------------------------------------
@@ -488,7 +488,7 @@
 }
 
 .flujo-cae {
-  animation: flujoCae 1.75s linear infinite;
+  animation: flujoCae 3s linear infinite;
 }
 
 /* Los seis agentes (etapa 2) laten. */
@@ -500,7 +500,7 @@
 .flujo-latido {
   transform-box: fill-box;
   transform-origin: center;
-  animation: flujoLatido 1.4s ease-in-out infinite;
+  animation: flujoLatido 2.4s ease-in-out infinite;
 }
 
 /* El engranaje del motor gira. */
@@ -511,7 +511,7 @@
 .flujo-gira {
   transform-box: fill-box;
   transform-origin: center;
-  animation: flujoGira 3.5s linear infinite;
+  animation: flujoGira 6s linear infinite;
 }
 
 /* Las piezas se escriben solas (etapa 3). */
@@ -525,7 +525,7 @@
 .flujo-escribe {
   transform-box: fill-box;
   transform-origin: left center;
-  animation: flujoEscribe 1.4s ease-in-out infinite;
+  animation: flujoEscribe 2.4s ease-in-out infinite;
 }
 
 /* Las barras del gráfico de mercado suben y bajan. */
@@ -537,7 +537,7 @@
 .flujo-crece {
   transform-box: fill-box;
   transform-origin: bottom center;
-  animation: flujoCrece 1.75s ease-in-out infinite;
+  animation: flujoCrece 3s ease-in-out infinite;
 }
 
 /* El cursor que titila mientras se escribe. */
@@ -547,7 +547,7 @@
 }
 
 .flujo-cursor {
-  animation: flujoCursor 1.4s steps(1, end) infinite;
+  animation: flujoCursor 2.4s steps(1, end) infinite;
 }
 
 /* El riel: las rayas corriendo. */

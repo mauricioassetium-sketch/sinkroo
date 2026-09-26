@@ -16,7 +16,7 @@
 // etapa 6 dice «SE PUBLICA» porque es el nombre de la etapa del modelo, y adentro aclara «USTED DA EL
 // OK ANTES DE PUBLICAR». Ninguna cifra de la etapa 7 es una medición: van rotuladas como ejemplo.
 //
-// CÓMO SE ANIMA: 100 % CSS (`src/flujo.css`), con `@keyframes` de 7s e `infinite`. Este componente no
+// CÓMO SE ANIMA: 100 % CSS (`src/flujo.css`), con `@keyframes` de 12s e `infinite`. Este componente no
 // tiene estado, ni efectos, ni un solo `setTimeout`: se monta y queda andando. Si no hay animación
 // —o si alguien pidió `prefers-reduced-motion`— el dibujo se ve COMPLETO y QUIETO, con las siete
 // etapas a la vez y el búho al final del recorrido.
@@ -137,7 +137,7 @@ function Pieza({ marca, x, y }: { marca: Marca; x: number; y: number }) {
         width={54}
         height={3}
         rx={1.5}
-        style={{ animationDelay: '0.35s' }}
+        style={{ animationDelay: '0.6s' }}
       />
       <rect className="flujo-cursor" x={x + 68} y={y + 41} width={4} height={5} rx={1} />
     </g>
@@ -303,8 +303,8 @@ export function FlujoAnimado() {
             MATERIAL
           </text>
           <Documento x={24} y={52} retraso="0s" />
-          <Documento x={54} y={52} retraso="0.58s" />
-          <Documento x={84} y={52} retraso="1.17s" />
+          <Documento x={54} y={52} retraso="0.99s" />
+          <Documento x={84} y={52} retraso="2.01s" />
           {/* El motor: la boca por donde entra el material y el cuerpo que lo muele. */}
           <path className="flujo-motor-boca" d="M 36,166 L 104,166 L 94,180 L 46,180 Z" />
           <rect className="flujo-motor" x={22} y={178} width={96} height={58} rx={10} />
@@ -322,7 +322,7 @@ export function FlujoAnimado() {
             rx={2}
             fill="#c084fc"
             fillOpacity={0.55}
-            style={{ animationDelay: '0.2s' }}
+            style={{ animationDelay: '0.34s' }}
           />
           <rect
             className="flujo-escribe"
@@ -333,7 +333,7 @@ export function FlujoAnimado() {
             rx={2}
             fill="#c084fc"
             fillOpacity={0.55}
-            style={{ animationDelay: '0.4s' }}
+            style={{ animationDelay: '0.69s' }}
           />
           <rect className="flujo-luz flujo-e1" x={12} y={28} width={116} height={248} rx={12} />
         </g>
@@ -357,7 +357,7 @@ export function FlujoAnimado() {
               cx={cx}
               cy={cy}
               r={5.5}
-              style={{ animationDelay: `${(i * 0.23).toFixed(2)}s` }}
+              style={{ animationDelay: `${(i * 0.394).toFixed(2)}s` }}
             />
           ))}
           {/* La lupa. */}
@@ -374,7 +374,7 @@ export function FlujoAnimado() {
               width={14}
               height={alto}
               rx={2}
-              style={{ animationDelay: `${(i * 0.15).toFixed(2)}s` }}
+              style={{ animationDelay: `${(i * 0.257).toFixed(2)}s` }}
             />
           ))}
           <rect className="flujo-luz flujo-e2" x={140} y={28} width={140} height={248} rx={12} />
@@ -411,7 +411,7 @@ export function FlujoAnimado() {
               x={421 + i * 58}
               nota={juez.nota}
               texto={juez.texto}
-              retraso={`${(i * 0.1).toFixed(2)}s`}
+              retraso={`${(i * 0.171).toFixed(2)}s`}
             />
           ))}
           <text className="flujo-chico" x={424} y={122}>
@@ -423,7 +423,7 @@ export function FlujoAnimado() {
               x={421}
               y={130 + i * 36}
               texto={voz}
-              retraso={`${(i * 0.5).toFixed(2)}s`}
+              retraso={`${(i * 0.857).toFixed(2)}s`}
             />
           ))}
           <rect className="flujo-luz flujo-e4" x={416} y={28} width={294} height={248} rx={12} />
@@ -454,7 +454,7 @@ export function FlujoAnimado() {
               marca={marca}
               x={293 + (i % 5) * 52}
               y={i < 5 ? 432 : 502}
-              retraso={`${(i * 0.08).toFixed(2)}s`}
+              retraso={`${(i * 0.137).toFixed(2)}s`}
             />
           ))}
           <text className="flujo-nota" x={415} y={556} textAnchor="middle">
@@ -475,7 +475,7 @@ export function FlujoAnimado() {
               y={i < 2 ? 430 : 498}
               rotulo={cifra.rotulo}
               valor={cifra.valor}
-              retraso={`${(i * 0.1).toFixed(2)}s`}
+              retraso={`${(i * 0.171).toFixed(2)}s`}
             />
           ))}
           <rect className="flujo-ejemplo-caja" x={20} y={560} width={246} height={18} rx={9} />
