@@ -6,13 +6,17 @@
    puntitos, `#c3c7cd`, `#9aa0a8`, `#a9aeb5`, `#b3b8be`). Lo que hay en este archivo es SÓLO lo que
    se mueve, y todo se pinta POR ENCIMA y recortado a las siluetas (el `clipPath` de `Dubai.tsx`).
 
-   LOS SEIS RELOJES (para que el cuadro no se repita ni se sincronice de golpe):
-     1. la retícula de ventanas encendidas respira (5 s);
-     2. las ventanas que prenden y apagan, cada una a su hora (9 s, con el retardo por posición);
-     3. el barrido de luz que cruza la ciudad (11 s);
-     4. la ola que sube por la torre (4 s);
-     5. los haces de la punta, que barren (12 s);
-     6. la lucecita de la punta (2,6 s).
+   LOS CINCO RELOJES (para que el cuadro no se repita ni se sincronice de golpe):
+     1. las luces que prenden y apagan en los edificios, cada una a su hora (9 s, con el retardo
+        por posición);
+     2. el barrido de luz que cruza la ciudad (11 s);
+     3. la ola que sube por la torre (4 s);
+     4. los haces de la punta, que barren (12 s);
+     5. la lucecita de la punta (2,6 s).
+
+   LAS VENTANAS SE FUERON: el dueño mandó borrar la retícula de ventanas encendidas que cubría toda
+   la ciudad —«elimina todas las ventanas de los edificios, solo deja las luces que se prenden en
+   ellos»—. Ahora los edificios van lisos y lo único que los alumbra son las luces que prenden.
 
    `prefers-reduced-motion`: la ciudad queda QUIETA Y ENCENDIDA (nunca apagada ni vacía).
    ============================================================================================= */
@@ -89,17 +93,7 @@
    LO QUE SE MUEVE — seis relojes de CSS
    ============================================================================================= */
 
-/* 1 · LAS VENTANAS ENCENDIDAS. La retícula de toda la ciudad respira despacio, como una ciudad que
-   no se apaga nunca. */
-@keyframes dubaiRespira {
-  0%, 100% { opacity: 0.5; }
-  50% { opacity: 0.78; }
-}
-.dubai-reticula {
-  animation: dubaiRespira 5s ease-in-out infinite both;
-}
-
-/* 2 · LAS QUE PRENDEN Y APAGAN. Cada ventana tiene su hora: la ola cruza la ciudad de un costado al
+/* 1 · LAS QUE PRENDEN Y APAGAN. Cada ventana tiene su hora: la ola cruza la ciudad de un costado al
    otro porque el retardo sale de la posición, no de un reloj suelto. */
 @keyframes dubaiParpadeo {
   0%, 52% { opacity: 0; }
@@ -114,7 +108,7 @@
   animation: dubaiParpadeo 9s ease-in-out infinite both;
 }
 
-/* 3 · EL BARRIDO. Una banda de luz cruza la ciudad de izquierda a derecha, pegada al piso: es lo que
+/* 2 · EL BARRIDO. Una banda de luz cruza la ciudad de izquierda a derecha, pegada al piso: es lo que
    la hace ver encendida por tramos, como cuando pasa un reflector. */
 @keyframes dubaiBarrido {
   0% { transform: translateX(0); }
@@ -124,7 +118,7 @@
   animation: dubaiBarrido 11s linear infinite both;
 }
 
-/* 4 · LA OLA DE LA TORRE. Sube por la fachada del pie a la punta, como la pantalla del Burj. */
+/* 3 · LA OLA DE LA TORRE. Sube por la fachada del pie a la punta, como la pantalla del Burj. */
 @keyframes dubaiOla {
   0% { transform: translateY(0); opacity: 0; }
   6% { opacity: 0.95; }
@@ -138,7 +132,7 @@
   animation: dubaiOla 4s linear infinite both;
 }
 
-/* 5 · LOS HACES. Salen de la punta de la torre, están prendidos un buen rato y arrancan desfasados:
+/* 4 · LOS HACES. Salen de la punta de la torre, están prendidos un buen rato y arrancan desfasados:
    siempre hay dos o tres encendidos. El grupo entero barre, con la punta como eje. */
 @keyframes dubaiHaz {
   0% { opacity: 0; }
@@ -158,7 +152,7 @@
   animation: dubaiBarridoHaces 12s ease-in-out infinite;
 }
 
-/* 6 · LA PUNTA. La lucecita del remate, titilando. */
+/* 5 · LA PUNTA. La lucecita del remate, titilando. */
 @keyframes dubaiAguja {
   0%, 100% { opacity: 0.45; }
   50% { opacity: 1; }
@@ -173,10 +167,6 @@
    QUIEN PIDIÓ MENOS MOVIMIENTO: la ciudad queda quieta y encendida.
    ============================================================================================= */
 @media (prefers-reduced-motion: reduce) {
-  .dubai-reticula {
-    animation: none;
-    opacity: 0.72;
-  }
   .dubai-parpadeo {
     animation: none;
     opacity: 0;
