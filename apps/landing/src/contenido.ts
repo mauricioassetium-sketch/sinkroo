@@ -173,14 +173,21 @@ const ES: Contenido = {
   },
   portada: {
     linea: 'INVESTIGA · ESCRIBE · PRUEBA · APRUEBA · PUBLICA · MIDE',
+    /* Las cuatro frases del título. REGLA (la pidió el dueño): cada una se lee SOLA, porque se ven de a
+       una. Antes eran pedazos de una misma oración encadenada —«INVESTIGA SU MERCADO Y ESCRIBE LAS
+       PIEZAS», «LAS PRUEBA CON 500 PERSONAS…», «Y MIDE CADA PESO QUE ENTRÓ»—: el «LAS» y el «Y»
+       colgaban de la frase anterior, y al aparecer sola cada una quedaba a medias. Ahora cada frase
+       trae su sujeto y dice una cosa distinta: qué es · lo que investiga · lo que prueba antes de
+       gastar · lo que mide después. */
     titulos: [
-      'TU EQUIPO DE MARKETING, TRABAJANDO SOLO 24/7',
-      'INVESTIGA SU MERCADO Y ESCRIBE LAS PIEZAS',
-      'LAS PRUEBA CON 500 PERSONAS ANTES DE GASTAR',
-      'Y MIDE CADA PESO QUE ENTRÓ',
+      'SINKROO ES SU EQUIPO DE MARKETING COMPLETO',
+      'SEIS AGENTES LEEN SU MERCADO CADA MAÑANA',
+      'CADA PIEZA SE PRUEBA ANTES DE GASTAR UN PESO',
+      'MIDE LO QUE PASÓ EN SUS REDES, PESO POR PESO',
     ],
+    /* Y la bajada ya no repite la lista de arriba: dice otra cosa — cómo se trabaja y quién manda. */
     bajada:
-      'Sinkroo monta el equipo completo de marketing de su negocio: investiga el mercado, escribe las piezas de cada red, las prueba antes de que usted gaste un peso y mide lo que pasó. Usted aprueba lo que sale.',
+      'Sin agencia y sin contratar a nadie: el trabajo queda hecho y usted decide qué sale. Nada llega a sus cuentas sin su aprobación.',
     accesos: {
       panel: 'ENTRAR A MI PANEL',
       comoFunciona: 'CÓMO FUNCIONA',
@@ -483,13 +490,13 @@ const EN: Contenido = {
   portada: {
     linea: 'RESEARCHES · WRITES · TESTS · APPROVES · PUBLISHES · MEASURES',
     titulos: [
-      'YOUR MARKETING TEAM, WORKING ON ITS OWN 24/7',
-      'IT RESEARCHES YOUR MARKET AND WRITES THE PIECES',
-      'IT TESTS THEM WITH 500 PEOPLE BEFORE YOU SPEND',
-      'AND MEASURES EVERY PESO THAT CAME IN',
+      'SINKROO IS YOUR COMPLETE MARKETING TEAM',
+      'SIX AGENTS READ YOUR MARKET EVERY MORNING',
+      'EVERY PIECE IS TESTED BEFORE YOU SPEND A PESO',
+      'IT MEASURES WHAT HAPPENED, PESO BY PESO',
     ],
     bajada:
-      'Sinkroo builds the complete marketing team for your business: it researches the market, writes the pieces for each network, tests them before you spend a single peso and measures what happened. You approve what goes out.',
+      'No agency and no one to hire: the work gets done and you decide what goes out. Nothing reaches your accounts without your approval.',
     accesos: {
       panel: 'ENTER MY PANEL',
       comoFunciona: 'HOW IT WORKS',
