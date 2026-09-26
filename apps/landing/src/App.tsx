@@ -156,8 +156,8 @@ export function App() {
       </section>
 
       <footer className="pie">
-        Sinkroo · hecho en Colombia ·{' '}
-        <a href="mailto:hola@sinkroo.com">hola@sinkroo.com</a>
+        Sinkroo · Dubai (SHAMS) · Latam ·{' '}
+        <a href="mailto:info@sinkroo.com">info@sinkroo.com</a>
       </footer>
     </div>
   );

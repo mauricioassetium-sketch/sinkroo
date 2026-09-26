@@ -3,13 +3,22 @@ import { Card, Badge, Button } from './ui';
 import {
   I_Megaphone, I_Upload, I_Image, I_Film, I_File, I_Link, I_Check, I_ArrowRight, I_Trash,
   I_ChevDn, I_ChevUp, I_Users, I_Chat,
-  I_Cal,
+  I_Cal, I_Refresh, I_X, I_Lock,
 } from './icons';
 import { FlujoMiroFish } from './FlujoMiroFish';
 import { TIPOS_CAMPANA, type ObjetivoCampana } from '../data/campana';
 import { FORMATOS, MATERIAL, NO_SE_PUBLICA, type CampoPublicacion, type FormatoKey } from '../data/publicaciones';
 import type { Modo } from '../data/demo';
-import { useDatos } from '../api/datos';
+// LA CUENTA DEL NEGOCIO Y SUS CONEXIONES: las cuentas que se muestran en «Con qué cuentas lo publica»
+// salen de acá (el back las devuelve en GET /api/integraciones), no de una lista escrita a mano acá.
+import { useDatos, type IntegracionRed } from '../api/datos';
+// Las acciones de conectar, sincronizar y desconectar van a las rutas REALES de esa red, con el token de
+// la sesión: es el mismo cliente que usa la capa de datos, no una puerta nueva.
+import { baseApi, recordarRed, token } from '../api/cliente';
+// El PIN de seguridad: desconectar una cuenta es una acción sensible y el back lo pide antes de dejarla
+// pasar. El aviso que lo pide es el mismo que usa Cuenta y autonomía.
+import { useSeguridad } from '../lib/seguridad';
+import { EstadoVacio } from './EstadoVacio';
 import { useDetalle } from './Detalle';
 
 type Archivo = { nombre: string; peso: string; url: string | null; esImagen: boolean; deCarpeta?: boolean };
@@ -73,16 +82,23 @@ function IconoCampo({ tipo }: { tipo: CampoPublicacion['tipo'] }) {
 export function Publicar({ setToast, modo, irAConversaciones, soloIngesta }: {
   setToast: (t: string) => void; modo: Modo; irAConversaciones: () => void; soloIngesta?: boolean;
 }) {
-  // La carpeta del negocio, del back: lo que ya subió y se puede volver a usar sin subirlo otra vez.
-  const { archivos } = useDatos();
+  // LO QUE SALE DEL BACK, y nada más: su carpeta de archivos, sus conexiones (cada red con la cuenta
+  // que el negocio conectó de verdad) y el resumen de su negocio. En esta pantalla no vive ningún dato
+  // de ejemplo: lo que no produjo el back, no se muestra.
+  const datos = useDatos();
+  const archivos = datos.archivos;
+  const integraciones = datos.integraciones;
+  // La seguridad de la cuenta: el back pide el PIN antes de desconectar una cuenta y el aviso se abre
+  // desde acá, igual que desde Cuenta y autonomía.
+  const seguridad = useSeguridad();
   const [formatoKey, setFormatoKey] = useState<FormatoKey>('anuncio');
   const [objetivo, setObjetivo] = useState<ObjetivoCampana>('ventas');
   const [valores, setValores] = useState<Record<string, Valor>>({});
   const [material, setMaterial] = useState<Record<string, Archivo[]>>({});
   const [avanzados, setAvanzados] = useState(false);
+  /** La acción de una red que está corriendo (conectar, sincronizar, desconectar). null = nada en curso. */
+  const [trabajando, setTrabajando] = useState<{ red: string; accion: string } | null>(null);
   const detalle = useDetalle();
-  // Conectar una red se ve en la lista de abajo y se puede deshacer: es su cuenta, no la nuestra.
-  const [tiktokConectado, setTiktokConectado] = useState(false);
 
   const formato = FORMATOS.find(f => f.key === formatoKey)!;
   const tipo = TIPOS_CAMPANA.find(t => t.key === objetivo)!;
@@ -345,6 +361,110 @@ export function Publicar({ setToast, modo, irAConversaciones, soloIngesta }: {
     );
   });
 
+  // ---------------------------------------------------------------------------------------------
+  // LAS CUENTAS DEL NEGOCIO — la lista, su estado y sus acciones, todo contra el back.
+  //
+  // La lista sale de GET /api/integraciones (una sola consulta para todas las redes): acá se recorre tal
+  // cual llega, sin fijar a mano cuántas son, cuáles están conectadas ni con qué nombre. El nombre y el
+  // identificador que se ven en cada fila son los que devolvió el back: si un identificador no viene, se
+  // muestra el nombre de la red y su estado, y no se inventa nada. Las acciones llaman a la ruta REAL de
+  // esa red (empezar / sincronizar / desconectar); una red que no se puede conectar por ninguna vía no
+  // recibe el botón, porque no habría ruta que llamar.
+  // ---------------------------------------------------------------------------------------------
+  const redes: IntegracionRed[] = integraciones?.redes ?? [];
+  const conectadas = redes.filter(r => !!r.cuenta);
+
+  /** El ícono de cada red, por su nombre técnico. Una red que no esté en la lista sale con el ícono de
+   *  enlace: nunca sin ícono y nunca con el de otra red. */
+  const ICONO_RED: Record<string, string> = {
+    instagram: '📸', facebook: '👍', meta_ads: '📣', whatsapp: '💬', tiktok: '🎵',
+    youtube: '📺', email: '✉️', tienda: '🛒', google: '🔎', pixel: '📊', bundle: '🔗',
+  };
+  const emojiDeRed = (red: string) => ICONO_RED[red] || '🔗';
+
+  /** ¿Esta red se puede conectar hoy? Con su app propia cargada en el servidor, o por bundle.social. */
+  const sePuedeConectar = (r: IntegracionRed) => r.configurado || !!r.viaBundle;
+
+  /** Una llamada a las rutas reales de una red, con el token de la sesión. El PIN va en el cuerpo sólo
+   *  cuando la acción es sensible y el back lo pide. */
+  const accionRed = async (red: string, accion: 'empezar' | 'sincronizar' | 'desconectar', pin?: string) => {
+    const r = await fetch(baseApi() + `/api/integraciones/${encodeURIComponent(red)}/${accion}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token() },
+      ...(pin ? { body: JSON.stringify({ pin }) } : {}),
+    });
+    const cuerpo = await r.json().catch(() => ({})) as {
+      url?: string; error?: string; detalle?: string; codigo?: string; que_hizo?: string; pin_requerido?: boolean;
+    };
+    return { ok: r.ok, cuerpo };
+  };
+
+  /** ¿El back está pidiendo el PIN de seguridad para dejar pasar esta acción? */
+  const pideElPin = (cuerpo: { codigo?: string; pin_requerido?: boolean }) =>
+    cuerpo.pin_requerido === true || cuerpo.codigo === 'pin_necesario';
+
+  /** Conectar: el back devuelve la dirección del proveedor y el navegador se va para allá. La red queda
+   *  anotada para que la vuelta sepa a cuál pertenece el código. Acá no se marca nada «conectado»: eso lo
+   *  dice el back cuando la cuenta quedó guardada. */
+  const conectarRed = async (red: string, nombre: string) => {
+    setTrabajando({ red, accion: 'conectar' });
+    try {
+      const { ok, cuerpo } = await accionRed(red, 'empezar');
+      if (ok && cuerpo.url) {
+        recordarRed(red);
+        setToast(`${nombre} le va a pedir el permiso: cuando autorice, su cuenta queda conectada y aparece acá con su nombre real`);
+        window.location.href = cuerpo.url;
+      } else {
+        setToast(cuerpo.error || `No se pudo empezar la conexión con ${nombre}: el servidor respondió con un error`);
+      }
+    } catch { setToast(`No se pudo hablar con el servidor: la conexión con ${nombre} no arrancó`); }
+    setTrabajando(null);
+  };
+
+  /** Sincronizar: el back lee los datos de esa red y calibra el público. Después se relee todo para que
+   *  la pantalla muestre lo que quedó en el servidor. */
+  const sincronizarRed = async (red: string, nombre: string) => {
+    setTrabajando({ red, accion: 'sincronizar' });
+    try {
+      const { ok, cuerpo } = await accionRed(red, 'sincronizar');
+      if (ok) setToast([cuerpo.que_hizo, cuerpo.detalle].filter(Boolean).join(': ') || `${nombre} sincronizó con el servidor`);
+      else setToast(cuerpo.error || `No se pudo sincronizar ${nombre}: el servidor respondió con un error`);
+    } catch { setToast('No se pudo sincronizar: el servidor no respondió'); }
+    await datos.refrescar();
+    setTrabajando(null);
+  };
+
+  /** Desconectar: el back borra la conexión guardada. Es una acción sensible: si el negocio tiene PIN, el
+   *  back lo pide, se pide acá y se reintenta sola con el PIN ya verificado. */
+  const desconectarRed = async (red: string, nombre: string) => {
+    setTrabajando({ red, accion: 'desconectar' });
+    try {
+      const primero = await accionRed(red, 'desconectar');
+      let salio = primero;
+      let cancelado = false;
+      if (!primero.ok && pideElPin(primero.cuerpo)) {
+        const pin = await seguridad.pedirPin(`Para desconectar una cuenta le pedimos su PIN de seguridad. ${nombre} va a quedar desconectado del motor.`);
+        if (pin) salio = await accionRed(red, 'desconectar', pin);
+        else cancelado = true;
+      }
+      if (cancelado) setToast(`${nombre} sigue conectado: no se desconectó nada`);
+      else if (salio.ok) setToast(`${nombre} quedó desconectado: el back lo dice y no se frena nada de lo que ya corre`);
+      else setToast(salio.cuerpo.error || `No se pudo desconectar ${nombre}: el servidor respondió con un error`);
+    } catch { setToast('No se pudo desconectar: el servidor no respondió'); }
+    await datos.refrescar();
+    setTrabajando(null);
+  };
+
+  /** Un conteo del back, tal cual llegó; «sin leer» cuando esa lectura no trajo nada. Un cero no es lo
+   *  mismo que no haber leído: acá no se reemplaza uno por el otro. */
+  const conteo = (n: number | undefined) => (typeof n === 'number' ? String(n) : 'sin leer');
+
+  /** El freno de las cuentas, con el número que devolvió el back. Sin esa lectura no se afirma ninguna
+   *  cifra: se dice lo único que consta. */
+  const frenoDeCuentas = typeof integraciones?.resumen?.conectadas === 'number'
+    ? `Hoy tiene ${integraciones.resumen.conectadas} ${integraciones.resumen.conectadas === 1 ? 'cuenta conectada' : 'cuentas conectadas'} y el sistema todavía no publica en las redes: cuando eso funcione, en las que falten no va a salir nada.`
+    : 'El sistema todavía no publica en las redes. Sólo va a trabajar con las cuentas que usted conecte: en las que falten, no va a salir nada.';
+
   return (
     <>
       {/* ==================== FILA 1: QUÉ PUBLICAR Y CON QUÉ MATERIAL ==================== */}
@@ -439,14 +559,19 @@ export function Publicar({ setToast, modo, irAConversaciones, soloIngesta }: {
             </div>
           ))}
           </div>
-          <div>
-            <div className="bs" style={{ marginBottom: 9 }}>Lo que el motor ya tiene de su negocio:</div>
-            <div className="guards">
-              <div className="guard"><I_Check size={14} style={{ color: 'var(--green)', flexShrink: 0 }} /><span className="guard-lb">Su catálogo y sus precios<small>leídos del onboarding y de su tienda conectada</small></span><span className="guard-val">24</span></div>
-              <div className="guard"><I_Check size={14} style={{ color: 'var(--green)', flexShrink: 0 }} /><span className="guard-lb">Fotos y videos que ya subió<small>de las piezas que el motor publicó antes</small></span><span className="guard-val">31</span></div>
-              <div className="guard"><I_Check size={14} style={{ color: 'var(--green)', flexShrink: 0 }} /><span className="guard-lb">Su tono y su público<small>aprendido de sus conversaciones reales, no de un formulario</small></span><span className="guard-val">listo</span></div>
+          {/* Los conteos salen del back: la carpeta (GET /api/archivos) y el resumen de su negocio
+              (GET /api/negocio). Antes acá había tres cifras escritas a mano —24, 31 y «listo»— que no
+              las había producido nadie. Sin back no hay nada que contar, y el bloque no se dibuja. */}
+          {datos.real && (
+            <div>
+              <div className="bs" style={{ marginBottom: 9 }}>Lo que el motor ya tiene de su negocio:</div>
+              <div className="guards">
+                <div className="guard"><I_Check size={14} style={{ color: 'var(--green)', flexShrink: 0 }} /><span className="guard-lb">Archivos suyos en su carpeta<small>los que subió y siguen en el servidor</small></span><span className="guard-val">{archivos.length}</span></div>
+                <div className="guard"><I_Check size={14} style={{ color: 'var(--green)', flexShrink: 0 }} /><span className="guard-lb">Piezas que el motor ya evaluó<small>de las corridas guardadas en su cuenta</small></span><span className="guard-val">{conteo(datos.resumen?.evaluaciones)}</span></div>
+                <div className="guard"><I_Check size={14} style={{ color: 'var(--green)', flexShrink: 0 }} /><span className="guard-lb">Conversaciones que ya leyó<small>las que están en su cuenta, no un ejemplo</small></span><span className="guard-val">{conteo(datos.resumen?.conversaciones)}</span></div>
+              </div>
             </div>
-          </div>
+          )}
           <div className="acc-why">
             Si no sube nada, el motor <b>igual arranca</b>: usa lo que aprendió de su negocio en el onboarding
             y lo que encontró en el mercado. Pero con material real el resultado es otro.
@@ -488,59 +613,137 @@ export function Publicar({ setToast, modo, irAConversaciones, soloIngesta }: {
           </div>
         </Card>
 
+        {/* ==================== CON QUÉ CUENTAS TRABAJA ====================
+            Todo lo que se ve acá sale del back (GET /api/integraciones): su nombre, su identificador, su
+            estado y la ruta real que ejecuta cada botón. Acá no hay ninguna cuenta escrita a mano. */}
         <Card
           title={<span className="row" style={{ gap: 8 }}><I_Users size={14} style={{ color: 'var(--purple3)' }} /> Con qué cuentas lo publica</span>}
-          action={<Badge tone="green">{tiktokConectado ? 4 : 3} conectadas</Badge>}
+          action={<Badge tone={integraciones && integraciones.resumen.conectadas > 0 ? 'green' : 'muted'}>
+            {integraciones ? `${integraciones.resumen.conectadas} de ${integraciones.resumen.total} conectadas` : 'sin leer'}
+          </Badge>}
         >
           <div className="bs">
-            El motor publica <b>en sus cuentas, no en las nuestras</b>. Cada conexión es suya y la puede revocar
-            cuando quiera desde Cuenta y autonomía.
+            El motor <b>trabaja con sus cuentas, no con las nuestras</b>: conectarlas es lo que le deja leer
+            sus datos —lo que le va a servir para armar las piezas— y cada conexión es suya, revocable desde
+            Cuenta y autonomía. <b>Conectar una cuenta no publica nada:</b> el sistema todavía no publica en
+            las redes, y cuando eso funcione nada va a salir sin su OK. Acá abajo se ve lo que el back tiene
+            guardado, no una lista de ejemplo.
           </div>
-          {[
-            { n: 'Instagram', c: '@skincare.natural', e: '📸', ok: true },
-            { n: 'Facebook', c: 'Skincare Natural', e: '👍', ok: true },
-            { n: 'WhatsApp', c: '+57 300 555 2341', e: '💬', ok: true },
-            { n: 'TikTok', c: tiktokConectado ? '@skincare.natural' : 'sin conectar', e: '🎵', ok: tiktokConectado },
-          ].map(x => (
-            <div key={x.n} className="guard">
-              <span style={{ fontSize: 16, flexShrink: 0 }}>{x.e}</span>
-              <span className="guard-lb">{x.n}<small>{x.c}</small></span>
-              <Badge tone={x.ok ? 'green' : 'muted'}>{x.ok ? 'conectada' : 'por conectar'}</Badge>
-            </div>
-          ))}
-          <div className="row" style={{ gap: 9, marginTop: 4, flexWrap: 'wrap' }}>
-            {tiktokConectado ? (
-              <Button variant="outline" className="btn-sm" title="Desconecta TikTok de este panel. Reversible: la puede volver a conectar cuando quiera, y el motor deja de publicar ahí al instante."
-                onClick={() => { setTiktokConectado(false); setToast('TikTok desconectado: el motor ya no publica ahí'); }}>
-                Desconectar TikTok
-              </Button>
+
+          {!integraciones ? (
+            /* Sin back no hay cuenta que leer, y si el back está encendido pero no respondió se dice eso:
+               en los dos casos se nombra lo que pasa, no se dibuja ninguna cuenta inventada. */
+            datos.real ? (
+              <EstadoVacio
+                {...(datos.cargando
+                  ? { titulo: 'Leyendo sus conexiones…', texto: 'El panel está leyendo el estado de sus conexiones en su cuenta. Mientras lee no afirma nada: si no hay ninguna conectada, lo dice enseguida.' }
+                  : { titulo: 'No se pudo leer el estado de las conexiones', texto: 'El servidor no respondió a la lectura de sus cuentas. Vuelva a leerlo y aparece tal como está: esta pantalla no dibuja una cuenta que nadie conectó.' })}
+                {...(datos.cargando ? {} : { accion: 'Volver a leer', onAccion: () => void datos.refrescar() })} />
             ) : (
-              <Button variant="ghost" className="btn-sm" title="Conecta TikTok con su cuenta: el motor va a poder publicar ahí. Reversible desde aquí mismo o desde Cuenta y autonomía."
-                onClick={() => { setTiktokConectado(true); setToast('TikTok conectado: ahora el motor publica en 4 redes'); }}>
-                Conectar otra red
-              </Button>
-            )}
-            <Button variant="ghost" className="btn-sm" title="Le muestra los frenos con los que publica el motor, uno por uno"
-              onClick={() => detalle({
-                titulo: 'Los límites con los que publica el motor',
-                sub: 'Son frenos que el motor respeta siempre, aunque su recomendación sea otra. No se desactivan desde aquí: se cambian en Cuenta y autonomía.',
-                bloques: [
-                  { tipo: 'filas', items: [
-                    { t: 'No publica de noche', s: 'Escribe entre las 8:00 y las 22:00. Si usted elige una hora de madrugada, sale igual: su hora manda.', etiqueta: 'activo', tono: 'green' },
-                    { t: 'Un mensaje por persona por día', s: 'Nadie recibe dos mensajes el mismo día, aunque se crucen dos automatizaciones.', etiqueta: 'activo', tono: 'green' },
-                    { t: 'No toca su presupuesto sin permiso', s: 'Puede sugerir subirlo o bajarlo, pero no lo mueve solo.', etiqueta: 'activo', tono: 'green' },
-                    { t: 'No publica sin las cuentas conectadas', s: `Hoy hay ${tiktokConectado ? 4 : 3} redes conectadas: en las que faltan, no publica.`, etiqueta: 'activo', tono: 'green' },
-                    { t: 'No gasta sin pasar el panel', s: 'Cada pieza pasa por los 5 jueces y los 500 del público antes de salir.', etiqueta: 'activo', tono: 'green' },
-                  ] },
-                  { tipo: 'aviso', texto: 'Estos frenos son lo que hace que pueda dejarlo trabajando sin mirarlo. Si uno se puede desactivar, la pantalla se lo dice antes de que lo haga.' },
-                ],
-                fuente: 'Cuenta y autonomía → Frenos de publicación. Se aplican a todas las campañas, no a una sola.',
-              })}>Ver los límites</Button>
-          </div>
-          <div className="acc-why">
-            El motor respeta sus frenos: <b>no publica de noche</b>, no manda más de un mensaje por persona por día
-            y no toca el presupuesto sin permiso.
-          </div>
+              <EstadoVacio
+                titulo="Todavía no hay conexiones que leer"
+                texto="Acá aparecen las cuentas de su negocio con el nombre y el dato que devuelva el back, cada una con sus botones de sincronizar y desconectar. Todavía no se leyó su cuenta, así que no hay ninguna fila que mostrar." />
+            )
+          ) : redes.length === 0 ? (
+            /* El back respondió y no mandó ninguna red: se dice eso, sin dibujar filas inventadas. */
+            <EstadoVacio
+              titulo="El servidor todavía no mandó redes para conectar"
+              texto="Cuando el back devuelva sus redes conectables, cada una aparece acá con su nombre, su estado y —si está conectada— su cuenta. Devolvió la lista vacía."
+              accion="Volver a leer" onAccion={() => void datos.refrescar()} />
+          ) : (
+            <>
+              {conectadas.length === 0 && (
+                <EstadoVacio
+                  titulo="Ninguna cuenta conectada todavía"
+                  texto={`El back trae ${redes.length} redes conectables y ninguna cuenta conectada a su nombre: el motor no tiene de dónde leer sus datos. Conecte la que necesite —acá abajo está el botón de las que se pueden conectar hoy— y aparece con el nombre real que devuelva el back.`} />
+              )}
+              {redes.map(r => {
+                const cuenta = r.cuenta;
+                const enCurso = trabajando?.red === r.red ? trabajando.accion : '';
+                const falta = r.falta?.length ? r.falta : [];
+                // El identificador es el que devolvió el back (su nombre de cuenta o su id externo). Si no
+                // vino ninguno, NO se inventa: queda el nombre de la red con su estado y nada más.
+                const identificador = cuenta ? (cuenta.nombre || cuenta.external_id || '') : '';
+                return (
+                  <div key={r.red} className="guard">
+                    <span style={{ fontSize: 16, flexShrink: 0 }}>{emojiDeRed(r.red)}</span>
+                    <span className="guard-lb">
+                      {r.nombre}
+                      <small>{cuenta
+                        ? (identificador
+                          ? `${identificador} · ${cuenta.estado || 'conectada'}`
+                          : `sin identificador en el back · ${cuenta.estado || 'conectada'}`)
+                        : r.rol}</small>
+                    </span>
+                    <Badge tone={cuenta ? 'green' : sePuedeConectar(r) ? 'muted' : 'red'}>
+                      {cuenta ? 'conectada' : sePuedeConectar(r) ? 'sin conectar' : 'falta configurar'}
+                    </Badge>
+                    {/* Los botones son las rutas reales de ESA red. Una red que no se puede conectar por
+                        ninguna vía no recibe el botón: no habría ruta a la que llamar. */}
+                    {cuenta ? (
+                      <>
+                        <Button variant="ghost" className="btn-sm" disabled={trabajando !== null}
+                          title={`Lee los datos de ${r.nombre} con el permiso que ya está guardado en el servidor (POST /api/integraciones/${r.red}/sincronizar). Al terminar dice qué hizo; si la red no devuelve nada, lo dice.`}
+                          onClick={() => void sincronizarRed(r.red, r.nombre)}>
+                          <I_Refresh size={13} /> {enCurso === 'sincronizar' ? 'Leyendo…' : 'Sincronizar'}
+                        </Button>
+                        <Button variant="ghost" className="btn-sm" disabled={trabajando !== null}
+                          title={`Borra la conexión de ${r.nombre} guardada en el servidor (POST /api/integraciones/${r.red}/desconectar). Es reversible: se vuelve a conectar con el mismo paso. Si su negocio tiene PIN, el back lo pide.`}
+                          onClick={() => void desconectarRed(r.red, r.nombre)}>
+                          <I_X size={13} /> {enCurso === 'desconectar' ? 'Desconectando…' : 'Desconectar'}
+                        </Button>
+                      </>
+                    ) : !sePuedeConectar(r) ? (
+                      /* Ni su app propia en el servidor ni bundle.social: acá se nombra lo que falta y no
+                         se ofrece un botón que no puede funcionar. */
+                      <span className="tiny" style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--amber)', fontWeight: 700 }}>
+                        <I_Lock size={12} /> no se puede conectar todavía{falta.length ? `: falta ${falta.join(', ')}` : ''}
+                      </span>
+                    ) : r.tipo === 'token' ? (
+                      /* Las redes por clave (WhatsApp, correo, tienda, píxel) ya tienen su clave en el
+                         servidor: no hay permiso que pedir, sólo falta la primera lectura. */
+                      <Button variant="ghost" className="btn-sm" disabled={trabajando !== null}
+                        title={`Lee los datos de ${r.nombre} con la clave que ya está cargada en el servidor (POST /api/integraciones/${r.red}/sincronizar). El panel nunca muestra ni pide esa clave.`}
+                        onClick={() => void sincronizarRed(r.red, r.nombre)}>
+                        <I_Refresh size={13} /> {enCurso === 'sincronizar' ? 'Leyendo…' : 'Probar y sincronizar'}
+                      </Button>
+                    ) : (
+                      <Button variant="ghost" className="btn-sm" disabled={trabajando !== null}
+                        title={r.viaBundle
+                          ? `Conecta ${r.nombre}: abre la pantalla de bundle.social, donde el dueño de la cuenta da el permiso (POST /api/integraciones/${r.red}/empezar). El token queda en el servidor: esta pantalla nunca lo ve.`
+                          : `Conecta ${r.nombre}: el permiso lo da el dueño de la cuenta en ${r.nombre} (POST /api/integraciones/${r.red}/empezar). El token queda en el servidor: esta pantalla nunca lo ve.`}
+                        onClick={() => void conectarRed(r.red, r.nombre)}>
+                        <I_Link size={13} /> {enCurso === 'conectar' ? 'Abriendo…' : 'Conectar'}
+                      </Button>
+                    )}
+                  </div>
+                );
+              })}
+              <div className="row" style={{ gap: 9, marginTop: 10, flexWrap: 'wrap' }}>
+                <Button variant="ghost" className="btn-sm" title="Le muestra los frenos con los que trabaja el motor, uno por uno"
+                  onClick={() => detalle({
+                    titulo: 'Los límites con los que trabaja el motor',
+                    sub: 'Son frenos que el motor respeta siempre, aunque su recomendación sea otra. No se desactivan desde aquí: se cambian en Cuenta y autonomía.',
+                    bloques: [
+                      { tipo: 'filas', items: [
+                        { t: 'No trabaja de noche', s: 'Escribe entre las 8:00 y las 22:00. Si usted elige una hora de madrugada, se respeta la suya igual.', etiqueta: 'activo', tono: 'green' },
+                        { t: 'Un mensaje por persona por día', s: 'Nadie recibe dos mensajes el mismo día, aunque se crucen dos automatizaciones.', etiqueta: 'activo', tono: 'green' },
+                        { t: 'No toca su presupuesto sin permiso', s: 'Puede sugerir subirlo o bajarlo, pero no lo mueve solo.', etiqueta: 'activo', tono: 'green' },
+                        { t: 'No trabaja sin las cuentas conectadas', s: frenoDeCuentas, etiqueta: 'activo', tono: 'green' },
+                        { t: 'No gasta sin pasar el panel', s: 'Cada pieza pasa por los 5 jueces y los 500 del público antes de que usted la apruebe.', etiqueta: 'activo', tono: 'green' },
+                      ] },
+                      { tipo: 'aviso', texto: 'Estos frenos son lo que hace que pueda dejarlo trabajando sin mirarlo. Si uno se puede desactivar, la pantalla se lo dice antes de que lo haga.' },
+                    ],
+                    fuente: 'Cuenta y autonomía. Se aplican a todas las campañas, no a una sola.',
+                  })}>Ver los límites</Button>
+              </div>
+              <div className="acc-why">
+                El motor respeta sus frenos: <b>no trabaja de noche</b>, no manda más de un mensaje por persona
+                por día y no toca el presupuesto sin permiso. Y el número de cuentas conectadas de arriba es
+                el que devolvió el back, no un ejemplo.
+              </div>
+            </>
+          )}
         </Card>
       </div>
       )}

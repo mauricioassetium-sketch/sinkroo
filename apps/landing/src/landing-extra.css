@@ -1,0 +1,163 @@
+/* =============================================================================================
+   LO POCO QUE EL CSS VIEJO NO TRAÍA. `viejo.css` es el CSS compilado de la landing anterior: trae
+   todas las clases del armazón (el mismo negro, la misma tipografía, las mismas tarjetas). Aquí va
+   sólo lo que ese archivo no podía tener porque en la vieja lo hacía JavaScript:
+
+     · la franja que se mueve (bloque 4) — en CSS, y se detiene con `prefers-reduced-motion`;
+     · las 31 líneas del fondo de la portada — con CSS en vez del animation library;
+     · el selector ES | EN y el menú del celular (piezas nuevas de la cabecera);
+     · el botón «fantasma» del tercer acceso de la portada;
+     · `object-top`, para que las capturas del panel muestren su parte de arriba en las tarjetas.
+   NADA de aquí esconde contenido: sin JavaScript el texto se lee igual.
+   ============================================================================================= */
+
+/* La franja: la pista lleva DOS copias de la hilera, una al lado de la otra, y se desliza
+   exactamente una copia por vuelta (50% + la mitad del hueco de 6rem, que es el gap-24 de la vieja)
+   para que el salto no se note. */
+.marquesina {
+  width: max-content;
+  animation: marquesina-desliza 60s linear infinite;
+}
+
+.marquesina-al-reves {
+  animation-name: marquesina-desliza-al-reves;
+}
+
+@keyframes marquesina-desliza {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(calc(-50% - 3rem));
+  }
+}
+
+@keyframes marquesina-desliza-al-reves {
+  from {
+    transform: translateX(calc(-50% - 3rem));
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+/* El adorno de la portada: las líneas que caen. */
+.linea-que-cae {
+  opacity: 0.25;
+  animation: linea-cae 9s linear infinite;
+}
+
+@keyframes linea-cae {
+  from {
+    transform: translateY(-140px);
+  }
+  to {
+    transform: translateY(100vh);
+  }
+}
+
+/* El selector de idioma: dos letras, ninguna bandera de afuera. */
+.selector-idioma {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 9999px;
+}
+
+.selector-idioma button {
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1;
+  padding: 0.375rem 0.75rem;
+  border-radius: 9999px;
+  background: transparent;
+  color: #9ca3af;
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+.selector-idioma button:hover {
+  color: #ffffff;
+}
+
+.selector-idioma .idioma-activo {
+  background: #9333ea;
+  color: #ffffff;
+}
+
+/* El menú del celular, debajo de la cabecera fija. */
+.menu-movil {
+  position: fixed;
+  top: 4rem;
+  left: 0;
+  right: 0;
+  z-index: 49;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.5rem;
+  background: rgba(0, 0, 0, 0.96);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.menu-movil a {
+  color: #d1d5db;
+  font-size: 1.125rem;
+  text-decoration: none;
+}
+
+.menu-movil a:hover {
+  color: #ffffff;
+}
+
+.menu-movil .selector-idioma {
+  align-self: flex-start;
+}
+
+/* El tercer acceso de la portada: el mismo botón grande, sin color de relleno. */
+.boton-fantasma {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: #ffffff;
+}
+
+.boton-fantasma:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+/* Las capturas del panel son pantallas altas: en las tarjetas se muestra su parte de arriba. */
+.object-top {
+  object-position: top;
+}
+
+/* Nada de scroll horizontal en el celular. */
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+@media (min-width: 768px) {
+  .menu-movil {
+    display: none;
+  }
+}
+
+/* Quien pidió menos movimiento en su sistema, no ve nada moverse. */
+@media (prefers-reduced-motion: reduce) {
+  .marquesina,
+  .marquesina-al-reves,
+  .linea-que-cae {
+    animation: none;
+  }
+
+  .linea-que-cae {
+    opacity: 0.15;
+  }
+}
