@@ -588,17 +588,33 @@ export function Landing() {
           <div className="absolute -top-[10%] -left-[10%] w-[50%] h-[50%] bg-purple-600/10 blur-[140px] rounded-full"></div>
           <div className="max-w-7xl mx-auto relative z-10">
             <div className="ceo-pliego">
-              <figure className="ceo-retrato-caja">
-                <img
-                  className="ceo-retrato"
-                  src={IMAGENES.ceo}
-                  alt={t.ceo.alt}
-                  width={720}
-                  height={900}
-                  loading="lazy"
-                  decoding="async"
-                />
-              </figure>
+              <div className="ceo-retrato-bloque">
+                <figure className="ceo-retrato-caja">
+                  <img
+                    className="ceo-retrato"
+                    src={IMAGENES.ceo}
+                    alt={t.ceo.alt}
+                    width={720}
+                    height={900}
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </figure>
+
+                {/* El enlace al perfil va DEBAJO del retrato y FUERA del marco: el marco recorta la
+                    foto con `overflow: hidden` y se lo comería. El icono es el mismo trazo de
+                    `redes.ts` que usa el bloque de conexiones — el violeta lo pone la ficha. */}
+                <a
+                  className="ceo-linkedin"
+                  href={t.ceo.linkedin}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title={t.ceo.linkedinTitulo}
+                >
+                  <IconoRed id="linkedin" />
+                  {t.ceo.linkedinTexto}
+                </a>
+              </div>
 
               <div className="ceo-dicho">
                 <p className="ceo-etiqueta">{t.ceo.etiqueta}</p>

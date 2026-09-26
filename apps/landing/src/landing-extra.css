@@ -430,6 +430,44 @@ body {
     linear-gradient(180deg, #130b1e 0%, #0a0a0c 62%, #08080a 100%);
 }
 
+/* El enlace al perfil de la CEO, debajo del retrato. El trazo sale de `redes.ts` (el mismo del
+   bloque de conexiones) y toma el violeta de la casa por `currentColor`. Es un enlace: no cambia
+   nada de la página, abre el perfil en una pestaña nueva y se puede cerrar. */
+.ceo-retrato-bloque {
+  width: 100%;
+}
+
+.ceo-linkedin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: fit-content;
+  max-width: 100%;
+  margin: 1.25rem auto 0;
+  padding: 0.55rem 1.1rem;
+  border-radius: 999px;
+  border: 1px solid rgba(168, 85, 247, 0.35);
+  background: rgba(168, 85, 247, 0.1);
+  color: #c084fc;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.ceo-linkedin:hover {
+  background: rgba(168, 85, 247, 0.2);
+  border-color: rgba(168, 85, 247, 0.6);
+  color: #e9d5ff;
+}
+
+.ceo-linkedin .conexion-icono {
+  width: 18px;
+  height: 18px;
+}
+
 .ceo-retrato {
   position: absolute;
   inset: 0;

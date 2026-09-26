@@ -130,6 +130,12 @@ export type Contenido = {
     firma: string;
     cargo: string;
     alt: string;
+    /** El perfil de LinkedIn de la CEO, para el botón que va debajo del retrato. */
+    linkedin: string;
+    /** El texto del botón. */
+    linkedinTexto: string;
+    /** Lo que dice el `title` del botón: qué hace y que no cambia nada. */
+    linkedinTitulo: string;
   };
   /* 10 · CONTACTO */
   contacto: {
@@ -415,6 +421,12 @@ const ES: Contenido = {
     firma: 'María Paula Castaños',
     cargo: 'CEO de Sinkroo · Experta en marketing',
     alt: 'María Paula Castaños, CEO de Sinkroo, con el suéter de punto.',
+    /* El enlace va sin los parámetros de rastreo que traía el link compartido desde el teléfono
+       (`utm_source=share_via&utm_content=profile&utm_medium=member_ios`): llevan al perfil igual. */
+    linkedin: 'https://www.linkedin.com/in/maria-paula-c-30288820a',
+    linkedinTexto: 'Ver su perfil en LinkedIn',
+    linkedinTitulo:
+      'Abre el perfil de LinkedIn de María Paula en una pestaña nueva. Se puede cerrar y no cambia nada.',
   },
   /* 10 · CONTACTO */
   contacto: {
@@ -718,6 +730,11 @@ const EN: Contenido = {
     firma: 'María Paula Castaños',
     cargo: 'CEO of Sinkroo · Marketing expert',
     alt: 'María Paula Castaños, CEO of Sinkroo, in a knit sweater.',
+    linkedin: 'https://www.linkedin.com/in/maria-paula-c-30288820a',
+    linkedinTexto: 'See her profile on LinkedIn',
+    linkedinTitulo:
+      "Opens María Paula's LinkedIn profile in a new tab. You can close it and nothing changes.",
+
   },
   /* 10 · CONTACT */
   contacto: {
