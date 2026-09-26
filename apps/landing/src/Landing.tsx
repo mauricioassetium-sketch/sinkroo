@@ -564,7 +564,7 @@ export function Landing() {
             </div>
 
             <div className="relative z-10 lg:w-1/2 flex justify-center items-center">
-              <div className="relative w-full max-w-[450px] aspect-square flex items-center justify-center">
+              <div className="pc-caja relative w-full max-w-[450px] aspect-square flex items-center justify-center">
                 <div className="absolute w-64 h-64 bg-purple-600/20 blur-[100px] animate-pulse"></div>
                 <div className="absolute inset-0 border border-dashed border-purple-500/20 rounded-full"></div>
                 <div className="absolute inset-12 border border-purple-500/10 rounded-full shadow-[inset_0_0_20px_rgba(168,85,247,0.1)]"></div>

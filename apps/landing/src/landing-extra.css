@@ -156,9 +156,17 @@
      monitor manda y la pantalla se lee. En el celular manda el `max-width`. */
   /* El ancho va contra la PANTALLA y no contra el contenedor: la columna de este bloque se mide por
      su contenido, así que un `max-width: 100%` no la hacía encoger y en el celular el monitor se
-     salía de la pantalla. Con `86vw` entra siempre. */
-  width: min(400px, 86vw);
+     salía de la pantalla. Con `86vw` entra siempre.
+     El 520 son los 400 de antes + 30 %, que es lo que pidió el dueño para que se lea la pantalla. */
+  width: min(520px, 86vw);
   margin-inline: auto;
+}
+
+/* La caja decorada donde va el monitor (el círculo punteado y el resplandor). Su tope lo pone esta
+   clase y no la utilidad de Tailwind del armazón (`max-w-[450px]`, ya compilada en `viejo.css`): al
+   agrandar el monitor, el círculo tiene que crecer con él o el monitor se sale del adorno. */
+.pc-caja {
+  max-width: 580px;
 }
 
 /* El bisel: de dónde sale la pantalla. */
