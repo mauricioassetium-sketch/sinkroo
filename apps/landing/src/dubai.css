@@ -1,39 +1,31 @@
 /* =============================================================================================
-   EL DIBUJO DE DUBAI: EL BURJ KHALIFA Y SU JUEGO DE LUCES (bloque 5, donde estaban las fotos).
+   EL DIBUJO DE DUBAI — la silueta de la página de compliance de Verysset, copiada tal cual (las
+   formas están en `Dubai.tsx`, con los `d` letra por letra) y animada desde acá.
 
-   Reemplaza a las dos fotos de gente que había al final del bloque «CÓMO LO HACEMOS». El dibujo es
-   SVG en línea y TODO lo que se mueve es CSS: no hay un reloj de JavaScript.
+   LA SILUETA NO SE TOCA: sus grises vienen puestos en el archivo original (`#d8dbe0` el fondo con
+   puntitos, `#c3c7cd`, `#9aa0a8`, `#a9aeb5`, `#b3b8be`). Lo que hay en este archivo es SÓLO lo que
+   se mueve, y todo se pinta POR ENCIMA y recortado a las siluetas (el `clipPath` de `Dubai.tsx`).
 
-   LA LÓGICA DEL JUEGO DE LUCES (la del Burj Khalifa de verdad, no una inventada):
-     · La fachada es una pantalla: la luz SUBE. Por eso las franjas de la torre prenden de abajo
-       hacia arriba (una detrás de la otra, no todas juntas) y las burbujas suben por el frente.
-     · El edificio se ve de noche por las ventanas: los vecinos prenden y apagan ventanas de a una.
-       El retardo de cada ventana sale de su posición, así que la ola cruza la ciudad de un costado
-       al otro — igual que el haz, que es lo que la enciende.
-     · El juego termina en los HACES: salen de la torre, pasan por encima de los vecinos y se apagan.
-     · Los tres relojes están armados para que el conjunto no se sincronice ni se repita de golpe:
-        las franjas cada 4 s, las ventanas cada 9 s, los haces cada 12 s (el mínimo común es 36 s, o
-        sea que la ciudad no muestra dos veces el mismo cuadro seguido).
+   LOS SEIS RELOJES (para que el cuadro no se repita ni se sincronice de golpe):
+     1. la retícula de ventanas encendidas respira (5 s);
+     2. las ventanas que prenden y apagan, cada una a su hora (9 s, con el retardo por posición);
+     3. el barrido de luz que cruza la ciudad (11 s);
+     4. la ola que sube por la torre (4 s);
+     5. los haces de la punta, que barren (12 s);
+     6. la lucecita de la punta (2,6 s).
 
-   `prefers-reduced-motion`: la ciudad queda QUIETA Y ENCENDIDA (nunca apagada ni vacía): las
-   ventanas fijas en su luz de noche, las franjas a media luz y los haces encendidos sin moverse.
+   `prefers-reduced-motion`: la ciudad queda QUIETA Y ENCENDIDA (nunca apagada ni vacía).
    ============================================================================================= */
 
 .dubai {
   display: block;
   width: 100%;
-  /* El alto: en un celular de 390 px el dibujo entero dejaría la torre del tamaño de un sello, así
-     que el cuadro se estira y el dibujo se recorta por los costados (`xMidYMax slice` en el SVG):
-     la torre queda grande y los vecinos de las puntas se pierden, que es lo que menos importa. */
-  /* EL ALTO SALE DEL ANCHO: 16,7 vw es exactamente la proporción del lienzo (2400 de ancho por 400
-     de alto = 6 a 1), así que el dibujo entra ENTERO en cualquier pantalla. Antes el alto estaba
-     topado en 212 px: en un monitor grande el ancho seguía creciendo, el dibujo se agrandaba para
-     cubrir y se comía la punta de la torre. Con el mínimo de 96 px, en un celular queda un poco más
-     alto que su proporción y el recorte por los costados deja la torre más grande, a propósito. */
-  height: max(96px, 16.7vw);
-  /* SIN BORDE Y SIN CAJA. El dibujo no vive dentro de un recuadro: flota sobre el negro de la
-     página. Lo único que queda de fondo es el defumigado morado del pie, que es la luz del juego
-     apoyada en el piso — se apaga solo hacia los costados y hacia arriba. */
+  /* El alto sale del ancho y de la proporción del original (1600x400 = 4 a 1): así entra entero en
+     cualquier pantalla. En el celular, el mínimo de 150 px deja la franja más alta que su proporción
+     y el recorte por los costados agranda la torre, a propósito. */
+  height: max(150px, 25vw);
+  /* SIN BORDE Y SIN CAJA: la ciudad flota sobre el negro de la página, con el defumigado morado del
+     pie (la luz del juego apoyada en el piso). */
   background: radial-gradient(
     58% 66% at 50% 100%,
     rgba(168, 85, 247, 0.24) 0%,
@@ -53,18 +45,17 @@
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.04em;
-  color: rgba(233, 213, 255, 0.75);
-  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.8);
+  color: rgba(233, 213, 255, 0.78);
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.85);
   pointer-events: none;
 }
 
 /* La ciudad de borde a borde y pegada al piso del bloque.
    · `100vw` con los márgenes que la centran: se sale del contenedor y toma el ancho de la pantalla.
-   · El pie de la ciudad ES el pie del módulo: la sección no lleva relleno abajo (`padding-bottom:
-     0`), así el último pixel de los edificios cae en el borde inferior del bloque, sin aire.
-     Se hace con el relleno y no con un margen negativo a propósito: un `margin-bottom` negativo
-     encoge la caja pero NO sube el elemento, y quedaba un resto de aire abajo (32 px en el celular).
-   · OJO con Tailwind acá: las clases negativas (`-mb-32`) no están compiladas en `viejo.css`. */
+   · El pie de la ciudad ES el pie del módulo: la sección no lleva relleno abajo (`padding-bottom: 0`
+     en `#como-funciona`), así el último píxel de los edificios cae en el borde inferior del bloque.
+     Va con el relleno y no con un margen negativo a propósito: un `margin-bottom` negativo encoge la
+     caja pero NO sube el elemento, y quedaba un resto de aire abajo (32 px en el celular). */
 .dubai-pleno {
   width: 100vw;
   margin-left: calc(50% - 50vw);
@@ -76,128 +67,46 @@
   padding-bottom: 0;
 }
 
-/* ---------- los vecinos ---------- */
-.dubai-cuerpo {
-  fill: #14101f;
-  stroke: rgba(168, 85, 247, 0.22);
-  stroke-width: 0.7;
-}
-/* La lucecita de la aguja. (Los remates sueltos ya no existen: ahora cada edificio es una sola
-   pieza con su forma —escalonada, en punta, inclinada, con cúpula o con arco— y la pinta
-   `.dubai-cuerpo`, la misma de los cuerpos rectos.) */
-.dubai-luz-remate {
-  fill: #f5e8ff;
-  animation: dubaiAguja 3.4s ease-in-out infinite both;
-}
-.dubai-ventana {
-  fill: #f5e8ff;
-  opacity: 0.18;
-}
-
-/* El piso. */
-.dubai-piso {
-  fill: rgba(192, 132, 252, 0.28);
-}
-
-/* ---------- la torre ---------- */
-.dubai-perfil {
-  stroke: rgba(192, 132, 252, 0.42);
-  stroke-width: 0.9;
-}
-.dubai-franja {
-  fill: #e9d5ff;
-  opacity: 0.14;
-  filter: url(#dubai-brillo);
-}
-/* La ola que sube por la fachada: un pedazo de luz que recorre la torre de abajo hacia arriba. */
-.dubai-ola {
-  fill: url(#dubai-haz);
-  opacity: 0;
-  filter: url(#dubai-brillo);
-}
-.dubai-burbuja {
-  fill: #ffffff;
-  opacity: 0;
-  filter: url(#dubai-brillo);
-}
-.dubai-aguja {
-  fill: #ffffff;
-  opacity: 0.7;
-}
-.dubai-haz {
-  opacity: 0;
-}
-
 /* =============================================================================================
    LO QUE SE MUEVE — seis relojes de CSS
    ============================================================================================= */
 
-/* 1 · LAS VENTANAS. La ciudad no se ilumina de golpe: cada ventana prende y apaga por su cuenta. */
-@keyframes dubaiVentana {
-  0%, 58% { opacity: 0.16; }
-  66% { opacity: 0.92; }
-  76% { opacity: 0.5; }
-  84%, 100% { opacity: 0.16; }
+/* 1 · LAS VENTANAS ENCENDIDAS. La retícula de toda la ciudad respira despacio, como una ciudad que
+   no se apaga nunca. */
+@keyframes dubaiRespira {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.78; }
 }
-.dubai-ventana {
-  animation: dubaiVentana 9s ease-in-out infinite both;
-}
-
-/* Las ventanas que NO titilan: quedan fijas en su luz de noche. Una ciudad donde todas las ventanas
-   prenden y apagan a la vez no se ve como una ciudad, se ve como una feria. */
-.dubai-ventana-fija {
-  animation: none;
-  opacity: 0.62;
+.dubai-reticula {
+  animation: dubaiRespira 5s ease-in-out infinite both;
 }
 
-/* 2 · LAS FRANJAS DE LA FACHADA. Prenden de abajo hacia arriba, una detrás de la otra: eso es lo
-   que hace que la luz se vea SUBIR por el edificio. */
-@keyframes dubaiFranja {
-  0% { opacity: 0.1; }
-  7% { opacity: 1; }
-  19% { opacity: 0.85; }
-  34%, 100% { opacity: 0.1; }
+/* 2 · LAS QUE PRENDEN Y APAGAN. Cada ventana tiene su hora: la ola cruza la ciudad de un costado al
+   otro porque el retardo sale de la posición, no de un reloj suelto. */
+@keyframes dubaiParpadeo {
+  0%, 52% { opacity: 0; }
+  62% { opacity: 1; }
+  74% { opacity: 0.45; }
+  86%, 100% { opacity: 0; }
 }
-.dubai-franja {
-  animation: dubaiFranja 4s ease-in-out infinite both;
-}
-
-/* 3 · LAS BURBUJAS. Suben por el frente de la torre, de abajo hacia arriba, y se apagan arriba. */
-@keyframes dubaiBurbuja {
-  0% { transform: translateY(0); opacity: 0; }
-  10% { opacity: 1; }
-  72% { opacity: 0.8; }
-  100% { transform: translateY(-330px); opacity: 0; }
-}
-.dubai-burbuja {
-  animation: dubaiBurbuja 4.8s linear infinite both;
+.dubai-parpadeo {
+  fill: #ffffff;
+  opacity: 0;
+  filter: url(#dubai-brillo);
+  animation: dubaiParpadeo 9s ease-in-out infinite both;
 }
 
-/* 4 · LOS HACES. Cada uno tiene su hora: cruzan la ciudad y se apagan. Están encendidos bastante
-   rato y arrancan desfasados, así siempre hay dos o tres prendidos: con destellos de un instante el
-   juego de luces no se lee. */
-@keyframes dubaiHaz {
-  0% { opacity: 0; }
-  2% { opacity: 0.9; }
-  22% { opacity: 0.68; }
-  34%, 100% { opacity: 0; }
-}
-.dubai-haz {
-  animation: dubaiHaz 12s ease-out infinite both;
-}
-
-/* 5 · EL BARRIDO. Los haces no están clavados: el grupo entero gira un poco, de un costado al otro,
-   con la torre como eje. Es la parte que más se ve del juego de luces de verdad. */
+/* 3 · EL BARRIDO. Una banda de luz cruza la ciudad de izquierda a derecha, pegada al piso: es lo que
+   la hace ver encendida por tramos, como cuando pasa un reflector. */
 @keyframes dubaiBarrido {
-  0%, 100% { transform: rotate(-2.2deg); }
-  50% { transform: rotate(2.2deg); }
+  0% { transform: translateX(0); }
+  100% { transform: translateX(1920px); }
 }
-.dubai-haces {
-  transform-origin: 1200px 80px;
-  animation: dubaiBarrido 12s ease-in-out infinite;
+.dubai-barrido {
+  animation: dubaiBarrido 11s linear infinite both;
 }
 
-/* 6 · LA OLA. Recorre la torre entera en 4 s: sale del pie, sube y se apaga en la punta. */
+/* 4 · LA OLA DE LA TORRE. Sube por la fachada del pie a la punta, como la pantalla del Burj. */
 @keyframes dubaiOla {
   0% { transform: translateY(0); opacity: 0; }
   6% { opacity: 0.95; }
@@ -205,15 +114,40 @@
   100% { transform: translateY(-344px); opacity: 0; }
 }
 .dubai-ola {
+  fill: url(#dubai-haz);
+  opacity: 0;
+  filter: url(#dubai-brillo);
   animation: dubaiOla 4s linear infinite both;
 }
 
-/* La punta de la aguja, titilando. */
+/* 5 · LOS HACES. Salen de la punta de la torre, están prendidos un buen rato y arrancan desfasados:
+   siempre hay dos o tres encendidos. El grupo entero barre, con la punta como eje. */
+@keyframes dubaiHaz {
+  0% { opacity: 0; }
+  2% { opacity: 0.85; }
+  22% { opacity: 0.62; }
+  34%, 100% { opacity: 0; }
+}
+.dubai-haz {
+  animation: dubaiHaz 12s ease-out infinite both;
+}
+@keyframes dubaiBarridoHaces {
+  0%, 100% { transform: rotate(-1.8deg); }
+  50% { transform: rotate(1.8deg); }
+}
+.dubai-haces {
+  transform-origin: 800px 60px;
+  animation: dubaiBarridoHaces 12s ease-in-out infinite;
+}
+
+/* 6 · LA PUNTA. La lucecita del remate, titilando. */
 @keyframes dubaiAguja {
   0%, 100% { opacity: 0.45; }
   50% { opacity: 1; }
 }
 .dubai-aguja {
+  fill: #ffffff;
+  filter: url(#dubai-brillo);
   animation: dubaiAguja 2.6s ease-in-out infinite both;
 }
 
@@ -221,29 +155,30 @@
    QUIEN PIDIÓ MENOS MOVIMIENTO: la ciudad queda quieta y encendida.
    ============================================================================================= */
 @media (prefers-reduced-motion: reduce) {
-  .dubai-ventana {
+  .dubai-reticula {
     animation: none;
-    opacity: 0.8;
+    opacity: 0.72;
   }
-  .dubai-franja {
+  .dubai-parpadeo {
     animation: none;
-    opacity: 0.8;
+    opacity: 0;
   }
-  .dubai-burbuja,
+  .dubai-barrido {
+    animation: none;
+    opacity: 0;
+  }
   .dubai-ola {
     animation: none;
     opacity: 0;
   }
   .dubai-haz {
     animation: none;
-    opacity: 0.5;
+    opacity: 0.45;
   }
-  /* Los haces quedan encendidos, quietos, sin el barrido. */
   .dubai-haces {
     animation: none;
   }
-  .dubai-aguja,
-  .dubai-luz-remate {
+  .dubai-aguja {
     animation: none;
     opacity: 1;
   }
