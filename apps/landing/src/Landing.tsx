@@ -451,28 +451,9 @@ export function Landing() {
             </div>
           </div>
 
-          {/* EL CIERRE DEL BLOQUE: LA CIUDAD DE DUBAI. Acá estaban las dos fotos de gente
-              («IMÁGENES DEL TRABAJO») y el dueño las mandó sacar. En su lugar va el dibujo que él
-              pidió: el Burj Khalifa con su juego de luces, la luz subiendo por la fachada como
-              burbujas y las ventanas de los vecinos prendiendo y apagando. Es SVG en línea y se
-              anima con CSS (`Dubai.tsx` + `dubai.css`); acá sólo se pone.
-              Va DE BORDE A BORDE y PEGADA AL PISO DEL BLOQUE: el `dubai-pleno` se sale del
-              contenedor para tomar el ancho de la pantalla (la sección tiene `overflow-hidden`, así
-              que no abre scroll lateral) y el margen negativo de `-8rem` se come el relleno de abajo
-              de la sección, de modo que el pie de los edificios queda justo en el borde inferior.
-              A esta sección se le quitó el `min-h-screen` que tenía: con un alto mínimo de una
-              pantalla, en un monitor grande sobraba aire abajo y la ciudad quedaba flotando en vez
-              de pegada al borde. Ahora el módulo mide lo que mide su contenido.
-              El texto que estaba acá abajo («FROM DUBAI» y la línea del DIFC) lo mandó sacar el
-              dueño. El domicilio legal sigue en el pie de la página, que es donde vive. */}
-          <div className="dubai-pleno mt-24 md:mt-32 relative z-10">
-            <SkylineDubai />
-            {/* LA FIRMA, arriba a la izquierda y sobre los edificios, para que se lea. El corazón va
-                aparte —en morado y latiendo— para poder animarlo sin tocar el texto. */}
-            <p className="dubai-firma">
-              {t.comoLoHacemos.dubaiFirma} <span className="dubai-corazon" aria-hidden="true">❤</span>
-            </p>
-          </div>
+          {/* ACÁ ESTABA LA CIUDAD DE DUBAI. El dueño la mandó mudar entera, con su dibujo y su
+              firma, arriba del pie de la página (ver el apartado «desde-dubai», al final del
+              `main`). Este apartado vuelve a cerrar con su propio aire abajo. */}
         </section>
 
         {/* ========================= 6 · CON QUÉ TRABAJA ========================= */}
@@ -780,6 +761,26 @@ export function Landing() {
                 </button>
               </form>
             </div>
+          </div>
+        </section>
+
+        {/* ========================= 11 · LA CIUDAD, ARRIBA DEL PIE =========================
+            El dueño la mandó mudar acá: la ciudad entera, con su dibujo y su firma, justo arriba
+            del pie de la página. Antes cerraba el apartado «Cómo lo hacemos».
+
+            Va DE BORDE A BORDE: el `dubai-pleno` se sale del contenedor para tomar el ancho de la
+            pantalla (el apartado tiene `overflow-hidden`, así que no abre scroll lateral).
+            Y va PEGADA AL PISO: el apartado no lleva relleno abajo (`padding-bottom: 0` en
+            `dubai.css`), así el último píxel de los edificios cae en el borde inferior. Arriba lleva
+            aire para que la ciudad no se pegue a lo anterior. */}
+        <section id="desde-dubai" className="relative bg-[#050505] text-white pt-24 md:pt-32 overflow-hidden">
+          <div className="dubai-pleno relative z-10">
+            <SkylineDubai />
+            {/* LA FIRMA, arriba a la izquierda y sobre los edificios, para que se lea. El corazón va
+                aparte —en morado y latiendo— para poder animarlo sin tocar el texto. */}
+            <p className="dubai-firma">
+              {t.comoLoHacemos.dubaiFirma} <span className="dubai-corazon" aria-hidden="true">❤</span>
+            </p>
           </div>
         </section>
       </main>

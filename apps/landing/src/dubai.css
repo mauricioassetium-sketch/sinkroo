@@ -74,8 +74,8 @@
 
 /* La ciudad de borde a borde y pegada al piso del bloque.
    · `100vw` con los márgenes que la centran: se sale del contenedor y toma el ancho de la pantalla.
-   · El pie de la ciudad ES el pie del módulo: la sección no lleva relleno abajo (`padding-bottom: 0`
-     en `#como-funciona`), así el último píxel de los edificios cae en el borde inferior del bloque.
+   · El pie de la ciudad ES el pie de su apartado: no lleva relleno abajo (`padding-bottom: 0` en
+     `#desde-dubai`), así el último píxel de los edificios cae en el borde inferior del bloque.
      Va con el relleno y no con un margen negativo a propósito: un `margin-bottom` negativo encoge la
      caja pero NO sube el elemento, y quedaba un resto de aire abajo (32 px en el celular). */
 .dubai-pleno {
@@ -84,8 +84,9 @@
   margin-right: calc(50% - 50vw);
 }
 
-/* El módulo de «CÓMO LO HACEMOS» termina en el pie de la ciudad. */
-#como-funciona {
+/* El apartado de la ciudad (arriba del pie) termina en los pies de los edificios: sin relleno
+   abajo, el último píxel del dibujo cae en el borde del apartado. */
+#desde-dubai {
   padding-bottom: 0;
 }
 
