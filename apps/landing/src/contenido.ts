@@ -172,15 +172,15 @@ const ES: Contenido = {
       { texto: 'Conexiones', href: '#conexiones' },
       { texto: 'Planes', href: '#planes' },
     ],
-    /* Las dos puertas de la cabecera, con las palabras que pidió el dueño: el botón dice SIGN IN y
-       el texto de al lado LOG IN. El botón es para quien no está registrado (trae el formulario de
-       crear cuenta abierto) y el texto para quien ya lo está. Están en inglés en los dos idiomas a
-       propósito; si algún día se quieren en español, acá van «CREAR CUENTA» y «ENTRAR». */
+    /* Las dos puertas de la cabecera, con las palabras que pidió el dueño: el BOTÓN dice SIGN IN y el
+       TEXTO de al lado LOG IN. Como lo pidió al final: el botón lleva a la entrada donde se pone el
+       correo y la clave, y el texto a donde se registra. Están en inglés en los dos idiomas a
+       propósito; si algún día se quieren en español, acá van «ENTRAR» y «CREAR CUENTA». */
     entrar: 'SIGN IN',
     ingresar: 'LOG IN',
     tituloEntrar:
-      'Abre el panel en el formulario de crear una cuenta, para quien todavía no tiene. Se puede cerrar y no cambia nada.',
-    tituloIngresar: 'Abre el panel para entrar con la cuenta que ya tiene. No cambia nada.',
+      'Abre el panel en la entrada, para poner el correo y la clave con la cuenta que ya tiene. Se puede cerrar y no cambia nada.',
+    tituloIngresar: 'Abre el panel en el formulario de crear una cuenta nueva. No cambia nada.',
     idioma: { etiqueta: 'Idioma', es: 'ES', en: 'EN' },
     abrirMenu: 'Abrir el menú',
     altBuho: 'Sinkroo: el búho',
@@ -496,8 +496,8 @@ const EN: Contenido = {
     entrar: 'SIGN IN',
     ingresar: 'LOG IN',
     tituloEntrar:
-      'Opens the panel on the create-account form, for those who do not have one yet. You can close it and nothing changes.',
-    tituloIngresar: 'Opens the panel so you can enter with the account you already have. Nothing changes.',
+      'Opens the panel entry, to type the email and the password of the account you already have. You can close it and nothing changes.',
+    tituloIngresar: 'Opens the panel on the form to create a new account. Nothing changes.',
     idioma: { etiqueta: 'Language', es: 'ES', en: 'EN' },
     abrirMenu: 'Open the menu',
     altBuho: 'Sinkroo: the owl',
