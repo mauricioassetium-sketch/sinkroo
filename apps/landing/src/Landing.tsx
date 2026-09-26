@@ -770,7 +770,32 @@ export function Landing() {
       </main>
 
       {/* ========================= 11 · PIE ========================= */}
-      <div className="bg-black pt-24">
+      {/* ========================= 12 · LA CIUDAD, ARRIBA DEL PIE =========================
+          El dueño: «la parte inferior de la imagen esté en la parte superior del footer, donde
+          termina el blanco; cambia la imagen y súbela de donde la dejaste». O sea: la ciudad va
+          ARRIBA del pie blanco, con los pies de los edificios pegados al borde donde arranca el
+          blanco — y no abajo, donde la había dejado.
+
+          Va DE BORDE A BORDE: el `dubai-pleno` se sale del contenedor para tomar el ancho de la
+          pantalla (este apartado tiene `overflow-hidden`, así que no abre scroll lateral).
+          Va PEGADA AL PIE DEL BLOQUE: no lleva relleno abajo (`padding-bottom: 0` en `dubai.css`),
+          así el último píxel de los edificios cae justo donde arranca el blanco.
+          Arriba lleva aire (pt-24 / md:pt-32) para que la ciudad no se pegue a lo anterior. */}
+      <section id="desde-dubai" className="relative bg-black text-white pt-24 md:pt-32 overflow-hidden">
+        <div className="dubai-pleno relative z-10">
+          <SkylineDubai />
+          {/* LA FIRMA, arriba a la izquierda y sobre los edificios, para que se lea. El corazón va
+              aparte —en morado y latiendo— para poder animarlo sin tocar el texto. */}
+          <p className="dubai-firma">
+            {t.comoLoHacemos.dubaiFirma} <span className="dubai-corazon" aria-hidden="true">❤</span>
+          </p>
+        </div>
+      </section>
+
+      {/* El envoltorio del pie SIN aire arriba: la tarjeta blanca tiene que arrancar en el mismo
+          píxel donde terminan los edificios. Antes llevaba un `pt-24` que dejaba 6 rem de negro en
+          el medio. */}
+      <div className="bg-black">
         <footer className="relative bg-gradient-to-br from-white via-[#fafafa] to-[#f5f3ff] pt-20 pb-10 rounded-t-[60px] md:rounded-t-[100px] border-t border-purple-200">
           <div className="max-w-[1400px] mx-auto px-6 lg:px-12">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-10 items-start">
@@ -889,53 +914,29 @@ export function Landing() {
 
             <p className="mt-8 text-[11px] leading-relaxed text-gray-500 max-w-[1100px]">{t.pie.disclaimer}</p>
 
-            <div className="mt-10 pt-8 border-t border-purple-200 flex flex-col md:flex-row justify-center items-center gap-4">
-              <p className="text-gray-500 text-xs text-center">
-                {t.pie.derechos}
-                <br />
-                {t.pie.direccion.map((linea) => (
-                  <span key={linea}>
-                    {linea}
-                    <br />
-                  </span>
-                ))}
-              </p>
-
+            {/* TODO CORRIDO, como lo pidió el dueño: «todo esto damelo con texto continuo, no por
+                separado». Antes eran dos bloques: a la izquierda el copyright con el domicilio en
+                tres renglones, y a la derecha el enlace de Aradina. Ahora es un solo párrafo:
+                derechos · domicilio · quién lo hace, como se lee una línea de pie de página. */}
+            <p className="mt-10 pt-8 border-t border-purple-200 text-gray-500 text-xs text-center leading-relaxed">
+              {t.pie.derechos}
+              {' · '}
+              {t.pie.direccion}
+              {' · '}
               <a
                 href={t.pie.hechoPorHref}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-gray-500 text-xs hover:text-purple-500 transition"
+                className="hover:text-purple-500 transition"
                 title="Abre el sitio de Aradina Technologies en una pestaña nueva. Se puede cerrar y no cambia nada."
               >
                 {t.pie.hechoPor}
               </a>
-            </div>
+            </p>
           </div>
         </footer>
       </div>
 
-      {/* ========================= 12 · LA CIUDAD, AL PIE DE TODO =========================
-          El dueño la mandó mudar dos veces: primero, de donde estaba (cerrando «Cómo lo hacemos») a
-          arriba del pie; y después acá abajo —«puedes pegarlo al borde de donde termina la parte
-          blanca del footer»—. Queda como en la referencia de Verysset: la ciudad cierra la página
-          entera, pegada al borde de abajo del pie blanco.
-
-          Va DE BORDE A BORDE: el `dubai-pleno` se sale del contenedor para tomar el ancho de la
-          pantalla (este apartado tiene `overflow-hidden`, así que no abre scroll lateral).
-          Va PEGADA AL PISO: no lleva relleno abajo (`padding-bottom: 0` en `dubai.css`), así el
-          último píxel de los edificios cae en el borde de abajo de la página.
-          Y va PEGADA AL BLANCO: no lleva relleno arriba, así arranca justo donde termina el pie. */}
-      <section id="desde-dubai" className="relative bg-black text-white overflow-hidden">
-        <div className="dubai-pleno relative z-10">
-          <SkylineDubai />
-          {/* LA FIRMA, arriba a la izquierda y sobre los edificios, para que se lea. El corazón va
-              aparte —en morado y latiendo— para poder animarlo sin tocar el texto. */}
-          <p className="dubai-firma">
-            {t.comoLoHacemos.dubaiFirma} <span className="dubai-corazon" aria-hidden="true">❤</span>
-          </p>
-        </div>
-      </section>
     </div>
   );
 }

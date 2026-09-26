@@ -161,7 +161,8 @@ export type Contenido = {
     enlaces: Enlace[];
     escribir: string;
     derechos: string;
-    direccion: string[];
+    /** El domicilio legal, en un solo renglón: va corrido con los derechos y el «powered by». */
+    direccion: string;
     /** La columna legal: los términos son nuestros (una página aparte) y privacidad y cookies viven
      *  en el sitio de Aradina, que es quien lleva esa parte. */
     legalTitulo: string;
@@ -491,11 +492,8 @@ const ES: Contenido = {
     ],
     escribir: 'Para escribirnos:',
     derechos: '© 2026 Sinkroo. Todos los derechos reservados.',
-    direccion: [
-      'Innovation Hub, Level 14, Gate Village Building 4',
-      'Dubai International Financial Centre (DIFC)',
-      'Dubai, United Arab Emirates',
-    ],
+    direccion:
+      'Innovation Hub, Level 14, Gate Village Building 4 · Dubai International Financial Centre (DIFC) · Dubai, United Arab Emirates',
     legalTitulo: 'Legal',
     legales: [
       { texto: 'Términos y condiciones', href: '/legal/terminos.html' },
@@ -818,11 +816,8 @@ const EN: Contenido = {
     ],
     escribir: 'To write to us:',
     derechos: '© 2026 Sinkroo. All rights reserved.',
-    direccion: [
-      'Innovation Hub, Level 14, Gate Village Building 4',
-      'Dubai International Financial Centre (DIFC)',
-      'Dubai, United Arab Emirates',
-    ],
+    direccion:
+      'Innovation Hub, Level 14, Gate Village Building 4 · Dubai International Financial Centre (DIFC) · Dubai, United Arab Emirates',
     legalTitulo: 'Legal',
     legales: [
       { texto: 'Terms & conditions', href: '/legal/terminos.html#en' },
