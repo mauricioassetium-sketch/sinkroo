@@ -48,7 +48,10 @@
   --ico-velo: rgba(168, 85, 247, 0.09);
 
   width: 100%;
-  max-width: 460px;
+  /* El ancho tope del dibujo. Bajó de 460 a 320 porque en la tarjeta se veía demasiado grande:
+     deja aire alrededor y las líneas quedan más finas al reducirse todo en la misma proporción.
+     Es el único número que hay que mover para agrandarlo o achicarlo. */
+  max-width: 320px;
   margin-inline: auto;
   aspect-ratio: 1 / 1;
   border-radius: 14px;
