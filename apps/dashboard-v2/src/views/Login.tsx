@@ -245,6 +245,24 @@ export function PantallaLogin({ onEntrar, vuelta }: { onEntrar: (s: Sesion) => v
               </div>
             </>
           ) : (<>
+          {/* LAS DOS PUERTAS, A LA VISTA DESDE EL PRIMER MOMENTO. Antes el que llegaba nuevo tenía que
+              adivinar: «crear cuenta» vivía en un enlace chiquito al pie del formulario. Ahora las dos
+              están arriba y se ve cuál está puesta. */}
+          <div className="login-tabs" role="tablist" aria-label="Entrar o crear una cuenta">
+            <button type="button" role="tab" aria-selected={modo === 'entrar'}
+              className={'login-tab' + (modo === 'entrar' ? ' on' : '')}
+              title="Vuelve al formulario de siempre: su correo y su contraseña."
+              onClick={() => { setModo('entrar'); setError(''); setRecuperar(''); }}>
+              <I_Lock size={13} /> Ya tengo cuenta
+            </button>
+            <button type="button" role="tab" aria-selected={modo === 'crear'}
+              className={'login-tab' + (modo === 'crear' ? ' on' : '')}
+              title="Abre el formulario para crear una cuenta nueva: su nombre, su correo y una contraseña."
+              onClick={() => { setModo('crear'); setError(''); setRecuperar(''); }}>
+              <I_User size={13} /> Soy nuevo, crear cuenta
+            </button>
+          </div>
+
           <div className="login-form-head">
             <div className="login-form-t">{modo === 'entrar' ? 'Entre a su panel' : 'Cree su cuenta'}</div>
             <Badge tone="purple">{modo === 'entrar' ? 'tiene una cuenta' : 'nueva'}</Badge>
@@ -309,6 +327,18 @@ export function PantallaLogin({ onEntrar, vuelta }: { onEntrar: (s: Sesion) => v
             )
           )}
 
+          {modo === 'entrar' && (
+            <div className="login-nuevo">
+              ¿Primera vez por acá?{' '}
+              <button type="button" className="login-link"
+                title="Abre el formulario para crear su cuenta: su nombre, su correo y una contraseña."
+                onClick={() => { setModo('crear'); setError(''); setRecuperar(''); }}>
+                Cree su cuenta acá
+              </button>{' '}
+              y entre con su propio negocio: arranca con 2.000 créditos.
+            </div>
+          )}
+
           <Button className="login-btn" title="Entre al panel y abra el asistente de bienvenida: lo puede omitir y completarlo después."
             onClick={entrar}>
             {entrando && entrando !== 'google'
@@ -316,6 +346,7 @@ export function PantallaLogin({ onEntrar, vuelta }: { onEntrar: (s: Sesion) => v
               : <>{modo === 'entrar' ? 'Entrar' : 'Crear la cuenta y entrar'} <I_ArrowRight size={14} /></>}
           </Button>
 
+          {!conBack && (<>
           <div className="login-o"><span>o</span></div>
 
           {/* ENTRAR CON GOOGLE — con el back encendido no hay por dónde: el servidor no tiene montada la
@@ -323,20 +354,13 @@ export function PantallaLogin({ onEntrar, vuelta }: { onEntrar: (s: Sesion) => v
               que no era la de nadie, y esa es una de las dos razones por las que el panel saludaba con el
               nombre del ejemplo. Ahora, con back, el botón está apagado y dice qué falta; sin back sigue
               siendo la puerta de la demostración, pero sin inventar ningún nombre. */}
-          <Button variant="outline" className="login-btn" disabled={conBack}
-            title={conBack
-              ? 'Todavía no se puede: la entrada con Google no está configurada en el servidor, así que este botón no hace nada. Entre con su correo y su contraseña.'
-              : 'Entre con su cuenta de Google y empiece el asistente con ese usuario'}
+          <Button variant="outline" className="login-btn"
+            title="Entre con su cuenta de Google y empiece el asistente con ese usuario"
             onClick={() => entrarCon('google', { nombre: nombre.trim(), email: email.trim() })}>
             {entrando === 'google' ? 'Entrando con Google…' : <><span className="login-g">G</span> Entrar con Google</>}
           </Button>
 
-          {conBack && (
-            <div className="login-legal">
-              Entrar con Google todavía no está configurado en el servidor: por eso el botón está apagado y no
-              se envió nada. Su cuenta entra con el correo y la contraseña de arriba.
-            </div>
-          )}
+          </>)}
 
           {CUENTAS_DEMO.map(c => (
             <Button key={c.email} variant="ghost" className="login-btn"
@@ -352,10 +376,6 @@ export function PantallaLogin({ onEntrar, vuelta }: { onEntrar: (s: Sesion) => v
                 ? 'Cambiar la contraseña todavía no se puede hacer desde el panel: al tocarlo no se envía ningún correo'
                 : 'Le envía el enlace para cambiar la contraseña al correo que escribió'}
               onClick={() => { setRecuperar(email); setError(''); }}>Olvidé mi contraseña</button>
-            <button className="login-link" title={modo === 'entrar' ? 'Cambie al formulario para crear una cuenta nueva' : 'Vuelva al formulario de siempre'}
-              onClick={() => { setModo(modo === 'entrar' ? 'crear' : 'entrar'); setError(''); setRecuperar(''); }}>
-              {modo === 'entrar' ? 'Crear una cuenta nueva' : 'Ya tengo cuenta'}
-            </button>
           </div>
 
           <div className="login-legal">
