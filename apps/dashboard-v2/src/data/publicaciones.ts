@@ -12,8 +12,9 @@ import { OFERTAS_ANTERIORES } from './demo';
 // Y no todo lo que se publica es una "campaña". Éstas son las formas reales de publicar:
 // anuncio pago, post/reel en el feed, historia, mensaje a sus clientes, lanzamiento,
 // sorteo y colaboración con un creador. Cada una pide datos distintos y el motor los usa
-// distinto. La automatización (recompra, carrito, referidos) vive en Conversaciones
-// porque no se "publica": trabaja sola.
+// distinto. Lo que va en Conversaciones (recompra, carrito, referidos) no se publica: es trabajo
+// que se dispara cuando el cliente hace algo, y todavía no está conectado —el sistema no manda
+// mensajes solo—.
 // =============================================================================================
 
 export type TipoCampo = 'texto' | 'link' | 'imagenes' | 'videos' | 'media' | 'archivos' | 'opciones' | 'numero';
@@ -294,7 +295,9 @@ export const FORMATOS: Formato[] = [
   },
 ];
 
-// Lo que NO se publica: trabaja solo. Se muestra como puente a Conversaciones.
+// Lo que NO se publica: es trabajo que va en Conversaciones. Hoy NO está encendido —el sistema no manda
+// mensajes solo—, así que la pantalla lo dice antes de mostrarlo: la lista es a dónde va cada cosa, no
+// algo que esté trabajando.
 export const NO_SE_PUBLICA = [
   'Recuperar el carrito abandonado',
   'Recompra a los 30 días',

@@ -590,26 +590,27 @@ export function Publicar({ setToast, modo, irAConversaciones, soloIngesta }: {
       {!soloIngesta && (
       <div className="duo" style={{ marginTop: 16 }}>
         <Card
-          title={<span className="row" style={{ gap: 8 }}><I_Chat size={14} style={{ color: 'var(--green)' }} /> Esto no se publica: trabaja solo</span>}
-          action={<Badge tone="green">automático</Badge>}
+          title={<span className="row" style={{ gap: 8 }}><I_Chat size={14} style={{ color: 'var(--muted)' }} /> Esto no se publica: va en Conversaciones</span>}
+          action={<Badge tone="muted">todavía no está conectado</Badge>}
         >
           <div className="bs">
-            No todo lo que hace el motor es una publicación. Esto se dispara solo cuando el cliente hace algo,
-            por eso no se "crea": se activa una vez y queda funcionando.
+            No todo lo que hace el motor es una publicación: hay trabajo que se dispara cuando el cliente
+            hace algo. Hoy <b>el sistema no manda mensajes solo</b> —esa ruta todavía no existe—, así que
+            nada de esto está encendido: es lo que va a vivir en Conversaciones cuando el envío esté conectado.
           </div>
           {NO_SE_PUBLICA.map(t => (
             <div key={t} className="nrow">
-              <span style={{ color: 'var(--green)', display: 'flex', flexShrink: 0 }}><I_Check size={15} /></span>
+              <span style={{ color: 'var(--muted2)', display: 'flex', flexShrink: 0 }}><I_Check size={15} /></span>
               <span className="nrow-lb">{t}</span>
             </div>
           ))}
           <div className="row" style={{ gap: 9, marginTop: 4, flexWrap: 'wrap' }}>
-            <Button variant="outline" className="btn-sm" title="Abre Conversaciones, donde viven y se ajustan estas automatizaciones"
-              onClick={irAConversaciones}><I_ArrowRight size={13} /> Ver mis automatizaciones</Button>
+            <Button variant="outline" className="btn-sm" title="Abre Conversaciones, donde van a vivir y a ajustarse estas secuencias de mensajes"
+              onClick={irAConversaciones}><I_ArrowRight size={13} /> Ver las secuencias de mensajes</Button>
           </div>
           <div className="acc-why">
-            Se separan a propósito: si esto viviera en campañas, tendría que "crear" algo que en realidad
-            <b> se configura una vez y trabaja para siempre</b>.
+            Se separan a propósito: esto no es una publicación, es una configuración que se hace una vez.
+            Hoy no hay ninguna encendida: <b>el envío de mensajes todavía no está conectado</b>.
           </div>
         </Card>
 
@@ -727,7 +728,7 @@ export function Publicar({ setToast, modo, irAConversaciones, soloIngesta }: {
                     bloques: [
                       { tipo: 'filas', items: [
                         { t: 'No trabaja de noche', s: 'Escribe entre las 8:00 y las 22:00. Si usted elige una hora de madrugada, se respeta la suya igual.', etiqueta: 'activo', tono: 'green' },
-                        { t: 'Un mensaje por persona por día', s: 'Nadie recibe dos mensajes el mismo día, aunque se crucen dos automatizaciones.', etiqueta: 'activo', tono: 'green' },
+                        { t: 'Un mensaje por persona por día', s: 'Nadie recibe dos mensajes el mismo día, aunque se crucen dos secuencias de mensajes.', etiqueta: 'activo', tono: 'green' },
                         { t: 'No toca su presupuesto sin permiso', s: 'Puede sugerir subirlo o bajarlo, pero no lo mueve solo.', etiqueta: 'activo', tono: 'green' },
                         { t: 'No trabaja sin las cuentas conectadas', s: frenoDeCuentas, etiqueta: 'activo', tono: 'green' },
                         { t: 'No gasta sin pasar el panel', s: 'Cada pieza pasa por los 5 jueces y los 500 del público antes de que usted la apruebe.', etiqueta: 'activo', tono: 'green' },

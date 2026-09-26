@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Card, Badge } from '../components/ui';
 import { ViewHead } from '../components/viz';
-import { AutomatizacionCard, flujoNuevo } from '../components/AutomatizacionCard';
+import { SecuenciaMensajesCard, flujoNuevo } from '../components/SecuenciaMensajesCard';
 import { I_Whatsapp, I_Chat, I_Users } from '../components/icons';
 /** El modo del motor (Automático, Compartido, Manual) es un ajuste del panel: catálogo, no dato de nadie. */
 import { MODOS, type Modo } from '../data/demo';
@@ -47,7 +47,7 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
   const ultimoMovimiento = bandeja.reduce<string | null>(
     (max, c) => (c.last_message_at && (!max || c.last_message_at > max) ? c.last_message_at : max), null);
   const sinMensajes = bandeja.filter(c => !c.ultimo).length;
-  /** El proyecto de automatización vacío: la tarjeta sólo dibuja su estado vacío, sin pasos de ejemplo. */
+  /** La secuencia de mensajes vacía: la tarjeta sólo dibuja su estado vacío, sin pasos de ejemplo. */
   const [flujoVacio] = useState(() => flujoNuevo());
 
   return (
@@ -219,15 +219,15 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
         </div>
       )}
 
-      {/* ============ LAS AUTOMATIZACIONES Y SU CONEXIÓN DE WHATSAPP ============ */}
+      {/* ============ LAS SECUENCIAS DE MENSAJES Y SU CONEXIÓN DE WHATSAPP ============ */}
       <div className="duo" style={{ marginTop: 16 }}>
-        <AutomatizacionCard
+        <SecuenciaMensajesCard
           flujo={flujoVacio}
           sucio={false}
           onCambio={() => { /* la tarjeta muestra el estado vacío: todavía no hay pasos que editar */ }}
-          onGuardar={() => setToast('Todavía no hay ninguna automatización que guardar: se configuran sobre una campaña ya armada')}
+          onGuardar={() => setToast('Todavía no hay ninguna secuencia de mensajes que guardar: se configuran sobre una campaña ya armada y el envío todavía no está conectado')}
           onDescartar={() => { /* no hay cambios sin guardar */ }}
-          onBorrar={() => setToast('Todavía no hay ninguna automatización en la lista')}
+          onBorrar={() => setToast('Todavía no hay ninguna secuencia de mensajes en la lista')}
           avisar={setToast}
         />
 

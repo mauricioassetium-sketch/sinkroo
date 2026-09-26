@@ -7,16 +7,22 @@ import { useDatos, type Campana } from '../api/datos';
 import { EstadoVacio } from './EstadoVacio';
 
 // =============================================================================================
-// EN LÍNEA — el final del flujo: lo que se publicó y cómo está rindiendo AHORA.
+// EN LÍNEA — el final del flujo: lo que quedó ACTIVO EN EL PANEL y cómo está rindiendo AHORA.
+//
+// «ACTIVA EN EL PANEL» ES UNA MARCA DEL PANEL, NO UNA PUBLICACIÓN. El back escribe «borrador»
+// mientras la campaña está armada y sin marcar; «Marcar activa» la saca de borrador y la deja en
+// esta pantalla. Publicar en las redes todavía no está conectado —no hay ruta de publicación—, así
+// que acá no se dice «publicada» en ninguna fila: se dice «activa en el panel», y la aclaración va
+// UNA sola vez en toda la pantalla (NOTA_ACTIVA), nunca repetida fila por fila.
 //
 // DE DÓNDE SALE CADA COSA: del back, siempre. Lo único medido de verdad son sus campañas: su
 // estado, su gasto y su ROAS (`d.campanas`). El alcance, los clics y las ventas todavía no llegan
 // del back, así que se muestran en «—» con la línea que dice cuándo llegan: escribir un número que
 // nadie midió sería mentir sobre lo que hay.
 //
-// SIN NADA PUBLICADO la pantalla no muestra ninguna cifra: muestra el estado vacío, que dice qué
-// va a ver acá y cuál es el paso que falta. Sin back (modo demostración) tampoco hay campañas, así
-// que la pantalla es la misma: el mismo estado vacío, sin números de ejemplo.
+// SIN NADA ACTIVO EN EL PANEL la pantalla no muestra ninguna cifra: muestra el estado vacío, que
+// dice qué va a ver acá y cuál es el paso que falta. Sin back (modo demostración) tampoco hay
+// campañas, así que la pantalla es la misma: el mismo estado vacío, sin números de ejemplo.
 //
 // Cada botón de aquí hace algo QUE SE VE, y siempre una de estas dos cosas:
 //   (a) abre el PANEL DE DETALLE (Detalle.tsx) con los números de esa campaña o el informe completo;
@@ -27,6 +33,13 @@ import { EstadoVacio } from './EstadoVacio';
 
 /** Un decimal con coma: los números de esta pantalla se leen en castellano, no en un tablero en inglés. */
 const conComa = (v: number | string) => Number(v).toFixed(1).replace('.', ',');
+
+/**
+ * LA ÚNICA ACLARACIÓN DE PUBLICACIÓN DE ESTA PANTALLA — se dice una sola vez y no se repite en cada
+ * fila. «Marcar activa» es una marca del panel: el sistema todavía no publica en las redes.
+ */
+const NOTA_ACTIVA =
+  'Publicar en sus redes todavía no está conectado: lo que marca «Marcar activa» es el estado en el panel, no una publicación.';
 
 // ---------------------------------------------------------------------------------------------
 // LO QUE SE LEE DE UNA CAMPAÑA DEL BACK — con las mismas palabras en toda la pantalla.
@@ -39,14 +52,15 @@ const roasN = (c: Campana) => (typeof c.roas === 'number' && c.roas > 0 ? c.roas
 /** El gasto de la campaña, sin decimales: es dinero, se lee entero. */
 const gastoDe = (c: Campana) => Math.round(Number(c.gasto) || 0);
 /**
- * ¿Esta campaña ya salió a las redes? El back escribe «borrador» mientras la campaña está armada y
- * no publicada: eso no es «en línea», así que no entra en lo publicado que esta pantalla revisa.
+ * ¿Esta campaña ya salió de borrador? El back escribe «borrador» mientras la campaña está armada y
+ * sin marcar. «Marcar activa» es una marca del PANEL: la saca de borrador y la deja en esta pantalla.
+ * Todavía NO es una publicación en las redes: esa ruta no está conectada.
  */
-const yaPublicada = (c: Campana) => !(c.estado || '').trim().toLowerCase().startsWith('borrador');
-/** El estado del back, en palabras de esta pantalla. */
+const activaEnPanel = (c: Campana) => !(c.estado || '').trim().toLowerCase().startsWith('borrador');
+/** El estado del back, en palabras de esta pantalla: activa en el panel, en pausa, terminada o en borrador. */
 const estadoLegible = (c: Campana): string => {
   const e = (c.estado || '').toLowerCase();
-  if (e.startsWith('activ')) return 'publicada';
+  if (e.startsWith('activ')) return 'activa en el panel';
   if (e.includes('pausa')) return 'en pausa';
   if (e.includes('final') || e.includes('termin')) return 'terminada';
   return 'en borrador';
@@ -64,17 +78,17 @@ const iconoDeForma = (forma: string) =>
 
 // =============================================================================================
 // LA PANTALLA — sus campañas reales, y en «—» lo que la plataforma todavía no reportó.
-// Sin campañas publicadas no hay nada que monitorear, así que no se afirma nada: va el estado vacío.
+// Sin nada activo en el panel no hay nada que monitorear, así que no se afirma nada: va el estado vacío.
 // =============================================================================================
 export function EnLinea({ setToast, ir }: { setToast: (t: string) => void; ir?: (p: PasoCampana) => void }) {
   const detalle = useDetalle();
   const d = useDatos();
   const todas = d.campanas;
-  const publicadas = todas.filter(yaPublicada);
-  const conRetorno = publicadas.filter(c => roasN(c) > 0);
+  const activas = todas.filter(activaEnPanel);
+  const conRetorno = activas.filter(c => roasN(c) > 0);
   const gastoTotal = todas.reduce((a, c) => a + gastoDe(c), 0);
   const maxRoas = Math.max(...conRetorno.map(roasN), 0);
-  // El ROAS de lo publicado, ponderado por lo gastado: no es un promedio de la industria, es la
+  // El ROAS de lo que está activo, ponderado por lo gastado: no es un promedio de la industria, es la
   // suma de lo que devolvieron sus campañas sobre la suma de lo que gastaron. Sin retorno medido, «—».
   const retornoTotal = conRetorno.reduce((a, c) => a + gastoDe(c) * roasN(c), 0);
   const gastoConRetorno = conRetorno.reduce((a, c) => a + gastoDe(c), 0);
@@ -104,6 +118,7 @@ export function EnLinea({ setToast, ir }: { setToast: (t: string) => void; ir?: 
         { k: 'Objetivo', v: c.objetivo || 'sin objetivo escrito', s: c.objetivo ? 'para qué se está gastando' : 'falta escribirlo' },
         { k: 'Armada el', v: creadaEl(c.created_at) || 'sin fecha' },
       ] },
+      { tipo: 'texto', texto: 'El estado «activa en el panel» es la marca que usted puso con «Marcar activa»: publicar en las redes todavía no está conectado.' },
       { tipo: 'texto', texto: 'Mientras esta campaña no reporte retorno, su etiqueta queda en «—»: el panel no llena ese hueco con un promedio del rubro ni con un número de ejemplo.' },
     ],
     fuente: 'Sale de su campaña en el servidor: el estado, el gasto y el ROAS son los que hay guardados. El alcance, los clics y las ventas todavía no llegan del back.',
@@ -112,20 +127,20 @@ export function EnLinea({ setToast, ir }: { setToast: (t: string) => void; ir?: 
     ],
   });
 
-  // (a) El informe completo: todas sus campañas publicadas, una por una.
+  // (a) El informe completo: todas sus campañas activas en el panel, una por una.
   const informe = () => detalle({
-    titulo: `El informe de sus ${publicadas.length} campaña${publicadas.length === 1 ? '' : 's'} publicada${publicadas.length === 1 ? '' : 's'}`,
+    titulo: `El informe de sus ${activas.length} campaña${activas.length === 1 ? '' : 's'} activa${activas.length === 1 ? '' : 's'} en el panel`,
     sub: 'Campaña por campaña: lo que gastó y lo que devuelve hasta hoy. Las cifras que la plataforma todavía no reporta van en «—», no se escriben a mano.',
     bloques: [
       { tipo: 'datos', filas: [
-        { k: 'Campañas publicadas', v: `${publicadas.length} de ${todas.length}`, s: todas.length > publicadas.length ? `${todas.length - publicadas.length} siguen en borrador` : 'todas las que hay están publicadas' },
+        { k: 'Campañas activas en el panel', v: `${activas.length} de ${todas.length}`, s: todas.length > activas.length ? `${todas.length - activas.length} siguen en borrador` : 'todas las que hay están activas en el panel' },
         { k: 'Lo invertido hasta hoy', v: `$${gastoTotal.toLocaleString('es-CO')}`, s: 'lo que suman todas sus campañas' },
-        { k: 'ROAS de lo publicado', v: roasCombinado, tono: roasCombinado === '—' ? 'muted' : 'green', s: conRetorno.length ? `ponderado por lo gastado: ${conRetorno.length} de ${publicadas.length} campañas ya reportan retorno` : 'todavía ninguna campaña reporta retorno' },
+        { k: 'ROAS de lo activo', v: roasCombinado, tono: roasCombinado === '—' ? 'muted' : 'green', s: conRetorno.length ? `ponderado por lo gastado: ${conRetorno.length} de ${activas.length} campañas ya reportan retorno` : 'todavía ninguna campaña reporta retorno' },
         { k: 'Personas alcanzadas', v: '—', s: 'llega cuando la plataforma la reporte' },
         { k: 'Clics al sitio', v: '—', s: 'llega cuando la plataforma los reporte' },
         { k: 'Ventas atribuidas', v: '—', s: 'llega cuando la plataforma las reporte' },
       ] },
-      { tipo: 'filas', items: publicadas.map(c => ({
+      { tipo: 'filas', items: activas.map(c => ({
         t: c.nombre,
         s: `${c.forma || 'sin forma definida'} · ${(c.destinos || []).join(' + ') || 'sin destinos'} · $${gastoDe(c).toLocaleString('es-CO')} de gasto · ${c.piezas || 0} pieza${c.piezas === 1 ? '' : 's'}`,
         etiqueta: roasDe(c),
@@ -148,13 +163,13 @@ export function EnLinea({ setToast, ir }: { setToast: (t: string) => void; ir?: 
       { tipo: 'datos', filas: [
         { k: 'Dónde arranca', v: `Paso 1 · ${PASOS_CAMPANA[0].t}`, s: PASOS_CAMPANA[0].d },
         { k: 'Sus piezas cargadas', v: String(d.piezas.length), s: d.piezas.length ? 'las que ya están en su cuenta, listas para sumar' : 'todavía no tiene piezas cargadas: el flujo las crea' },
-        { k: 'Sus campañas hoy', v: `${todas.length}`, s: `${publicadas.length} publicada${publicadas.length === 1 ? '' : 's'} y ${todas.length - publicadas.length} en borrador` },
+        { k: 'Sus campañas hoy', v: `${todas.length}`, s: `${activas.length} activa${activas.length === 1 ? '' : 's'} en el panel y ${todas.length - activas.length} en borrador` },
         { k: 'Créditos disponibles', v: (d.creditos?.saldo ?? d.negocio?.creditos ?? 0).toLocaleString('es-CO'), s: 'lo que le queda para que el motor trabaje' },
-        { k: 'Quién la juzga', v: '5 jueces + 500 del público', s: 'arriba de 80 se publica; abajo, vuelve con la objeción' },
+        { k: 'Quién la juzga', v: '5 jueces + 500 del público', s: 'arriba de 80 la pieza pasa; abajo, vuelve con la objeción' },
       ] },
       { tipo: 'pasos', items: PASOS_CAMPANA.map(p => `${p.t}: ${p.d}`) },
-      { tipo: 'texto', texto: `Las ${publicadas.length} campaña${publicadas.length === 1 ? '' : 's'} que ya están publicadas siguen corriendo tal como están: la campaña nueva es otra cosa y no las toca.` },
-      { tipo: 'aviso', tono: 'green', texto: 'Nada se publica ni se gasta hasta que usted lo confirme.' },
+      { tipo: 'texto', texto: `Las ${activas.length} campaña${activas.length === 1 ? '' : 's'} que ya están activas en el panel siguen como están: la campaña nueva es otra cosa y no las toca.` },
+      { tipo: 'aviso', tono: 'green', texto: 'El motor no gasta un peso ni toca sus cuentas sin que usted lo confirme.' },
     ],
     fuente: 'Sale de su cuenta: las piezas, las campañas y los créditos son los que hay guardados en el servidor hoy.',
     acciones: [
@@ -169,24 +184,25 @@ export function EnLinea({ setToast, ir }: { setToast: (t: string) => void; ir?: 
       <Card>
         <EstadoVacio icono={<I_Megaphone size={22} />}
           titulo="Leyendo sus campañas del servidor…"
-          texto="El panel está leyendo lo que tiene publicado en el servidor. Mientras lee no muestra ningún número: en un momento dice qué hay." />
+          texto="El panel está leyendo las campañas que tiene en el servidor. Mientras lee no muestra ningún número: en un momento dice qué hay." />
       </Card>
     );
   }
 
-  // SIN NADA PUBLICADO: el estado vacío honesto, con la invitación a armar la primera campaña.
+  // SIN NADA ACTIVO EN EL PANEL: el estado vacío honesto, con la invitación a armar la primera campaña.
   // Aquí NO aparece el aviso de que el motor revisa cada 15 minutos: no hay nada que revisar.
-  if (publicadas.length === 0) {
+  if (activas.length === 0) {
     return (
       <div className="dash">
         <Card>
           <EstadoVacio icono={<I_Megaphone size={22} />}
-            titulo={todas.length ? 'Todavía no hay nada publicado' : 'Su cuenta todavía no tiene campañas'}
+            titulo={todas.length ? 'Todavía no hay nada activo en el panel' : 'Su cuenta todavía no tiene campañas'}
             texto={todas.length
-              ? `Tiene ${todas.length} campaña${todas.length === 1 ? '' : 's'} en borrador: mientras no las publique, acá no hay nada que revisar. Cuando salgan, esta pantalla muestra cómo rinde cada pieza, lo que gasta cada campaña y lo que devuelve.`
-              : 'Cuando publique, acá se ve cómo rinde cada pieza: el sistema revisa cada 15 minutos y pausa la que no devuelve. Todavía no hay ninguna publicada, así que el paso que falta es armar la primera.'}
+              ? `Tiene ${todas.length} campaña${todas.length === 1 ? '' : 's'} en borrador: mientras no las marque activas en el panel, acá no hay nada que revisar. Cuando lo haga, esta pantalla muestra cómo rinde cada pieza, lo que gasta cada campaña y lo que devuelve.`
+              : 'Cuando marque una campaña como activa en el panel, acá se ve cómo rinde cada pieza: el motor mide lo que la plataforma reporta y le dice cuál rindió y cuál no. Todavía no hay ninguna activa, así que el paso que falta es armar la primera.'}
             accion={ir ? 'Armar mi primera campaña' : undefined}
             onAccion={ir ? irAlPaso1 : undefined} />
+          <div className="tiny" style={{ marginTop: 10, color: 'var(--muted2)', fontWeight: 700 }}>{NOTA_ACTIVA}</div>
         </Card>
 
         <div className="duo" style={{ marginTop: 16 }}>
@@ -196,7 +212,7 @@ export function EnLinea({ setToast, ir }: { setToast: (t: string) => void; ir?: 
           >
             <div className="guards">
               <div className="guard"><span style={{ color: 'var(--green)', flexShrink: 0 }}><I_Eye size={14} /></span>
-                <span className="guard-lb">Personas alcanzadas y clics al sitio<small>lo que la plataforma reporte de cada pieza publicada</small></span>
+                <span className="guard-lb">Personas alcanzadas y clics al sitio<small>lo que la plataforma reporte de cada campaña activa en el panel</small></span>
                 <span className="guard-val" style={{ color: 'var(--muted)' }}>—</span></div>
               <div className="guard"><span style={{ color: 'var(--green)', flexShrink: 0 }}><I_Credit size={14} /></span>
                 <span className="guard-lb">Ventas desde que salieron<small>las que el motor pueda atar a cada campaña</small></span>
@@ -226,13 +242,14 @@ export function EnLinea({ setToast, ir }: { setToast: (t: string) => void; ir?: 
             <div style={{ minWidth: 0 }}>
               <div className="bt">Monitoreo directo, en vivo</div>
               <div className="bs">
-                {`Tiene ${publicadas.length} campaña${publicadas.length === 1 ? '' : 's'} publicada${publicadas.length === 1 ? '' : 's'} en sus redes.`}{' '}
+                {`Tiene ${activas.length} campaña${activas.length === 1 ? '' : 's'} activa${activas.length === 1 ? '' : 's'} en el panel.`}{' '}
                 <b>El motor las mira cada 15 minutos</b> y le avisa si alguna se enfría o si conviene moverle presupuesto.
               </div>
             </div>
           </div>
-          <Badge tone="green">{publicadas.length} publicada{publicadas.length === 1 ? '' : 's'}</Badge>
+          <Badge tone="green">{activas.length} activa{activas.length === 1 ? '' : 's'} en el panel</Badge>
         </div>
+        <div className="tiny" style={{ marginTop: 10, color: 'var(--muted2)', fontWeight: 700 }}>{NOTA_ACTIVA}</div>
       </Card>
 
       <div className="duo" style={{ marginTop: 16 }}>
@@ -255,7 +272,7 @@ export function EnLinea({ setToast, ir }: { setToast: (t: string) => void; ir?: 
             </div>
             <div className="live-n">
               <span className="live-v">{roasCombinado}</span>
-              <span className="live-l">ROAS de lo publicado{gastoConRetorno > 0 ? ' (ponderado por lo gastado)' : ''}</span>
+              <span className="live-l">ROAS de lo activo{gastoConRetorno > 0 ? ' (ponderado por lo gastado)' : ''}</span>
             </div>
           </div>
           <div className="tiny" style={{ marginTop: 6, color: 'var(--amber)', fontWeight: 700 }}>
@@ -263,10 +280,10 @@ export function EnLinea({ setToast, ir }: { setToast: (t: string) => void; ir?: 
             está en su cuenta y el panel no la escribe a mano.
           </div>
           <div>
-            <div className="bs" style={{ marginBottom: 8, marginTop: 14 }}>Cuánto devuelve cada campaña publicada:</div>
+            <div className="bs" style={{ marginBottom: 8, marginTop: 14 }}>Cuánto devuelve cada campaña activa en el panel:</div>
             {conRetorno.length === 0 ? (
               <div className="bs">
-                Todavía ninguna campaña publicada reporta retorno: la plataforma no ha medido lo que devolvieron.
+                Todavía ninguna campaña activa reporta retorno: la plataforma no ha medido lo que devolvieron.
                 Cuando lo mida, cada barra aparece acá.
               </div>
             ) : (
@@ -277,15 +294,15 @@ export function EnLinea({ setToast, ir }: { setToast: (t: string) => void; ir?: 
           </div>
           <div className="acc-why">
             <b>Monitoreo directo quiere decir esto:</b> no es un informe de ayer, es lo que está pasando
-            mientras mira. Si un número se cae, el motor actúa o le avisa.
+            mientras mira. Si un número se cae, le avisa con la hora y le dice qué conviene hacer.
           </div>
         </Card>
 
         <Card
-          title={<span className="row" style={{ gap: 8 }}><I_Check size={14} style={{ color: 'var(--green)' }} /> Lo que está publicado</span>}
-          action={<Badge tone="purple">{publicadas.length} campaña{publicadas.length === 1 ? '' : 's'}</Badge>}
+          title={<span className="row" style={{ gap: 8 }}><I_Check size={14} style={{ color: 'var(--green)' }} /> Lo que está activo en el panel</span>}
+          action={<Badge tone="purple">{activas.length} campaña{activas.length === 1 ? '' : 's'}</Badge>}
         >
-          {publicadas.map(c => (
+          {activas.map(c => (
             <div key={c.id} className="pub">
               <span className="pub-mini"
                 style={{ background: 'linear-gradient(150deg, #4A7C59, #4A7C5922 70%, var(--bg3))' }}
@@ -312,17 +329,17 @@ export function EnLinea({ setToast, ir }: { setToast: (t: string) => void; ir?: 
           ))}
           <div className="row" style={{ gap: 9, flexWrap: 'wrap' }}>
             <Button variant="ghost" className="btn-sm"
-              title="Abre el informe de lo publicado: campaña por campaña, lo que gastó y lo que devuelve, y qué cifras todavía no llegan de la plataforma"
+              title="Abre el informe de lo que está activo en el panel: campaña por campaña, lo que gastó y lo que devuelve, y qué cifras todavía no llegan de la plataforma"
               onClick={informe}>Ver el informe completo</Button>
           </div>
-          {todas.length > publicadas.length && (
+          {todas.length > activas.length && (
             <div className="tiny" style={{ marginTop: 10, color: 'var(--muted2)', fontWeight: 700 }}>
-              Además tiene {todas.length - publicadas.length} campaña{todas.length - publicadas.length === 1 ? '' : 's'} en
-              borrador: no cuentan acá hasta que las publique.
+              Además tiene {todas.length - activas.length} campaña{todas.length - activas.length === 1 ? '' : 's'} en
+              borrador: no cuentan acá hasta que las marque activas en el panel.
             </div>
           )}
           <div className="acc-why">
-            Esta lista es lo que hay publicado en su cuenta, <b>tal como está en el servidor</b>: el estado, el
+            Esta lista es lo que está activo en el panel, <b>tal como está en el servidor</b>: el estado, el
             gasto y el ROAS de cada campaña. Lo que todavía no llegó se queda en «—».
           </div>
         </Card>
@@ -335,11 +352,11 @@ export function EnLinea({ setToast, ir }: { setToast: (t: string) => void; ir?: 
         >
           <EstadoVacio
             titulo="Todavía no hay nada que reportar"
-            texto="Acá van a aparecer los movimientos que el motor haga solo sobre lo publicado: lo que ajustó, lo que frenó y lo que le avisó antes de gastar. Su cuenta todavía no tiene ninguno."
+            texto="Acá van a aparecer los movimientos que el motor haga solo sobre sus campañas activas: lo que midió y lo que le avisó antes de gastar. El motor todavía no toca sus cuentas, así que su cuenta no tiene ninguno."
           />
           <div className="acc-why">
-            Esto es lo que el motor hace <b>mientras no mira</b>. Cuando haga algo por su cuenta, queda acá con
-            su hora y el número que tenía antes.
+            Esto es lo que el motor hace <b>mientras no mira</b>: medir y avisar. Cuando pueda tocar sus
+            cuentas, cada movimiento que haga solo queda acá con su hora y el número que tenía antes.
           </div>
         </Card>
 
@@ -358,7 +375,7 @@ function CicloSigue({ onClick }: { onClick: () => void }) {
     >
       <div className="bs">
         Cuando una pieza se enfría, el ciclo arranca de nuevo <b>sin que haga nada</b>:
-        vuelve a MiroFish, se crean opciones nuevas y salen las mejores.
+        vuelve a MiroFish, se crean opciones nuevas y el panel deja ordenadas las mejores.
       </div>
       <div className="guards">
         <div className="guard"><span style={{ color: 'var(--purple3)', flexShrink: 0 }}><I_Play size={14} /></span>
@@ -366,15 +383,15 @@ function CicloSigue({ onClick }: { onClick: () => void }) {
         <div className="guard"><span style={{ color: 'var(--purple3)', flexShrink: 0 }}><I_Refresh size={14} /></span>
           <span className="guard-lb">Crea variantes de la que gana<small>Con el mismo ángulo y los colores que ya funcionaron</small></span></div>
         <div className="guard"><span style={{ color: 'var(--purple3)', flexShrink: 0 }}><I_Eye size={14} /></span>
-          <span className="guard-lb">Reemplaza la que se enfría<small>No se apaga nada hasta que la nueva rinde igual o mejor</small></span></div>
+          <span className="guard-lb">Propone el reemplazo de la que se enfría<small>No se frena nada hasta que la nueva esté probada igual o mejor</small></span></div>
       </div>
       <div className="row" style={{ gap: 9, flexWrap: 'wrap' }}>
         <Button variant="ghost" className="btn-sm"
-          title="Le muestra con qué arranca una campaña nueva en su cuenta (sus piezas, sus campañas y sus créditos) y desde ahí le lleva al paso 1 del flujo. Nada se publica ni se gasta hasta que lo confirme."
+          title="Le muestra con qué arranca una campaña nueva en su cuenta (sus piezas, sus campañas y sus créditos) y desde ahí le lleva al paso 1 del flujo. El motor no toca sus cuentas ni gasta un peso sin que usted lo confirme."
           onClick={onClick}>Crear una campaña nueva</Button>
       </div>
       <div className="acc-why">
-        El ciclo <b>no se corta</b>: lo que se publica alimenta lo que se crea después.
+        El ciclo <b>no se corta</b>: lo que el motor mide alimenta lo que se crea después.
         Cuanto más corre, mejor elige.
       </div>
     </Card>

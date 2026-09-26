@@ -30,7 +30,7 @@ export const PLANES: {
       '2.000 créditos por mes',
       'Campañas y piezas con el veredicto del panel',
       'La investigación del mercado, una vez por semana',
-      'Las automatizaciones: carrito, recompra y pedido de reseñas',
+      'Cada pieza pasa por los 5 jueces y los 500 del público',
     ],
     falta: [
       'El equipo investigando todos los días',
@@ -46,7 +46,7 @@ export const PLANES: {
       'Varias campañas corriendo a la vez',
       'El equipo investigando su mercado todos los días',
       'Videos generados por el motor',
-      'Automatizaciones y mercado completos',
+      'Los 5 jueces y los 500 del público sobre varias campañas a la vez',
     ],
     falta: ['Varias marcas en la misma cuenta'],
   },
@@ -88,14 +88,18 @@ export const EXCEPCIONES: Excepcion[] = [
     nota: 'Los borradores no publican nada. Revise antes de que salga.' },
   { key: 'responder', etiqueta: 'Responder a clientes', nivel: 'shared',
     nota: 'Rumi propone la respuesta; usted la manda. Escala solo si el cliente se enoja o pide cancelar.' },
+  // De acá para abajo, TODAS dicen lo que el sistema todavía NO hace sobre las cuentas del cliente y con
+  // qué nivel de autonomía lo va a hacer cuando la ruta esté conectada. Publicar en las redes, frenar una
+  // campaña y mover presupuesto en las plataformas son trabajo por construir: darlos por hechos era
+  // afirmar un trabajo que hoy no existe.
   { key: 'publicar', etiqueta: 'Publicar y gastar presupuesto', nivel: 'shared',
-    nota: 'Toda campaña pasa por su OK antes de gastar un peso.' },
-  { key: 'pausar', etiqueta: 'Pausar una campaña que se quema', nivel: 'auto',
-    nota: 'Frena primero, pregunta después. Que no pueda parar mientras usted duerme cuesta más que frenar de más. Reversible 24 h.' },
+    nota: 'Todavía no está conectado: el sistema no publica en las redes. Cuando lo esté, toda campaña pasa por su OK antes de gastar un peso.' },
+  { key: 'pausar', etiqueta: 'Frenar una campaña que se quema', nivel: 'auto',
+    nota: 'Hoy sólo avisa: la pausa la hace usted, porque el sistema todavía no toca sus cuentas. Cuando las toque, va a frenar primero y preguntar después. Reversible 24 h.' },
   { key: 'presupuesto', etiqueta: 'Cambiar presupuesto más del 20%', nivel: 'shared',
-    nota: 'Ajustes chicos van solos. Los grandes le esperan.' },
-  { key: 'pagos', etiqueta: 'Enviar links de pago', nivel: 'manual',
-    nota: 'Ningún cobro sale sin que usted lo envíe.' },
+    nota: 'Todavía no mueve presupuesto en las plataformas: lo sugiere y el cambio lo hace usted. Cuando pueda, los ajustes chicos irán solos y los grandes le esperarán.' },
+  { key: 'pagos', etiqueta: 'Enviar cobros a un cliente', nivel: 'manual',
+    nota: 'Todavía no existe: hoy el panel no manda ningún cobro. Cuando exista, ninguno va a salir sin que usted lo envíe.' },
 ];
 
 export interface Freno {
@@ -114,12 +118,12 @@ export const FRENOS: Freno[] = [
     porQue: 'Que un ajuste no pase de 0 a 10x de una sola vez.' },
   { key: 'frecuencia', etiqueta: 'Máximo de acciones por hora', valor: '10',
     porQue: 'Evita bucles de la IA corrigiéndose a sí misma sin parar.' },
-  { key: 'kyc', etiqueta: 'Publicar requiere KYC', valor: 'Obligatorio',
-    porQue: 'Riesgo legal: no se publica a nombre de alguien sin verificar.' },
+  { key: 'kyc', etiqueta: 'La verificación de identidad es obligatoria', valor: 'Obligatorio',
+    porQue: 'Riesgo legal: no se anuncian cosas ni se mueve dinero a nombre de alguien sin verificar. Es la exigencia que queda puesta para publicar, hoy y cuando la publicación esté conectada.' },
   { key: 'ventana', etiqueta: 'No molestar clientes', valor: '22:00 a 08:00',
     porQue: 'Que un cliente no reciba un WhatsApp a las 3 de la mañana.' },
-  { key: 'pagos_max', etiqueta: 'Pagos sobre este monto piden OK', valor: '$200',
-    porQue: 'Un error de un dígito no se convierte en un cobro.' },
+  { key: 'pagos_max', etiqueta: 'Cobros sobre este monto piden OK', valor: '$200',
+    porQue: 'Todavía no hay ningún cobro que salga del panel: el freno queda puesto para cuando exista. Un error de un dígito no se convierte en un cobro.' },
 ];
 
 // ---------------------------------------------------------------------------------------------
@@ -169,9 +173,9 @@ export const AGENTES: Agente[] = [
     id: 'rex', nombre: 'Rex', rol: 'Estratega de Marketing', tecnico: 'marketing-strategist', color: '#9333ea',
     funcion: 'Define el ángulo, la audiencia y el plan del mes.',
     estado: 'trabajando', autonomia: 'auto',
-    accion: 'Reasignó $40/día de TikTok a Meta',
+    accion: 'Dejó el plan del mes con el ángulo "resultado"',
     ancla: 'Campaña · Lanzamiento D2C',
-    resultado: 'TikTok daba $4,20 de CPC contra $2,10 de Meta con la misma audiencia',
+    resultado: 'Con lo que reportó la plataforma: TikTok salía a $4,20 de CPC contra $2,10 de Meta con la misma audiencia',
     artefacto: 'Ver por qué',
     artefactoNombre: 'Plan del mes',
     cuando: 'hace 2 h',
@@ -191,12 +195,12 @@ export const AGENTES: Agente[] = [
   },
   {
     id: 'kai', nombre: 'Kai', rol: 'Comprador de Medios', tecnico: 'media-buyer', color: '#22c55e',
-    funcion: 'Maneja el presupuesto, las plataformas y las pujas.',
+    funcion: 'Cuida el presupuesto: lee lo que reportan las plataformas y le dice qué conviene mover.',
     estado: 'esperando_ok', autonomia: 'shared',
-    accion: 'Quiere publicar "Retargeting Carrito"',
+    accion: 'Dejó "Retargeting Carrito" lista para marcar activa',
     ancla: 'Campaña · Retargeting Carrito',
     resultado: 'Presupuesto $30/día. El panel le dio 84 (aprobado), 1 de 5 vendedores dudó',
-    artefacto: 'Aprobar ahora',
+    artefacto: 'Marcar activa',
     artefactoNombre: 'Retargeting Carrito · espera su OK',
     cuando: 'espera desde hace 9 min',
     tarea: { etiqueta: 'conjuntos revisados', hecho: 4, total: 5 },
@@ -214,14 +218,14 @@ export const AGENTES: Agente[] = [
     tarea: { etiqueta: 'informes del día', hecho: 2, total: 3 },
   },
   {
-    id: 'rumi', nombre: 'Rumi', rol: 'Vendedor de Cierre', tecnico: 'sales-closer', color: '#f59e0b',
-    funcion: 'Atiende y cierra las conversaciones con sus clientes.',
+    id: 'rumi', nombre: 'Rumi', rol: 'Atención al cliente', tecnico: 'customer-support', color: '#f59e0b',
+    funcion: 'Atiende las conversaciones con sus clientes y le deja la respuesta lista para que la mande usted.',
     estado: 'al_dia', autonomia: 'shared',
-    accion: 'Cerró 2 ventas y escaló 1 conversación',
+    accion: 'Dejó 12 respuestas listas y escaló 1 conversación',
     ancla: 'Conversaciones · WhatsApp',
-    resultado: 'Valeria G. pidió envío a Envigado: la IA no pudo confirmar la cobertura',
+    resultado: 'Una clienta pidió envío a Envigado: no se pudo confirmar la cobertura',
     artefacto: 'Ver la conversación',
-    artefactoNombre: 'Conversación de Valeria G.',
+    artefactoNombre: 'Conversación de la clienta',
     cuando: 'hace 20 min',
     tarea: { etiqueta: 'conversaciones atendidas', hecho: 12, total: 15 },
   },
@@ -379,11 +383,10 @@ export const ACCIONES_FEED: AccionFeed[] = [
   { agenteId: 'sol', texto: 'comparó lo que predijo (84) con lo que pasó (79)', artefacto: 'Ver la calibración' },
   { agenteId: 'sol', texto: 'revisó 3 campañas y marcó 1 para bajar el presupuesto', artefacto: 'Ver qué revisó' },
   { agenteId: 'sol', texto: 'corrigió el modelo: la próxima subestima 6% menos', artefacto: 'Ver el modelo' },
-  // Rumi — vendedor de cierre
-  { agenteId: 'rumi', texto: 'respondió 3 consultas y cerró 1 venta', artefacto: 'Ver las conversaciones' },
-  { agenteId: 'rumi', texto: 'le contestó a Valeria G.: envío a Envigado en 2 a 4 días', artefacto: 'Ver el mensaje' },
-  { agenteId: 'rumi', texto: 'recuperó un carrito abandonado de $59', artefacto: 'Ver el carrito' },
-  { agenteId: 'rumi', texto: 'escaló 1 conversación: la clienta pidió hablar con una persona', artefacto: 'Ver por qué' },
+  // Rumi — atención al cliente
+  { agenteId: 'rumi', texto: 'dejó 3 respuestas listas para que usted las mande', artefacto: 'Ver las conversaciones' },
+  { agenteId: 'rumi', texto: 'contestó una consulta de envío: 2 a 4 días a Envigado', artefacto: 'Ver el mensaje' },
+  { agenteId: 'rumi', texto: 'marcó 1 conversación para que la mire una persona', artefacto: 'Ver por qué' },
 ];
 
 // ---------------------------------------------------------------------------------------------
@@ -469,30 +472,26 @@ export interface Decision {
   acciones: string[];
 }
 
+// LO QUE LE PIDE SU OK — sólo lo que el sistema puede hacer hoy: armar, marcar y sugerir. Acá NO hay
+// ninguna decisión de publicar en las redes ni de mandar un cobro: ninguna de las dos existe (no hay
+// ruta de publicación ni forma de cobrar desde el panel), así que no se pinta una aprobación que no se
+// puede ejecutar.
 export const DECISIONES: Decision[] = [
   {
     id: 'd1', agente: 'Kai', agenteColor: '#22c55e',
-    titulo: 'Publicar "Retargeting Carrito"',
+    titulo: 'Marcar activa "Retargeting Carrito"',
     detalle: 'Presupuesto $30/día · público: visitantes 30 días que no compraron. La campaña está armada y lista.',
-    impacto: 'Gasto $30/día · recupera carritos a $5,10 de CPC estimado.',
+    impacto: 'Gasto previsto $30/día · recupera carritos a $5,10 de CPC estimado, cuando la plataforma lo reporte.',
     panel: { aprobaron: 4, dudaron: 1, total: 5, objeccion: 'El público es muy amplio. Acótelo a 30 días y baje a $25/día para el primer tramo.' },
-    acciones: ['Aprobar', 'Ajustar', 'Descartar'],
+    acciones: ['Marcar activa', 'Ajustar', 'Descartar'],
   },
   {
     id: 'd2', agente: 'Rex', agenteColor: '#9333ea',
-    titulo: 'Subir el presupuesto de "Lanzamiento D2C" un 35%',
+    titulo: 'Sugerir subir el presupuesto de "Lanzamiento D2C" un 35%',
     detalle: '$40/día → $54/día durante 7 días. Rex detectó que el conjunto ganador no se satura todavía.',
-    impacto: 'Gasto extra $98 esta semana. Proyección: +$310 de ventas si el ROAS se mantiene en 3,8x.',
+    impacto: 'Gasto extra $98 esta semana si usted lo cambia. Proyección: +$310 de ventas si el ROAS se mantiene en 3,8x.',
     panel: { aprobaron: 5, dudaron: 0, total: 5, objeccion: 'Ninguna. Los 5 jueces aprobaron por unanimidad.' },
-    acciones: ['Aprobar', 'Ajustar a 20%', 'Descartar'],
-  },
-  {
-    id: 'd3', agente: 'Rumi', agenteColor: '#f59e0b',
-    titulo: 'Enviar link de pago a Andrés R.',
-    detalle: 'Confirmó que quiere el pack completo ($59). El link está generado y espera.',
-    impacto: 'Cobro de $59. Está en modo Manual: ningún cobro sale sin que usted lo envíe.',
-    panel: { aprobaron: 5, dudaron: 0, total: 5, objeccion: 'Ninguna.' },
-    acciones: ['Enviar link', 'Descartar'],
+    acciones: ['Anotar la sugerencia', 'Ajustar a 20%', 'Descartar'],
   },
 ];
 
@@ -573,13 +572,13 @@ export const BITACORA: EntradaBitacora[] = [
   { id: 'b4', cuando: '10:30', agente: 'Sistema', color: '#8b5cf6', autonomia: 'auto',
     texto: '14 chequeos de vigilancia · 3 anomalías detectadas', ancla: 'Todas las campañas' },
   { id: 'b5', cuando: '09:12', agente: 'Rumi', color: '#f59e0b', autonomia: 'shared',
-    texto: 'Cerró 2 ventas por WhatsApp', ancla: 'Conversaciones', artefacto: 'Ver las conversaciones' },
+    texto: 'Dejó 2 respuestas listas por WhatsApp', ancla: 'Conversaciones', artefacto: 'Ver las conversaciones' },
   { id: 'b6', cuando: '08:40', agente: 'Sol', color: '#06b6d4', autonomia: 'auto',
     texto: 'Calibró el modelo: predijo 84, pasó 79', ancla: 'Lanzamiento D2C', artefacto: 'Ver la calibración' },
   { id: 'b7', cuando: '03:12', agente: 'Kai', color: '#22c55e', autonomia: 'auto', undo: true,
     texto: 'Pausó "Lanzamiento D2C" durante la noche', ancla: 'Lanzamiento D2C', artefacto: 'Deshacer' },
   { id: 'b8', cuando: 'ayer 23:55', agente: 'Rumi', color: '#f59e0b', autonomia: 'auto', undo: true,
-    texto: 'Marcó 2 leads como fríos y reprogramó el seguimiento', ancla: 'Conversaciones' },
+    texto: 'Marcó 2 leads como fríos', ancla: 'Conversaciones' },
 ];
 
 // ---------------------------------------------------------------------------------------------
@@ -710,10 +709,10 @@ export const CONVERSACIONES: Conversacion[] = [
     ],
   },
   {
-    id: 'v2', nombre: 'Julián D.', tag: 'Post-venta', color: '#c084fc', canal: 'wa', cola: 'ia', tipo: 'cliente', hora: '09:12', esperando: '—',
+    id: 'v2', nombre: 'Julián D.', tag: 'Cliente', color: '#c084fc', canal: 'wa', cola: 'ia', tipo: 'cliente', hora: '09:12', esperando: '—',
     msgs: [
       { de: 'ellos', txt: 'Mi pedido llegó, gracias 🙏', hora: '09:10' },
-      { de: 'ia', txt: '¡Nos alegra! ¿Puede dejarnos una reseña de 5⭐? Nos ayuda mucho.', hora: '09:12' },
+      { de: 'ia', txt: '¡Qué bueno! Si necesita algo para usarlo, escríbame y le ayudo.', hora: '09:12' },
     ],
   },
   {
@@ -723,14 +722,10 @@ export const CONVERSACIONES: Conversacion[] = [
       { de: 'ia', txt: '¡Sí, llegamos a todo el país! Bogotá: 3-5 días hábiles. Puede pagar con 3 o 6 cuotas sin interés.' },
     ],
   },
-  {
-    id: 'v4', nombre: 'Andrés R.', tag: 'Soporte', color: '#ef4444', canal: 'msgr', cola: 'humano', tipo: 'cliente', hora: 'Ayer', esperando: '11 h',
-    msgs: [
-      { de: 'ellos', txt: 'Quiero cancelar mi suscripción, no me está funcionando el producto' },
-      { de: 'ia', txt: '¡Lamento escucharlo! ¿Puede contarme el motivo? Quizás lo podemos solucionar.' },
-      { de: 'ellos', txt: 'No, directamente quiero cancelar. Es un tema de mi banco, necesito que alguien me lo resuelva.' },
-    ],
-  },
+  // Acá vivía una conversación de Soporte con el nombre inventado de un cliente que pedía cancelar. Se
+  // sacó: el nombre no existe, y una conversación de postventa es trabajo por construir (el sistema no
+  // hace postventa), así que mostrarla era afirmar un trabajo que no hay.
+
   // ---- CREADORES: no le compran, le producen una pieza. Rumi negocia precio, plazo y entrega. ----
   {
     // Recién invitada: Rumi le escribió la propuesta y todavía no contestó. No espera a nadie.
@@ -767,7 +762,12 @@ export const CONVERSACIONES: Conversacion[] = [
 ];
 
 // ---------------------------------------------------------------------------------------------
-// AUTOMATIZACIONES — flujos, tiempos, condiciones y disparadores
+// SECUENCIAS DE MENSAJES — flujos, tiempos, condiciones y disparadores
+//
+// OJO CON LA REGLA QUE MANDA: el sistema todavía NO manda mensajes solo —no hay ruta que los envíe—,
+// así que acá no hay ninguna secuencia de ejemplo. Lo que queda es el vocabulario con el que se va a
+// armar cada paso cuando esa ruta exista: los tiempos, las condiciones y los disparadores se eligen de
+// una lista, nunca se escriben a mano.
 // ---------------------------------------------------------------------------------------------
 // Los tiempos del reloj NO se escriben a mano: se eligen de esta lista. Es una lista corta y
 // cerrada a propósito, por dos razones: (1) el motor sólo sabe medir estos tiempos, cualquier
@@ -790,7 +790,7 @@ export const RETARDOS = [
 // campo `delay` del paso, pero con `condicion: true`, y se eligen de esta otra lista.
 export const CONDICIONES = ['Si responde', 'Si no responde', 'Si no compra', 'Después de la compra'];
 
-// Cuándo arranca cada automatización. También se elige de la lista: es el momento del negocio que
+// Cuándo arranca cada secuencia de mensajes. También se elige de la lista: es el momento del negocio que
 // la dispara, no un texto libre.
 export const DISPARADORES = [
   'Cuando alguien escribe por primera vez',
@@ -800,60 +800,17 @@ export const DISPARADORES = [
   'Después de la primera compra',
 ];
 
-// Automatizaciones que manda el motor solo. `resultado` son dos cifras del negocio (clientes y
-// dinero) calculadas con el ticket promedio real de la tienda ($8.400): sirven para saber, de un
-// vistazo, si la automatización está sirviendo o hay que tocarla. `pasos[].id` existe para poder
-// editar el paso en la pantalla sin confundirlo con otro.
-export const FLUJOS = [
-  {
-    id: 'f1', nombre: 'Secuencia de Bienvenida', disparador: 'Cuando alguien escribe por primera vez', grupo: 'Mensajes', estado: 'Activo',
-    resultado: [
-      { v: '38 chats nuevos', l: 'abrió este mes' },
-      { v: '$63.000', l: 'en primeras compras' },
-    ],
-    pasos: [
-      { id: 'f1p1', delay: 'Al instante', txt: '👋 ¡Hola {nombre}! Gracias por escribirnos. Soy Rumi, el vendedor de la tienda.' },
-      // '2 min después' era un tiempo que el motor no medía: quedó normalizado al más parecido de la lista.
-      { id: 'f1p2', delay: '5 minutos después', txt: 'Veo que le interesan productos de skincare. ¿Qué tipo de piel tiene? 🤔' },
-      { id: 'f1p3', delay: 'Si responde', txt: '→ Recomiendo productos según su tipo de piel.', condicion: true },
-      { id: 'f1p4', delay: '1 día después', txt: 'Solo paso a recordarle: tenemos envío gratis en compras +$59.' },
-    ],
-  },
-  {
-    id: 'f2', nombre: 'Recupera carritos', disparador: 'Cuando abandona el carrito', grupo: 'Ventas', estado: 'Activo',
-    resultado: [
-      { v: '19 carritos', l: 'recuperados este mes' },
-      { v: '$159.600', l: 'volvió a la caja' },
-    ],
-    pasos: [
-      // '1 h después' y '24 h después' se normalizaron a las opciones de la lista de tiempos.
-      { id: 'f2p1', delay: '1 hora después', txt: '🛒 ¡Hola! Quedó algo en su carrito. ¿Le ayudo a terminar la compra?' },
-      { id: 'f2p2', delay: '1 día después', txt: 'Su carrito sigue guardado. Le dejé un cupón de 15%: VUELVA15 ⏳' },
-      { id: 'f2p3', delay: 'Si no responde', txt: '→ Marcar lead como "frío" y pausar la secuencia.', condicion: true },
-    ],
-  },
-  {
-    id: 'f3', nombre: 'Recompra a los 30 días', disparador: '30 días después de comprar', grupo: 'Recuperación', estado: 'Activo',
-    resultado: [
-      { v: '12 clientes', l: 'volvieron a comprar' },
-      { v: '$100.800', l: 'sumó este mes' },
-    ],
-    pasos: [
-      { id: 'f3p1', delay: '30 días después', txt: '¡Hola {nombre}! Ya se le debe estar terminando el serum. ¿Le reservo otro?' },
-      { id: 'f3p2', delay: 'Si no responde', txt: '→ Ofrecer 10% en la segunda compra.', condicion: true },
-    ],
-  },
-  {
-    id: 'f4', nombre: 'Programa de referidos', disparador: 'Después de la primera compra', grupo: 'Referidos', estado: 'En pausa',
-    resultado: [
-      { v: '7 amigos', l: 'traídos este mes' },
-      { v: '$58.800', l: 'en ventas nuevas' },
-    ],
-    pasos: [
-      { id: 'f4p1', delay: '7 días después', txt: '¿Le recomendaría el serum a alguien? Con su código gana 250 créditos 🎁' },
-    ],
-  },
-];
+// NO HAY NINGUNA SECUENCIA DE EJEMPLO, Y ESTO ES A PROPÓSITO. Acá vivían cuatro flujos inventados
+// («Secuencia de Bienvenida», «Recupera carritos», «Recompra a los 30 días» y «Programa de referidos»)
+// con sus pasos, sus tiempos, sus cupones y hasta cifras de resultado («19 carritos recuperados este
+// mes», «$159.600 volvió a la caja») que ningún back había producido: el sistema no manda mensajes solo
+// ni tiene ruta para hacerlo. Mostrarlos era afirmar un trabajo que no existe. La lista queda vacía y el
+// único que la puede llenar es el back, cuando el envío de mensajes esté conectado.
+export const FLUJOS: {
+  id: string; nombre: string; disparador: string; grupo: string; estado: string;
+  resultado: { v: string; l: string }[];
+  pasos: { id: string; delay: string; txt: string; condicion?: boolean }[];
+}[] = [];
 
 // ---------------------------------------------------------------------------------------------
 // MERCADO — competencia real (sin Google Maps, ver doc 02 §1.6)
@@ -947,7 +904,7 @@ export const ETAPAS_MOTOR = [
   { t: 'Debate', d: 'El público discute pros y contras en el feed de comentarios.' },
   { t: 'Votación', d: 'Cada bot vota positivo o negativo y suma su score.' },
   { t: 'Ranking', d: 'La propuesta se ordena contra las demás del lote.' },
-  { t: 'Veredicto', d: 'Se decide publicar o descartar antes de salir live.' },
+  { t: 'Veredicto', d: 'Se decide si la pieza pasa el filtro o vuelve con la objeción, antes de que usted la marque activa.' },
 ];
 
 export const PIEZAS_MOTOR = [
@@ -982,15 +939,14 @@ export const VOTOS_MOTOR = ['Aprueba', 'Rechaza', 'Aprueba con reserva', 'Neutro
 // ---------------------------------------------------------------------------------------------
 
 export const CONSECUENCIA: Record<string, string> = {
-  a1: 'Aplicar pausa el conjunto "lookalike frío" y mueve sus $40/día al conjunto que sí convierte. Puede deshacerlo 24 h.',
+  a1: 'Aplicar deja anotado frenar el conjunto "lookalike frío" y mover sus $40/día al que sí convierte: el cambio lo hace usted en la plataforma, porque el motor todavía no toca sus cuentas.',
   a2: 'Responder manda el mensaje por su WhatsApp real. "Dejar que Rumi responda" la envía sin que la lea antes.',
   a3: 'Ver variantes abre las 6 piezas que Nia escribió con el ángulo de ingredientes. Silenciar la esconde 7 días.',
   a4: 'Ver créditos muestra qué los consumió. Auto-recarga paga el próximo paquete cuando baje de 500.',
-  a5: 'Crear campaña deja el borrador listo sin gastar nada todavía: publicar sigue necesitando su OK.',
+  a5: 'Crear campaña deja el borrador listo sin gastar nada: marcarla activa sigue necesitando su OK.',
   a6: 'Deshacer reactiva el conjunto tal como estaba a las 03:12, con su presupuesto original.',
-  d1: 'Aprobar publica la campaña y empieza a gastar $30/día. Ajustar la deja lista sin publicar.',
-  d2: 'Aprobar sube el presupuesto a $54/día por 7 días. "Ajustar a 20%" sube a $48/día.',
-  d3: 'Enviar link manda el cobro de $59 por WhatsApp. Descartar lo deja sin enviar y avisa a Rumi.',
+  d1: 'Marcar activa saca la campaña de borrador y la deja en el panel. Publicar en las redes todavía no está conectado: esa ruta no existe.',
+  d2: 'Anotar la sugerencia la deja registrada. El presupuesto lo cambia usted: el motor todavía no mueve presupuesto en las plataformas. "Ajustar a 20%" deja la sugerencia en $48/día.',
 };
 
 export const MES = {

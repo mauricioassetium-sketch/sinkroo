@@ -101,7 +101,8 @@ export const DETALLE_PRESUPUESTO: Record<string, string> = {
 // ---------------------------------------------------------------------------------------------
 // LA SECUENCIA DE ARRANQUE — lo que hace el motor desde que se aprieta «Arrancar». No es una promesa
 // vaga: es el trabajo de cada día, con lo que cuesta en créditos. Los 500 del público no cuestan
-// y la investigación del mercado tampoco: lo único que gasta dinero de verdad es publicar.
+// y la investigación del mercado tampoco: lo único que va a gastar dinero de verdad es publicar en las
+// redes, y esa ruta todavía no está conectada.
 // ---------------------------------------------------------------------------------------------
 
 // EL ARRANQUE — lo que hace el motor desde que se aprieta «Arrancar».
@@ -109,15 +110,16 @@ export const DETALLE_PRESUPUESTO: Record<string, string> = {
 // Va numerado, 1 · 2 · 3, y NO por días: el dueño lo pidió así porque contar días hace pensar que lanzar
 // tarda una semana. El trabajo del motor es una secuencia, no un calendario: el mismo día que arranca ya
 // tiene el mercado leído y las primeras piezas escritas. Lo único que cuesta créditos es escribir y pasar
-// por el panel; investigar, publicar y medir no gastan.
+// por el panel; investigar y medir no gastan. Y ninguna etapa ajusta pujas ni mueve presupuesto en las
+// plataformas: lo que el motor hace con lo que vuelve es medirlo, compararlo con su predicción y decirlo.
 export const ARRANQUE: { paso: string; quien: string; que: string; creditos: string }[] = [
   { paso: '1', quien: 'Lux', que: 'Lee los anuncios de sus 5 competidores y le dice con qué ángulo gana el rubro hoy.', creditos: '0 créditos' },
   { paso: '2', quien: 'Nia', que: 'Escribe 6 variantes de la primera pieza con ese ángulo, en su tono y con sus precios.', creditos: '96 créditos' },
   { paso: '3', quien: 'El panel', que: 'Los 5 jueces las puntúan y los 500 del público reaccionan: quedan ordenadas y las 3 primeras pasan.', creditos: '48 créditos' },
-  { paso: '4', quien: 'Kai', que: 'Deja las 3 mejores listas para salir en sus cuentas y mide el costo por venta cuando la plataforma lo reporte.', creditos: '0 créditos' },
-  { paso: '5', quien: 'Kai', que: 'Ajusta la puja con los primeros resultados que vuelven y frena lo que no rinde.', creditos: '0 créditos' },
-  { paso: '6', quien: 'Rex', que: 'Mueve el presupuesto al público que está comprando y le avisa por qué.', creditos: '0 créditos' },
-  { paso: '7', quien: 'Sol', que: 'Le da el informe: qué se vendió, cuánto costó cada venta y qué conviene hacer.', creditos: '0 créditos' },
+  { paso: '4', quien: 'Kai', que: 'Deja las 3 mejores en el panel, listas para cuando conecte sus cuentas, y mide el costo por resultado cuando la plataforma lo reporte.', creditos: '0 créditos' },
+  { paso: '5', quien: 'Kai', que: 'Mide lo que la plataforma reporta de cada pieza y lo compara con lo que el panel predijo: le dice cuál rindió y cuál no.', creditos: '0 créditos' },
+  { paso: '6', quien: 'Rex', que: 'Con esa medición arma el plan que sigue: qué ángulo y qué público sostener, y cuáles dejar.', creditos: '0 créditos' },
+  { paso: '7', quien: 'Sol', que: 'Le da el informe con lo que la plataforma reportó de cada pieza y qué conviene hacer.', creditos: '0 créditos' },
 ];
 
 /** Lo que cuesta el arranque en créditos, sumando la lista de arriba. */

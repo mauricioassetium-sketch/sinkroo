@@ -31,13 +31,13 @@ const PASOS: { id: number; nombre: string; desc: string; pide: string; capturas:
     id: 2, nombre: 'Domicilio', desc: 'Comprobante con la cámara',
     pide: 'Tome una foto del comprobante completo (un recibo de servicio o un extracto a su nombre, de los últimos 3 meses), de modo que se lea la dirección.',
     capturas: [{ k: 'domicilio', lb: 'Comprobante de domicilio', ayuda: 'Que entre la hoja completa en la foto.' }],
-    desbloquea: 'Facturar y cobrar desde su país',
+    desbloquea: 'Que la facturación y los cobros queden a nombre de su negocio',
   },
   {
     id: 3, nombre: 'Selfie', desc: 'Su cara, en vivo',
     pide: 'Mire de frente y tómese la selfie con la cámara frontal. Sin gorra ni gafas, y con buena luz.',
     capturas: [{ k: 'selfie', lb: 'Su selfie', ayuda: 'Se compara con la foto del documento.', espejo: true }],
-    desbloquea: 'Mover presupuesto y publicar sin límites',
+    desbloquea: 'Cumplir la exigencia legal para publicar anuncios y mover dinero',
   },
 ];
 
@@ -224,7 +224,7 @@ export function ViewKyc({ setToast }: { setToast: (t: string) => void }) {
         { k: 'Por qué se lo pedimos', v: FRENO_KYC?.valor ?? 'Obligatorio', s: FRENO_KYC?.porQue ?? 'Riesgo legal: no se publica a nombre de alguien sin verificar.' },
         { k: 'Qué sigue funcionando mientras tanto', v: 'Todo menos el dinero', s: 'el panel puntúa piezas, el motor vigila el mercado y Rumi contesta sus chats: eso no depende de la verificación' },
       ] },
-      { tipo: 'aviso', tono: 'amber', texto: 'Si no la envía: publicar y mover presupuesto quedan apagados, porque no se publica a nombre de alguien sin verificar. El motor no se detiene por eso y no hay ningún plazo: lo único que falta es que usted la envíe.' },
+      { tipo: 'aviso', tono: 'amber', texto: 'Si no la envía: a nombre de su negocio no se puede publicar anuncios ni mover dinero —ni hoy ni cuando el sistema conecte la publicación—, porque la ley no deja anunciar a nombre de alguien sin verificar. La verificación es esa exigencia, no una función que ya esté trabajando: el motor no se detiene por eso y no hay ningún plazo, lo único que falta es que usted la envíe.' },
       { tipo: 'pasos', items: [
         pendiente
           ? `Vaya al paso ${pendiente.id} y saque lo que falta: ${pendiente.capturas.filter(c => !fotos[c.k]).map(c => c.lb).join(' y ')}.`
@@ -300,8 +300,9 @@ export function ViewKyc({ setToast }: { setToast: (t: string) => void }) {
               <div className="bt">Ya está enviada. La revisamos en menos de 24 h.</div>
               <div className="bs" style={{ marginTop: 5 }}>
                 Mientras tanto puede seguir usando todo lo que no toca dinero: el panel puntúa piezas,
-                el motor vigila el mercado y Rumi contesta sus chats. <b>Publicar y mover presupuesto se
-                desbloquea cuando esté aprobada.</b> Le avisamos por WhatsApp y por correo.
+                el motor vigila el mercado y Rumi contesta sus chats. <b>Publicar anuncios y mover dinero
+                a nombre de su negocio quedan habilitados cuando esté aprobada</b>: la ley lo exige, y
+                publicar en las redes todavía no está conectado. Le avisamos por WhatsApp y por correo.
               </div>
             </div>
             <Badge tone="amber">en revisión</Badge>
@@ -391,12 +392,12 @@ export function ViewKyc({ setToast }: { setToast: (t: string) => void }) {
               );
             })}
             <div>
-              <div className="bs" style={{ marginBottom: 9 }}>Lo que se habilita cuando esté aprobada:</div>
+              <div className="bs" style={{ marginBottom: 9 }}>Lo que la ley exige tener verificado para operar:</div>
               <div className="guards">
                 <div className="guard"><span style={{ color: 'var(--green)', flexShrink: 0 }}><I_Zap size={14} /></span>
-                  <span className="guard-lb">Publicar en sus redes<small>Anuncios, posts e historias: el sistema todavía no publica en las redes</small></span></div>
+                  <span className="guard-lb">Publicar anuncios a su nombre<small>Anuncios, posts e historias: el sistema todavía no publica en las redes</small></span></div>
                 <div className="guard"><span style={{ color: 'var(--green)', flexShrink: 0 }}><I_Credit size={14} /></span>
-                  <span className="guard-lb">El motor puede mover presupuesto<small>Dentro de los frenos que ya tiene puestos</small></span></div>
+                  <span className="guard-lb">Mover dinero y presupuesto<small>Dentro de los frenos que ya tiene puestos; el motor todavía no mueve presupuesto en las plataformas</small></span></div>
                 <div className="guard"><span style={{ color: 'var(--green)', flexShrink: 0 }}><I_Globe size={14} /></span>
                   <span className="guard-lb">Cobrar y facturar<small>Su plan y sus recargas con factura a su nombre</small></span></div>
               </div>
