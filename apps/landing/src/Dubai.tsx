@@ -28,41 +28,33 @@
 
 /* ---------------------------------------------------------------------------------------------
    LOS EDIFICIOS VECINOS: 26, trece de cada lado de la torre.
-   CADA UNO TIENE CUERPO PROPIO, no un rectángulo con un remate encima: así se parecen a la silueta
-   de la imagen de referencia, que trae torres escalonadas que terminan en punta, techos inclinados,
-   cúpulas y un edificio con un arco calado en el medio. Las formas, los anchos y los altos salen de
-   tres listas fijas: la ciudad es siempre la misma.
+   CADA UNO TIENE CUERPO PROPIO, y son DOS FORMAS —las de la imagen de referencia—: la torre que sube
+   y se cierra en punta (dos de cada tres) y la misma con un escalón antes de la punta. La referencia
+   no tiene cúpulas ni techos inclinados: son torres de ancho parecido, altos distintos, todas
+   terminando en punta. Los anchos, los altos y las formas salen de tres listas fijas, así que la
+   ciudad es siempre la misma.
    Ninguno le tapa la punta al Burj: el más alto llega a 228 y la torre pasa los 340.
    --------------------------------------------------------------------------------------------- */
 type Forma =
-  | 'plano'
-  | 'escalonado'
-  | 'aguja'
-  | 'piramide'
-  | 'redondo'
-  | 'inclinado-derecha'
-  | 'inclinado-izquierda'
-  | 'arco';
+  | 'en-punta'      // el cuerpo sube y se cierra en punta (la forma que más se repite en la referencia)
+  | 'escalonado';   // un cuerpo, un escalón más angosto y la punta
+
 type Edificio = { x: number; w: number; h: number; forma: Forma };
 
-/** Qué parte del alto es de ancho completo. Arriba de eso la forma se angosta (o se inclina, o tiene
- *  el hueco del arco), así que ahí no se ponen ventanas: quedarían flotando fuera del edificio. */
+/** Qué parte del alto es de ancho completo. Arriba de eso la forma se angosta, así que ahí no se
+ *  ponen ventanas: quedarían flotando fuera del edificio. */
 const ANCHO_COMPLETO: Record<Forma, number> = {
-  plano: 0.94,
-  escalonado: 0.56,
-  aguja: 0.84,
-  piramide: 0.8,
-  redondo: 0.86,
-  'inclinado-derecha': 0.6,
-  'inclinado-izquierda': 0.6,
-  arco: 0.48,
+  'en-punta': 0.54,
+  escalonado: 0.44,
 };
 
 const ANCHOS = [72, 54, 90, 62, 84, 48, 78, 66, 96, 58, 70, 52, 88];
 const ALTOS = [120, 186, 96, 228, 140, 86, 168, 110, 200, 92, 154, 128, 210];
+/* La familia de la referencia: torres de ancho parecido, altos distintos y TODAS terminando en
+   punta (dos de cada tres) o en un escalón con punta. Nada de cúpulas ni techos inclinados. */
 const FORMAS: Forma[] = [
-  'escalonado', 'plano', 'redondo', 'inclinado-derecha', 'aguja', 'plano', 'escalonado',
-  'arco', 'plano', 'piramide', 'inclinado-izquierda', 'aguja', 'plano',
+  'en-punta', 'escalonado', 'en-punta', 'en-punta', 'escalonado', 'en-punta', 'en-punta',
+  'escalonado', 'en-punta', 'en-punta', 'en-punta', 'escalonado', 'en-punta',
 ];
 const HUECO = 14;
 const LIENZO = 2400;
@@ -95,107 +87,48 @@ const VECINOS: Edificio[] = [...fila('izq'), ...fila('der')];
  *  ciudad queda pegada al piso del bloque, sin aire debajo. */
 const PISO = 396;
 
-/** EL CUERPO DE UN VECINO, según su forma. Todos se apoyan en el piso y todos son una sola pieza. */
+/** EL CUERPO DE UN VECINO. Dos formas, las de la referencia: la torre que sube y se cierra en punta,
+ *  y la misma con un escalón antes de la punta. Todas se apoyan en el piso del lienzo. */
 function Cuerpo({ edificio }: { edificio: Edificio }) {
   const { x, w, h, forma } = edificio;
   const arriba = PISO - h;
   const medio = x + w / 2;
   const derecha = x + w;
 
-  if (forma === 'aguja') {
-    /* El cuerpo recto y una aguja fina, con su lucecita arriba. */
-    return (
-      <>
-        <rect className="dubai-cuerpo" x={x} y={arriba + h * 0.16} width={w} height={h * 0.84} rx={2} />
-        <rect className="dubai-cuerpo" x={medio - w * 0.06} y={arriba} width={w * 0.12} height={h * 0.2} rx={1} />
-        <circle className="dubai-luz-remate" cx={medio} cy={arriba - 3} r={2} />
-      </>
-    );
-  }
-
   if (forma === 'escalonado') {
-    /* Tres cuerpos que se angostan y una punta: la torre escalonada de la referencia. */
-    const y1 = PISO - h * 0.56;
-    const y2 = PISO - h * 0.82;
-    const y3 = PISO - h * 0.94;
-    const w2 = w * 0.72;
-    const w3 = w * 0.44;
+    /* Cuerpo, un escalón más angosto y la punta. */
+    const y1 = PISO - h * 0.44;
+    const y2 = PISO - h * 0.78;
+    const w2 = w * 0.74;
     const x2 = x + (w - w2) / 2;
-    const x3 = x + (w - w3) / 2;
     return (
       <path
         className="dubai-cuerpo"
         d={
-          `M ${x},${PISO} L ${x},${y1} L ${x2},${y1} L ${x2},${y2} L ${x3},${y2} L ${x3},${y3} ` +
-          `L ${medio - w * 0.09},${y3} L ${medio},${arriba} L ${medio + w * 0.09},${y3} ` +
-          `L ${x3 + w3},${y3} L ${x3 + w3},${y2} L ${x2 + w2},${y2} L ${x2 + w2},${y1} ` +
-          `L ${derecha},${y1} L ${derecha},${PISO} Z`
+          `M ${x},${PISO} L ${x},${y1} L ${x2},${y1} L ${x2},${y2} ` +
+          `L ${medio - w * 0.12},${y2} L ${medio},${arriba} L ${medio + w * 0.12},${y2} ` +
+          `L ${x2 + w2},${y2} L ${x2 + w2},${y1} L ${derecha},${y1} L ${derecha},${PISO} Z`
         }
       />
     );
   }
 
-  if (forma === 'piramide') {
-    /* Cuerpo y punta triangular. */
-    const y = PISO - h * 0.8;
-    return (
+  /* «en-punta»: el cuerpo sube recto, se angosta y se cierra en la punta. La lucecita de arriba es lo
+     que se ve de noche en la punta de estas torres. */
+  const y1 = PISO - h * 0.54;
+  return (
+    <>
       <path
         className="dubai-cuerpo"
-        d={`M ${x},${PISO} L ${x},${y} L ${x + w * 0.14},${y} L ${medio},${arriba} ` +
-           `L ${x + w * 0.86},${y} L ${derecha},${y} L ${derecha},${PISO} Z`}
+        d={
+          `M ${x},${PISO} L ${x},${y1} L ${medio - w * 0.18},${arriba + h * 0.07} ` +
+          `L ${medio},${arriba} L ${medio + w * 0.18},${arriba + h * 0.07} ` +
+          `L ${derecha},${y1} L ${derecha},${PISO} Z`
+        }
       />
-    );
-  }
-
-  if (forma === 'redondo') {
-    /* Cuerpo y cúpula. La cúpula ocupa un quinto del alto y los puntos de control van afuera del
-       filo para que redondee de verdad: con la curva pegada al borde se veía como un techo recto. */
-    const y = PISO - h * 0.8;
-    const cima = arriba;
-    return (
-      <path
-        className="dubai-cuerpo"
-        d={`M ${x},${PISO} L ${x},${y} Q ${x - w * 0.06},${cima} ${medio},${cima} ` +
-           `Q ${derecha + w * 0.06},${cima} ${derecha},${y} L ${derecha},${PISO} Z`}
-      />
-    );
-  }
-
-  if (forma === 'inclinado-derecha') {
-    /* Techo que baja hacia la derecha. */
-    return (
-      <path
-        className="dubai-cuerpo"
-        d={`M ${x},${PISO} L ${x},${arriba} L ${derecha},${PISO - h * 0.6} L ${derecha},${PISO} Z`}
-      />
-    );
-  }
-
-  if (forma === 'inclinado-izquierda') {
-    /* Techo que baja hacia la izquierda. */
-    return (
-      <path
-        className="dubai-cuerpo"
-        d={`M ${x},${PISO - h * 0.6} L ${derecha},${arriba} L ${derecha},${PISO} L ${x},${PISO} Z`}
-      />
-    );
-  }
-
-  if (forma === 'arco') {
-    /* El cuerpo con un arco calado en el medio (el hueco se dibuja al revés y con `evenodd`). */
-    const hueco = `M ${x + w * 0.28},${arriba + h * 0.12} L ${x + w * 0.72},${arriba + h * 0.12} ` +
-                  `L ${x + w * 0.72},${arriba + h * 0.42} L ${x + w * 0.28},${arriba + h * 0.42} Z`;
-    return (
-      <path
-        className="dubai-cuerpo"
-        fillRule="evenodd"
-        d={`M ${x},${PISO} L ${x},${arriba} L ${derecha},${arriba} L ${derecha},${PISO} Z ${hueco}`}
-      />
-    );
-  }
-
-  /* plano */
-  return <rect className="dubai-cuerpo" x={x} y={arriba} width={w} height={h} rx={2} />;
+      <circle className="dubai-luz-remate" cx={medio} cy={arriba + 7} r={1.8} />
+    </>
+  );
 }
 
 /* ---------------------------------------------------------------------------------------------

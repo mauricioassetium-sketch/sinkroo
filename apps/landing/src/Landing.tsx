@@ -464,6 +464,8 @@ export function Landing() {
               dueño. El domicilio legal sigue en el pie de la página, que es donde vive. */}
           <div className="dubai-pleno mt-24 md:mt-32 relative z-10">
             <SkylineDubai />
+            {/* LA FIRMA, en la esquina de abajo a la derecha de la ciudad. */}
+            <p className="dubai-firma">{t.comoLoHacemos.dubaiFirma}</p>
           </div>
         </section>
 

@@ -114,6 +114,8 @@ export type Contenido = {
   comoLoHacemos: {
     titulo: { uno: string; dos: string };
     etapas: Etapa[];
+    /** La firma del cierre: el dibujo de Dubai con sus palabras, en la esquina de la ciudad. */
+    dubaiFirma: string;
   };
   /* 6 · CON QUÉ TRABAJA */
   conQueTrabaja: { titulo: { uno: string; dos: string }; herramientas: Herramienta[] };
@@ -295,7 +297,9 @@ const ES: Contenido = {
       },
     ],
     /* El bloque cierra con el dibujo de Dubai (el Burj Khalifa y su juego de luces, en `Dubai.tsx`).
-       Sin textos: el dueño los mandó sacar. El domicilio sigue en el pie de la página. */
+       Los textos que había se los mandó sacar el dueño; queda sólo la FIRMA, en la esquina de abajo
+       de la ciudad, que la pidió él. El domicilio legal sigue en el pie de la página. */
+    dubaiFirma: 'Desde Dubái, con ❤',
   },
   conQueTrabaja: {
     titulo: { uno: 'CON QUÉ', dos: 'TRABAJA' },
@@ -606,8 +610,9 @@ const EN: Contenido = {
         texto: 'Reach, clicks, cost per sale and the deviation of the model against what it had predicted.',
       },
     ],
-    /* El bloque cierra con el dibujo de Dubai (el Burj Khalifa y su juego de luces, en `Dubai.tsx`).
-       Sin textos: el dueño los mandó sacar. El domicilio sigue en el pie de la página. */
+    /* El bloque cierra con el dibujo de Dubai (el Burj Khalifa y su juego de luces, en `Dubai.tsx`) y
+       la firma, en la esquina de la ciudad. El domicilio legal sigue en el pie de la página. */
+    dubaiFirma: 'From Dubai with ❤',
   },
   conQueTrabaja: {
     titulo: { uno: 'WHAT IT', dos: 'WORKS WITH' },

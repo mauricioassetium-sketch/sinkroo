@@ -43,6 +43,21 @@
   overflow: hidden;
 }
 
+/* LA FIRMA de la ciudad: «Desde Dubái, con ❤», en la esquina de abajo a la derecha. Va sobre el
+   dibujo (position absolute) para no empujar nada, y no se puede tocar: es texto. */
+.dubai-firma {
+  position: absolute;
+  right: 18px;
+  bottom: 12px;
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: rgba(233, 213, 255, 0.75);
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+}
+
 /* La ciudad de borde a borde y pegada al piso del bloque.
    · `100vw` con los márgenes que la centran: se sale del contenedor y toma el ancho de la pantalla.
    · El pie de la ciudad ES el pie del módulo: la sección no lleva relleno abajo (`padding-bottom:
