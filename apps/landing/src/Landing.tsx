@@ -796,10 +796,10 @@ export function Landing() {
                 <p className="text-gray-600 text-sm leading-relaxed max-w-[260px]">{t.pie.frase}</p>
               </div>
 
-              <div className="lg:col-span-4 flex justify-center">
-                <div className="text-center">
+              <div className="lg:col-span-3">
+                <div>
                   <h4 className="text-black font-semibold mb-6">{t.pie.enlacesTitulo}</h4>
-                  <ul className="space-y-4 text-gray-600 text-sm flex flex-col items-center">
+                  <ul className="space-y-4 text-gray-600 text-sm flex flex-col">
                     {t.pie.enlaces.map((enlace) => (
                       <li key={enlace.texto}>
                         <a href={enlace.href} className="hover:text-purple-500 transition">
@@ -811,7 +811,27 @@ export function Landing() {
                 </div>
               </div>
 
-              <div className="lg:col-span-5">
+              {/* LA COLUMNA LEGAL. Los términos son de Sinkroo (una página propia, con las leyes del
+                  DIFC); privacidad y cookies viven en el sitio de Aradina, que lleva esa parte. */}
+              <div className="lg:col-span-3">
+                <h4 className="text-black font-semibold mb-6">{t.pie.legalTitulo}</h4>
+                <ul className="space-y-4 text-gray-600 text-sm flex flex-col">
+                  {t.pie.legales.map((enlace) => (
+                    <li key={enlace.texto}>
+                      <a
+                        href={enlace.href}
+                        className="hover:text-purple-500 transition"
+                        title={enlace.href.startsWith('http') ? 'Abre el documento en una pestaña nueva. Se puede cerrar y no cambia nada.' : undefined}
+                        {...(enlace.href.startsWith('http') ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+                      >
+                        {enlace.texto}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="lg:col-span-3">
                 <p className="text-gray-600 text-sm mb-6 max-w-md">
                   {t.pie.escribir}{' '}
                   <a href={`mailto:${correo}`} className="text-black font-semibold hover:text-purple-500 transition">
@@ -860,7 +880,28 @@ export function Landing() {
               </div>
             </div>
 
-            <div className="mt-20 pt-8 border-t border-purple-200 flex flex-col md:flex-row justify-center items-center gap-4">
+            {/* LAS NORMAS CON LAS QUE ESTÁ ALINEADO, y el aviso legal. Se dice «alineado», no
+                «certificado»: una certificación no se puede afirmar sin el certificado. */}
+            <div className="mt-16 pt-8 border-t border-purple-200 flex flex-col md:flex-row md:items-center gap-4 md:gap-6">
+              <p className="text-[10px] font-bold tracking-[0.25em] text-purple-500 uppercase whitespace-nowrap">
+                {t.pie.normasTitulo}
+              </p>
+              <div className="flex flex-wrap gap-3">
+                {t.pie.normas.map((norma) => (
+                  <span
+                    key={norma.texto}
+                    className="inline-flex items-center gap-2 rounded-full border border-purple-200 bg-white/70 px-3 py-1.5 text-xs font-semibold text-gray-700"
+                  >
+                    {norma.texto}
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-purple-500">{norma.nota}</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <p className="mt-8 text-[11px] leading-relaxed text-gray-500 max-w-[1100px]">{t.pie.disclaimer}</p>
+
+            <div className="mt-10 pt-8 border-t border-purple-200 flex flex-col md:flex-row justify-center items-center gap-4">
               <p className="text-gray-500 text-xs text-center">
                 {t.pie.derechos}
                 <br />
@@ -871,6 +912,16 @@ export function Landing() {
                   </span>
                 ))}
               </p>
+
+              <a
+                href={t.pie.hechoPorHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-500 text-xs hover:text-purple-500 transition"
+                title="Abre el sitio de Aradina Technologies en una pestaña nueva. Se puede cerrar y no cambia nada."
+              >
+                {t.pie.hechoPor}
+              </a>
             </div>
           </div>
         </footer>

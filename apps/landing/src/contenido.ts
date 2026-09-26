@@ -162,6 +162,19 @@ export type Contenido = {
     escribir: string;
     derechos: string;
     direccion: string[];
+    /** La columna legal: los términos son nuestros (una página aparte) y privacidad y cookies viven
+     *  en el sitio de Aradina, que es quien lleva esa parte. */
+    legalTitulo: string;
+    legales: Enlace[];
+    /** La franja de normas. Se dice ALINEADO, nunca CERTIFICADO: una certificación no se puede
+     *  afirmar sin el certificado en la mano. */
+    normasTitulo: string;
+    normas: { texto: string; nota: string }[];
+    /** El aviso legal: qué es Sinkroo y qué no. */
+    disclaimer: string;
+    /** «Powered by Aradina Technologies LLC» con su enlace. */
+    hechoPor: string;
+    hechoPorHref: string;
   };
 };
 
@@ -477,12 +490,29 @@ const ES: Contenido = {
       { texto: 'Entrar al panel', href: PANEL },
     ],
     escribir: 'Para escribirnos:',
-    derechos: '© 2026 Sinkroo',
+    derechos: '© 2026 Sinkroo. Todos los derechos reservados.',
     direccion: [
       'Innovation Hub, Level 14, Gate Village Building 4',
       'Dubai International Financial Centre (DIFC)',
       'Dubai, United Arab Emirates',
     ],
+    legalTitulo: 'Legal',
+    legales: [
+      { texto: 'Términos y condiciones', href: '/legal/terminos.html' },
+      { texto: 'Privacidad', href: 'https://aradina.net/privacy.html' },
+      { texto: 'Cookies', href: 'https://aradina.net/cookies.html' },
+    ],
+    normasTitulo: 'Infraestructura alineada con',
+    normas: [
+      { texto: 'ISO 27001 / 27002', nota: 'alineado' },
+    ],
+    /* El aviso legal. Dice lo que Sinkroo ES (tecnología y software) y lo que NO (no es una agencia
+       que ejecute campañas por su cuenta, no promete resultados, y lo que sale a las redes sale
+       porque usted lo aprobó). No promete nada que el producto no haga. */
+    disclaimer:
+      'Sinkroo es un proveedor de tecnología y software: el motor investiga, escribe y prueba las piezas, y las deja listas para que usted decida. No es una agencia de publicidad, no publica en sus cuentas sin su aprobación, no administra su dinero y no garantiza resultados: lo que rinde una pieza depende también de su oferta, su precio y su mercado. El público que prueba las piezas es un mercado simulado, no personas reales. Nada de lo que hay en esta página es una oferta, una recomendación ni un consejo de inversión, y su uso no crea ninguna relación de representación ni de fiducia.',
+    hechoPor: 'Powered by Aradina Technologies LLC · aradina.net',
+    hechoPorHref: 'https://aradina.net',
   },
 };
 
@@ -787,12 +817,26 @@ const EN: Contenido = {
       { texto: 'Enter the panel', href: PANEL },
     ],
     escribir: 'To write to us:',
-    derechos: '© 2026 Sinkroo',
+    derechos: '© 2026 Sinkroo. All rights reserved.',
     direccion: [
       'Innovation Hub, Level 14, Gate Village Building 4',
       'Dubai International Financial Centre (DIFC)',
       'Dubai, United Arab Emirates',
     ],
+    legalTitulo: 'Legal',
+    legales: [
+      { texto: 'Terms & conditions', href: '/legal/terminos.html#en' },
+      { texto: 'Privacy', href: 'https://aradina.net/privacy.html' },
+      { texto: 'Cookies', href: 'https://aradina.net/cookies.html' },
+    ],
+    normasTitulo: 'Infrastructure aligned with',
+    normas: [
+      { texto: 'ISO 27001 / 27002', nota: 'aligned' },
+    ],
+    disclaimer:
+      'Sinkroo is a technology and software provider: the engine researches, writes and tests the pieces and leaves them ready for you to decide. It is not an advertising agency, it does not publish to your accounts without your approval, it does not manage your money and it does not guarantee results: how a piece performs also depends on your offer, your price and your market. The public that tests the pieces is a simulated market, not real people. Nothing on this page is an offer, a recommendation or investment advice, and using it creates no agency or fiduciary relationship.',
+    hechoPor: 'Powered by Aradina Technologies LLC · aradina.net',
+    hechoPorHref: 'https://aradina.net',
   },
 };
 
