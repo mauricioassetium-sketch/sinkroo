@@ -35,19 +35,37 @@
   overflow: hidden;
 }
 
-/* LA FIRMA de la ciudad: «Desde Dubái, con ❤», en la esquina de abajo a la derecha. Va sobre el
-   dibujo (position absolute) para no empujar nada, y no se puede tocar: es texto. */
+/* LA FIRMA de la ciudad: «Desde Dubái, con ❤». Arriba a la izquierda, SOBRE los edificios, que es
+   donde el dueño la pidió y donde se lee mejor (ahí la ciudad es baja y el texto no pelea con las
+   luces). Va sobre el dibujo (position absolute) para no empujar nada, y no se puede tocar: es
+   texto. */
 .dubai-firma {
   position: absolute;
-  right: 18px;
-  bottom: 12px;
+  left: 20px;
+  top: 14px;
   margin: 0;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.04em;
-  color: rgba(233, 213, 255, 0.78);
-  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.85);
+  letter-spacing: 0.05em;
+  color: #efe6ff;
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.9), 0 0 18px rgba(10, 6, 18, 0.75);
   pointer-events: none;
+}
+
+/* El corazón: morado y latiendo. Late como late un corazón —dos golpes seguidos y una pausa—, no
+   con un pulso parejo: el `steps` del keyframe es lo que arma ese doble golpe. */
+.dubai-corazon {
+  display: inline-block;
+  color: #c084fc;
+  text-shadow: 0 0 12px rgba(168, 85, 247, 0.9);
+  animation: dubaiLate 1.7s ease-in-out infinite both;
+}
+@keyframes dubaiLate {
+  0%, 100% { transform: scale(1); }
+  12% { transform: scale(1.28); }
+  24% { transform: scale(1); }
+  36% { transform: scale(1.2); }
+  50% { transform: scale(1); }
 }
 
 /* La ciudad de borde a borde y pegada al piso del bloque.
@@ -181,5 +199,9 @@
   .dubai-aguja {
     animation: none;
     opacity: 1;
+  }
+  .dubai-corazon {
+    animation: none;
+    transform: none;
   }
 }
