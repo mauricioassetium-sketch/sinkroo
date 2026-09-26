@@ -1921,6 +1921,14 @@ html.marca-cliente .pers-flotante { color: var(--sobre-grad); }
   border-radius: 7px; color: var(--muted); background: var(--bg3); border: 1px solid var(--border);
   opacity: .55; transition: all .15s; }
 .sb-datos:hover { opacity: 1; color: var(--purple3); border-color: var(--purple2); }
+/* El botón de cerrar sesión: el mismo cuadradito que los otros dos, para que no grite, pero el
+   ratón encima se pone del color de aviso (no del violeta de la casa) y así no se aprieta sin
+   querer. */
+/* El selector lleva el del bloque del usuario delante porque esa regla (la que pinta de violeta al
+   pasar el ratón) tiene más peso: sin esto, el botón de cerrar sesión se ponía violeta como los
+   otros y no se distinguía el que cierra. */
+.sb-user:hover .sb-salir:hover,
+.sb-salir:hover { opacity: 1; color: var(--red); border-color: var(--red); }
 .sb-user:hover .sb-datos { opacity: 1; }
 
 /* En pantalla chica el panel se vuelve una bandeja de abajo: se sigue viendo el panel de atrás

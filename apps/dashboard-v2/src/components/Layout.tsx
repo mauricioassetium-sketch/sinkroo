@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { SinkrooMark, I_Home, I_Megaphone, I_Whatsapp, I_Globe, I_Settings, I_Bell, I_Sun, I_Moon, I_Zap, I_Clock, I_Vote, I_Robot, I_Credit, I_Gift, I_Shield, I_User, I_Palette, I_Menu, I_X, I_Rocket } from './icons';
+import { SinkrooMark, I_Home, I_Megaphone, I_Whatsapp, I_Globe, I_Settings, I_Bell, I_Sun, I_Moon, I_Zap, I_Clock, I_Vote, I_Robot, I_Credit, I_Gift, I_Shield, I_User, I_Palette, I_Menu, I_X, I_Rocket, I_Logout } from './icons';
 import { MODOS, PLANES, type Modo } from '../data/demo';
 import { Progress } from './ui';
 import { usePerfil, inicialesDe } from '../lib/perfil';
@@ -41,9 +41,11 @@ const NAV_CONF: { key: Vista; nombre: string; Icon: any }[] = [
   { key: 'kyc', nombre: 'Verificación', Icon: I_Shield },
 ];
 
-export function Layout({ vista, setVista, children, theme, cicloTema, toast, modo, avisar }: {
+export function Layout({ vista, setVista, children, theme, cicloTema, toast, modo, avisar, onSalir }: {
   vista: Vista; setVista: (v: Vista) => void; children: ReactNode;
   theme: string; cicloTema: () => void; toast: string; modo: Modo; avisar?: (t: string) => void;
+  /** Cierra la sesión y vuelve a la entrada. Lo hace App: acá sólo se aprieta el botón. */
+  onSalir?: () => void;
 }) {
   // `perfilVisible` es el perfil guardado MÁS la edición en curso: así el logo y los colores que
   // el cliente está eligiendo en el pop-up de personalización se ven ya en el sidebar, la barra de
@@ -226,6 +228,13 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
           <span className="sb-edit" title="Su logo y sus colores: se ven en todo el panel"><I_Palette size={14} /></span>
           <button className="sb-datos" title="Sus datos de cuenta: nombre, marca, email, WhatsApp, zona horaria y moneda"
             onClick={e => { e.stopPropagation(); setPerfilAbierto(true); }}><I_User size={14} /></button>
+          {/* CERRAR LA SESIÓN. Va acá, al lado de sus datos, y no escondido en un menú: el dueño lo
+              pidió por acá. El title dice lo que hace y lo que NO pasa (nada se pierde). */}
+          {onSalir && (
+            <button className="sb-datos sb-salir"
+              title="Cierra la sesión en este navegador y vuelve a la pantalla de entrada. Su cuenta, su negocio y todo lo que hizo el motor quedan guardados: para volver, entre con su correo y su clave."
+              onClick={e => { e.stopPropagation(); onSalir(); }}><I_Logout size={14} /></button>
+          )}
         </div>
       </aside>
 

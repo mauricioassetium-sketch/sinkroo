@@ -8,7 +8,7 @@ import { OnboardingProvider } from './lib/onboarding';
 import { quitarDeLaDireccion, SeguridadAlDia, SeguridadProvider, useVueltaDeCorreo } from './lib/seguridad';
 import { ViewOnboarding } from './views/Onboarding';
 import { PantallaLogin, type Sesion } from './views/Login';
-import { codigoDeMeta, confirmarRed, hayApi, hayIntencionDeEntrada, olvidarRed, quienSoy, token, volverDeMeta } from './api/cliente';
+import { codigoDeMeta, confirmarRed, hayApi, hayIntencionDeEntrada, olvidarRed, quienSoy, salir, token, volverDeMeta } from './api/cliente';
 import { ProveedorDatos, useDatos } from './api/datos';
 import { Asistente } from './components/Asistente';
 import { ViewHoy } from './views/Hoy';
@@ -127,6 +127,14 @@ export default function App() {
      la dirección, se muestra la entrada igual —con el aviso de que ya hay una sesión y el atajo para
      volver al panel—, y la marca se limpia apenas la persona entra, para que recargar no la repita. */
   const [pideEntrada, setPideEntrada] = useState(() => hayIntencionDeEntrada());
+  /* CERRAR LA SESIÓN (el botón del sidebar, al lado de sus datos).
+     Se lo dice al back y se borra el token del navegador —lo hace `salir()`—; después esta pantalla
+     vuelve sola a la entrada, en el modo de siempre. Nada más se toca: la cuenta, el negocio y todo
+     lo que hizo el motor quedan guardados, y para volver se entra con el correo y la clave. */
+  const cerrarSesion = () => {
+    void salir().finally(() => { setSesion(null); setPideEntrada(false); });
+  };
+
   const entrarDesdeLaEntrada = (s: Sesion) => {
     setPideEntrada(false);
     quitarDeLaDireccion(['cuenta', 'registro', 'entrar']);
@@ -158,7 +166,7 @@ export default function App() {
     <OnboardingProvider avisar={avisar}>
     <PlanProvider>
     <DetalleProvider>
-    <Layout vista={vista} setVista={setVista} theme={theme} cicloTema={cycle} toast={toast} modo={modo}>
+    <Layout vista={vista} setVista={setVista} theme={theme} cicloTema={cycle} toast={toast} modo={modo} onSalir={cerrarSesion}>
       {vista === 'onboarding' && <ViewOnboarding setToast={avisar} setVista={setVista} />}
       {vista === 'hoy' && <ViewHoy setToast={avisar} setVista={setVista} modo={modo} />}
       {vista === 'campanas' && <ViewCampanas setToast={avisar} modo={modo} setVista={setVista} />}
