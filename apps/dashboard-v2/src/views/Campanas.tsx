@@ -263,7 +263,7 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
             { k: 'Piezas que dejó', v: String(c.artefactos), s: 'quedan guardadas para reusar' },
           ] },
           { tipo: 'texto', texto: `Salió en ${c.plataforma}. Lo que el servidor todavía no manda de esta campaña —las conversiones y el alcance— va en «—»: aquí no se rellena con un número inventado.` },
-          { tipo: 'aviso', texto: 'Lo que funcionó se puede volver a publicar: la campaña no se borra y sus piezas quedan.' },
+          { tipo: 'aviso', texto: 'Lo que funcionó se puede volver a usar: la campaña no se borra y sus piezas quedan.' },
         ],
         fuente: 'Los números finales de la campaña, tal como quedaron al terminar.',
       });
@@ -579,7 +579,8 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
       {vivas.length === 0 && (
         <div className="bs">
           Todavía no hay ninguna campaña corriendo: las de abajo están en borrador o en pausa.
-          <b> Una campaña sale a sus redes sólo cuando usted la publica</b>: ninguna arranca sola.
+          <b> Marcar una campaña como activa es una marca en este panel</b>: el sistema todavía no publica
+          en sus redes, y ninguna arranca sola.
         </div>
       )}
       {/* Un negocio conectado que todavía no tiene piezas: la tarjeta en vivo no tiene nada que mostrar,
@@ -879,7 +880,7 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
           </div>
 
           <div className="bs">
-            El panel puntúa <b>cada pieza antes de publicarse</b>: arriba de 80 sale, entre 60 y 80 vuelve con la
+            El panel puntúa <b>cada pieza</b>: arriba de 80 pasa el mínimo, entre 60 y 80 vuelve con la
             objeción del juez que votó más bajo, y abajo de 60 no se gasta un peso.
           </div>
           <div className="acc-why">
@@ -892,7 +893,7 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
           action={<Badge tone={tonoVeredicto(scorePieza)}>{palabraVeredicto(scorePieza).toLowerCase()}</Badge>}
         >
           <div className="row" style={{ gap: 20, marginBottom: 22, flexWrap: 'wrap' }}>
-            <Ring valor={scorePieza} label="SCORE" sub="mínimo 80 para publicar" />
+            <Ring valor={scorePieza} label="SCORE" sub="mínimo 80 para pasar" />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div className="bt">{pieza?.titulo}</div>
               <div className="bs" style={{ marginTop: 5 }}>

@@ -150,7 +150,7 @@ export function PerfilModal({ abierto, cerrar, avisar }: { abierto: boolean; cer
           onClick={() => setBuscoAhora(true)}><I_Search size={13} /> Buscar</Button>
       </div>
       <div className="tiny muted" style={{ marginTop: 6 }}>
-        Elija su ubicación y se aplican las dos cosas de una sola vez: la zona horaria con la que el motor publica y la moneda con la que ve sus presupuestos y sus ventas.
+        Elija su ubicación y se aplican las dos cosas de una sola vez: la zona horaria con la que el motor escribe y programa su trabajo, y la moneda con la que ve sus presupuestos y sus ventas.
       </div>
 
       {resultados.length > 0 && (
@@ -183,7 +183,7 @@ export function PerfilModal({ abierto, cerrar, avisar }: { abierto: boolean; cer
           <span className="ubic-bandera" aria-hidden="true">{aplicado.bandera}</span>
           <span>
             <b>{aplicado.nombre} → {aplicado.zona} y {aplicado.moneda}.</b>{' '}
-            Se aplicaron las dos: así publica el motor y así se ven sus presupuestos y sus ventas.
+            Se aplicaron las dos: así trabaja el motor y así se ven sus presupuestos y sus ventas.
           </span>
         </div>
       )}
@@ -196,7 +196,7 @@ export function PerfilModal({ abierto, cerrar, avisar }: { abierto: boolean; cer
             onClick={() => set('zona', z)}>{borrador.zona === z ? '✓ ' : ''}{z}</button>
         ))}
       </div>
-      <div className="tiny muted" style={{ marginTop: 6 }}>Define cuándo el motor publica y a qué hora puede mandar mensajes.</div>
+      <div className="tiny muted" style={{ marginTop: 6 }}>Define en qué franja horaria trabaja el motor y a qué hora puede salir un mensaje.</div>
 
       {/* ================= MONEDA ================= */}
       <label className="label" style={{ marginTop: 14 }}>Moneda</label>

@@ -196,7 +196,7 @@ export function MotorEnVivo({ setToast, ir }: { setToast: (t: string) => void; i
   filasVeredicto.push({
     k: 'Puntaje de la pieza',
     v: `${pieza.puntaje}/100`,
-    s: aprueba ? 'arriba del mínimo de 80: la pieza se puede publicar' : 'abajo del mínimo de 80: no se publica hasta corregir eso',
+    s: aprueba ? 'arriba del mínimo de 80: la pieza pasa' : 'abajo del mínimo de 80: no pasa hasta corregir eso',
   });
 
   const bloquesVeredicto: Bloque[] = [
@@ -223,7 +223,7 @@ export function MotorEnVivo({ setToast, ir }: { setToast: (t: string) => void; i
     })) },
     { tipo: 'texto', texto: `Se ordenan del 1 al ${lote.length} por el puntaje: las ${CUANTAS_PASAN} primeras pasan a producción y las otras quedan guardadas con el voto de cada juez, así se ve qué les faltó.` },
     aprueba
-      ? { tipo: 'aviso', tono: 'green', texto: `Con ${pieza.puntaje}/100 la pieza pasa el mínimo: se puede publicar.` }
+      ? { tipo: 'aviso', tono: 'green', texto: `Con ${pieza.puntaje}/100 la pieza pasa el mínimo de 80.` }
       : { tipo: 'aviso', tono: 'amber', texto: `Con ${pieza.puntaje}/100 la pieza no llega al mínimo: no se publica hasta contestar la objeción de ${masDuro?.juez ?? 'el juez que votó más bajo'}.` },
   ];
 
@@ -402,7 +402,7 @@ export function MotorEnVivo({ setToast, ir }: { setToast: (t: string) => void; i
             <div style={{ flex: 1 }}>
               <div className="small" style={{ fontWeight: 700 }}>Puntaje en MiroFish: {pieza.puntaje}/100</div>
               <div className="tiny muted">
-                {aprueba ? 'Los 5 jueces la dejan pasar: arriba de 80 se publica.' : 'Los 5 jueces todavía no la aprueban: vuelve con la objeción.'}
+                {aprueba ? 'Los 5 jueces la dejan pasar: arriba de 80 pasa el mínimo.' : 'Los 5 jueces todavía no la aprueban: vuelve con la objeción.'}
                 {pieza.predicho !== null && ` El modelo había predicho ${pieza.predicho} y el público hizo ${pieza.observado ?? 0}${pieza.desvio !== null ? `: ${pieza.desvio}% de desvío.` : '.'}`}
               </div>
             </div>
@@ -453,7 +453,7 @@ export function MotorEnVivo({ setToast, ir }: { setToast: (t: string) => void; i
 
       {/* ============ CIERRE: el filtro + qué hace cada botón ============ */}
       <div style={{ marginTop: 14, padding: '10px 14px', borderRadius: 12, background: 'rgba(34,211,238,.08)', border: '1px solid rgba(34,211,238,.25)' }}>
-        <div className="tiny muted"><b style={{ color: '#22d3ee' }}>🔒 El filtro antes de salir live:</b> solo lo que convence aquí se publica; lo que no, vuelve con la objeción.</div>
+        <div className="tiny muted"><b style={{ color: '#22d3ee' }}>🔒 El filtro antes de gastar un peso:</b> solo lo que convence aquí pasa el mínimo; lo que no, vuelve con la objeción.</div>
       </div>
 
       <div className="datos-row" style={{ marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--border)' }}>

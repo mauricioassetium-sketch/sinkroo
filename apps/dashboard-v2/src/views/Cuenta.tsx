@@ -439,7 +439,8 @@ function ViewCuentaNegocio({ setToast, modo, setModo }: { setToast: (t: string) 
           </Badge>}
         >
           <div className="bs" style={{ marginBottom: 12 }}>
-            Conecte sus propias cuentas: el motor publica en lo suyo, nunca en las cuentas de Sinkroo. Cada fila
+            Conecte sus propias cuentas: el sistema todavía no publica en las redes y sólo va a trabajar con
+            las que usted conecte, nunca con las cuentas de Sinkroo. Cada fila
             dice hoy si se puede conectar —las que van por bundle.social o con la app de Sinkroo cargada en el
             servidor traen su botón— y cuáles todavía dicen «falta configurar», con la variable que falta. Lo que
             se ve aquí es el estado del servidor, no una copia de esta visita.

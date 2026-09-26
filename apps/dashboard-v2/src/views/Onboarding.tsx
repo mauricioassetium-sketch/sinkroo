@@ -163,7 +163,7 @@ export function ViewOnboarding({ setToast, setVista }: { setToast: (t: string) =
           <div className="bs">
             Los <b>6 agentes</b> investigan y producen (Lux el mercado, Rex el presupuesto, Nia las piezas,
             Kai la pauta, Sol los números, Rumi las conversaciones). Lo que producen pasa por el <b>panel</b>:
-            los 5 jueces lo puntúan y 500 personas del público reaccionan. Las 3 mejores salen.
+            los 5 jueces lo puntúan y 500 personas del público reaccionan. Las 3 mejores pasan.
           </div>
           <div className="onb-datos">
             <div className="dato"><span className="dato-l">Investigación del mercado</span><span className="dato-v" style={{ color: 'var(--green)' }}>no cuesta créditos</span></div>

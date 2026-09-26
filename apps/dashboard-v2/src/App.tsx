@@ -72,10 +72,11 @@ function VueltaDeConexion({ avisar }: { avisar: (t: string) => void }) {
     const vuelta = v.codigo ? volverDeMeta(v.codigo, v.state, v.red) : confirmarRed(v.red);
     void vuelta
       .then(() => {
-        // Lo que cambia según la vía: con la app propia se empieza a leer; con bundle se empieza a publicar.
+        // Lo que cambia según la vía: con la app propia se empieza a leer; con bundle la cuenta queda
+        // autorizada. En las dos, el sistema todavía no publica en las redes.
         avisar(v.codigo
           ? `${nombre} conectado: el motor ya puede leer sus datos reales`
-          : `${nombre} conectado: ya puede publicar ahí`);
+          : `${nombre} conectado: la cuenta quedó autorizada. El sistema todavía no publica en las redes`);
         return datos.refrescar();
       })
       .catch((e: Error) => { avisar(`No se pudo conectar ${nombre}: ${e.message}`); })

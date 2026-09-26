@@ -60,7 +60,7 @@ export function CampanaViva({ c, setToast }: { c: Campana; setToast: (t: string)
         etiqueta: p.puntaje == null ? 'sin puntaje' : `${Number(p.puntaje)} de 100`,
         tono: p.puntaje == null ? 'muted' as const : Number(p.puntaje) >= 80 ? 'green' as const : 'amber' as const,
       })) },
-      { tipo: 'aviso', tono: 'amber', texto: 'Arriba de 80 se publica, entre 60 y 80 vuelve con la objeción del juez que votó más bajo y abajo de 60 no se gasta un peso: es la misma regla que ya vio en la galería del paso 3.' },
+      { tipo: 'aviso', tono: 'amber', texto: 'Arriba de 80 pasa el mínimo, entre 60 y 80 vuelve con la objeción del juez que votó más bajo y abajo de 60 no se gasta un peso: es la misma regla que ya vio en la galería del paso 3.' },
     ] : [
       { tipo: 'texto', texto: 'El servidor no tiene piezas cargadas para este negocio: no hay ninguna que mostrar, y este panel no rellena el hueco con piezas de ejemplo.' },
       { tipo: 'aviso', tono: 'amber', texto: 'Cuando el motor cree la primera pieza y MiroFish la vote, aparece aquí con su formato, su estado y su puntaje.' },

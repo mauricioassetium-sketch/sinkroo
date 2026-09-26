@@ -67,7 +67,7 @@ function FlujoReal({ modo, ir }: { modo: Modo; ir?: (p: PasoCampana) => void }) 
             { n: 1, t: 'Investiga', d: `${d.hallazgos.length} ${d.hallazgos.length === 1 ? 'hallazgo' : 'hallazgos'} del mercado` },
             { n: 2, t: 'Crea', d: `${d.piezas.length} ${d.piezas.length === 1 ? 'pieza guardada' : 'piezas guardadas'}` },
             { n: 3, t: 'Vota', d: `${evaluaciones.length} ${evaluaciones.length === 1 ? 'evaluación' : 'evaluaciones'} de MiroFish` },
-            { n: 4, t: 'Publica', d: `${pasan.length} ${pasan.length === 1 ? 'pasa' : 'pasan'} el mínimo de 80` },
+            { n: 4, t: 'Queda lista', d: `${pasan.length} ${pasan.length === 1 ? 'pasa' : 'pasan'} el mínimo de 80` },
           ].map(p => (
             <div key={p.n} className="flujo-paso">
               <span className="flujo-paso-n">{p.n}</span>
@@ -245,7 +245,7 @@ function FlujoReal({ modo, ir }: { modo: Modo; ir?: (p: PasoCampana) => void }) 
             <EstadoVacio
               icono={<I_Rocket size={22} />}
               titulo="Todavía no hay nada que publicar"
-              texto="Cuando MiroFish termine de votar, cada pieza que llegue al mínimo de 80 aparece aquí, lista para salir a sus redes."
+              texto="Cuando MiroFish termine de votar, cada pieza que llegue al mínimo de 80 aparece aquí, lista para publicar."
               {...(d.cargando ? {} : irAlPaso1)}
             />
           ) : (
@@ -266,7 +266,7 @@ function FlujoReal({ modo, ir }: { modo: Modo; ir?: (p: PasoCampana) => void }) 
                     <span className="rank-t">{e.titulo}</span>
                     <span className="rank-m">{Number(e.puntaje)} de 100 · pasa el mínimo</span>
                   </span>
-                  <Badge tone="green">sale</Badge>
+                  <Badge tone="green">pasa</Badge>
                 </div>
               ))}
               {noPasan.length > 0 && (
@@ -277,12 +277,13 @@ function FlujoReal({ modo, ir }: { modo: Modo; ir?: (p: PasoCampana) => void }) 
               )}
               <div className="acc-why">
                 {modo === 'shared'
-                  ? <><b>Está en Compartido:</b> el motor le pide el OK antes de publicarlas.</>
+                  ? <><b>Está en Compartido:</b> el motor prepara todo y se frena esperando su OK.</>
                   : modo === 'auto'
-                    ? <><b>Está en Automático:</b> las que pasan el mínimo salen solas y quedan en la bitácora, reversibles 24 h.</>
-                    : <><b>Está en Manual:</b> el motor se las deja listas y las publica usted cuando quiera.</>}
+                    ? <><b>Está en Automático:</b> las que pasan el mínimo quedan listas solas, en la bitácora y reversibles 24 h.</>
+                    : <><b>Está en Manual:</b> el motor se las deja listas y usted decide qué sale.</>}
                 {' '}Crear una ronda de {COSTO_RONDA.piezas} opciones cuesta {COSTO_RONDA.crear} créditos y
-                evaluarlas {COSTO_RONDA.evaluar}. El público no cuesta. Publicar es lo único que gasta dinero.
+                evaluarlas {COSTO_RONDA.evaluar}. El público no cuesta. El sistema todavía no publica en sus
+                redes: hasta entonces no gasta un peso en publicidad.
               </div>
             </>
           )}

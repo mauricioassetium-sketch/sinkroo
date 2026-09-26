@@ -181,7 +181,8 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
           <div className="hero-ad-title">Su primera campaña</div>
           <div className="hero-ad-sub">
             Diga qué quiere publicar y suba su material: el motor la crea, el panel la aprueba
-            y sólo entonces sale a sus redes. <b>No gasta un peso antes.</b>
+            y la pieza queda lista para publicar, con su OK. El sistema todavía no publica en sus redes.
+            <b>No gasta un peso antes.</b>
           </div>
           <button className="hero-ad-btn" title="Abra «Qué quiere publicar», el primer paso: ahí empieza el trabajo del motor"
             onClick={() => { setVista('campanas'); setToast('Empiece por aquí: diga qué quiere publicar'); }}>
@@ -440,7 +441,7 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
                 <div className="dato" style={{ flex: 1 }}>
                   <span className="dato-l">Qué significa</span>
                   <span className="bs">
-                    Es el puntaje que el panel le puso a cada pieza. Arriba de <b style={{ color: 'var(--green)' }}>80</b> se publica,
+                    Es el puntaje que el panel le puso a cada pieza. Arriba de <b style={{ color: 'var(--green)' }}>80</b> pasa el mínimo,
                     entre 60 y 80 se revisa, abajo de 60 se descarta.
                   </span>
                 </div>

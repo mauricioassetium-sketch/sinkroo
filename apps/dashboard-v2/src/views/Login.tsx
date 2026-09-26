@@ -37,7 +37,7 @@ const CAPACIDADES = [
   'Investiga el mercado cada mañana',
   'Escribe las piezas con el material y los precios del negocio',
   'Las revisa con 5 jueces y 500 personas del público',
-  'Publica, mide el costo por venta y frena lo que no rinde',
+  'Deja las piezas listas para publicar y mide lo que las plataformas reportan',
 ];
 
 
@@ -185,7 +185,7 @@ export function PantallaLogin({ onEntrar, vuelta }: { onEntrar: (s: Sesion) => v
               Tu equipo de marketing,<br />trabajando solo <span className="login-247">24/7</span>
             </h1>
             <p className="login-linea">
-              Investiga el mercado, escribe las piezas, las publica y mide cada peso.
+              Investiga el mercado, escribe las piezas, las prueba y mide lo que las plataformas reportan.
               <b> Todo el trabajo queda hecho: sólo queda aprobar.</b>
             </p>
 

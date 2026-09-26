@@ -358,7 +358,7 @@ export function BloqueConexiones() {
     const c = CONEXIONES_ONB.find(x => x.key === key)!;
     const nuevas = conectadas.includes(key) ? conectadas.filter(k => k !== key) : [...conectadas, key];
     onb.escribir('conectadas', nuevas);
-    onb.avisar(nuevas.includes(key) ? `${c.nombre} conectada: ${c.detalle}` : `${c.nombre} desconectada: el motor ya no publica ahí`);
+    onb.avisar(nuevas.includes(key) ? `${c.nombre} conectada: ${c.detalle}` : `${c.nombre} desconectada: el motor ya no usa esa cuenta`);
   };
 
   // ---------------------------------------------------------------------------------------------
@@ -418,11 +418,11 @@ export function BloqueConexiones() {
             <div key={c.key} className="guard">
               <span style={{ fontSize: 17, flexShrink: 0 }}>{c.icono}</span>
               <span className="guard-lb">{c.nombre}
-                <small>{activo && c.habilitadoHoy ? `${c.detalle} Ya estaba conectada cuando entró: si la deja, el motor sigue publicando ahí.` : c.detalle}</small>
+                <small>{activo && c.habilitadoHoy ? `${c.detalle} Ya estaba conectada cuando entró: si la deja, el motor sigue leyendo esa cuenta.` : c.detalle}</small>
               </span>
               <Badge tone={activo ? 'green' : 'muted'}>{activo ? 'conectada' : 'sin conectar'}</Badge>
               <Button variant={activo ? 'outline' : 'ghost'} className="btn-sm"
-                title={activo ? `Desconecta ${c.nombre}: el motor deja de publicar ahí al instante. Reversible desde aquí mismo.` : `Conecta ${c.nombre}: ${c.detalle}`}
+                title={activo ? `Desconecta ${c.nombre}: el motor deja de usar esa cuenta. Reversible desde aquí mismo.` : `Conecta ${c.nombre}: ${c.detalle}`}
                 onClick={() => alternar(c.key)}>
                 {activo ? 'Desconectar' : 'Conectar'}
               </Button>

@@ -394,7 +394,7 @@ export function ViewKyc({ setToast }: { setToast: (t: string) => void }) {
               <div className="bs" style={{ marginBottom: 9 }}>Lo que se habilita cuando esté aprobada:</div>
               <div className="guards">
                 <div className="guard"><span style={{ color: 'var(--green)', flexShrink: 0 }}><I_Zap size={14} /></span>
-                  <span className="guard-lb">Publicar en sus redes<small>Anuncios, posts e historias salen con su cuenta</small></span></div>
+                  <span className="guard-lb">Publicar en sus redes<small>Anuncios, posts e historias: el sistema todavía no publica en las redes</small></span></div>
                 <div className="guard"><span style={{ color: 'var(--green)', flexShrink: 0 }}><I_Credit size={14} /></span>
                   <span className="guard-lb">El motor puede mover presupuesto<small>Dentro de los frenos que ya tiene puestos</small></span></div>
                 <div className="guard"><span style={{ color: 'var(--green)', flexShrink: 0 }}><I_Globe size={14} /></span>
@@ -602,7 +602,7 @@ function ViewKycReal({ setToast }: { setToast: (t: string) => void }) {
             </div>
             <div className="guards">
               <div className="guard"><span style={{ color: 'var(--amber)', flexShrink: 0 }}><I_Zap size={14} /></span>
-                <span className="guard-lb">Publicar en sus redes<small>Anuncios, posts e historias salen con su cuenta</small></span></div>
+                <span className="guard-lb">Publicar en sus redes<small>Anuncios, posts e historias: el sistema todavía no publica en las redes</small></span></div>
               <div className="guard"><span style={{ color: 'var(--amber)', flexShrink: 0 }}><I_Credit size={14} /></span>
                 <span className="guard-lb">Mover presupuesto y cobrar<small>Y facturar a nombre de su negocio</small></span></div>
               <div className="guard"><span style={{ color: 'var(--green)', flexShrink: 0 }}><I_Check size={14} /></span>

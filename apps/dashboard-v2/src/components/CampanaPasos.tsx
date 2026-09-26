@@ -78,7 +78,7 @@ export function IngestaManual({ setToast, ir }: { setToast: (t: string) => void;
         >
           <div className="bs">
             Si ya tiene las imágenes o los videos hechos, súbalos aquí. <b>El motor no inventa nada</b>:
-            los revisa, los puntúa con el panel y publica los mejores en sus redes.
+            los revisa, los puntúa con el panel y deja los mejores listos para publicar en sus redes.
           </div>
           <div className="row" style={{ gap: 9, flexWrap: 'wrap' }}>
             <label className="dropzone" style={{ flex: '1 1 160px' }}>

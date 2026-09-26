@@ -114,7 +114,7 @@ export const ARRANQUE: { paso: string; quien: string; que: string; creditos: str
   { paso: '1', quien: 'Lux', que: 'Lee los anuncios de sus 5 competidores y le dice con qué ángulo gana el rubro hoy.', creditos: '0 créditos' },
   { paso: '2', quien: 'Nia', que: 'Escribe 6 variantes de la primera pieza con ese ángulo, en su tono y con sus precios.', creditos: '96 créditos' },
   { paso: '3', quien: 'El panel', que: 'Los 5 jueces las puntúan y los 500 del público reaccionan: quedan ordenadas y las 3 primeras pasan.', creditos: '48 créditos' },
-  { paso: '4', quien: 'Kai', que: 'Publica las 3 mejores en sus cuentas y empieza a medir el costo por venta.', creditos: '0 créditos' },
+  { paso: '4', quien: 'Kai', que: 'Deja las 3 mejores listas para salir en sus cuentas y mide el costo por venta cuando la plataforma lo reporte.', creditos: '0 créditos' },
   { paso: '5', quien: 'Kai', que: 'Ajusta la puja con los primeros resultados que vuelven y frena lo que no rinde.', creditos: '0 créditos' },
   { paso: '6', quien: 'Rex', que: 'Mueve el presupuesto al público que está comprando y le avisa por qué.', creditos: '0 créditos' },
   { paso: '7', quien: 'Sol', que: 'Le da el informe: qué se vendió, cuánto costó cada venta y qué conviene hacer.', creditos: '0 créditos' },
@@ -141,24 +141,24 @@ export type ConexionOnb = {
 };
 
 export const CONEXIONES_ONB: ConexionOnb[] = [
-  { key: 'instagram', nombre: 'Instagram', icono: '📸', habilitadoHoy: true, detalle: 'Publicar piezas y leer comentarios y mensajes.', red: 'instagram' },
+  { key: 'instagram', nombre: 'Instagram', icono: '📸', habilitadoHoy: true, detalle: 'Leer comentarios y mensajes. Publicar piezas todavía no.', red: 'instagram' },
   // Facebook SÍ lleva `red` desde que existe bundle.social: el agregador conecta la cuenta de Facebook
   // como plataforma propia (FACEBOOK), aparte de la de Instagram. Por eso esta fila tiene su propia
   // conexión y su propio botón —antes no lo tenía porque la única vía era la app de Meta, que confirma
   // una sola cuenta y la de Facebook no llegaba aparte—. Sin `viaBundle` ni app propia configurada, el
   // back diría «falta configurar» y la fila sólo lo nombra: nunca ofrece un botón que no puede funcionar.
-  { key: 'facebook', nombre: 'Facebook', icono: '👍', habilitadoHoy: true, detalle: 'Publicar y pautar en la misma cuenta de Meta.', red: 'facebook' },
-  { key: 'whatsapp', nombre: 'WhatsApp de su negocio', icono: '💬', habilitadoHoy: true, detalle: 'Contestar solo, mandar la invitación a un referido y pedir la reseña.', red: 'whatsapp' },
-  { key: 'tiktok', nombre: 'TikTok', icono: '🎵', habilitadoHoy: false, detalle: 'Publicar piezas en video y leer los comentarios.', red: 'tiktok' },
-  { key: 'email', nombre: 'Su email', icono: '✉️', habilitadoHoy: false, detalle: 'Mandar el informe semanal y las secuencias a sus clientes.', red: 'email' },
-  { key: 'tienda', nombre: 'Su tienda online', icono: '🛒', habilitadoHoy: false, detalle: 'Leer precios y stock, y saber qué se vendió sin que lo cargue.', red: 'tienda' },
-  { key: 'google', nombre: 'Su ficha de Google o sus anuncios', icono: '🔎', habilitadoHoy: false, detalle: 'Que lo encuentren en las búsquedas y publicar en la red de Google.', red: 'google' },
+  { key: 'facebook', nombre: 'Facebook', icono: '👍', habilitadoHoy: true, detalle: 'Leer comentarios y mensajes de la misma cuenta de Meta. Publicar todavía no.', red: 'facebook' },
+  { key: 'whatsapp', nombre: 'WhatsApp de su negocio', icono: '💬', habilitadoHoy: true, detalle: 'Contestar los mensajes de sus clientes. Mandar la invitación a un referido y pedir la reseña todavía no.', red: 'whatsapp' },
+  { key: 'tiktok', nombre: 'TikTok', icono: '🎵', habilitadoHoy: false, detalle: 'Publicar piezas en video y leer los comentarios: todavía no está.', red: 'tiktok' },
+  { key: 'email', nombre: 'Su email', icono: '✉️', habilitadoHoy: false, detalle: 'Mandar el informe semanal y las secuencias a sus clientes: todavía no está.', red: 'email' },
+  { key: 'tienda', nombre: 'Su tienda online', icono: '🛒', habilitadoHoy: false, detalle: 'Leer precios y stock, y saber qué se vendió sin que lo cargue: todavía no está.', red: 'tienda' },
+  { key: 'google', nombre: 'Su ficha de Google o sus anuncios', icono: '🔎', habilitadoHoy: false, detalle: 'Que lo encuentren en las búsquedas y publicar en la red de Google: todavía no está.', red: 'google' },
 ];
 
 /** YouTube, la red que el dueño pidió expresa: va junto a las demás redes de video. */
 const YOUTUBE_ONB: ConexionOnb = {
   key: 'youtube', nombre: 'YouTube', icono: '▶️', habilitadoHoy: false,
-  detalle: 'Leer el público que ve sus videos y cómo rinde cada uno.', red: 'youtube',
+  detalle: 'Leer el público que ve sus videos y cómo rinde cada uno: todavía no está.', red: 'youtube',
 };
 
 /**
@@ -253,7 +253,7 @@ export const PASOS_ONB: PasoOnb[] = [
   {
     n: 5, t: 'Conectar', d: 'Dónde publica', icono: '🔌',
     titular: 'Dónde publica y con qué',
-    paraQue: 'El motor publica en las cuentas del negocio, nunca en las de Sinkroo. Cada conexión declara qué habilita: sin la cuenta conectada, no publica ahí.',
+    paraQue: 'El sistema todavía no publica en las redes. Cuando lo haga, será en las cuentas del negocio, nunca en las de Sinkroo: sin la cuenta conectada no va a publicar ahí.',
     infiere: 'Si ya usa el mismo email en su tienda y en Instagram, el motor reconoce la marca y avisa antes de conectar nada.',
     // El resultado de este paso no es tener las cuentas conectadas (eso ya estaba): es que el motor
     // arranque. Si no, el contador diría «2 de 5» antes de que el cliente toque nada.
@@ -284,17 +284,17 @@ export const BIENVENIDA = {
   titular: 'No necesita saber de marketing.',
   titular2: 'Sinkroo lo hace todo por usted.',
   intro: 'Cualquier persona puede vender más sin saber nada de marketing: el motor trabaja en automático, ' +
-    'de la publicación a la venta, apuntando al mercado que de verdad le compra.',
+    'investiga su mercado, escribe sus piezas y las prueba, apuntando al mercado que de verdad le compra.',
   // El recuadro: el argumento que más pesa, porque le quita el miedo a empezar.
   caja: {
     t: '¿Tiene un negocio? Ya tiene todo lo que hace falta.',
-    s: 'Sin importar el rubro, el tamaño ni su experiencia: Sinkroo se ocupa del resto, de la primera ' +
-      'publicación a la primera venta.',
+    s: 'Sin importar el rubro, el tamaño ni su experiencia: Sinkroo se ocupa del resto, de la investigación ' +
+      'del mercado a las piezas listas para publicar.',
   },
   nota: 'La información que suba es justo la que la IA necesita para arrancar.',
   // Las dos tarjetas que resumen el producto.
   tarjetas: [
-    { t: 'Todo en automático', s: 'De la publicación a la venta, sin mover un dedo.' },
+    { t: 'Todo en automático', s: 'Investiga, escribe, prueba y mide solo; publicar en sus redes todavía no.' },
     { t: 'Al mercado exacto', s: 'El motor apunta a quien de verdad le compra.' },
   ],
   // El pie de la bienvenida: cuánto cuesta en tiempo y qué hay que saber.
