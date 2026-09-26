@@ -439,14 +439,21 @@ export function Landing() {
               centro con su juego de luces, las luces subiendo por la fachada como burbujas y las
               ventanas de los vecinos prendiendo y apagando. El dibujo es SVG en línea y se anima con
               CSS (`Dubai.tsx` + `dubai.css`); acá sólo se pone, con su rótulo y su línea. */}
-          <div className="max-w-7xl mx-auto mt-24 md:mt-32 relative z-10">
-            <SkylineDubai />
-            <p className="mt-6 text-[10px] font-bold tracking-[0.3em] text-purple-300 uppercase">
-              {t.comoLoHacemos.dubaiEtiqueta}
-            </p>
-            <p className="mt-3 max-w-3xl text-gray-400 text-sm md:text-base leading-relaxed">
-              {t.comoLoHacemos.dubaiTexto}
-            </p>
+          <div className="mt-24 md:mt-32 relative z-10">
+            {/* LA CIUDAD, DE BORDE A BORDE. El dibujo se sale del contenedor y toma el ancho de la
+                pantalla; el texto de abajo se queda dentro del mismo ancho que el resto de la
+                página. La sección tiene `overflow-hidden`, así que esto no abre scroll lateral. */}
+            <div className="dubai-pleno">
+              <SkylineDubai />
+            </div>
+            <div className="max-w-7xl mx-auto">
+              <p className="mt-2 text-[10px] font-bold tracking-[0.3em] text-purple-300 uppercase">
+                {t.comoLoHacemos.dubaiEtiqueta}
+              </p>
+              <p className="mt-3 max-w-3xl text-gray-400 text-sm md:text-base leading-relaxed">
+                {t.comoLoHacemos.dubaiTexto}
+              </p>
+            </div>
           </div>
         </section>
 

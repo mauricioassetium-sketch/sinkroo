@@ -58,8 +58,10 @@ const VECINOS: Edificio[] = [
   { x: 922, w: 68, h: 126, remate: 'escalonado' },
 ];
 
-/** El piso donde se apoyan todos (y donde llegan los haces). */
-const PISO = 372;
+/** El piso donde se apoyan todos (y donde llegan los haces). Va casi al borde de abajo del cuadro
+ *  (el `viewBox` mide 380 de alto) para que la ciudad quede PEGADA a la línea del texto de abajo:
+ *  antes quedaba un hueco de aire entre el pie de los edificios y el rótulo. */
+const PISO = 375;
 
 /** El remate de un vecino: lo que le da carácter. Va encima del cuerpo. */
 function Remate({ edificio }: { edificio: Edificio }) {
@@ -299,7 +301,7 @@ export function SkylineDubai() {
               points={`500,${h.desde} ${h.x - 22},${PISO + 4} ${h.x + 22},${PISO + 4}`}
               fill="url(#dubai-haz)"
             />
-            <ellipse cx={h.x} cy={PISO + 2} rx={46} ry={13} fill="url(#dubai-mancha)" />
+            <ellipse cx={h.x} cy={PISO + 1} rx={46} ry={12} fill="url(#dubai-mancha)" />
           </g>
         ))}
       </g>
