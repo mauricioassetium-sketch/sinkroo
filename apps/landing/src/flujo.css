@@ -47,8 +47,7 @@
   --flujo-gris: #9a8fad;
   --flujo-verde: #22c55e;
   --flujo-panel: #12101c;
-  /* El borde del marco. Antes era #3a2450 y sobre el negro casi no se veía: el marco no se leía.
-     Ahora es el violeta de la casa, bajado a la mitad. */
+  /* El violeta con el que se dibujan los paneles de cada etapa y el riel. */
   --flujo-borde: #9067d4;
   width: 100%;
   max-width: 900px;
@@ -68,10 +67,13 @@
 /* ---------------------------------------------------------------------------------------------------
    LAS PIEZAS DEL DIBUJO
    --------------------------------------------------------------------------------------------------- */
+/* El tablero era la caja que sostenía el dibujo: su fondo oscuro y su marco violeta. El dueño lo
+   quitó —«deja el fondo transparente y el contorno eliminalo»—, así que el dibujo se apoya
+   directamente en el fondo de la página y no hay recuadro que lo encierre. El <rect> sigue en el
+   dibujo, sólo que no pinta nada: si algún día vuelve el marco, vuelve desde acá. */
 .flujo-tablero {
-  fill: var(--flujo-fondo);
-  stroke: var(--flujo-borde);
-  stroke-width: 1.7;
+  fill: none;
+  stroke: none;
 }
 
 /* El riel: el recorrido punteado por donde anda el búho. Las rayas corren solas, para que se lea
