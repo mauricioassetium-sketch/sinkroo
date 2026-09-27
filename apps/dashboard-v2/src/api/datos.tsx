@@ -52,6 +52,57 @@ export type Backtest = {
   detalle: { predicho: number; real: number; error: number; con_metrica_real: boolean; metrica: string; cuando: string }[];
 };
 
+/** Una pieza viva del mercado: un anuncio que el mercado ya premió con tiempo, medido por nosotros. */
+export type PiezaViva = {
+  anunciante: string;
+  /** Días que el anuncio lleva activo: es el único indicador público de que la pieza rinde. */
+  dias: number;
+  tipo: string;
+  formato?: string;
+  estilo?: string;
+  quien?: string;
+  lugar?: string;
+  texto_sobre_imagen?: string;
+  gancho?: string;
+  cta?: string;
+  destino?: string;
+  prueba_social?: string;
+  paleta?: string[];
+  nota?: string;
+};
+
+/**
+ * EL INFORME COMPLETO DEL MERCADO (el patrón-modelo). `hay: false` significa que todavía no se corrió
+ * para el rubro y la ciudad de este negocio: en ese caso `falta` dice exactamente qué se necesita, y no
+ * se muestra ningún mercado de ejemplo. `origen` distingue un informe medido para este negocio de uno
+ * medido para su rubro y su ciudad.
+ */
+export type InformeMercado = {
+  hay: boolean;
+  rubro: string;
+  ciudad: string;
+  origen: string;
+  generado_at: string | null;
+  fuente: string;
+  /** Por qué este informe le aplica a este negocio (la clave del rubro que coincidió y la ciudad). */
+  porque_aplica?: string;
+  falta: string[];
+  informe: {
+    resumen?: string;
+    jugadores?: { capa: string; detalle: string; cuantos?: string }[];
+    piezas?: PiezaViva[];
+    patron?: { k: string; v: string; s?: string }[];
+    saturacion?: string[];
+    huecos?: { titulo: string; detalle: string; como?: string }[];
+    propuestas?: { titulo: string; tipo: string; guion?: string[]; copy?: string; por_que?: string }[];
+    etapas?: string[];
+    techos?: { se_puede: string; no_se_puede: string }[];
+    cuidado?: string[];
+    creadoras?: { nivel: string; detalle: string; evidencia?: string }[];
+    checks?: string[];
+  } | null;
+};
+
 /** Una red conectable, tal como la devuelve el back: su nombre y su rol, si está configurada en el
  *  servidor y qué falta, la cuenta conectada (el token nunca se devuelve, sólo se dice si hay uno
  *  guardado) y cuándo se sincronizó por última vez. */
@@ -122,6 +173,9 @@ export type Datos = {
   calibracion: Calibracion | null;
   /** El backtest del back: qué tan cerca le pega el modelo a la realidad. null = sin back. */
   backtest: Backtest | null;
+  /** El informe completo del mercado (el patrón-modelo) que abre el botón de la pantalla de Mercado.
+   *  null = el back no respondió o no hay informe para el rubro y la ciudad de este negocio. */
+  informeMercado: InformeMercado | null;
   /** Las redes conectables con el back encendido: cuáles están configuradas, cuáles tienen cuenta
    *  conectada y cuándo se sincronizaron, más el resumen (`conectadas` de `total`). null = sin back, o
    *  el servidor no respondió a la consulta. */
@@ -141,7 +195,7 @@ const VACIO: Datos = {
   negocio: null, resumen: null, onboarding: null,
   campanas: [], piezas: [], evaluaciones: [], hallazgos: [], corridas: [],
   publico: null, conversaciones: [], archivos: [], creditos: null, calibracion: null, backtest: null, integraciones: null,
-  metricas: null, desvioPct: 0,
+  metricas: null, informeMercado: null, desvioPct: 0,
   refrescar: async () => {}, guardar: async () => {}, arrancar: async () => {},
 };
 
@@ -165,7 +219,7 @@ export function ProveedorDatos({ children, modoDemo = false }: { children: React
     // En modo demostración no se lee el back ni con sesión abierta: la demostración no es la cuenta.
     if (!hayApi() || !token() || modoDemo) { setEstado(VACIO); return; }
     setEstado(e => ({ ...e, real: true, cargando: true, error: '' }));
-    const [neg, onb, camp, piez, eval_, hall, corr, publ, conv, arch, cred, calib, back, integ, metr] = await Promise.all([
+    const [neg, onb, camp, piez, eval_, hall, corr, publ, conv, arch, cred, calib, back, integ, metr, inform] = await Promise.all([
       traer<{ negocio: Negocio; resumen: Resumen; onboarding: { hechos: number[]; arrancado: boolean } } | null>('/api/negocio', null),
       traer<{ datos: Record<string, unknown>; hechos: number[]; arrancado: boolean }>('/api/onboarding', { datos: {}, hechos: [], arrancado: false }),
       traer<{ campanas: Campana[] }>('/api/campanas', { campanas: [] }),
@@ -181,6 +235,7 @@ export function ProveedorDatos({ children, modoDemo = false }: { children: React
       traer<Backtest | null>('/api/mirofish/backtest', null),
       traer<Integraciones | null>('/api/integraciones', null),
       traer<Metricas | null>('/api/metricas', null),
+      traer<InformeMercado | null>('/api/mercado/informe', null),
     ]);
     setEstado({
       real: true, cargando: false, error: neg ? '' : 'no se pudo leer el negocio del servidor',
@@ -200,6 +255,7 @@ export function ProveedorDatos({ children, modoDemo = false }: { children: React
       backtest: back,
       integraciones: integ,
       metricas: metr,
+      informeMercado: inform,
       desvioPct: hall.desvio_actual_pct || 0,
       refrescar: async () => {},
       guardar: async () => {},

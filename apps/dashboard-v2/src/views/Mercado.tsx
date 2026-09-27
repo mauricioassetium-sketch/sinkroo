@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Card, Badge } from '../components/ui';
+import { Card, Badge, Button } from '../components/ui';
+import { useDetalle, type Bloque } from '../components/Detalle';
 import { ViewHead, Bars } from '../components/viz';
 import { I_Globe, I_Trend, I_Zap, I_Users, I_Target } from '../components/icons';
 import { useDatos } from '../api/datos';
@@ -41,6 +42,8 @@ export function ViewMercado({ setToast, setVista }: { setToast: (t: string) => v
   const hallazgos = d.hallazgos;
   // El motor saliendo a investigar de verdad, disparado desde los estados vacíos.
   const [investigando, setInvestigando] = useState(false);
+  // El panel de detalle que ya abre todo botón que informa: el informe no inventa una pantalla nueva.
+  const detalle = useDetalle();
 
   // ---------- SU PÚBLICO CALIBRADO Y EL ACIERTO DEL MODELO ----------
   // Los pesos se normalizan una sola vez: la base los puede devolver como número o como texto, y las
@@ -94,6 +97,116 @@ export function ViewMercado({ setToast, setVista }: { setToast: (t: string) => v
       onAccion: () => { if (setVista) setVista('onboarding'); setToast('Primeros pasos: conecte sus cuentas y el motor sale a investigar su mercado'); },
     };
 
+  /**
+   * El botón del informe completo. No es una pantalla nueva: abre el panel de detalle que ya usa todo
+   * botón que informa, con el informe del mercado adentro. Si todavía no hay informe para el rubro y la
+   * ciudad del negocio, el panel dice exactamente qué falta en vez de mostrar un mercado de ejemplo.
+   */
+  const abrirInforme = () => {
+    const inf = d.informeMercado;
+    if (!inf) {
+      detalle({
+        titulo: 'Informe completo de su mercado',
+        sub: d.cargando
+          ? 'Leyendo el back…'
+          : 'El servidor no respondió, así que no se muestra ningún mercado: un informe se lee, no se inventa.',
+        bloques: [
+          { tipo: 'texto', texto: 'Este informe se arma con dos datos que ya están en Primeros pasos: el rubro del negocio y su ciudad. No hace falta conectar ninguna cuenta para tenerlo.' },
+        ],
+        fuente: '',
+        acciones: [{ label: 'Volver a leer', onClick: () => void d.refrescar(), variante: 'outline' }],
+      });
+      return;
+    }
+    if (!inf.hay || !inf.informe) {
+      detalle({
+        titulo: 'Informe completo de su mercado',
+        sub: 'Todavía no hay informe para su rubro y su ciudad. Esto es exactamente lo que falta:',
+        bloques: [
+          { tipo: 'filas', items: (inf.falta || []).map(f => ({ t: f, etiqueta: 'falta', tono: 'amber' as const })) },
+          { tipo: 'texto', texto: 'Lo llena la corrida de investigación del rubro y queda guardado con su fuente y su fecha. Se arma con el rubro y la ciudad que ya están cargados: no hace falta conectar cuentas.' },
+        ],
+        fuente: '',
+      });
+      return;
+    }
+    const i = inf.informe;
+    const b: Bloque[] = [];
+    if (i.resumen) b.push({ tipo: 'texto', texto: i.resumen });
+    b.push({
+      tipo: 'datos', filas: [
+        { k: 'Rubro leído', v: inf.rubro || '—' },
+        { k: 'Ciudad', v: inf.ciudad || '—' },
+        {
+          k: 'De quién es el informe',
+          v: inf.origen === 'negocio' ? 'Medido para su negocio' : 'Del rubro y su ciudad',
+          s: inf.origen === 'negocio'
+            ? 'medido para este negocio'
+            : inf.porque_aplica || 'no es una lectura de su cuenta: es el mercado de su rubro',
+          tono: inf.origen === 'negocio' ? 'green' as const : 'muted' as const,
+        },
+        { k: 'Generado', v: fechaCorta(inf.generado_at ?? undefined) || 'sin fecha' },
+      ],
+    });
+    if (i.jugadores?.length) {
+      b.push({ tipo: 'aviso', texto: 'Quiénes juegan en su mercado', tono: 'green' });
+      b.push({ tipo: 'filas', items: i.jugadores.map(j => ({ t: j.detalle, s: j.cuantos, etiqueta: j.capa, tono: 'purple' as const })) });
+    }
+    if (i.piezas?.length) {
+      b.push({ tipo: 'aviso', texto: 'Las piezas vivas que el mercado ya premió con tiempo: solo las sostenidas. El tiempo es el único indicador público de que una pieza rinde.', tono: 'green' });
+      b.push({
+        tipo: 'filas', items: i.piezas.map(p => ({
+          t: `${p.anunciante} · ${p.tipo}`,
+          s: [`${p.dias} días`, p.estilo, p.quien, p.lugar, p.cta, p.destino, p.paleta?.length ? p.paleta.join(' ') : '', p.prueba_social, p.nota].filter(Boolean).join(' · '),
+          etiqueta: p.dias >= 60 ? `${p.dias} días` : `${p.dias} días`,
+          tono: p.dias >= 60 ? 'green' as const : 'amber' as const,
+        })),
+      });
+    }
+    if (i.patron?.length) {
+      b.push({ tipo: 'aviso', texto: 'El patrón del rubro: lo que comparten las piezas sostenidas. Esto no se cambia.' });
+      b.push({ tipo: 'datos', filas: i.patron.map(p => ({ k: p.k, v: p.v, s: p.s })) });
+    }
+    if (i.saturacion?.length) {
+      b.push({ tipo: 'aviso', texto: 'Lo que ya dicen todas: competir aquí es perderse entre todos', tono: 'amber' });
+      b.push({ tipo: 'filas', items: i.saturacion.map(s => ({ t: s, etiqueta: 'saturado', tono: 'amber' as const })) });
+    }
+    if (i.huecos?.length) {
+      b.push({ tipo: 'aviso', texto: 'El hueco: lo que el cliente necesita y nadie le está respondiendo', tono: 'green' });
+      b.push({ tipo: 'filas', items: i.huecos.map(h => ({ t: h.titulo, s: [h.detalle, h.como].filter(Boolean).join(' · '), etiqueta: 'hueco', tono: 'green' as const })) });
+    }
+    if (i.creadoras?.length) {
+      b.push({ tipo: 'aviso', texto: 'La capa de creador y UGC del rubro: quién firma la pieza y en qué nivel está' });
+      b.push({ tipo: 'filas', items: i.creadoras.map(c => ({ t: c.nivel, s: [c.detalle, c.evidencia].filter(Boolean).join(' · '), etiqueta: 'UGC', tono: 'purple' as const })) });
+    }
+    if (i.propuestas?.length) {
+      b.push({ tipo: 'aviso', texto: 'Lo que proponemos: conserva lo probado y ataca el hueco', tono: 'green' });
+      for (const p of i.propuestas) {
+        b.push({ tipo: 'texto', texto: `${p.titulo} — ${p.tipo}` });
+        if (p.guion?.length) b.push({ tipo: 'pasos', items: p.guion });
+        if (p.copy) b.push({ tipo: 'texto', texto: p.copy });
+        if (p.por_que) b.push({ tipo: 'texto', texto: `Por qué debería ganarle: ${p.por_que}` });
+      }
+    }
+    if (i.checks?.length) {
+      b.push({ tipo: 'aviso', texto: 'Las verificaciones que ya pasó antes de llegar aquí' });
+      b.push({ tipo: 'pasos', items: i.checks });
+    }
+    if (i.etapas?.length) {
+      b.push({ tipo: 'aviso', texto: 'Cómo se hizo: el método, etapa por etapa' });
+      b.push({ tipo: 'pasos', items: i.etapas });
+    }
+    if (i.cuidado?.length) {
+      b.push({ tipo: 'aviso', texto: 'Reglas de cuidado de este rubro: se revisan antes de escribir una línea', tono: 'amber' });
+      b.push({ tipo: 'filas', items: i.cuidado.map(c => ({ t: c, etiqueta: 'cuidado', tono: 'amber' as const })) });
+    }
+    if (i.techos?.length) {
+      b.push({ tipo: 'aviso', texto: 'Los techos del dato público: qué sí y qué no se puede', tono: 'amber' });
+      b.push({ tipo: 'filas', items: i.techos.map(t => ({ t: t.se_puede, s: `No se puede: ${t.no_se_puede}` })) });
+    }
+    detalle({ titulo: 'Informe completo de su mercado', sub: `${inf.rubro} · ${inf.ciudad}`, bloques: b, fuente: inf.fuente });
+  };
+
   return (
     <div className="dash">
       <ViewHead
@@ -106,6 +219,15 @@ export function ViewMercado({ setToast, setVista }: { setToast: (t: string) => v
           { v: String(d.corridas.length), l: 'veces que el equipo investigó' },
           { v: fechaCorta(d.corridas[0]?.empezada_at) || 'todavía no', l: 'última investigación' },
         ]}
+        accion={
+          <Button
+            variant="outline"
+            onClick={abrirInforme}
+            title="Abre el informe completo del mercado: quiénes juegan, las piezas vivas que el mercado ya premió con tiempo, el patrón del rubro, el hueco que nadie ocupa y la pieza propuesta. No cambia nada: se cierra con la X o pulsando afuera."
+          >
+            Ver el informe completo
+          </Button>
+        }
       />
 
       {/* ============ LOS HALLAZGOS Y EL PÚBLICO, LOS DOS DEL BACK ============ */}

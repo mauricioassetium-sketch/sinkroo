@@ -246,6 +246,26 @@ export async function migrate(db: Pool): Promise<void> {
 
     CREATE INDEX IF NOT EXISTS idx_publico_business ON publico_agentes(business_id);
 
+    -- EL INFORME COMPLETO DEL MERCADO (el patrón-modelo). Guarda lo que la investigación encontró para
+    -- un negocio o para un rubro+ciudad: los jugadores, las piezas vivas que el mercado ya premió con
+    -- tiempo, el patrón del rubro, los huecos y las propuestas. La columna claves son los rubros a los
+    -- que aplica, para que un negocio del mismo rubro y la misma ciudad lo vea sin que se le corra de
+    -- nuevo; origen dice de dónde salió ('negocio' = medido para este negocio, 'rubro' = medido para su
+    -- rubro y su ciudad) y fuente de dónde salieron los datos. Sin fuente, no se muestra.
+    CREATE TABLE IF NOT EXISTS mercado_informes (
+      id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      business_id UUID REFERENCES businesses(id) ON DELETE CASCADE,
+      rubro       TEXT NOT NULL DEFAULT '',
+      ciudad      TEXT NOT NULL DEFAULT '',
+      claves      TEXT[] NOT NULL DEFAULT '{}',
+      origen      TEXT NOT NULL DEFAULT 'rubro',
+      generado_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      fuente      TEXT NOT NULL DEFAULT '',
+      payload     JSONB NOT NULL DEFAULT '{}'::jsonb
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_mercado_informes ON mercado_informes(ciudad, generado_at DESC);
+
     -- LAS CUENTAS CONECTADAS: el token de Meta vive acá, del lado del servidor, y nunca sale en una
     -- respuesta ni viaja al navegador. Una fila por negocio y red.
     CREATE TABLE IF NOT EXISTS cuentas_conectadas (

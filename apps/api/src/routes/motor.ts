@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { Pool } from 'pg';
 import { exigirSesion } from '../lib/auth.js';
-import { exigirCuerpo, limpiar } from '../lib/seguridad.js';
+import { exigirCuerpo, limpiar, limpiarLista } from '../lib/seguridad.js';
 import { conAvisoDePin, exigirPin } from '../lib/pin.js';
 import { correrInvestigacion, desvioActual } from '../services/agentes.js';
 import { crearPublico, evaluar } from '../services/mirofish.js';
@@ -180,5 +180,85 @@ export async function motorRoutes(app: FastifyInstance, db: Pool) {
     const pred = await db.query(
       'SELECT predicho, observado, desvio_pct FROM predicciones WHERE evaluacion_id = $1 ORDER BY created_at DESC LIMIT 1', [id]);
     return { evaluacion: ev.rows[0], votos: votos.rows, reacciones: reacciones.rows, opiniones: opiniones.rows, prediccion: pred.rows[0] ?? null };
+  });
+
+  // ---------------- El informe completo del mercado (el patrón-modelo) ----------------
+
+  /**
+   * El informe que se abre desde el botón «Ver el informe completo» de Mercado: los jugadores del
+   * mercado, las piezas vivas que el mercado ya premió con tiempo, el patrón del rubro, los huecos y
+   * las propuestas. Sale del informe guardado para ESTE negocio; si no hay, del que ya se midió para su
+   * rubro y su ciudad (y se dice que es del rubro, no suyo). Si no hay ninguno, se dice exactamente qué
+   * falta: un mercado no se arma con datos de ejemplo.
+   */
+  app.get('/api/mercado/informe', async (req, reply) => {
+    const u = await exigirSesion(req, reply); if (!u || !u.business_id) return;
+    const ctx = await contexto(db, u.business_id);
+    const campos = 'rubro, ciudad, origen, generado_at, fuente, payload';
+    const propio = await db.query(
+      `SELECT ${campos} FROM mercado_informes WHERE business_id = $1 ORDER BY generado_at DESC LIMIT 1`,
+      [u.business_id]);
+    let fila = propio.rows[0];
+    let porque = '';
+    if (!fila) {
+      // El del rubro: aplica cuando la ciudad del negocio contiene la del informe y alguna clave del
+      // rubro aparece en lo que el negocio YA declara (su rubro, su nombre o su descripción). No se pide
+      // ningún campo nuevo: se lee lo que el onboarding ya guardó.
+      const texto = `${ctx.rubro} ${ctx.nombre} ${ctx.descripcion}`.toLowerCase();
+      const delRubro = await db.query(
+        `SELECT ${campos}, (
+            SELECT k FROM unnest(claves) AS k WHERE $2 LIKE '%' || k || '%' ORDER BY length(k) DESC LIMIT 1
+          ) AS clave
+           FROM mercado_informes
+          WHERE business_id IS NULL
+            AND $1 <> '' AND $1 ILIKE '%' || ciudad || '%'
+            AND EXISTS (SELECT 1 FROM unnest(claves) AS k WHERE $2 LIKE '%' || k || '%')
+          ORDER BY generado_at DESC LIMIT 1`,
+        [String(ctx.zona || ''), texto]);
+      fila = delRubro.rows[0];
+      if (fila) porque = `su negocio coincide con el rubro «${fila.clave}», y su zona con ${fila.ciudad}`;
+    }
+    if (!fila) {
+      return reply.send({
+        hay: false, rubro: ctx.rubro, ciudad: ctx.zona, origen: '', generado_at: null, fuente: '',
+        informe: null,
+        falta: [
+          !ctx.zona
+            ? 'falta la ciudad o zona del negocio: sin ella no se sabe qué mercado leer (se pone en Primeros pasos)'
+            : (ctx.rubro || ctx.descripcion)
+              ? `la ciudad sí está («${ctx.zona}») y el negocio dice a qué se dedica: lo que falta es la corrida de su rubro`
+              : 'falta saber a qué se dedica el negocio: con la descripción de Primeros pasos ya se puede leer su mercado',
+          'falta que el equipo corra la lectura de piezas vivas de ese rubro y esa ciudad: de ahí salen los jugadores, las piezas sostenidas, el patrón y los huecos',
+        ],
+      });
+    }
+    return reply.send({
+      hay: true, rubro: fila.rubro, ciudad: fila.ciudad, origen: fila.origen,
+      generado_at: fila.generado_at, fuente: fila.fuente, informe: fila.payload, falta: [],
+      porque_aplica: porque || 'informe medido para este negocio',
+    });
+  });
+
+  /**
+   * Guarda un informe de mercado: lo escribe la investigación cuando termina una corrida. La fuente se
+   * declara siempre (un informe sin fuente no se muestra) y `del_rubro` decide si el informe queda para
+   * este negocio o para todos los negocios del mismo rubro y la misma ciudad.
+   */
+  app.post('/api/mercado/informe', async (req, reply) => {
+    const u = await exigirSesion(req, reply); if (!u || !u.business_id) return;
+    const c = exigirCuerpo<{ informe?: unknown; fuente?: string; rubro?: string; ciudad?: string; claves?: unknown; del_rubro?: boolean }>(
+      req.body, ['informe', 'fuente'], reply);
+    if (!c) return;
+    if (!c.informe || typeof c.informe !== 'object' || Array.isArray(c.informe)) {
+      return reply.status(400).send({ error: 'el informe va en el campo informe, como objeto', codigo: 'informe_invalido' });
+    }
+    const paraElRubro = !!c.del_rubro;
+    const r = await db.query(
+      `INSERT INTO mercado_informes (business_id, rubro, ciudad, claves, origen, fuente, payload)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, generado_at`,
+      [paraElRubro ? null : u.business_id, limpiar(c.rubro || ''), limpiar(c.ciudad || ''),
+        limpiarLista(c.claves, 12, 40).map(k => k.toLowerCase()),
+        paraElRubro ? 'rubro' : 'negocio', limpiar(c.fuente || '', 600), c.informe]);
+    return reply.status(201).send({ ok: true, id: r.rows[0].id, generado_at: r.rows[0].generado_at, origen: paraElRubro ? 'rubro' : 'negocio' });
   });
 }
