@@ -35,10 +35,15 @@ export async function motorRoutes(app: FastifyInstance, db: Pool) {
   app.post('/api/agentes/correr', async (req, reply) => {
     const u = await exigirSesion(req, reply); if (!u || !u.business_id) return;
     const ctx = await contexto(db, u.business_id);
-    if (!ctx.descripcion || ctx.descripcion.length < 20) {
+    // Para investigar alcanza con saber A QUÉ SE DEDICA el negocio y DÓNDE vende: el rubro y la zona
+    // (los dos datos del onboarding). La descripción ayuda —Nia escribe con sus palabras— pero si falta,
+    // Nia lo dice en su tarea en vez de frenar la corrida entera: los demás ya tienen con qué trabajar.
+    const sabeQueHace = (ctx.rubro && ctx.rubro.trim().length >= 3) || (ctx.descripcion && ctx.descripcion.length >= 20);
+    if (!sabeQueHace) {
       return reply.status(400).send({
         error: 'el motor necesita saber qué hace el negocio antes de investigar',
-        codigo: 'falta_descripcion', detalle: 'complete la descripción en Primeros pasos',
+        codigo: 'falta_descripcion',
+        detalle: 'complete el rubro o la descripción en Primeros pasos',
       });
     }
     const r = await correrInvestigacion(db, ctx);
