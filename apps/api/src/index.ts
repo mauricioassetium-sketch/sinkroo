@@ -20,6 +20,7 @@ import { generateRoutes } from './routes/generate.js';
 import { predictRoutes } from './routes/predict.js';
 import { webhookRoutes } from './routes/webhook.js';
 import { entradaRoutes } from './routes/entrada.js';
+import { programarInvestigacionDiaria } from './services/programador.js';
 import { archivosRoutes } from './routes/archivos.js';
 
 const PORT = Number(process.env.PORT ?? 3000);
@@ -105,6 +106,10 @@ export async function buildApp() {
   await archivosRoutes(app);
 
   try { await migrate(db); } catch (e: any) { app.log.warn(`migration pending: ${e.message}`); }
+
+  // LA INVESTIGACIÓN DIARIA: lo que la pantalla de entrada promete («investiga el mercado cada mañana»).
+  // Corre la misma corrida del botón de Mercado, una vez al día por negocio, sin gastar créditos.
+  programarInvestigacionDiaria(db, (m) => app.log.info(m));
 
   return app;
 }

@@ -68,6 +68,11 @@ export type PiezaViva = {
   destino?: string;
   prueba_social?: string;
   paleta?: string[];
+  /** La tipografía y el encuadre medidos sobre la creatividad (para poder repetirlos). */
+  tipografia?: string;
+  composicion?: string;
+  hashtags?: string[];
+  duracion?: string;
   nota?: string;
 };
 
@@ -99,6 +104,18 @@ export type InformeMercado = {
     techos?: { se_puede: string; no_se_puede: string }[];
     cuidado?: string[];
     creadoras?: { nivel: string; detalle: string; evidencia?: string }[];
+    /** La analítica visual del mercado: tipografía, encuadre, paletas medidas y el brief por plaza. */
+    analitica_visual?: {
+      resumen?: string;
+      nota_plazas?: string;
+      tipografia?: { estilo: string; tratamiento?: string; caja?: string; ubicacion?: string; medido_en?: string }[];
+      composicion?: { regla: string; porque?: string }[];
+      paletas?: { uso: string; colores: string[]; nota?: string }[];
+      hashtags_usados?: string[];
+      duraciones_medidas?: string[];
+      por_plaza?: { plaza: string; formato: string; gancho: string; boton: string; paleta?: string[]; tipografia?: string; porque?: string }[];
+      lo_que_no_hay_que_copiar?: string[];
+    };
     checks?: string[];
   } | null;
 };

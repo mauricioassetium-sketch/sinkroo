@@ -179,6 +179,44 @@ export function ViewMercado({ setToast, setVista }: { setToast: (t: string) => v
       b.push({ tipo: 'aviso', texto: 'La capa de creador y UGC del rubro: quién firma la pieza y en qué nivel está' });
       b.push({ tipo: 'filas', items: i.creadoras.map(c => ({ t: c.nivel, s: [c.detalle, c.evidencia].filter(Boolean).join(' · '), etiqueta: 'UGC', tono: 'purple' as const })) });
     }
+    // ---------- LA ANALÍTICA VISUAL: colores, tipografía y encuadre medidos, y qué pega en cada plaza ----------
+    if (i.analitica_visual) {
+      const av = i.analitica_visual;
+      b.push({ tipo: 'aviso', texto: 'La analítica visual del mercado: lo que hay que repetir, medido pieza por pieza', tono: 'green' });
+      if (av.resumen) b.push({ tipo: 'texto', texto: av.resumen });
+      if (av.tipografia?.length) {
+        b.push({ tipo: 'filas', items: av.tipografia.map(t => ({
+          t: `${t.estilo}${t.caja ? ` · ${t.caja}` : ''}`,
+          s: [t.tratamiento, t.ubicacion, t.medido_en].filter(Boolean).join(' · '),
+          etiqueta: 'tipografía', tono: 'purple' as const,
+        })) });
+      }
+      if (av.composicion?.length) {
+        b.push({ tipo: 'filas', items: av.composicion.map(c => ({ t: c.regla, s: c.porque, etiqueta: 'encuadre' })) });
+      }
+      if (av.paletas?.length) {
+        b.push({ tipo: 'filas', items: av.paletas.map(p => ({
+          t: p.uso, s: `${(p.colores || []).join(' ')}${p.nota ? ` · ${p.nota}` : ''}`,
+          etiqueta: 'paleta', tono: 'purple' as const,
+        })) });
+      }
+      if (av.por_plaza?.length) {
+        b.push({ tipo: 'aviso', texto: 'Qué pega mejor en cada plaza: formato, gancho, botón, paleta y tipografía', tono: 'green' });
+        b.push({ tipo: 'filas', items: av.por_plaza.map(p => ({
+          t: `${p.plaza} → ${p.formato}`,
+          s: [`gancho: ${p.gancho}`, `botón: ${p.boton}`, p.tipografia, p.paleta?.length ? `paleta: ${p.paleta.join(' ')}` : '', p.porque]
+            .filter(Boolean).join(' · '),
+          etiqueta: 'plaza',
+        })) });
+      }
+      if (av.hashtags_usados?.length) b.push({ tipo: 'texto', texto: `Hashtags que el rubro ya usa: ${av.hashtags_usados.join(' ')}` });
+      if (av.duraciones_medidas?.length) b.push({ tipo: 'texto', texto: `Duración medida en las piezas sostenidas: ${av.duraciones_medidas.join(' · ')}` });
+      if (av.lo_que_no_hay_que_copiar?.length) {
+        b.push({ tipo: 'aviso', texto: 'Lo que NO hay que copiar del mercado', tono: 'amber' });
+        b.push({ tipo: 'filas', items: av.lo_que_no_hay_que_copiar.map(x => ({ t: x, etiqueta: 'evitar', tono: 'amber' as const })) });
+      }
+      if (av.nota_plazas) b.push({ tipo: 'texto', texto: `Límite declarado: ${av.nota_plazas}` });
+    }
     if (i.propuestas?.length) {
       b.push({ tipo: 'aviso', texto: 'Lo que proponemos: conserva lo probado y ataca el hueco', tono: 'green' });
       for (const p of i.propuestas) {

@@ -214,7 +214,7 @@ function piezasVivas(inf: Informe): any[] {
 }
 
 /** Corre la investigación completa: cada agente trabaja con su fuente real y devuelve lo que midió. */
-export async function correrInvestigacion(db: Pool, ctx: Contexto) {
+export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'investigacion') {
   const mapa = await leerMapaReal(ctx.rubro, ctx.zona);
   const inf = await informeDe(db, ctx);
   const piezas = piezasVivas(inf);
@@ -222,11 +222,13 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto) {
   const huecos = (inf?.informe?.huecos ?? []) as any[];
   const creadoras = (inf?.informe?.creadoras ?? []) as any[];
   const saturacion = (inf?.informe?.saturacion ?? []) as string[];
+  /** La analítica visual del mercado: colores, tipografía, encuadre y qué pega en cada plaza. */
+  const av = (inf?.informe?.analitica_visual ?? null) as any;
 
   const corrida = await db.query(
-    `INSERT INTO corridas (business_id, motivo, estado, creditos) VALUES ($1, 'investigacion', 'terminada', 0)
+    `INSERT INTO corridas (business_id, motivo, estado, creditos) VALUES ($1, $2, 'terminada', 0)
      RETURNING id, empezada_at`,
-    [ctx.businessId],
+    [ctx.businessId, motivo],
   );
   const corridaId = corrida.rows[0].id;
   const tareas: { agente: string; que: string; resultado: Record<string, unknown>; orden: number }[] = [];
@@ -304,24 +306,46 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto) {
   const palabrasNegocio = [...new Set(descripcion.toLowerCase().split(/[^a-záéíóúñ0-9]+/).filter(p => p.length > 4))].slice(0, 12);
   tareas.push({
     agente: 'nia', orden: 4,
-    que: descripcion.length >= 20
-      ? 'Armó el molde de escritura con las palabras del negocio y el patrón que gana en su rubro'
-      : 'No pudo armar el molde y lo dice: falta que el negocio cuente qué hace',
-    resultado: descripcion.length >= 20 ? {
-      fuente_tipo: 'la descripción real del negocio + el patrón medido en su rubro',
-      palabras_del_negocio: palabrasNegocio,
-      palabras_de_la_industria: 'se evitan a propósito',
-      formato_que_gana: patron.find(p => /formato/i.test(p.k))?.v || '',
-      boton_que_gana: patron.find(p => /bot[oó]n/i.test(p.k))?.v || '',
-      prueba_que_gana: patron.find(p => /prueba/i.test(p.k))?.v || '',
-      gancho: 'El problema concreto del cliente, en la primera línea, sin nombrar el producto.',
-      cuerpo: 'Qué cambia para el cliente, no qué tiene el producto.',
-      cierre: 'La acción concreta, en un toque.',
-      porque: 'Escribe con las palabras que el negocio ya usa y con el formato que su mercado ya premió, no con los de la industria.',
-      fuente: 'su descripción (Primeros pasos)' + (inf ? ' + el informe de su rubro' : ''),
-    } : {
-      sin_fuente: 'falta la descripción del negocio (mínimo 20 caracteres, en Primeros pasos)',
-      fuente: 'sin fuente',
+    que: [av
+        ? `Armó el brief creativo del rubro (${(av.por_plaza ?? []).length} plazas, con tipografía, encuadre y colores medidos)`
+        : 'No hay analítica visual del rubro que usar todavía',
+      descripcion.length >= 20
+        ? 'y el molde con las palabras del negocio'
+        : 'y pide las palabras del negocio para escribir con ellas'].join(' '),
+    resultado: {
+      // ---------- EL BRIEF CREATIVO: sale del MERCADO, no de las palabras del negocio ----------
+      // No es inspiración: es lo que se midió en las piezas sostenidas (colores hex, tipografía,
+      // encuadre, botón, hashtags) y el formato que corresponde a cada plaza. Lo que no se midió, no
+      // aparece: si no hay analítica visual del rubro, se dice y no se inventa un brief.
+      ...(av ? {
+        fuente_tipo: 'la lectura visual de cada creatividad del informe + el texto de los anuncios (copy, botón, destino, hashtags, duración)',
+        forma_de_trabajar: 'se conserva lo que el mercado ya premió con tiempo y se cambia una sola cosa: el hueco que nadie ocupa',
+        formato_que_gana: patron.find(p => /formato/i.test(p.k))?.v || '',
+        boton_que_gana: patron.find(p => /bot[oó]n/i.test(p.k))?.v || '',
+        prueba_que_gana: patron.find(p => /prueba/i.test(p.k))?.v || '',
+        tipografia_medida: av.tipografia ?? [],
+        encuadre_medido: av.composicion ?? [],
+        paletas_medidas: av.paletas ?? [],
+        hashtags_del_rubro: av.hashtags_usados ?? [],
+        brief_por_plaza: av.por_plaza ?? [],
+        lo_que_no_hay_que_copiar: av.lo_que_no_hay_que_copiar ?? [],
+        limite_declarado: av.nota_plazas || '',
+        hueco_a_atacar: huecos[0]?.titulo || '',
+      } : {
+        brief_por_plaza: 'todavía no hay analítica visual del rubro: falta la lectura de las creatividades (colores, tipografía, encuadre, plazas)',
+      }),
+      // Y con las palabras del negocio, que es lo que hace que la pieza suene a él y no a la industria.
+      ...(descripcion.length >= 20 ? {
+        palabras_del_negocio: palabrasNegocio,
+        palabras_de_la_industria: 'se evitan a propósito',
+        gancho: 'El problema concreto del cliente, en la primera línea, sin nombrar el producto.',
+        cuerpo: 'Qué cambia para el cliente, no qué tiene el producto.',
+        cierre: 'La acción concreta, en un toque.',
+      } : {
+        falta: 'las palabras del negocio: falta su descripción (mínimo 20 caracteres, en Primeros pasos). El brief creativo de arriba no depende de eso: sale del mercado.',
+      }),
+      porque: 'Escribe con el formato y la analítica que su mercado ya premió, y con las palabras que usa el negocio.',
+      fuente: (inf ? 'el informe de su rubro' : 'sin informe del rubro') + (descripcion.length >= 20 ? ' + su descripción (Primeros pasos)' : ''),
     },
   });
 
