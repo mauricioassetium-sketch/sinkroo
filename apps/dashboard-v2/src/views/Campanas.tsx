@@ -5,6 +5,7 @@ import { FlujoMiroFish } from '../components/FlujoMiroFish';
 import { Stepper, IngestaManual, Galeria, PASOS_CAMPANA, type PasoCampana } from '../components/CampanaPasos';
 import { MotorEnVivo } from '../components/MotorEnVivo';
 import { EnLinea } from '../components/EnLinea';
+import { Publicar } from '../components/Publicar';
 import { PRESUPUESTOS } from '../data/onboarding';
 import { CampanaViva } from '../components/CampanaViva';
 import { I_Megaphone, I_Check, I_Refresh, I_Vote, I_File, I_Zap, I_Trend, I_Eye, I_Robot, I_Play, I_Upload, I_Pause, I_Plus } from '../components/icons';
@@ -569,7 +570,29 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
           </Card>
 
           {manual
-            ? <div style={{ marginTop: 16 }}><IngestaManual setToast={setToast} ir={setPaso} /></div>
+            ? (
+              <div style={{ marginTop: 16 }}>
+                {/* EN MANUAL SÍ SE ELIGE. Es el camino del cliente que ya sabe qué quiere: acá elige qué
+                    publicar, sube su material y desde acá completa lo que le falte para que el motor
+                    trabaje con todo. En Automático esto no se muestra: lo decide el sistema. */}
+                <Publicar setToast={setToast} modo={modo} irAConversaciones={() => setVista('conversaciones')} soloIngesta />
+                <IngestaManual setToast={setToast} ir={setPaso} />
+                {/* Y desde acá también se completa lo que le falte al negocio: en Manual el cliente manda. */}
+                <div className="acc-why" style={{ marginTop: 14 }}>
+                  <b>Para que el motor trabaje con todo:</b>{' '}
+                  {primerosPasosListos
+                    ? 'ya tiene su negocio, sus precios, su material y sus redes: puede publicar por su cuenta y el motor igual le prueba las piezas.'
+                    : `falta ${chequeos.filter(c => !c.listo).map(c => c.t.toLowerCase()).join(', ')}.`}
+                  <div className="row" style={{ gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+                    <Button variant={primerosPasosListos ? 'outline' : 'primary'}
+                      title="Primeros pasos: su negocio, lo que vende, su material, sus redes y cómo quiere trabajar."
+                      onClick={() => { setVista('onboarding'); setToast('Primeros pasos: ahí queda completo lo que el motor necesita para trabajar con todo'); }}>
+                      {primerosPasosListos ? 'Revisar Primeros pasos' : `Completar lo que falta (${chequeos.filter(c => !c.listo).length})`}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )
             : (
               <>
                 {/* ==================== EN AUTOMÁTICO NO SE ELIGE NADA ====================
