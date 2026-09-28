@@ -288,6 +288,23 @@ export async function migrate(db: Pool): Promise<void> {
 
     CREATE INDEX IF NOT EXISTS idx_tendencias_business ON tendencias(business_id, fecha DESC);
 
+    -- LAS SUSCRIPCIONES: el pedido de un plan y su activación. Nace cuando el negocio pide un plan y
+    -- queda 'solicitada'; cuando el cobro se confirma (hoy a mano, mañana la pasarela) pasa a 'activa' y
+    -- acredita los créditos del plan, que NO vencen (a diferencia de la bienvenida del primer mes).
+    CREATE TABLE IF NOT EXISTS suscripciones (
+      id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      business_id  UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+      plan         TEXT NOT NULL DEFAULT '',
+      precio       NUMERIC(10,2) NOT NULL DEFAULT 0,
+      creditos     INT NOT NULL DEFAULT 0,
+      estado       TEXT NOT NULL DEFAULT 'solicitada',
+      nota         TEXT NOT NULL DEFAULT '',
+      created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+      activada_at  TIMESTAMPTZ
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_suscripciones_business ON suscripciones(business_id, created_at DESC);
+
     -- LOS CRÉDITOS QUE VENCEN: los 5.000 de bienvenida valen el primer mes (30 días). Al vencer, lo que
     -- no se usó se retira con su propio movimiento, así el saldo y su historia siguen cuadrando. El que
     -- pagó un plan tiene créditos que no vencen: por eso la fecha va en el movimiento, no en el negocio.

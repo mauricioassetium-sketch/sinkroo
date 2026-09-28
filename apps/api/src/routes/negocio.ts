@@ -59,7 +59,99 @@ export async function negocioRoutes(app: FastifyInstance, db: Pool) {
   });
 
   /**
-   * Cargar créditos. En producción esto lo dispara la pasarela de pagos cuando el cobro se confirma; acá
+
+   // ---------------- EL FLUJO DE COMPRA: pedir un plan, y activarlo cuando el cobro se confirma ----------------
+
+   /**
+    * EL CATÁLOGO DE PLANES, en el back: es el que manda para cobrar y para acreditar. El panel y la landing
+    * lo copian para mostrarlo, pero el precio y los créditos que se acreditan salen de acá.
+    */
+   const PLANES: { key: string; nombre: string; precio: number; creditos: number; paraQuien: string }[] = [
+     { key: 'base', nombre: 'Base', precio: 39, creditos: 2000, paraQuien: 'Una marca y una campaña a la vez.' },
+     { key: 'pro', nombre: 'Pro', precio: 79, creditos: 5000, paraQuien: 'Varias campañas a la vez.' },
+     { key: 'estudio', nombre: 'Estudio', precio: 149, creditos: 12000, paraQuien: 'Varias marcas o un catálogo grande.' },
+   ];
+
+   /** El catálogo, para que el panel muestre lo mismo que se cobra. */
+   app.get('/api/planes', async (req, reply) => {
+     const u = await exigirSesion(req, reply); if (!u || !u.business_id) return;
+     const s = await db.query(
+       `SELECT id, plan, precio, creditos, estado, nota, created_at, activada_at FROM suscripciones
+         WHERE business_id = $1 ORDER BY created_at DESC LIMIT 5`, [u.business_id]);
+     const b = await db.query('SELECT plan FROM businesses WHERE id = $1', [u.business_id]);
+     return {
+       planes: PLANES,
+       plan_actual: b.rows[0]?.plan ?? '',
+       solicitud: s.rows[0] ?? null,
+       historial: s.rows,
+       como_se_paga: 'Al pedir el plan, el equipo le manda el medio de pago. Cuando el cobro se confirma, el plan queda activo y los créditos entran en su cuenta.',
+       sin_pasarela: 'Todavía no hay pasarela de pago conectada: por eso el paso final lo confirma una persona del equipo. El día que se conecte, este mismo pedido se activa solo.',
+     };
+   });
+
+   /** Pedir un plan. Queda registrado como solicitud: todavía no cobra ni acredita nada. */
+   app.post('/api/planes/solicitar', async (req, reply) => {
+     const u = await exigirSesion(req, reply); if (!u || !u.business_id) return;
+     const c = exigirCuerpo<{ plan?: string; nota?: string }>(req.body, ['plan'], reply); if (!c) return;
+     const plan = PLANES.find(p => p.key === String(c.plan).toLowerCase());
+     if (!plan) return reply.status(400).send({ error: 'ese plan no existe', codigo: 'sin_plan' });
+     const abierta = await db.query(
+       `SELECT id, plan FROM suscripciones WHERE business_id = $1 AND estado = 'solicitada' LIMIT 1`, [u.business_id]);
+     if (abierta.rows[0]) {
+       return reply.status(409).send({
+         error: 'ya tiene una solicitud sin confirmar', codigo: 'solicitud_abierta',
+         detalle: `pidió el plan ${abierta.rows[0].plan}: el equipo le manda el medio de pago`,
+       });
+     }
+     const r = await db.query(
+       `INSERT INTO suscripciones (business_id, plan, precio, creditos, estado, nota)
+        VALUES ($1, $2, $3, $4, 'solicitada', $5) RETURNING id, plan, precio, creditos, estado, created_at`,
+       [u.business_id, plan.key, plan.precio, plan.creditos, limpiar(c.nota || '', 400)]);
+     return reply.status(201).send({
+       suscripcion: r.rows[0],
+       detalle: `quedó pedido el plan ${plan.nombre} ($${plan.precio} al mes, ${plan.creditos} créditos): el equipo le manda el medio de pago`,
+     });
+   });
+
+   /**
+    * Confirmar el cobro y activar el plan. Es del equipo, no del cliente: si lo pudiera hacer cualquiera,
+    * cualquiera se activaría un plan sin pagar. Los correos autorizados van en ADMIN_CORREOS.
+    */
+   app.post('/api/planes/confirmar', async (req, reply) => {
+     const u = await exigirSesion(req, reply); if (!u || !u.business_id) return;
+     const admins = (process.env.ADMIN_CORREOS || 'mauricio@assetium.org').split(',').map(s => s.trim().toLowerCase());
+     if (!admins.includes(String(u.email || '').toLowerCase())) {
+       return reply.status(403).send({ error: 'esta acción la confirma el equipo de Sinkroo', codigo: 'solo_equipo' });
+     }
+     const c = exigirCuerpo<{ suscripcion_id?: string; nota?: string }>(req.body, ['suscripcion_id'], reply); if (!c) return;
+     const s = await db.query(
+       `SELECT id, business_id, plan, creditos, estado FROM suscripciones WHERE id = $1 AND estado = 'solicitada'`,
+       [c.suscripcion_id]);
+     const fila = s.rows[0];
+     if (!fila) return reply.status(404).send({ error: 'esa solicitud no existe o ya está resuelta', codigo: 'sin_solicitud' });
+     const plan = PLANES.find(p => p.key === fila.plan);
+     if (!plan) return reply.status(400).send({ error: 'el plan de esa solicitud ya no existe', codigo: 'sin_plan' });
+
+     // Los créditos del plan NO vencen (van sin fecha): el que paga conserva lo que paga.
+     const saldo = await db.query(
+       `SELECT COALESCE((SELECT saldo FROM movimientos_creditos WHERE business_id = $1 ORDER BY created_at DESC LIMIT 1), 0) AS s`,
+       [fila.business_id]);
+     const nuevo = Number(saldo.rows[0]?.s || 0) + plan.creditos;
+     await db.query(
+       `INSERT INTO movimientos_creditos (business_id, delta, motivo, detalle, saldo)
+        VALUES ($1, $2, 'plan', $3, $4)`,
+       [fila.business_id, plan.creditos, `Créditos del plan ${plan.nombre} del mes`, nuevo]);
+     await db.query(`UPDATE businesses SET plan = $2 WHERE id = $1`, [fila.business_id, plan.key]);
+     await db.query(
+       `UPDATE suscripciones SET estado = 'activa', activada_at = now(), nota = COALESCE(NULLIF($2,''), nota) WHERE id = $1`,
+       [fila.id, limpiar(c.nota || '', 400)]);
+     return reply.send({
+       ok: true, plan: plan.key, creditos_acreditados: plan.creditos, saldo: nuevo,
+       detalle: `plan ${plan.nombre} activo: ${plan.creditos} créditos acreditados (no vencen)`,
+     });
+   });
+
+   /** Cargar créditos. En producción esto lo dispara la pasarela de pagos cuando el cobro se confirma; acá
    * queda para probar el libro (y para cargar los créditos del plan al crear la cuenta).
    */
   app.post('/api/creditos/cargar', async (req, reply) => {

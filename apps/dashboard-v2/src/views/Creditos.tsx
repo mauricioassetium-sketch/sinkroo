@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, Badge, Button, Dinero, NotaMoneda } from '../components/ui';
 import { ViewHead, Gauge } from '../components/viz';
 import { I_Credit, I_Wallet, I_Zap, I_Shield, I_Plus, I_ArrowRight } from '../components/icons';
@@ -104,6 +104,38 @@ function ViewCreditosNegocio({ setToast }: { setToast: (t: string) => void }) {
   // hay contratado y para mostrar la lista de precios, y NUNCA para decir que el suyo es uno de
   // ejemplo. Si el plan del back no está en el catálogo, lo que no se sabe va en «—».
   const planDelBack = esReal ? PLANES.find(p => p.key === d.negocio?.plan) : undefined;
+
+  // ---------- EL FLUJO DE COMPRA ----------
+  // El catálogo que manda es el del back (el que cobra y acredita); acá se lee para mostrar el pedido y su
+  // estado. Sin pasarela conectada, el pedido queda como solicitud y el cobro lo confirma el equipo.
+  const [planes, setPlanes] = useState<{ key: string; nombre: string; precio: number; creditos: number; paraQuien: string }[]>([]);
+  const [solicitud, setSolicitud] = useState<{ plan: string; created_at: string; estado: string } | null>(null);
+  const [infoPlanes, setInfoPlanes] = useState<{ sin_pasarela?: string; como_se_paga?: string } | null>(null);
+  const cargarPlanes = async () => {
+    if (!d.real) return;
+    try {
+      const r = await fetch(baseApi() + '/api/planes', { headers: token() ? { Authorization: 'Bearer ' + token() } : {} });
+      if (!r.ok) return;
+      const j = await r.json();
+      setPlanes(j.planes || []); setSolicitud(j.solicitud || null); setInfoPlanes(j);
+    } catch { /* si el back no responde, queda el catálogo del producto para mostrar */ }
+  };
+  useEffect(() => { void cargarPlanes(); }, [d.real]);
+
+  /** Pedir un plan: queda registrado. No cobra nada ni cambia el plan hasta que el cobro se confirme. */
+  const pedir = async (planKey: string) => {
+    if (!esReal) { setToast('Sin cuenta conectada no hay a quién pedirle un plan'); return; }
+    try {
+      const r = await fetch(baseApi() + '/api/planes/solicitar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token() },
+        body: JSON.stringify({ plan: planKey }),
+      });
+      const j = await r.json().catch(() => ({} as Record<string, string>));
+      setToast(j?.detalle || j?.error || `no se pudo pedir el plan (${r.status})`);
+      await cargarPlanes();
+    } catch { setToast('No se pudo pedir el plan: el servidor no respondió'); }
+  };
   const planNombre = planDelBack?.nombre ?? (esReal ? (d.negocio?.plan || null) : null);
   const creditosMes: number | null = planDelBack?.creditosMes ?? null;
 
@@ -220,9 +252,24 @@ function ViewCreditosNegocio({ setToast }: { setToast: (t: string) => void }) {
         ],
       })),
       { tipo: 'texto', texto: 'El plan define cuántos créditos entran por mes, no cómo trabaja el motor: bajar de plan no frena nada de lo que ya está corriendo.' },
+      ...(solicitud?.estado === 'solicitada' ? [{
+        tipo: 'aviso' as const, tono: 'amber' as const,
+        texto: `Usted pidió el plan ${solicitud.plan} el ${String(solicitud.created_at).slice(0, 10)}: el equipo le manda el medio de pago y, cuando el cobro se confirme, el plan queda activo y sus créditos entran en la cuenta. Todavía no se cobró nada.`,
+      }] : []),
+      ...(solicitud?.estado === 'activa' ? [{
+        tipo: 'aviso' as const, tono: 'green' as const,
+        texto: `Su plan ${solicitud.plan} está activo: los créditos del plan entraron en su cuenta y no vencen. El cobro queda a cargo del equipo hasta que se conecte la pasarela.`,
+      }] : []),
+      ...(infoPlanes?.sin_pasarela ? [{ tipo: 'texto' as const, texto: infoPlanes.sin_pasarela }] : []),
+      { tipo: 'texto' as const, texto: 'Pedir un plan no cobra nada todavía: queda registrado el pedido y el equipo le manda el medio de pago. Los créditos del plan, cuando se activa, no vencen.' },
     ],
     fuente: 'Precio por mes en dólares y los créditos que incluye cada plan. El consumo no cambia con el plan: cambia cuánto entra por mes.',
     acciones: [
+      ...(planes.length ? planes : PLANES.map(p => ({ key: p.key, nombre: p.nombre, precio: p.precio }))).map(p => ({
+        label: `Pedir el plan ${p.nombre} · $${p.precio}/mes`,
+        title: `Registra el pedido del plan ${p.nombre}. No cobra nada todavía: el equipo le manda el medio de pago y, cuando el cobro se confirme, el plan queda activo con sus créditos.`,
+        onClick: () => void pedir(p.key),
+      })),
       { label: 'Cerrar', title: 'Cierra el panel sin cambiar nada', onClick: () => {} },
     ],
   });
