@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Card, Badge, Button, Dinero, NotaMoneda } from '../components/ui';
 import { ViewHead, Gauge } from '../components/viz';
-import { I_Credit, I_Wallet, I_Zap, I_Shield, I_Plus, I_ArrowRight } from '../components/icons';
+import { I_Credit, I_Wallet, I_Zap, I_Shield, I_Plus, I_ArrowRight, I_Check } from '../components/icons';
 import { PLANES } from '../data/demo';
 import { useDetalle } from '../components/Detalle';
 import { useDatos } from '../api/datos';
@@ -122,6 +122,28 @@ function ViewCreditosNegocio({ setToast }: { setToast: (t: string) => void }) {
   };
   useEffect(() => { void cargarPlanes(); }, [d.real]);
 
+  // ---------- EL FLUJO DE COMPRA EN TRES TARJETAS ----------
+  const [planesAbierto, setPlanesAbierto] = useState(false);
+  const [elegido, setElegido] = useState<string | null>(null);
+  const [pidiendo, setPidiendo] = useState(false);
+  const [respuesta, setRespuesta] = useState<string | null>(null);
+  /** El catálogo para mostrar: el del back (precio y créditos que se cobran y acreditan) con lo que
+   *  incluye cada plan, que es texto del producto. */
+  const catalogo = (planes.length
+    ? planes.map(p => ({ ...p, incluye: PLANES.find(x => x.key === p.key)?.incluye ?? [], falta: PLANES.find(x => x.key === p.key)?.falta ?? [] }))
+    : PLANES.map(p => ({ key: p.key, nombre: p.nombre, precio: p.precio, creditos: p.creditosMes, paraQuien: p.paraQuien, incluye: p.incluye, falta: p.falta })));
+  const planElegido = catalogo.find(p => p.key === elegido) ?? null;
+  const abrirPlanes = () => { setElegido(null); setRespuesta(null); setPlanesAbierto(true); void cargarPlanes(); };
+
+  /** El paso de pago: confirma el pedido del plan elegido y deja el estado a la vista. */
+  const confirmarPedido = async (planKey: string) => {
+    setPidiendo(true);
+    await pedir(planKey);
+    setPidiendo(false);
+    const p = catalogo.find(x => x.key === planKey);
+    setRespuesta(`Pedido registrado: plan ${p?.nombre}. El equipo le manda el medio de pago y, cuando el cobro se confirme, el plan queda activo y sus ${Number(p?.creditos || 0).toLocaleString('es-CO')} créditos entran en su cuenta.`);
+  };
+
   /** Pedir un plan: queda registrado. No cobra nada ni cambia el plan hasta que el cobro se confirme. */
   const pedir = async (planKey: string) => {
     if (!esReal) { setToast('Sin cuenta conectada no hay a quién pedirle un plan'); return; }
@@ -236,44 +258,6 @@ function ViewCreditosNegocio({ setToast }: { setToast: (t: string) => void }) {
     ],
   });
 
-  /** La lista de precios del producto: los tres planes, lo que incluye cada uno y lo que cuesta. */
-  const verPlanes = () => detalle({
-    titulo: 'Planes y precios',
-    sub: 'Los tres planes hacen lo mismo: cambian cuántos créditos entran por mes y cuántas campañas pueden correr a la vez. Acá están los precios; el plan que su cuenta tiene hoy sale de su cuenta.',
-    bloques: [
-      ...PLANES.map(p => ({
-        tipo: 'filas' as const,
-        items: [
-          { t: `Plan ${p.nombre} · $${p.precio} por mes`, s: `${p.creditosMes.toLocaleString('es-CO')} créditos · ${p.paraQuien}`,
-            etiqueta: p.key === planDelBack?.key ? 'el de su cuenta' : 'disponible',
-            tono: p.key === planDelBack?.key ? 'purple' as const : 'muted' as const },
-          ...p.incluye.map(i => ({ t: i, etiqueta: 'incluido', tono: 'green' as const })),
-          ...(p.falta || []).map(f => ({ t: f, etiqueta: 'no entra', tono: 'muted' as const })),
-        ],
-      })),
-      { tipo: 'texto', texto: 'El plan define cuántos créditos entran por mes, no cómo trabaja el motor: bajar de plan no frena nada de lo que ya está corriendo.' },
-      ...(solicitud?.estado === 'solicitada' ? [{
-        tipo: 'aviso' as const, tono: 'amber' as const,
-        texto: `Usted pidió el plan ${solicitud.plan} el ${String(solicitud.created_at).slice(0, 10)}: el equipo le manda el medio de pago y, cuando el cobro se confirme, el plan queda activo y sus créditos entran en la cuenta. Todavía no se cobró nada.`,
-      }] : []),
-      ...(solicitud?.estado === 'activa' ? [{
-        tipo: 'aviso' as const, tono: 'green' as const,
-        texto: `Su plan ${solicitud.plan} está activo: los créditos del plan entraron en su cuenta y no vencen. El cobro queda a cargo del equipo hasta que se conecte la pasarela.`,
-      }] : []),
-      ...(infoPlanes?.sin_pasarela ? [{ tipo: 'texto' as const, texto: infoPlanes.sin_pasarela }] : []),
-      { tipo: 'texto' as const, texto: 'Pedir un plan no cobra nada todavía: queda registrado el pedido y el equipo le manda el medio de pago. Los créditos del plan, cuando se activa, no vencen.' },
-    ],
-    fuente: 'Precio por mes en dólares y los créditos que incluye cada plan. El consumo no cambia con el plan: cambia cuánto entra por mes.',
-    acciones: [
-      ...(planes.length ? planes : PLANES.map(p => ({ key: p.key, nombre: p.nombre, precio: p.precio }))).map(p => ({
-        label: `Pedir el plan ${p.nombre} · $${p.precio}/mes`,
-        title: `Registra el pedido del plan ${p.nombre}. No cobra nada todavía: el equipo le manda el medio de pago y, cuando el cobro se confirme, el plan queda activo con sus créditos.`,
-        onClick: () => void pedir(p.key),
-      })),
-      { label: 'Cerrar', title: 'Cierra el panel sin cambiar nada', onClick: () => {} },
-    ],
-  });
-
   return (
     <div className="dash">
       <ViewHead
@@ -309,7 +293,7 @@ function ViewCreditosNegocio({ setToast }: { setToast: (t: string) => void }) {
         <div className="row" style={{ gap: 9, marginTop: 12, flexWrap: 'wrap' }}>
           <Button variant="ghost" className="btn-sm"
             title="Abre la lista de planes con lo que incluye cada uno y su precio por mes. No cambia nada de su cuenta."
-            onClick={verPlanes}><I_ArrowRight size={13} /> Ver los planes</Button>
+            onClick={abrirPlanes}><I_ArrowRight size={13} /> Ver los planes</Button>
           {esReal && (
             <Button variant="ghost" className="btn-sm" title="Vuelve a leer su cuenta: si el detalle de su plan ya está cargado, esta tarjeta lo muestra tal como quedó."
               onClick={() => void d.refrescar()}>Volver a leer mi plan</Button>
@@ -525,6 +509,114 @@ function ViewCreditosNegocio({ setToast }: { setToast: (t: string) => void }) {
           </div>
         </Card>
       </div>
+
+      {/* ==================== LOS PLANES EN TRES TARJETAS, Y DE AHÍ AL PAGO ====================
+          Es el flujo de compra: el cliente compara los tres planes en tarjetas, elige uno y pasa al
+          paso de pago. Ahí confirma el pedido: no se cobra nada todavía (no hay pasarela conectada) y
+          el panel lo dice con todas las letras. Cuando el cobro se confirma, el plan queda activo y sus
+          créditos entran en la cuenta sin vencimiento. */}
+      {planesAbierto && (
+        <div className="ob-modal-back" onClick={() => setPlanesAbierto(false)}>
+          <div className="card" style={{ maxWidth: 980, width: '100%', maxHeight: '92vh', overflow: 'auto' }}
+            onClick={e => e.stopPropagation()}>
+            <div className="row spread" style={{ gap: 10, alignItems: 'center', marginBottom: 4 }}>
+              <div className="card-title" style={{ fontSize: 17 }}>
+                {planElegido ? `Pagar el plan ${planElegido.nombre}` : 'Elija su plan'}
+              </div>
+              <Button variant="ghost" className="btn-sm" title="Cierra la ventana sin cambiar nada"
+                onClick={() => setPlanesAbierto(false)}>Cerrar</Button>
+            </div>
+            <div className="bs" style={{ marginBottom: 14 }}>
+              {planElegido
+                ? 'Revise lo que incluye y confirme el pedido. Todavía no se cobra nada: el equipo le manda el medio de pago.'
+                : 'Los tres planes hacen lo mismo: cambian cuántos créditos entran por mes y cuántas campañas pueden correr a la vez. Elija uno y sigue al pago.'}
+            </div>
+
+            {solicitud?.estado === 'solicitada' && (
+              <div className="acc-why" style={{ borderLeft: '3px solid var(--amber)', paddingLeft: 12, marginBottom: 14 }}>
+                <b>Ya tiene un pedido sin confirmar:</b> el plan {solicitud.plan}, del {String(solicitud.created_at).slice(0, 10)}.
+                El equipo le manda el medio de pago y, cuando el cobro se confirme, el plan queda activo.
+              </div>
+            )}
+            {solicitud?.estado === 'activa' && (
+              <div className="acc-why" style={{ borderLeft: '3px solid var(--green)', paddingLeft: 12, marginBottom: 14 }}>
+                <b>Su plan {solicitud.plan} está activo.</b> Los créditos del plan entraron en su cuenta y no vencen.
+              </div>
+            )}
+
+            {!planElegido && (
+              <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+                {catalogo.map(p => {
+                  const esElSuyo = p.key === String(d.negocio?.plan || '');
+                  return (
+                    <div key={p.key} className="card"
+                      style={{ flex: '1 1 260px', minWidth: 250, borderColor: esElSuyo ? 'var(--purple2)' : undefined }}>
+                      <div className="row spread" style={{ gap: 8, alignItems: 'baseline' }}>
+                        <div className="card-title" style={{ fontSize: 16 }}>Plan {p.nombre}</div>
+                        {esElSuyo && <Badge tone="purple">el de su cuenta</Badge>}
+                      </div>
+                      <div style={{ fontSize: 30, fontWeight: 800, margin: '6px 0 0' }}>
+                        ${p.precio}<span className="bs" style={{ fontWeight: 500 }}> /mes</span>
+                      </div>
+                      <div className="bs">{Number(p.creditos).toLocaleString('es-CO')} créditos por mes</div>
+                      <div className="bs" style={{ margin: '8px 0 10px' }}>{p.paraQuien}</div>
+                      <div className="guards">
+                        {(p.incluye || []).slice(0, 5).map((i: string) => (
+                          <div key={i} className="guard">
+                            <I_Check size={13} style={{ color: 'var(--green)', flexShrink: 0 }} />
+                            <span className="guard-lb">{i}</span>
+                          </div>
+                        ))}
+                        {(p.falta || []).slice(0, 3).map((f: string) => (
+                          <div key={f} className="guard">
+                            <span className="guard-lb" style={{ color: 'var(--muted)' }}>{f}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div style={{ marginTop: 14 }}>
+                        <Button variant={esElSuyo ? 'outline' : 'primary'} disabled={esElSuyo}
+                          title={esElSuyo
+                            ? 'Es el plan que su cuenta tiene hoy'
+                            : `Elegir el plan ${p.nombre} y pasar al pago. No cobra nada: el pedido queda registrado y el equipo le manda el medio de pago.`}
+                          onClick={() => setElegido(p.key)}>
+                          {esElSuyo ? 'Su plan actual' : `Elegir ${p.nombre}`}
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {planElegido && (
+              <>
+                <div className="guards">
+                  <div className="guard"><span className="guard-lb">Plan<small>{planElegido.nombre}</small></span><span className="guard-val">${planElegido.precio}/mes</span></div>
+                  <div className="guard"><span className="guard-lb">Créditos que entran<small>al activarse el plan, y no vencen</small></span><span className="guard-val">{Number(planElegido.creditos).toLocaleString('es-CO')}</span></div>
+                  <div className="guard"><span className="guard-lb">Se cobra hoy<small>el cobro empieza cuando el plan quede activo</small></span><span className="guard-val">nada</span></div>
+                </div>
+                <div className="acc-why" style={{ marginTop: 12 }}>
+                  <b>Cómo se paga:</b>{' '}
+                  {infoPlanes?.como_se_paga || 'Al confirmar el pedido, el equipo le manda el medio de pago.'}{' '}
+                  {infoPlanes?.sin_pasarela || 'Todavía no hay pasarela conectada: el paso final lo confirma una persona del equipo.'}
+                </div>
+                {respuesta && (
+                  <div className="acc-why" style={{ borderLeft: '3px solid var(--green)', paddingLeft: 12 }}>{respuesta}</div>
+                )}
+                <div className="row" style={{ gap: 9, marginTop: 14, flexWrap: 'wrap' }}>
+                  <Button disabled={pidiendo || !!respuesta}
+                    title="Registra el pedido del plan elegido. No cobra nada todavía: el equipo le manda el medio de pago."
+                    onClick={() => void confirmarPedido(planElegido.key)}>
+                    {pidiendo ? 'Registrando…' : respuesta ? 'Pedido registrado' : 'Confirmar el pedido'}
+                  </Button>
+                  <Button variant="ghost" title="Vuelve a las tres tarjetas para elegir otro plan"
+                    onClick={() => { setElegido(null); setRespuesta(null); }}>Cambiar de plan</Button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
