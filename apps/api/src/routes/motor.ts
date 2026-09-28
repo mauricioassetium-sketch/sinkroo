@@ -245,6 +245,19 @@ export async function motorRoutes(app: FastifyInstance, db: Pool) {
   });
 
   /**
+   * LOS PROMPTS DE GENERACIÓN del negocio: el contrato que va a leer el generador cuando exista, con la
+   * traza de cómo se armó cada campo (qué dato del mercado entró en qué parte del prompt).
+   */
+  app.get('/api/prompts', async (req, reply) => {
+    const u = await exigirSesion(req, reply); if (!u || !u.business_id) return;
+    const r = await db.query(
+      `SELECT id, pieza, plaza, tipo, estilo, proporcion, prompt, prompt_negativo, parametros, detalle, created_at
+         FROM prompts_generacion WHERE business_id = $1
+        ORDER BY created_at DESC, plaza LIMIT 40`, [u.business_id]);
+    return { prompts: r.rows, generador: 'todavía no hay ninguno conectado: estos prompts quedan listos para el que se conecte' };
+  });
+
+  /**
    * Guarda un informe de mercado: lo escribe la investigación cuando termina una corrida. La fuente se
    * declara siempre (un informe sin fuente no se muestra) y `del_rubro` decide si el informe queda para
    * este negocio o para todos los negocios del mismo rubro y la misma ciudad.

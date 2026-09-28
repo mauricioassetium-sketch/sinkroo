@@ -266,6 +266,29 @@ export async function migrate(db: Pool): Promise<void> {
 
     CREATE INDEX IF NOT EXISTS idx_mercado_informes ON mercado_informes(ciudad, generado_at DESC);
 
+    -- LOS PROMPTS DE GENERACIÓN: lo que el equipo de arte entrega para cada pieza y cada plaza. Todavía
+    -- no hay generador de imagen ni de video conectado, así que esto es el CONTRATO: el día que exista,
+    -- genera con esto y no con una idea suelta. Guarda el prompt (en inglés, listo para pegar), el
+    -- negativo, los parámetros técnicos y el detalle completo (colores hex, tipografía, formato,
+    -- escenas, estilo UGC o toma de producto).
+    CREATE TABLE IF NOT EXISTS prompts_generacion (
+      id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      business_id     UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+      corrida_id      UUID REFERENCES corridas(id) ON DELETE SET NULL,
+      pieza           TEXT NOT NULL DEFAULT '',
+      plaza           TEXT NOT NULL DEFAULT '',
+      tipo            TEXT NOT NULL DEFAULT 'imagen',
+      estilo          TEXT NOT NULL DEFAULT '',
+      proporcion      TEXT NOT NULL DEFAULT '',
+      prompt          TEXT NOT NULL DEFAULT '',
+      prompt_negativo TEXT NOT NULL DEFAULT '',
+      parametros      JSONB NOT NULL DEFAULT '{}'::jsonb,
+      detalle         JSONB NOT NULL DEFAULT '{}'::jsonb,
+      created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_prompts_business ON prompts_generacion(business_id, created_at DESC);
+
     -- LAS CUENTAS CONECTADAS: el token de Meta vive acá, del lado del servidor, y nunca sale en una
     -- respuesta ni viaja al navegador. Una fila por negocio y red.
     CREATE TABLE IF NOT EXISTS cuentas_conectadas (

@@ -245,6 +245,69 @@ export function ViewMercado({ setToast, setVista }: { setToast: (t: string) => v
     detalle({ titulo: 'Informe completo de su mercado', sub: `${inf.rubro} · ${inf.ciudad}`, bloques: b, fuente: inf.fuente });
   };
 
+
+  /**
+   * El botón de los prompts: abre el mismo panel de detalle con el prompt de generación de cada plaza y
+   * LA TRAZA de cómo se armó cada campo con lo que se midió en el mercado. No hay generador conectado
+   * todavía: el prompt completo es el entregable real de hoy.
+   */
+  const abrirPrompts = () => {
+    if (!d.prompts.length) {
+      detalle({
+        titulo: 'Prompts de generación (imagen o video)',
+        sub: d.cargando ? 'Leyendo el back…' : 'Todavía no hay prompts para su negocio.',
+        bloques: [
+          { tipo: 'texto', texto: 'Los arma Iris en la corrida del mercado, con la analítica visual del rubro: colores medidos, tipografía, formato y si la pieza es UGC o toma de producto. En cuanto la corrida los deje, aparecen acá, listos para pegar en un generador.' },
+        ],
+        fuente: '',
+        acciones: [{ label: 'Volver a leer', onClick: () => void d.refrescar(), variante: 'outline' }],
+      });
+      return;
+    }
+    const b: Bloque[] = [];
+    const plural = d.prompts.length === 1 ? 'prompt listo' : 'prompts listos';
+    b.push({ tipo: 'texto', texto: `Su negocio tiene ${d.prompts.length} ${plural}. Todavía no hay generador de imagen ni de video conectado: esto es lo que se le pega el día que lo haya.` });
+    for (const p of d.prompts) {
+      const det = p.detalle || {};
+      b.push({ tipo: 'aviso', texto: `${p.plaza} · ${p.tipo} · ${p.estilo}`, tono: 'green' });
+      b.push({
+        tipo: 'datos', filas: [
+          { k: 'Pieza', v: p.pieza },
+          { k: 'Formato', v: `${p.proporcion}${det.escenas?.length ? ` · ${det.escenas.length} escenas` : ''}` },
+          { k: 'Referencia del mercado', v: `${det.referencia?.anunciante || '—'} · ${det.referencia?.dias || 0} días`, s: det.referencia?.que_se_toma },
+          { k: 'Colores medidos', v: (det.colores?.paleta || []).join(' ') || '—', s: det.colores?.rol },
+          { k: 'Tipografía', v: det.tipografia ? `${det.tipografia.familia} · ${det.tipografia.tratamiento}` : 'sin texto sobre la imagen', s: det.tipografia?.ubicacion },
+        ],
+      });
+      if (det.sujeto?.quien) b.push({ tipo: 'texto', texto: `Sujeto: ${det.sujeto.quien} · ${det.sujeto.donde || ''} · ${det.sujeto.accion || ''}` });
+      if ((det.escenas?.length ?? 0) > 1) {
+        b.push({ tipo: 'pasos', items: det.escenas!.map(e => `${e.s} s · ${e.plano} — ${e.accion}${e.texto_en_pantalla ? ` [texto: ${e.texto_en_pantalla}]` : ''}`) });
+      }
+      b.push({ tipo: 'texto', texto: `PROMPT (listo para pegar en el modelo):
+${p.prompt}` });
+      b.push({ tipo: 'texto', texto: `Negativo: ${p.prompt_negativo}` });
+      if (det.no_debe_aparecer?.length) {
+        b.push({ tipo: 'aviso', texto: 'Lo que no debe aparecer', tono: 'amber' });
+        b.push({ tipo: 'filas', items: det.no_debe_aparecer.map(x => ({ t: x, etiqueta: 'prohibido', tono: 'amber' as const })) });
+      }
+      if (det.como_se_arma?.length) {
+        b.push({ tipo: 'aviso', texto: 'Cómo se armó este prompt: cada campo y de dónde salió', tono: 'green' });
+        b.push({ tipo: 'filas', items: det.como_se_arma.map(c => ({ t: `${c.campo} → ${c.como_se_usa}`, s: `sale de: ${c.sale_de}`, etiqueta: 'traza', tono: 'purple' as const })) });
+      }
+      if (det.elegido_por_nosotros?.length) {
+        b.push({ tipo: 'aviso', texto: 'Lo que elegimos nosotros (no es medición)' });
+        b.push({ tipo: 'filas', items: det.elegido_por_nosotros.map(x => ({ t: x, etiqueta: 'elegido', tono: 'muted' as const })) });
+      }
+      if (det.verificaciones?.length) b.push({ tipo: 'pasos', items: det.verificaciones });
+    }
+    detalle({
+      titulo: 'Prompts de generación (imagen o video)',
+      sub: 'Del mercado medido al prompt: cada campo con su origen',
+      bloques: b,
+      fuente: 'la corrida del mercado de este negocio',
+    });
+  };
+
   return (
     <div className="dash">
       <ViewHead
@@ -258,13 +321,22 @@ export function ViewMercado({ setToast, setVista }: { setToast: (t: string) => v
           { v: fechaCorta(d.corridas[0]?.empezada_at) || 'todavía no', l: 'última investigación' },
         ]}
         accion={
-          <Button
-            variant="outline"
-            onClick={abrirInforme}
-            title="Abre el informe completo del mercado: quiénes juegan, las piezas vivas que el mercado ya premió con tiempo, el patrón del rubro, el hueco que nadie ocupa y la pieza propuesta. No cambia nada: se cierra con la X o pulsando afuera."
-          >
-            Ver el informe completo
-          </Button>
+          <div className="row" style={{ gap: 8 }}>
+            <Button
+              variant="outline"
+              onClick={abrirInforme}
+              title="Abre el informe completo del mercado: quiénes juegan, las piezas vivas que el mercado ya premió con tiempo, el patrón del rubro, el hueco que nadie ocupa y la pieza propuesta. No cambia nada: se cierra con la X o pulsando afuera."
+            >
+              Ver el informe completo
+            </Button>
+            <Button
+              variant="outline"
+              onClick={abrirPrompts}
+              title="Abre los prompts de generación (imagen o video) que armó Iris con la analítica del mercado, y la traza de cómo se armó cada campo: colores, tipografía, formato, escenas y estilo UGC o toma. Todavía no hay generador conectado: esto queda listo para pegar. No cambia nada."
+            >
+              Ver los prompts de generación{d.prompts.length ? ` (${d.prompts.length})` : ''}
+            </Button>
+          </div>
         }
       />
 

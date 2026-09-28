@@ -1,4 +1,5 @@
 import type { Pool } from 'pg';
+import { promptsDelInforme, guardarPrompts } from './prompts.js';
 
 // =============================================================================================
 // LOS SEIS AGENTES DEL EQUIPO — la investigación del mercado, con trabajo REAL.
@@ -32,6 +33,7 @@ export const AGENTES = [
   { id: 'kai', nombre: 'Kai', oficio: 'Publicidad y costos' },
   { id: 'sol', nombre: 'Sol', oficio: 'Medición y modelo' },
   { id: 'rumi', nombre: 'Rumi', oficio: 'Conversaciones' },
+  { id: 'iris', nombre: 'Iris', oficio: 'Arte y prompts' },
 ];
 
 /** Cómo se identifica el motor ante OpenStreetMap: Overpass y Nominatim lo exigen y limitan por IP. */
@@ -442,6 +444,47 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
       fuente: 'conversaciones del negocio (WhatsApp/Messenger conectados)',
     } : {
       sin_fuente: 'no hay conversaciones conectadas: se llena cuando la cuenta de WhatsApp esté conectada y la gente escriba',
+      fuente: 'sin fuente',
+    },
+  });
+
+  // ---------------- IRIS · el arte: el prompt de generación de cada plaza ----------------
+  // El sistema todavía no genera imagen ni video. Lo que sí hace, y es lo que el dueño pidió, es
+  // entregar el PROMPT COMPLETO —colores, tipografía, formato, escenas, UGC o toma de producto— con la
+  // traza de cómo se armó cada campo con lo que se midió en el mercado. Queda guardado como contrato:
+  // el día que haya generador conectado, genera con esto.
+  const paquete = promptsDelInforme(inf ?? {});
+  let promptsGuardados = 0;
+  if (paquete) {
+    try { promptsGuardados = await guardarPrompts(db, ctx.businessId, paquete, corridaId); } catch { promptsGuardados = 0; }
+  }
+  const tipos = paquete ? [...new Set(paquete.prompts.map(p => p.tipo))].join(' y ') : '';
+  tareas.push({
+    agente: 'iris', orden: 8,
+    que: paquete
+      ? `Armó ${paquete.prompts.length} prompts de generación (${tipos}) con los colores, la tipografía, el formato y el estilo medidos en su mercado`
+      : 'No pudo armar los prompts y lo dice: falta la analítica visual del rubro',
+    resultado: paquete ? {
+      fuente_tipo: 'la analítica visual del informe del mercado + la pieza propuesta (el hueco que se ataca)',
+      pieza: paquete.pieza,
+      guardados_en: 'la tabla de prompts del negocio (el contrato que leerá el generador)',
+      guardados: promptsGuardados,
+      prompts: paquete.prompts.map(p => ({
+        plaza: p.plaza, tipo: p.tipo, estilo: p.estilo, proporcion: p.proporcion, duracion_s: p.duracion_s,
+        colores: p.colores.paleta,
+        tipografia: `${p.tipografia.familia} · ${p.tipografia.tratamiento} · ${p.tipografia.ubicacion}`,
+        escenas: p.escenas.length,
+        prompt: p.prompt,
+        prompt_negativo: p.prompt_negativo,
+        como_se_arma: p.como_se_arma,
+        elegido_por_nosotros: p.elegido_por_nosotros,
+        verificaciones: p.verificaciones,
+      })),
+      porque: 'Todavía no hay generador de imagen ni de video conectado: lo que sí se puede hacer hoy, y se hizo, es dejar el prompt completo y su traza. Cuando el generador exista, se genera con esto y no con una idea suelta.',
+      falta: 'conectar el servicio de generación (hoy no hay ninguno escuchando)',
+      fuente: inf?.fuente || '',
+    } : {
+      sin_fuente: 'falta la analítica visual del rubro (colores, tipografía, encuadre y plazas) para poder armar el prompt',
       fuente: 'sin fuente',
     },
   });

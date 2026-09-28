@@ -120,6 +120,36 @@ export type InformeMercado = {
   } | null;
 };
 
+/** Un prompt de generación: el contrato que leerá el generador, con la traza de cómo se armó. */
+export type PromptGeneracion = {
+  id: string;
+  pieza: string;
+  plaza: string;
+  tipo: string;
+  estilo: string;
+  proporcion: string;
+  prompt: string;
+  prompt_negativo: string;
+  parametros: Record<string, unknown>;
+  detalle: {
+    sujeto?: { quien?: string; donde?: string; accion?: string; vestuario?: string; mirada?: string };
+    escenas?: { s: string; plano: string; accion: string; texto_en_pantalla: string; voz: string }[];
+    colores?: { paleta: string[]; rol: string; contraste: string };
+    tipografia?: { familia: string; peso: string; caja: string; tratamiento: string; ubicacion: string; texto_exacto: string };
+    iluminacion?: string;
+    camara?: string;
+    audio?: { voz: string; musica: string };
+    marca?: string;
+    no_debe_aparecer?: string[];
+    /** De dónde sale cada campo del prompt: dato medido → cómo se usa. */
+    como_se_arma?: { campo: string; sale_de: string; como_se_usa: string }[];
+    elegido_por_nosotros?: string[];
+    verificaciones?: string[];
+    referencia?: { anunciante: string; dias: number; que_se_toma: string };
+  };
+  created_at: string;
+};
+
 /** Una red conectable, tal como la devuelve el back: su nombre y su rol, si está configurada en el
  *  servidor y qué falta, la cuenta conectada (el token nunca se devuelve, sólo se dice si hay uno
  *  guardado) y cuándo se sincronizó por última vez. */
@@ -193,6 +223,8 @@ export type Datos = {
   /** El informe completo del mercado (el patrón-modelo) que abre el botón de la pantalla de Mercado.
    *  null = el back no respondió o no hay informe para el rubro y la ciudad de este negocio. */
   informeMercado: InformeMercado | null;
+  /** Los prompts de generación (imagen o video) del negocio, con su traza. Vacío = todavía no hay. */
+  prompts: PromptGeneracion[];
   /** Las redes conectables con el back encendido: cuáles están configuradas, cuáles tienen cuenta
    *  conectada y cuándo se sincronizaron, más el resumen (`conectadas` de `total`). null = sin back, o
    *  el servidor no respondió a la consulta. */
@@ -212,7 +244,7 @@ const VACIO: Datos = {
   negocio: null, resumen: null, onboarding: null,
   campanas: [], piezas: [], evaluaciones: [], hallazgos: [], corridas: [],
   publico: null, conversaciones: [], archivos: [], creditos: null, calibracion: null, backtest: null, integraciones: null,
-  metricas: null, informeMercado: null, desvioPct: 0,
+  metricas: null, informeMercado: null, prompts: [], desvioPct: 0,
   refrescar: async () => {}, guardar: async () => {}, arrancar: async () => {},
 };
 
@@ -236,7 +268,7 @@ export function ProveedorDatos({ children, modoDemo = false }: { children: React
     // En modo demostración no se lee el back ni con sesión abierta: la demostración no es la cuenta.
     if (!hayApi() || !token() || modoDemo) { setEstado(VACIO); return; }
     setEstado(e => ({ ...e, real: true, cargando: true, error: '' }));
-    const [neg, onb, camp, piez, eval_, hall, corr, publ, conv, arch, cred, calib, back, integ, metr, inform] = await Promise.all([
+    const [neg, onb, camp, piez, eval_, hall, corr, publ, conv, arch, cred, calib, back, integ, metr, inform, prm] = await Promise.all([
       traer<{ negocio: Negocio; resumen: Resumen; onboarding: { hechos: number[]; arrancado: boolean } } | null>('/api/negocio', null),
       traer<{ datos: Record<string, unknown>; hechos: number[]; arrancado: boolean }>('/api/onboarding', { datos: {}, hechos: [], arrancado: false }),
       traer<{ campanas: Campana[] }>('/api/campanas', { campanas: [] }),
@@ -253,6 +285,7 @@ export function ProveedorDatos({ children, modoDemo = false }: { children: React
       traer<Integraciones | null>('/api/integraciones', null),
       traer<Metricas | null>('/api/metricas', null),
       traer<InformeMercado | null>('/api/mercado/informe', null),
+      traer<{ prompts: PromptGeneracion[] }>('/api/prompts', { prompts: [] }),
     ]);
     setEstado({
       real: true, cargando: false, error: neg ? '' : 'no se pudo leer el negocio del servidor',
@@ -273,6 +306,7 @@ export function ProveedorDatos({ children, modoDemo = false }: { children: React
       integraciones: integ,
       metricas: metr,
       informeMercado: inform,
+      prompts: prm.prompts || [],
       desvioPct: hall.desvio_actual_pct || 0,
       refrescar: async () => {},
       guardar: async () => {},
