@@ -46,6 +46,14 @@ export type NegocioLeido = {
   falta: string[];
 };
 
+/** Recorta un texto sin partir palabras: corta en el último espacio y avisa con puntos suspensivos. */
+const recortar = (t: string, n = 90) => {
+  const limpio = String(t || '').replace(/\s+/g, ' ').trim();
+  if (limpio.length <= n) return limpio;
+  const corte = limpio.lastIndexOf(' ', n);
+  return `${limpio.slice(0, corte > 40 ? corte : n)}…`;
+};
+
 /** Parte el texto en pedazos de palabras, para buscar señales sin depender de mayúsculas ni tildes. */
 const normal = (t: string) => String(t || '')
   .toLowerCase()
@@ -240,10 +248,19 @@ export function deducirNegocio(d: {
     const puntajes = OFICIOS.map(o => ({ ...o, n: o.palabras.filter(p => todo.includes(normal(p)) || sinEspacios.includes(normal(p).replace(/\s+/g, ''))).length }))
       .filter(o => o.n > 0).sort((a, b) => b.n - a.n);
     if (puntajes.length) {
-      rubro = puntajes[0].rubro;
-      const delator = puntajes[0].palabras.find(p => todo.includes(normal(p))) || puntajes[0].palabras[0];
-      senales.push(`el rubro sale del material: aparece «${delator}»`);
-      if (puntajes.length > 1) senales.push(`también aparecen señales de «${puntajes[1].rubro}» (${puntajes[1].n} señales)`);
+      const delator = puntajes[0].palabras.find(p => todo.includes(normal(p)) || sinEspacios.includes(normal(p).replace(/\s+/g, ''))) || puntajes[0].palabras[0];
+      // Con DOS o más señales del mismo oficio, el catálogo es confiable. Con UNA sola, no: cualquier
+      // texto que mencione «legal» no convierte al negocio en una consultoría. En ese caso manda la
+      // descripción propia, que es lo que el negocio dice de sí mismo.
+      const propia = String(d.descripcion || '').trim() || d.paginas.find(p => p.ok)?.titulo || '';
+      if (puntajes[0].n >= 2 || !propia) {
+        rubro = puntajes[0].rubro;
+        senales.push(`el rubro sale del material: aparece «${delator}» (${puntajes[0].n} ${puntajes[0].n === 1 ? 'señal' : 'señales'} de ese oficio)`);
+        if (puntajes.length > 1) senales.push(`también aparecen señales de «${puntajes[1].rubro}» (${puntajes[1].n})`);
+      } else {
+        rubro = recortar(propia, 90);
+        senales.push(`el catálogo solo acertó con una palabra («${delator}»), así que gana lo que el negocio declara: «${rubro.slice(0, 60)}»`);
+      }
     }
   } else {
     senales.push(`el rubro lo declaró el negocio: «${rubro}»`);
@@ -254,7 +271,7 @@ export function deducirNegocio(d: {
   if (!rubro) {
     const propio = String(d.descripcion || '').trim() || d.paginas.find(p => p.ok)?.titulo || '';
     if (propio) {
-      rubro = propio.replace(/\s+/g, ' ').slice(0, 90);
+      rubro = recortar(propio, 90);
       senales.push(`el oficio no está en el catálogo conocido: el rubro se toma de lo que el negocio declara («${rubro.slice(0, 60)}…»)`);
     }
   }
