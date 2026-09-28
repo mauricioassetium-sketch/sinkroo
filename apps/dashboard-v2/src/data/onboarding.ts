@@ -242,6 +242,12 @@ export const PASOS_ONB: PasoOnb[] = [
         opciones: ['Vender más', 'Clientes nuevos', 'Recuperar', 'Que lo conozcan'] },
       { id: 'presupuesto', etiqueta: 'Cuánto quiere invertir por día', tipo: 'chips', ayuda: 'Es un techo: el motor no lo pasa y no lo mueve sin su permiso.',
         opciones: PRESUPUESTOS, detalle: DETALLE_PRESUPUESTO },
+      { id: 'canales', etiqueta: 'Dónde quiere que trabaje', tipo: 'chips-multi', ayuda: 'WhatsApp cierra la conversación; las redes llevan la gente a ella. Puede marcar varias.',
+        opciones: ['WhatsApp', 'Instagram', 'Facebook', 'TikTok'] },
+      { id: 'publicaciones_semana', etiqueta: 'Cuánto quiere publicar en sus redes', tipo: 'chips', ayuda: 'Es contenido propio, no pauta: mantener las redes activas entre campaña y campaña.',
+        opciones: ['1 a 2 por semana', '3 a 5 por semana', '6 a 10 por semana', 'Que lo decida el sistema'] },
+      { id: 'contenido_diario', etiqueta: 'Publicación diaria de contenido', tipo: 'chips', ayuda: 'Con «sí», el sistema propone piezas cada semana aunque no haya una campaña encendida. No gasta pauta: consume créditos del plan.',
+        opciones: ['Sí: mantengan mis redes activas', 'No: solo cuando haya campaña'] },
       { id: 'modo', etiqueta: 'Cuánta autonomía le da', tipo: 'chips', ayuda: 'Se puede cambiar cuando quiera desde Cuenta y autonomía.',
         opciones: ['Manual', 'Compartido', 'Automático'],
         detalle: {

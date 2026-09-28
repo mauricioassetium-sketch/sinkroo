@@ -217,7 +217,9 @@ export type Datos = {
   error: string;
   negocio: Negocio | null;
   resumen: Resumen | null;
-  onboarding: { hechos: number[]; arrancado: boolean } | null;
+  /** Lo que el negocio contestó en Primeros pasos (incluidas sus decisiones: modo, presupuesto,
+   *  canales, ritmo de publicación). Es la misma fuente que usa el motor: una sola. */
+  onboarding: { hechos: number[]; arrancado: boolean; datos: Record<string, unknown> } | null;
   campanas: Campana[];
   piezas: Pieza[];
   evaluaciones: Evaluacion[];
@@ -306,7 +308,7 @@ export function ProveedorDatos({ children, modoDemo = false }: { children: React
       real: true, cargando: false, error: neg ? '' : 'no se pudo leer el negocio del servidor',
       negocio: neg?.negocio ?? null,
       resumen: neg?.resumen ?? null,
-      onboarding: onb ? { hechos: onb.hechos || [], arrancado: !!onb.arrancado } : null,
+      onboarding: onb ? { hechos: onb.hechos || [], arrancado: !!onb.arrancado, datos: onb.datos || {} } : null,
       campanas: camp.campanas || [],
       piezas: piez.piezas || [],
       evaluaciones: eval_.evaluaciones || [],

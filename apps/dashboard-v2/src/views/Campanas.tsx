@@ -6,6 +6,7 @@ import { FlujoMiroFish } from '../components/FlujoMiroFish';
 import { Stepper, IngestaManual, Galeria, PASOS_CAMPANA, type PasoCampana } from '../components/CampanaPasos';
 import { MotorEnVivo } from '../components/MotorEnVivo';
 import { EnLinea } from '../components/EnLinea';
+import { PRESUPUESTOS } from '../data/onboarding';
 import { CampanaViva } from '../components/CampanaViva';
 import { I_Megaphone, I_Check, I_Refresh, I_Vote, I_File, I_Zap, I_Trend, I_Eye, I_Robot, I_Play, I_Upload, I_Pause, I_Plus } from '../components/icons';
 import type { Vista } from '../components/Layout';
@@ -145,6 +146,17 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
     ? `${(conRetorno.reduce((s, c) => s + roasNum(c.roas), 0) / conRetorno.length).toFixed(1).replace('.', ',')}x`
     : '—';
   const [paso, setPaso] = useState<PasoCampana>(1);
+  // Las decisiones de la cuenta salen del onboarding: una sola fuente para el motor y el panel.
+  const decisiones = (d.onboarding?.datos ?? {}) as Record<string, unknown>;
+  /** Guarda una decisión en el onboarding, con su aviso: se puede cambiar cuando quiera. */
+  const decidir = (campo: string, etiqueta: string, valor: string, multi?: boolean) => {
+    const actual = decisiones[campo];
+    const nuevo = multi
+      ? (Array.isArray(actual) ? (actual.includes(valor) ? actual.filter(x => x !== valor) : [...actual, valor]) : [valor])
+      : valor;
+    void d.guardar({ datos: { [campo]: nuevo } });
+    setToast(`${etiqueta}: ${Array.isArray(nuevo) ? (nuevo.join(', ') || 'ninguno') : String(nuevo)}`);
+  };
   const [manual, setManual] = useState(false);
   // --- Lo que un botón cambia en la pantalla. Nada de avisos que se van solos: la campaña se muda
   // de lista, el presupuesto cambia en la fila y en el gráfico, el contador sube, y cada acción deja
@@ -466,6 +478,53 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
                   {manual ? <><I_Robot size={13} /> Mejor que lo haga Sinkroo</> : <><I_Upload size={13} /> Ya tengo todo listo</>}
                 </Button>
               </div>
+            </div>
+          </Card>
+
+
+          {/* ---------- LAS DECISIONES RÁPIDAS: cómo trabaja su cuenta ----------
+              Es lo mismo que se contesta en Primeros pasos, pero a un toque desde acá. Arranca en
+              Automático: si el negocio no eligió nada, el sistema decide y crea, y él aprueba. Cada
+              decisión se guarda en el onboarding: el motor y el panel leen de ahí, no de dos sitios. */}
+          <Card
+            title={<span className="row" style={{ gap: 8 }}><I_Robot size={14} style={{ color: 'var(--purple3)' }} /> Cómo trabaja su cuenta</span>}
+            action={<Badge tone="purple">{String(decisiones.modo || 'Automático')}</Badge>}
+          >
+            <div className="bs" style={{ marginBottom: 12 }}>
+              El motor usa esto para decidir, y se puede cambiar cuando quiera. <b>Empieza en Automático:</b> el sistema elige el tipo de publicación y de campaña, lo crea, lo prueba en MiroFish y usted solo aprueba.
+            </div>
+            {([
+              { k: 'modo', label: 'Quién decide', ops: ['Automático', 'Compartido', 'Manual'], ayuda: 'Automático: el sistema elige y crea, y usted aprueba. Compartido: hace solo lo reversible. Manual: usted arma todo.' },
+              { k: 'presupuesto', label: 'Cuánto invertir por día en campañas', ops: PRESUPUESTOS, ayuda: 'Es el techo del gasto en la red. Publicar en sus redes no toca este dinero.' },
+              { k: 'canales', label: 'Dónde quiere que trabaje', ops: ['WhatsApp', 'Instagram', 'Facebook', 'TikTok'], multi: true, ayuda: 'WhatsApp cierra la conversación; las redes llevan la gente a ella.' },
+              { k: 'publicaciones_semana', label: 'Cuánto quiere publicar en sus redes', ops: ['1 a 2 por semana', '3 a 5 por semana', '6 a 10 por semana', 'Que lo decida el sistema'], ayuda: 'Contenido propio, sin pauta.' },
+              { k: 'contenido_diario', label: 'Publicación diaria de contenido', ops: ['Sí: mantengan mis redes activas', 'No: solo cuando haya campaña'], ayuda: 'Con «sí», el sistema propone piezas cada semana aunque no haya campaña encendida.' },
+            ] as { k: string; label: string; ops: string[]; multi?: boolean; ayuda: string }[]).map(g => {
+              const actual = decisiones[g.k];
+              const sel = (op: string) => Array.isArray(actual) ? actual.includes(op) : actual === op;
+              return (
+                <div key={g.k} style={{ marginBottom: 14 }}>
+                  <div className="bs" style={{ marginBottom: 6 }}>
+                    <b>{g.label}</b>{' '}
+                    {!actual && <span className="tiny muted">· sin definir: el motor trabaja en Automático y decide él</span>}
+                  </div>
+                  <div className="chip-grid" style={{ gap: 8 }}>
+                    {g.ops.map(op => (
+                      <span
+                        key={op}
+                        className={`chip${sel(op) ? ' sel' : ''}`}
+                        title={`${g.ayuda} Se guarda en Primeros pasos y se puede cambiar cuando quiera.`}
+                        onClick={() => decidir(g.k, g.label, op, g.multi)}
+                      >{op}</span>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+            <div className="acc-why">
+              <b>El costo no es el mismo, y por eso van separados:</b> una <b>campaña</b> gasta su presupuesto por día en la red.
+              Una <b>publicación en sus redes</b> no gasta pauta: consume los créditos del plan (producir, probar en MiroFish y medir).
+              Así se ve de una si lo que quiere es campaña, contenido diario, o las dos.
             </div>
           </Card>
 
