@@ -67,8 +67,8 @@ export async function authRoutes(app: FastifyInstance) {
     // con su motivo, así el saldo y su historia nunca se contradicen.
     await execute(
       `INSERT INTO movimientos_creditos (business_id, delta, motivo, detalle, saldo)
-       VALUES ($1, $2, 'bienvenida', 'Créditos de bienvenida: ' || $2::text, $2)`,
-      [negocioId, CREDITOS_PLAN],
+       VALUES ($1, $2, 'bienvenida', $3, $2)`,
+      [negocioId, CREDITOS_PLAN, `Créditos de bienvenida: ${CREDITOS_PLAN}`],
     );
 
     const token = await abrirSesion(user[0].id);
