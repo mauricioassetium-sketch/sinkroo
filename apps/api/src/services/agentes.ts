@@ -34,6 +34,7 @@ export const AGENTES = [
   { id: 'sol', nombre: 'Sol', oficio: 'Medición y modelo' },
   { id: 'rumi', nombre: 'Rumi', oficio: 'Conversaciones' },
   { id: 'iris', nombre: 'Iris', oficio: 'Arte y prompts' },
+  { id: 'nova', nombre: 'Nova', oficio: 'Formatos y tendencias' },
 ];
 
 /** Cómo se identifica el motor ante OpenStreetMap: Overpass y Nominatim lo exigen y limitan por IP. */
@@ -106,6 +107,52 @@ async function pedirJson(url: string, ms = 25000): Promise<any> {
     if (!r.ok) throw new Error(`la fuente respondió ${r.status}`);
     return await r.json();
   } finally { clearTimeout(t); }
+}
+
+// ---------------------------------------------------------------------------------------------
+// LAS TENDENCIAS POR PAÍS (Nova). Se leen del RSS público de tendencias de búsqueda, por país, sin
+// llave ni cuenta. Devuelve los temas del día y en qué países aparecen: eso es lo que permite
+// distinguir lo LOCAL (un solo país) de lo REGIONAL (varios del mismo idioma/mercado) y lo GLOBAL
+// (aparece también fuera de la región). Y como cada corrida se guarda, se ve al día siguiente qué
+// temas eran noticia de un día y cuáles siguen: sin histórico no se distingue tendencia de ruido.
+// ---------------------------------------------------------------------------------------------
+
+/** Los países que se miran para poder comparar: la región del negocio y dos fuera de ella. */
+export const GEOS_TENDENCIA = ['CO', 'MX', 'AR', 'BR', 'ES', 'US'];
+
+export type TemaTendencia = { tema: string; paises: string[]; alcance: string; toca_el_rubro: boolean };
+
+export async function leerTendencias(geos: string[] = GEOS_TENDENCIA, palabrasRubro: string[] = []) {
+  const porTema = new Map<string, Set<string>>();
+  const fallos: string[] = [];
+  await Promise.all(geos.map(async (g) => {
+    try {
+      const xml = await fetch(`https://trends.google.com/trending/rss?geo=${g}`, {
+        headers: { 'User-Agent': UA, Accept: 'application/rss+xml, text/xml' },
+      }).then(r => { if (!r.ok) throw new Error(`${r.status}`); return r.text(); });
+      for (const m of xml.matchAll(/<title>(?:<!\[CDATA\[)?(.*?)(?:\]\]>)?<\/title>/g)) {
+        const tema = m[1].trim();
+        if (!tema || /daily search trends/i.test(tema)) continue;
+        if (!porTema.has(tema)) porTema.set(tema, new Set());
+        porTema.get(tema)!.add(g);
+      }
+    } catch (e) { fallos.push(`${g}: ${String((e as Error).message).slice(0, 24)}`); }
+  }));
+
+  const america = new Set(['CO', 'MX', 'AR', 'BR']);
+  const fuera = new Set(['ES', 'US']);
+  const temas: TemaTendencia[] = [...porTema.entries()].map(([tema, set]) => {
+    const paises = [...set];
+    const enRegion = paises.some(p => america.has(p));
+    const enFuera = paises.some(p => fuera.has(p));
+    const alcance = paises.length >= 3 && enFuera && enRegion ? 'global o de varios mercados'
+      : paises.length >= 2 && enRegion ? 'regional (varios países de la región)'
+        : 'local (un solo país)';
+    const t = tema.toLowerCase();
+    return { tema, paises, alcance, toca_el_rubro: palabrasRubro.some(p => p.length > 3 && t.includes(p)) };
+  }).sort((a, b) => b.paises.length - a.paises.length || a.tema.localeCompare(b.tema));
+
+  return { temas, geos, fallos };
 }
 
 export type MapaReal =
@@ -486,6 +533,114 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
     } : {
       sin_fuente: 'falta la analítica visual del rubro (colores, tipografía, encuadre y plazas) para poder armar el prompt',
       fuente: 'sin fuente',
+    },
+  });
+
+  // ---------------- NOVA · formatos y tendencias (lo cultural) ----------------
+  // (a) LOS FORMATOS QUE EL MERCADO YA PREMIÓ. No la opinión de nadie: lo que está corriendo y aguanta.
+  const formatos = new Map<string, number>();
+  for (const p of piezas) {
+    const k = `${p.tipo || 'sin tipo'} · ${p.formato || 'sin formato'} · ${p.estilo || 'sin estilo'}`;
+    formatos.set(k, (formatos.get(k) || 0) + 1);
+  }
+  // Repetir molde es la señal del que encontró su formato: se cuenta por anunciante.
+  const moldes = new Map<string, Map<string, number>>();
+  for (const p of piezas) {
+    const a = String(p.anunciante || ''); if (!a) continue;
+    if (!moldes.has(a)) moldes.set(a, new Map());
+    const m = moldes.get(a)!;
+    const k = [p.tipo, p.formato, p.estilo].filter(Boolean).join(' · ') || 'sin molde';
+    m.set(k, (m.get(k) || 0) + 1);
+  }
+  const repiteMolde = [...moldes.entries()].map(([anunciante, m]) => {
+    const [molde, veces] = [...m.entries()].sort((x, y) => y[1] - x[1])[0];
+    return { anunciante, piezas: [...m.values()].reduce((s, v) => s + v, 0), molde_que_repite: molde, veces };
+  }).filter(r => r.veces >= 2).sort((a, b) => b.veces - a.veces);
+
+  // (b) LAS SERIES: cuando la misma palabra se repite en dos piezas del mismo anunciante, hay capítulo.
+  const veto = new Set(['http', 'https', 'whatsapp', 'alisado', 'keratina', 'cabello', 'flores', 'ramos', 'este', 'esta', 'para', 'como', 'sobre', 'desde', 'nuestro', 'nuestra', 'siempre', 'todos']);
+  const series: { anunciante: string; palabra: string; en_piezas: number; molde: string }[] = [];
+  for (const [anunciante, m] of moldes) {
+    const suyas = piezas.filter(p => p.anunciante === anunciante);
+    if (suyas.length < 2) continue;
+    const textos = suyas.map(p => `${p.gancho || ''} ${p.texto_sobre_imagen || ''} ${(p.hashtags || []).join(' ')}`.toLowerCase());
+    const cuenta = new Map<string, number>();
+    for (const w of new Set(textos.join(' ').split(/[^a-záéíóúñ]+/).filter(x => x.length >= 4))) {
+      if (veto.has(w)) continue;
+      const n = textos.filter(c => c.includes(w)).length;
+      if (n >= 2) cuenta.set(w, n);
+    }
+    const top = [...cuenta.entries()].sort((x, y) => y[1] - x[1])[0];
+    if (top) series.push({ anunciante, palabra: top[0], en_piezas: top[1], tipo: 'misma palabra en varias piezas', molde: [...m.keys()][0] || '' });
+    // Y la serie que casi nadie ve: la MISMA historia contada con otra clienta cada vez. No comparten
+    // palabras, comparten el molde y el nombre propio de una persona distinta en cada pieza.
+    const nombres = suyas.map(p => {
+      const t = `${p.gancho || ''} ${p.texto_sobre_imagen || ''} ${p.nota || ''}`;
+      const mayus = (t.match(/\b([A-ZÁÉÍÓÚÑ][a-záéíóúñ]{3,})\b/g) || []);
+      return mayus.filter(n => !veto.has(n.toLowerCase()));
+    }).filter(l => l.length);
+    if (nombres.length >= 2 && new Set(nombres.map(l => l[0].toLowerCase())).size >= 2) {
+      series.push({
+        anunciante, palabra: nombres.map(l => l[0]).join(' / '), en_piezas: nombres.length,
+        tipo: 'serie de testimonios: una clienta distinta por pieza, el mismo molde',
+        molde: [...m.keys()][0] || '',
+      });
+    }
+  }
+
+  // (c) LO QUE EL PAÍS ESTÁ HABLANDO HOY, y si toca el rubro. El alcance sale de en qué países aparece:
+  // un solo país es local; varios de la región, regional; y si además sale fuera de la región, no es cosa nuestra.
+  const palabras = [...new Set(`${ctx.rubro} ${ctx.nombre} ${ctx.descripcion}`.toLowerCase().split(/[^a-záéíóúñ]+/).filter(w => w.length > 4))];
+  const tend = await leerTendencias(GEOS_TENDENCIA, palabras);
+  const tocan = tend.temas.filter(t => t.toca_el_rubro);
+  let recurrentes: { tema: string; dias: number }[] = [];
+  try {
+    const rr = await db.query(
+      `SELECT tema, count(DISTINCT fecha)::int AS dias FROM tendencias
+        WHERE tema = ANY($1::text[]) GROUP BY tema HAVING count(DISTINCT fecha) > 1 ORDER BY dias DESC, tema LIMIT 6`,
+      [tend.temas.map(t => t.tema)]);
+    recurrentes = rr.rows as any[];
+  } catch { /* primera corrida: todavía no hay histórico de tendencias */ }
+  try {
+    for (const t of tend.temas) {
+      await db.query(
+        `INSERT INTO tendencias (business_id, geo, tema, alcance, toca_el_rubro, paises, fecha)
+         VALUES ($1, $2, $3, $4, $5, $6, current_date)
+         ON CONFLICT (business_id, tema, fecha) DO NOTHING`,
+        [ctx.businessId, ctx.zona || '', t.tema, t.alcance, t.toca_el_rubro, t.paises]);
+    }
+  } catch { /* si el guardado falla, la tarea igual se entrega */ }
+
+  tareas.push({
+    agente: 'nova', orden: 9,
+    que: piezas.length || tend.temas.length
+      ? `Leyó ${piezas.length} formatos del mercado y ${tend.temas.length} temas que ${ctx.zona || 'el país'} está hablando hoy`
+      : 'No pudo leer formatos ni tendencias y lo dice',
+    resultado: {
+      fuente_tipo: 'los formatos de las piezas vivas del informe + el RSS público de tendencias por país (CO, MX, AR, BR, ES, US)',
+      formatos_del_mercado: [...formatos.entries()].map(([formato, n]) => ({ formato, piezas: n })).sort((a, b) => b.piezas - a.piezas),
+      quien_repite_molde: repiteMolde,
+      series_detectadas: series,
+      temas_de_hoy: tend.temas.slice(0, 20).map(t => ({ tema: t.tema, paises: t.paises, alcance: t.alcance })),
+      tocan_el_rubro: tocan.length ? tocan : 'ninguno de los temas de hoy toca su rubro (lo normal: las tendencias del día son noticia y deporte)',
+      recurrentes_de_otros_dias: recurrentes.length ? recurrentes : 'primera corrida: el histórico empieza hoy (mañana ya se ve qué tema es de un día y qué tema sigue)',
+      alcance_cultural: {
+        local: tend.temas.filter(t => t.alcance.startsWith('local')).length,
+        regional: tend.temas.filter(t => t.alcance.startsWith('regional')).length,
+        global: tend.temas.filter(t => t.alcance.startsWith('global')).length,
+        como_se_lee: 'sale de en qué países aparece el mismo tema: uno solo = local; varios de la región = regional; y si aparece también en España o Estados Unidos, no es cosa nuestra.',
+      },
+      // LO IMPORTANTE: cómo se aplica, no el dato suelto.
+      como_aplicarlo: [
+        'Lo que su mercado YA sostiene manda: un formato nuevo se monta encima de eso (celular en el lugar real, texto sobre la imagen, cierre por WhatsApp), no lo reemplaza.',
+        'Un formato que aguanta en otro país no se copia por moda: se propone, se juzga en MiroFish con los 5 jueces y los 500 del público, y solo entonces se gasta.',
+        'Lo cultural se usa como contexto y como calendario (de qué está hablando la gente estos días), no como el mensaje central del negocio.',
+        'Repetir molde es la señal del que encontró su formato: el que aguanta meses repite; el que cambia todo el tiempo no encontró el suyo.',
+        'Las series nacen solas cuando el mismo nombre se repite: si la clienta vuelve, hay capítulo (eso ya pasa en su rubro).',
+      ],
+      falta: tend.fallos.length ? `países que no respondieron: ${tend.fallos.join(' · ')}` : '',
+      porque: 'Estar al día no es acumular titulares: es saber qué formato aguanta en su mercado, qué se repite, y qué de lo que se habla afuera aplica acá y qué no.',
+      fuente: `${inf?.fuente || 'sin informe del rubro'} + tendencias por país (RSS público)`,
     },
   });
 

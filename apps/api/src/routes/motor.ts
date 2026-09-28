@@ -245,6 +245,23 @@ export async function motorRoutes(app: FastifyInstance, db: Pool) {
   });
 
   /**
+   * LAS TENDENCIAS que leyó Nova: temas del día por país, con su alcance (local, regional o de varios
+   * mercados), si tocan el rubro del negocio y en qué países aparecen. Con el histórico acumulado se ve
+   * qué tema era noticia de un día y cuál sigue.
+   */
+  app.get('/api/tendencias', async (req, reply) => {
+    const u = await exigirSesion(req, reply); if (!u || !u.business_id) return;
+    const r = await db.query(
+      `SELECT tema, alcance, toca_el_rubro, paises, fecha, count(DISTINCT fecha) OVER (PARTITION BY tema)::int AS dias
+         FROM tendencias WHERE business_id = $1 AND fecha >= current_date - interval '30 days'
+        ORDER BY fecha DESC, array_length(paises, 1) DESC, tema LIMIT 80`, [u.business_id]);
+    return {
+      tendencias: r.rows,
+      como_se_lee: 'alcance: un solo país es local; varios de la región es regional; si aparece también en España o Estados Unidos, no es cosa nuestra.',
+    };
+  });
+
+  /**
    * LOS PROMPTS DE GENERACIÓN del negocio: el contrato que va a leer el generador cuando exista, con la
    * traza de cómo se armó cada campo (qué dato del mercado entró en qué parte del prompt).
    */

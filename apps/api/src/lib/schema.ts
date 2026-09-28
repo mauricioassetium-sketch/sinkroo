@@ -266,6 +266,24 @@ export async function migrate(db: Pool): Promise<void> {
 
     CREATE INDEX IF NOT EXISTS idx_mercado_informes ON mercado_informes(ciudad, generado_at DESC);
 
+    -- EL HISTÓRICO DE TENDENCIAS (Nova): qué se está hablando en cada país y en qué países aparece el
+    -- mismo tema. Con esto se distingue lo local de lo regional y de lo global, y al día siguiente se ve
+    -- qué tema era noticia de un día y cuál sigue: sin histórico, tendencia y ruido son lo mismo.
+    CREATE TABLE IF NOT EXISTS tendencias (
+      id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      business_id    UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+      geo            TEXT NOT NULL DEFAULT '',
+      tema           TEXT NOT NULL DEFAULT '',
+      alcance        TEXT NOT NULL DEFAULT '',
+      toca_el_rubro  BOOLEAN NOT NULL DEFAULT false,
+      paises         TEXT[] NOT NULL DEFAULT '{}',
+      fecha          DATE NOT NULL DEFAULT current_date,
+      created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+      UNIQUE (business_id, tema, fecha)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_tendencias_business ON tendencias(business_id, fecha DESC);
+
     -- LOS PROMPTS DE GENERACIÓN: lo que el equipo de arte entrega para cada pieza y cada plaza. Todavía
     -- no hay generador de imagen ni de video conectado, así que esto es el CONTRATO: el día que exista,
     -- genera con esto y no con una idea suelta. Guarda el prompt (en inglés, listo para pegar), el
