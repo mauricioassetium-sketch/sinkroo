@@ -155,6 +155,40 @@ export async function leerTendencias(geos: string[] = GEOS_TENDENCIA, palabrasRu
   return { temas, geos, fallos };
 }
 
+/**
+ * EL FORMATO RECOMENDADO POR PLAZA (Nova). No es gusto: es el molde que más se repite entre las piezas
+ * que el mercado sostiene, con sus días sumados de estar activo y los anunciantes que lo usan. Iris
+ * construye el prompt sobre esto, y lo cita en su traza: así el prompt no sale con "un formato", sale
+ * con el formato que el mercado ya premió en esa plaza.
+ */
+export function recomendarFormatos(piezas: any[], plazas: any[]) {
+  return (plazas ?? []).map((pl: any) => {
+    const esVideo = /video/i.test(String(pl.formato || ''));
+    const candidatas = (piezas ?? []).filter(p => (esVideo ? /video/i.test(String(p.tipo || '')) : /imagen/i.test(String(p.tipo || ''))));
+    const porMolde = new Map<string, { n: number; dias: number; anunciantes: Set<string> }>();
+    for (const p of candidatas) {
+      const k = [p.tipo, p.formato, p.estilo].filter(Boolean).join(' · ');
+      if (!k) continue;
+      const cur = porMolde.get(k) || { n: 0, dias: 0, anunciantes: new Set<string>() };
+      cur.n++; cur.dias += Number(p.dias) || 0; cur.anunciantes.add(String(p.anunciante || ''));
+      porMolde.set(k, cur);
+    }
+    const [molde, d] = [...porMolde.entries()].sort((a, b) => b[1].n - a[1].n || b[1].dias - a[1].dias)[0]
+      || ['', { n: 0, dias: 0, anunciantes: new Set<string>() }];
+    return {
+      plaza: pl.plaza,
+      tipo: esVideo ? 'video' : 'imagen',
+      formato_recomendado: molde || String(pl.formato || ''),
+      piezas_que_lo_sostienen: d.n,
+      anunciantes_que_lo_repiten: [...d.anunciantes],
+      dias_sostenidos: d.dias,
+      por_que: molde
+        ? `es el molde que el mercado sostiene en esta plaza: ${d.n} ${d.n === 1 ? 'pieza' : 'piezas'} de ${[...d.anunciantes].join(', ')} y ${d.dias} días sumados de estar activas`
+        : 'no hay piezas medidas en esta plaza: se usa el formato que el informe describe para ella',
+    };
+  });
+}
+
 export type MapaReal =
   | { ok: true; ciudad: string; lugares: number; conNombre: number; nombres: string[]; zonas: { z: string; n: number }[]; oficio: string; url: string; caja: string; porNombre: boolean }
   | { ok: false; falta: string };
@@ -273,6 +307,8 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
   const saturacion = (inf?.informe?.saturacion ?? []) as string[];
   /** La analítica visual del mercado: colores, tipografía, encuadre y qué pega en cada plaza. */
   const av = (inf?.informe?.analitica_visual ?? null) as any;
+  /** EL FORMATO QUE NOVA RECOMIENDA POR PLAZA: lo que Iris usa para armar el prompt. */
+  const formatosRecomendados = recomendarFormatos(piezas, av?.por_plaza ?? []);
 
   const corrida = await db.query(
     `INSERT INTO corridas (business_id, motivo, estado, creditos) VALUES ($1, $2, 'terminada', 0)
@@ -500,14 +536,14 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
   // entregar el PROMPT COMPLETO —colores, tipografía, formato, escenas, UGC o toma de producto— con la
   // traza de cómo se armó cada campo con lo que se midió en el mercado. Queda guardado como contrato:
   // el día que haya generador conectado, genera con esto.
-  const paquete = promptsDelInforme(inf ?? {});
+  const paquete = promptsDelInforme(inf ?? {}, formatosRecomendados);
   let promptsGuardados = 0;
   if (paquete) {
     try { promptsGuardados = await guardarPrompts(db, ctx.businessId, paquete, corridaId); } catch { promptsGuardados = 0; }
   }
   const tipos = paquete ? [...new Set(paquete.prompts.map(p => p.tipo))].join(' y ') : '';
   tareas.push({
-    agente: 'iris', orden: 8,
+    agente: 'iris', orden: 9,
     que: paquete
       ? `Armó ${paquete.prompts.length} prompts de generación (${tipos}) con los colores, la tipografía, el formato y el estilo medidos en su mercado`
       : 'No pudo armar los prompts y lo dice: falta la analítica visual del rubro',
@@ -612,13 +648,16 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
   } catch { /* si el guardado falla, la tarea igual se entrega */ }
 
   tareas.push({
-    agente: 'nova', orden: 9,
+    agente: 'nova', orden: 8,
     que: piezas.length || tend.temas.length
       ? `Leyó ${piezas.length} formatos del mercado y ${tend.temas.length} temas que ${ctx.zona || 'el país'} está hablando hoy`
       : 'No pudo leer formatos ni tendencias y lo dice',
     resultado: {
       fuente_tipo: 'los formatos de las piezas vivas del informe + el RSS público de tendencias por país (CO, MX, AR, BR, ES, US)',
       formatos_del_mercado: [...formatos.entries()].map(([formato, n]) => ({ formato, piezas: n })).sort((a, b) => b.piezas - a.piezas),
+      // LO QUE ENTREGA: el formato recomendado de cada plaza, que es lo que Iris usa para armar el prompt.
+      formatos_recomendados: formatosRecomendados,
+      el_que_iris_usa: 'el prompt de cada plaza se arma sobre este formato, y lo cita en su traza',
       quien_repite_molde: repiteMolde,
       series_detectadas: series,
       temas_de_hoy: tend.temas.slice(0, 20).map(t => ({ tema: t.tema, paises: t.paises, alcance: t.alcance })),
@@ -630,6 +669,18 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
         global: tend.temas.filter(t => t.alcance.startsWith('global')).length,
         como_se_lee: 'sale de en qué países aparece el mismo tema: uno solo = local; varios de la región = regional; y si aparece también en España o Estados Unidos, no es cosa nuestra.',
       },
+      // (d) EL CALENDARIO: de todo el histórico de tendencias, lo que toca el rubro y se repite varios
+      // días. Un tema de un solo día es noticia; uno que se repite es una ocasión que vale la pena usar.
+      calendario_sugerido: await (async () => {
+        try {
+          const c = await db.query(
+            `SELECT tema, count(DISTINCT fecha)::int AS dias, max(fecha) AS ultima, min(paises) AS ejemplo
+               FROM tendencias
+              WHERE business_id = $1 AND toca_el_rubro AND fecha >= current_date - interval '14 days'
+              GROUP BY tema ORDER BY dias DESC, ultima DESC LIMIT 6`, [ctx.businessId]);
+          return c.rows.length ? c.rows : 'ningún tema de los últimos 14 días toca su rubro (lo normal: las tendencias del día son noticia y deporte)';
+        } catch { return 'sin histórico de tendencias todavía'; }
+      })(),
       // LO IMPORTANTE: cómo se aplica, no el dato suelto.
       como_aplicarlo: [
         'Lo que su mercado YA sostiene manda: un formato nuevo se monta encima de eso (celular en el lugar real, texto sobre la imagen, cierre por WhatsApp), no lo reemplaza.',

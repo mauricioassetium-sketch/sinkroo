@@ -96,6 +96,8 @@ export function promptDePieza(datos: {
   guion?: string[];
   /** El estilo de la pieza que el mercado sostiene («ugc de cliente (celular en el salón)», «produccion de marca»…). */
   estiloDelMercado?: string;
+  /** El formato que Nova recomienda para esta plaza, con su porqué y cuántas piezas lo sostienen. */
+  formatoRecomendado?: { formato_recomendado: string; por_que: string; piezas_que_lo_sostienen: number; dias_sostenidos?: number; anunciantes_que_lo_repiten?: string[] } | null;
 }): PromptGeneracion {
   const { pieza, plaza, av, referencia } = datos;
   // El guion REAL de la pieza propuesta: de ahí salen las escenas y las frases que van en pantalla.
@@ -239,6 +241,13 @@ export function promptDePieza(datos: {
           : 'pide toma de producto o resultado, sin persona en cuadro y con luz natural',
       },
       {
+        campo: 'formato (el que Nova recomienda)',
+        sale_de: datos.formatoRecomendado
+          ? `el formato recomendado para «${plaza.plaza}»: ${datos.formatoRecomendado.formato_recomendado} · ${datos.formatoRecomendado.por_que}`
+          : `el formato de la plaza «${plaza.plaza}» → ${plaza.formato} (sin recomendación medida todavía)`,
+        como_se_usa: 'es el molde sobre el que se arma el prompt: no se elige por gusto, se elige el que el mercado ya premió en esa plaza',
+      },
+      {
         campo: 'aspect_ratio, resolución y escenas',
         sale_de: `el formato de la plaza «${plaza.plaza}» → ${plaza.formato}`,
         como_se_usa: vertical
@@ -312,7 +321,7 @@ export function promptDePieza(datos: {
 /** Los prompts de todas las plazas, para la pieza propuesta del informe. */
 export function promptsDelInforme(inf: {
   informe?: any; fuente?: string; rubro?: string; ciudad?: string;
-}): { pieza: string; prompts: PromptGeneracion[] } | null {
+}, formatosRecomendados: any[] = []): { pieza: string; prompts: PromptGeneracion[] } | null {
   const i = inf?.informe;
   const propuesta = (i?.propuestas ?? [])[0] as any;
   const plazas = (i?.analitica_visual?.por_plaza ?? []) as Plaza[];
@@ -327,6 +336,8 @@ export function promptsDelInforme(inf: {
   return {
     pieza,
     prompts: plazas.map(plaza => promptDePieza({
+      // El formato que Nova recomienda para esta plaza (el molde que más se repite entre los que aguantan).
+      formatoRecomendado: (formatosRecomendados ?? []).find(f => f.plaza === plaza.plaza) ?? null,
       guion: (propuesta.guion ?? []) as string[],
       pieza, plaza, av: i?.analitica_visual, creadoras: i?.creadoras, huecos: i?.huecos,
       cuidado: i?.cuidado, fuente: inf?.fuente || '', referencia,
