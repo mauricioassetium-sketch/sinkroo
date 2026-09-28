@@ -204,7 +204,7 @@ export async function seguridadRoutes(app: FastifyInstance) {
       });
     }
 
-    const token = await crearVerificacion(u.business_id, 'pin');
+    const { token } = await crearVerificacion(u.business_id, 'pin');
     const enlace = enlaceDe('/api/seguridad/pin/restablecer', token);
     const carta = restablecerPin({ negocio, enlace });
     const salio = await enviar({

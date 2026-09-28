@@ -1,4 +1,4 @@
-import { createHash, randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
+import { createHash, randomBytes, randomInt, scryptSync, timingSafeEqual } from 'node:crypto';
 import { execute, query } from '../lib/db.js';
 
 // =============================================================================================
@@ -32,6 +32,13 @@ export const HORAS_VENCIMIENTO = 24;
 /** 32 bytes al azar: es el token que viaja en el enlace. */
 export const tokenDeVerificacion = () => randomBytes(32).toString('hex');
 
+/**
+ * EL PIN DE 6 DÍGITOS: el mismo permiso que el enlace, pero para escribirlo en el panel sin salir a
+ * abrir el correo. Se guarda con la misma protección que el token (huella con sal) y se comprueba
+ * contra la única fila pendiente de ese negocio y ese tipo.
+ */
+export const codigoDeVerificacion = () => String(randomInt(0, 1_000_000)).padStart(6, '0');
+
 const buscador = (token: string) => createHash('sha256').update(token).digest('hex');
 
 /** La huella con sal del token, igual que una clave: en la base no queda el token. */
@@ -52,15 +59,37 @@ const coincide = (token: string, guardada: string): boolean => {
  * Crea el enlace y devuelve el token EN CLARO (una sola vez: es el que se manda en el correo).
  * Antes de crearlo borra los pendientes del mismo negocio y del mismo tipo: un enlace vigente a la vez.
  */
-export async function crearVerificacion(businessId: string, tipo: TipoVerificacion): Promise<string> {
+export async function crearVerificacion(businessId: string, tipo: TipoVerificacion): Promise<{ token: string; codigo: string }> {
   const token = tokenDeVerificacion();
+  const codigo = codigoDeVerificacion();
   await execute('DELETE FROM verificaciones WHERE business_id = $1 AND tipo = $2 AND usos = 0', [businessId, tipo]);
   await execute(
-    `INSERT INTO verificaciones (business_id, tipo, token_hash, busqueda, expira, usos)
-     VALUES ($1, $2, $3, $4, now() + ($5 || ' hours')::interval, 0)`,
-    [businessId, tipo, huellaConSal(token), buscador(token), String(HORAS_VENCIMIENTO)],
+    `INSERT INTO verificaciones (business_id, tipo, token_hash, busqueda, expira, usos, codigo_hash)
+     VALUES ($1, $2, $3, $4, now() + ($5 || ' hours')::interval, 0, $6)`,
+    [businessId, tipo, huellaConSal(token), buscador(token), String(HORAS_VENCIMIENTO), huellaConSal(codigo)],
   );
-  return token;
+  return { token, codigo };
+}
+
+/**
+ * EL PIN ESCRITO EN EL PANEL: comprueba el código contra la fila pendiente y la marca usada.
+ * Solo hay una fila pendiente por negocio y tipo (crear una nueva borra las anteriores), así que no
+ * hace falta índice de búsqueda: se lee esa fila y se compara la huella.
+ */
+export async function usarCodigo(businessId: string, tipo: TipoVerificacion, codigo: string): Promise<ResultadoVerificacion> {
+  const limpio = String(codigo || '').replace(/\D/g, '').slice(0, 6);
+  if (limpio.length !== 6) return { ok: false, codigo: 'token_falta', motivo: 'el pin son 6 dígitos' };
+  const filas = await query<{ id: string; codigo_hash: string; expira: string }>(
+    `SELECT id, codigo_hash, expira FROM verificaciones
+      WHERE business_id = $1 AND tipo = $2 AND usos = 0
+      ORDER BY created_at DESC LIMIT 1`,
+    [businessId, tipo]);
+  const fila = filas[0];
+  if (!fila || !fila.codigo_hash) return { ok: false, codigo: 'token_invalido', motivo: 'no hay un pin pendiente: pida uno nuevo' };
+  if (new Date(fila.expira) < new Date()) return { ok: false, codigo: 'token_vencido', motivo: 'el pin venció a las 24 horas: pida uno nuevo' };
+  if (!coincide(limpio, fila.codigo_hash)) return { ok: false, codigo: 'token_invalido', motivo: 'ese pin no es el que le mandamos' };
+  await execute('UPDATE verificaciones SET usos = usos + 1 WHERE id = $1', [fila.id]);
+  return { ok: true, business_id: businessId };
 }
 
 export type ResultadoVerificacion = {

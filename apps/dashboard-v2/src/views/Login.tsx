@@ -4,7 +4,7 @@ import {
   SinkrooMark, I_Mail, I_Lock, I_Check, I_ArrowRight, I_User, I_Shield, I_Sparkle, I_Clock,
 } from '../components/icons';
 import {
-  crearCuenta, entrar as entrarApi, hayApi, leerSeguridad, guardarToken,
+  baseApi, crearCuenta, entrar as entrarApi, hayApi, leerSeguridad, guardarToken, token,
   correoConfigurado, faltaDeCorreo, faltaEnlaces,
   type AvisoDeCorreo, type ErrorApi, type EstadoSeguridad,
   quiereCrearCuenta,
@@ -79,6 +79,11 @@ export function PantallaLogin({ onEntrar, vuelta, sesionAbierta }: {
   // existe sin back: en la demostración el formulario es el de siempre, tal cual estaba.
   const conBack = hayApi();
   const [paso, setPaso] = useState<'form' | 'correo'>('form');
+  // El pin que llega al correo: se escribe acá y se confirma sin salir del panel.
+  const [pin, setPin] = useState('');
+  const [pinError, setPinError] = useState('');
+  const [pinOk, setPinOk] = useState('');
+  const [confirmandoPin, setConfirmandoPin] = useState(false);
   const [cuentaCreada, setCuentaCreada] = useState<{ nombre: string; email: string } | null>(null);
   /** Lo que el back dice del correo recién creado, tal cual lo respondió el registro. */
   const [correoNuevo, setCorreoNuevo] = useState<{ leido: boolean; aviso: AvisoDeCorreo | null; estado: EstadoSeguridad | null; fallo: string } | null>(null);
@@ -88,6 +93,36 @@ export function PantallaLogin({ onEntrar, vuelta, sesionAbierta }: {
     setError('');
     setEntrando(via);
     window.setTimeout(() => onEntrar({ nombre: quien.nombre, email: quien.email, via }), via === 'google' ? 900 : 550);
+  };
+
+  /** Confirmar el correo con el pin que llegó: es lo que cierra el paso 1 y da el ingreso. */
+  const confirmarPin = async () => {
+    setPinError(''); setPinOk(''); setConfirmandoPin(true);
+    try {
+      const r = await fetch(baseApi() + '/api/auth/verificar/pin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token() ? { Authorization: 'Bearer ' + token() } : {}) },
+        body: JSON.stringify({ pin }),
+      });
+      const j = await r.json().catch(() => ({} as Record<string, string>));
+      if (r.ok) { setPinOk(j?.detalle || 'su correo quedó confirmado'); setPin(''); }
+      else setPinError(j?.detalle || j?.error || `no se pudo confirmar (${r.status})`);
+    } catch { setPinError('No se pudo confirmar: el servidor no respondió.'); }
+    setConfirmandoPin(false);
+  };
+
+  /** Mandar otro pin al mismo correo. El anterior deja de servir. */
+  const reenviarPin = async () => {
+    setPinError(''); setPinOk('');
+    try {
+      const r = await fetch(baseApi() + '/api/auth/verificar/reenviar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token() ? { Authorization: 'Bearer ' + token() } : {}) },
+      });
+      const j = await r.json().catch(() => ({} as Record<string, string>));
+      if (r.ok) setPinOk('Le mandamos otro pin: mire el correo (y la carpeta de no deseados).');
+      else setPinError(j?.detalle || j?.error || `no se pudo mandar otro (${r.status})`);
+    } catch { setPinError('No se pudo mandar otro pin: el servidor no respondió.'); }
   };
 
   /** Con el back encendido, entrar y crear cuenta se resuelven contra la API de verdad. */
@@ -255,20 +290,49 @@ export function PantallaLogin({ onEntrar, vuelta, sesionAbierta }: {
                creó la cuenta. Con el correo sin configurar, la pantalla dice qué falta. */
             <>
               <div className="login-form-head">
-                <div className="login-form-t">Su cuenta quedó creada</div>
-                <Badge tone="green">paso 1 de 2</Badge>
+                <div className="login-form-t">Confirme su correo</div>
+                <Badge tone="purple">paso 1 de 2</Badge>
               </div>
 
-              <AvisoCorreoDeBienvenida email={cuentaCreada.email} correo={correoNuevo} />
+              {correoNuevo?.aviso?.enviado ? (
+                <>
+                  <div className="login-ok" style={{ marginBottom: 10 }}>
+                    <b>Le mandamos un pin de 6 dígitos a {cuentaCreada.email}.</b> Ábralo y escríbalo acá:
+                    es lo que confirma que el correo es suyo.
+                  </div>
+                  <span className="login-inp">
+                    <I_Lock size={14} />
+                    <input className="input" inputMode="numeric" autoComplete="one-time-code" maxLength={6}
+                      placeholder="123456" value={pin}
+                      title="El pin de 6 dígitos que llegó a su correo. Se confirma sin salir del panel."
+                      onChange={e => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))} />
+                  </span>
+                  {pinError && <div className="login-error">{pinError}</div>}
+                  {pinOk && <div className="login-ok"><I_Check size={13} /> <span>{pinOk}</span></div>}
+                  <Button className="login-btn" disabled={pin.length !== 6 || confirmandoPin}
+                    title="Confirma su correo con el pin que le llegó. Si no es el correcto, el sistema lo dice y puede volver a intentarlo."
+                    onClick={() => void confirmarPin()}>
+                    {confirmandoPin ? 'Confirmando…' : <>Confirmar el pin <I_Check size={14} /></>}
+                  </Button>
+                  <button type="button" className="login-link" style={{ display: 'block', margin: '10px auto 0' }}
+                    title="Manda otro pin al mismo correo. El anterior deja de servir."
+                    onClick={() => void reenviarPin()}>
+                    No me llegó: mandar otro
+                  </button>
+                </>
+              ) : (
+                <AvisoCorreoDeBienvenida email={cuentaCreada.email} correo={correoNuevo} />
+              )}
 
-              <Button className="login-btn" title="Abre el panel con la cuenta que acaba de crear"
+              <Button className="login-btn" variant="outline"
+                title="Abre el panel con la cuenta que acaba de crear. Confirmar el correo se puede hacer después, desde Cuenta y autonomía."
                 onClick={() => onEntrar({ nombre: cuentaCreada.nombre, email: cuentaCreada.email, via: 'nueva' })}>
                 Entrar a mi panel <I_ArrowRight size={14} />
               </Button>
 
               <div className="login-legal">
-                Confirmar la dirección se puede hacer cuando quiera y desde donde quiera: el enlace lo
-                trae de vuelta a este panel. El panel funciona igual mientras no esté confirmada.
+                Confirmar el correo se puede hacer ahora o después: el panel funciona igual mientras no
+                esté confirmado. El pin vence a las 24 horas y sirve una sola vez.
               </div>
             </>
           ) : (<>

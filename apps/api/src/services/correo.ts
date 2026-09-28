@@ -117,12 +117,17 @@ function boton(texto: string, enlace: string): string {
 }
 
 /** 1 · La bienvenida: se manda al crear la cuenta y trae el enlace que confirma el correo. */
-export function bienvenida(d: { negocio: string; enlace: string }): Carta {
+export function bienvenida(d: { negocio: string; enlace: string; codigo?: string }): Carta {
   const asunto = `Bienvenido a Sinkroo, ${d.negocio}`;
   const texto = [
     `Hola, ${d.negocio}:`,
     '',
     'Su cuenta en Sinkroo quedó creada y este correo es el de entrada al panel.',
+    ...(d.codigo ? [
+      `Su pin para confirmar el correo es: ${d.codigo}`,
+      'Escriba ese pin en el panel, en la pantalla que está viendo ahora mismo. Sirve igual que el enlace.',
+      '',
+    ] : []),
     'Para confirmar que el correo es suyo, abra este enlace:',
     d.enlace,
     '',
@@ -144,11 +149,16 @@ export function bienvenida(d: { negocio: string; enlace: string }): Carta {
 }
 
 /** 2 · Confirmar el correo otra vez (cuando el primero venció): sólo el enlace, bien claro. */
-export function verificarCorreo(d: { negocio: string; enlace: string }): Carta {
+export function verificarCorreo(d: { negocio: string; enlace: string; codigo?: string }): Carta {
   const asunto = `Confirme el correo de ${d.negocio}`;
   const texto = [
     `Hola, ${d.negocio}:`,
     '',
+    ...(d.codigo ? [
+      `Su pin para confirmarlo desde el panel es: ${d.codigo}`,
+      'Escriba ese pin en la pantalla que está viendo. Sirve igual que el enlace.',
+      '',
+    ] : []),
     'Este enlace confirma que este correo es suyo:',
     d.enlace,
     '',
@@ -158,6 +168,7 @@ export function verificarCorreo(d: { negocio: string; enlace: string }): Carta {
     'Sinkroo · pre-validación de anuncios con agentes',
   ].join('\n');
   const html = conMarco(`Confirme el correo de ${d.negocio}`, [
+    ...(d.codigo ? [`<b>Su pin para confirmarlo desde el panel:</b> <span style="font-size:22px;letter-spacing:3px">${d.codigo}</span>`, 'O abra este enlace:'] : []),
     'Este enlace confirma que este correo es suyo:',
     boton('Confirmar mi correo', d.enlace),
     'Vence en 24 horas y se puede usar una sola vez.',

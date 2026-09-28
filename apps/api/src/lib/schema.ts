@@ -536,6 +536,10 @@ export async function migrate(db: Pool): Promise<void> {
       created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
     );
 
+    -- El pin de 6 dígitos que llega en el mismo correo, para escribirlo en el panel: se guarda con huella
+    -- con sal, igual que el token del enlace. En la base no queda ningún pin en claro.
+    ALTER TABLE verificaciones ADD COLUMN IF NOT EXISTS codigo_hash TEXT NOT NULL DEFAULT '';
+
     CREATE INDEX IF NOT EXISTS idx_verificaciones_busqueda ON verificaciones(tipo, busqueda);
     CREATE INDEX IF NOT EXISTS idx_verificaciones_business ON verificaciones(business_id, tipo);
     CREATE UNIQUE INDEX IF NOT EXISTS idx_verificaciones_token ON verificaciones(token_hash);

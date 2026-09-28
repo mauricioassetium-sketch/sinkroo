@@ -3,9 +3,9 @@ import { execute, query } from '../lib/db.js';
 import { abrirSesion, claveCorrecta, correoNormal, exigirSesion, huellaDeClave } from '../lib/auth.js';
 import { estadoDePin } from '../lib/pin.js';
 import { responderEnlace } from '../lib/paginas.js';
-import { pasarElFreno } from '../lib/seguridad.js';
+import { exigirCuerpo, pasarElFreno } from '../lib/seguridad.js';
 import { bienvenida, enlaceDe, enviar, estadoCorreo, faltaCorreo, verificarCorreo as cartaDeVerificacion } from '../services/correo.js';
-import { crearVerificacion, negocioYCorreo, usarVerificacion } from '../services/verificaciones.js';
+import { crearVerificacion, negocioYCorreo, usarCodigo, usarVerificacion } from '../services/verificaciones.js';
 
 // =============================================================================================
 // CUENTAS — entrar, crear cuenta, salir y quién soy.
@@ -80,7 +80,13 @@ export async function authRoutes(app: FastifyInstance) {
 
     // La bienvenida con el enlace de confirmación. Se manda DESPUÉS de tener la cuenta creada: si el
     // correo no sale, la cuenta igual existe —no se pierde nada— y la respuesta dice qué pasó.
-    const carta = bienvenida({ negocio: nombre || 'Mi negocio', enlace: enlaceDe('/api/auth/verificar', await crearVerificacion(negocioId, 'correo')) });
+    // El mismo permiso por dos caminos: el pin que se escribe en el panel y el enlace del correo.
+    const verificacion = await crearVerificacion(negocioId, 'correo');
+    const carta = bienvenida({
+      negocio: nombre || 'Mi negocio',
+      enlace: enlaceDe('/api/auth/verificar', verificacion.token),
+      codigo: verificacion.codigo,
+    });
     const salio = await enviar({
       businessId: negocioId, para: email, asunto: carta.asunto, texto: carta.texto, html: carta.html,
       plantilla: 'bienvenida',
@@ -180,6 +186,33 @@ export async function authRoutes(app: FastifyInstance) {
    * Mandar (o volver a mandar) el enlace de confirmación. Sirve cuando el primero venció a las 24 horas.
    * Pide sesión: sólo a quien entra a la cuenta se le manda el enlace de esa cuenta.
    */
+  /**
+   * Confirmar el correo con el PIN que llegó al correo, sin salir del panel. Pide sesión: solo a quien
+   * entró a la cuenta se le confirma el correo de esa cuenta. Con freno, porque un pin de 6 dígitos se
+   * puede probar a la fuerza si se deja intentar sin límite.
+   */
+  app.post('/api/auth/verificar/pin', async (req, reply) => {
+    const u = await exigirSesion(req, reply); if (!u || !u.business_id) return;
+    const c = exigirCuerpo<{ pin?: string }>(req.body, ['pin'], reply); if (!c) return;
+    const ya = await query<{ correo_verificado: boolean }>('SELECT correo_verificado FROM businesses WHERE id = $1', [u.business_id]);
+    if (ya[0]?.correo_verificado) {
+      return reply.send({ ok: true, ya: true, detalle: 'el correo de esta cuenta ya estaba confirmado' });
+    }
+    const freno = pasarElFreno(`pin:${u.business_id}`, 5, 15 * 60_000);
+    if (!freno.pasa) {
+      return reply.status(429).send({
+        error: 'demasiados intentos seguidos con el pin', codigo: 'frenado',
+        detalle: 'espere unos minutos y mire otra vez el correo; si no lo tiene, pida uno nuevo',
+      });
+    }
+    const r = await usarCodigo(u.business_id, 'correo', String(c.pin));
+    if (!r.ok) {
+      return reply.status(400).send({ error: r.motivo || 'ese pin no sirve', codigo: r.codigo || 'sin_pin', detalle: r.motivo || '' });
+    }
+    await execute('UPDATE businesses SET correo_verificado = true WHERE id = $1', [u.business_id]);
+    return reply.send({ ok: true, detalle: 'su correo quedó confirmado' });
+  });
+
   app.post('/api/auth/verificar/reenviar', async (req, reply) => {
     const u = await exigirSesion(req, reply); if (!u || !u.business_id) return;
 
@@ -197,7 +230,10 @@ export async function authRoutes(app: FastifyInstance) {
     }
 
     const { negocio } = await negocioYCorreo(u.business_id);
-    const carta = cartaDeVerificacion({ negocio, enlace: enlaceDe('/api/auth/verificar', await crearVerificacion(u.business_id, 'correo')) });
+    const verificacion = await crearVerificacion(u.business_id, 'correo');
+    const carta = cartaDeVerificacion({
+      negocio, enlace: enlaceDe('/api/auth/verificar', verificacion.token), codigo: verificacion.codigo,
+    });
     const salio = await enviar({
       businessId: u.business_id, para: u.email, asunto: carta.asunto, texto: carta.texto, html: carta.html,
       plantilla: 'verificarCorreo',
