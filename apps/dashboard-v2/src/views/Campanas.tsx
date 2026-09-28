@@ -148,16 +148,31 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
   const [paso, setPaso] = useState<PasoCampana>(1);
   // Las decisiones de la cuenta salen del onboarding: una sola fuente para el motor y el panel.
   const decisiones = (d.onboarding?.datos ?? {}) as Record<string, unknown>;
+  /**
+   * Lo que se acaba de presionar se pinta al instante: el viaje al servidor tarda lo suyo y una
+   * elección que no se ve marcada parece que no se registró. El valor del servidor manda en cuanto
+   * llega; esto solo cubre el hueco.
+   */
+  const [recienElegido, setRecienElegido] = useState<Record<string, string | string[]>>({});
+  /** El valor que se muestra: lo recién presionado o, si no, lo que hay guardado. */
+  const valorDe = (campo: string): string | string[] | undefined => recienElegido[campo] ?? (decisiones[campo] as string | string[] | undefined);
+  /** El estatus de un grupo, en corto: «Automático», «WhatsApp, Instagram», «sin definir». */
+  const estatusDe = (campo: string) => {
+    const v = valorDe(campo);
+    if (Array.isArray(v)) return v.length ? v.join(', ') : 'sin definir';
+    return v ? String(v) : 'sin definir';
+  };
   /** Cómo trabaja el modelo: Automático (decide y crea) o Manual (lo arma el cliente). Arranca en Automático. */
   // Si el negocio ya había elegido manual, el panel lo respeta al abrir.
   useEffect(() => { if (decisiones.modo) setManual(String(decisiones.modo) === 'Manual'); }, [decisiones.modo]);
   /** Guarda una decisión en el onboarding, con su aviso: se puede cambiar cuando quiera. */
   const decidir = (campo: string, etiqueta: string, valor: string, multi?: boolean) => {
-    const actual = decisiones[campo];
+    const actual = valorDe(campo);
     const nuevo = multi
       ? (Array.isArray(actual) ? (actual.includes(valor) ? actual.filter(x => x !== valor) : [...actual, valor]) : [valor])
       : valor;
-    void d.guardar({ datos: { [campo]: nuevo } });
+    setRecienElegido(prev => ({ ...prev, [campo]: nuevo }));   // se pinta ya, en morado
+    void d.guardar({ datos: { [campo]: nuevo } });              // y se guarda
     // El modo manda la vista: en Manual la pantalla trabaja con el material que sube el cliente.
     if (campo === 'modo') setManual(valor === 'Manual');
     setToast(`${etiqueta}: ${Array.isArray(nuevo) ? (nuevo.join(', ') || 'ninguno') : String(nuevo)}`);
@@ -493,7 +508,7 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
               decisión se guarda en el onboarding: el motor y el panel leen de ahí, no de dos sitios. */}
           <Card
             title={<span className="row" style={{ gap: 8 }}><I_Robot size={14} style={{ color: 'var(--purple3)' }} /> Cómo trabaja su cuenta</span>}
-            action={<Badge tone="purple">{String(decisiones.modo || 'Automático')}</Badge>}
+            action={<Badge tone="purple">{estatusDe('modo') === 'sin definir' ? 'Automático' : estatusDe('modo')}</Badge>}
           >
             <div className="bs" style={{ marginBottom: 12 }}>
               El motor usa esto para decidir, y se puede cambiar cuando quiera. <b>Empieza en Automático:</b> el sistema elige el tipo de publicación y de campaña, lo crea, lo prueba en MiroFish y usted solo aprueba.
@@ -505,13 +520,16 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
               { k: 'publicaciones_semana', label: 'Cuánto quiere publicar en sus redes', ops: ['1 a 2 por semana', '3 a 5 por semana', '6 a 10 por semana', 'Que lo decida el sistema'], ayuda: 'Contenido propio, sin pauta.' },
               { k: 'contenido_diario', label: 'Publicación diaria de contenido', ops: ['Sí: mantengan mis redes activas', 'No: solo cuando haya campaña'], ayuda: 'Con «sí», el sistema propone piezas cada semana aunque no haya campaña encendida.' },
             ] as { k: string; label: string; ops: string[]; multi?: boolean; ayuda: string }[]).map(g => {
-              const actual = decisiones[g.k];
-              const sel = (op: string) => Array.isArray(actual) ? actual.includes(op) : actual === op;
+              const sel = (op: string) => {
+                const v = valorDe(g.k);
+                return Array.isArray(v) ? v.includes(op) : v === op;
+              };
+              const estatus = estatusDe(g.k);
               return (
                 <div key={g.k} style={{ marginBottom: 14 }}>
-                  <div className="bs" style={{ marginBottom: 6 }}>
-                    <b>{g.label}</b>{' '}
-                    {!actual && <span className="tiny muted">· sin definir: el motor trabaja en Automático y decide él</span>}
+                  <div className="bs" style={{ marginBottom: 6, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <b>{g.label}</b>
+                    <Badge tone={estatus === 'sin definir' ? 'muted' : 'purple'}>{estatus}</Badge>
                   </div>
                   <div className="chip-grid" style={{ gap: 8 }}>
                     {g.ops.map(op => (
