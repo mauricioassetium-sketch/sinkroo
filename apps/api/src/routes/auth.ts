@@ -25,7 +25,9 @@ import { crearVerificacion, negocioYCorreo, usarVerificacion } from '../services
 type Cuerpo = { nombre?: string; email?: string; clave?: string };
 
 /** Los créditos que trae el plan al empezar. El plan se cambia después desde Créditos. */
-const CREDITOS_PLAN = 2000;
+/** Los créditos con los que arranca un negocio nuevo: alcanzan para el arranque completo (investigar,
+ *  escribir, probar con los 5 jueces y los 500 del público) sin tener que cargar nada el primer día. */
+const CREDITOS_PLAN = 5000;
 
 export async function authRoutes(app: FastifyInstance) {
   /** Crear cuenta. Crea también el negocio: el negocio es del usuario desde el primer momento. */
@@ -61,11 +63,11 @@ export async function authRoutes(app: FastifyInstance) {
 
     await execute(`INSERT INTO onboarding (business_id) VALUES ($1) ON CONFLICT (business_id) DO NOTHING`, [negocioId]);
 
-    // Los créditos del plan del mes. Es la asignación del plan, no un dato de ejemplo: queda escrita en el
-    // libro con su motivo, así el saldo y su historia nunca se contradicen.
+    // Los créditos de arranque. Es una asignación real, no un dato de ejemplo: queda escrita en el libro
+    // con su motivo, así el saldo y su historia nunca se contradicen.
     await execute(
       `INSERT INTO movimientos_creditos (business_id, delta, motivo, detalle, saldo)
-       VALUES ($1, $2, 'plan', 'Créditos del plan del mes', $2)`,
+       VALUES ($1, $2, 'bienvenida', 'Créditos de bienvenida: ' || $2, $2)`,
       [negocioId, CREDITOS_PLAN],
     );
 
