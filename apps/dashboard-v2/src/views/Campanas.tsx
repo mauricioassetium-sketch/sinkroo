@@ -149,12 +149,6 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
   // Las decisiones de la cuenta salen del onboarding: una sola fuente para el motor y el panel.
   const decisiones = (d.onboarding?.datos ?? {}) as Record<string, unknown>;
   /** Cómo trabaja el modelo: Automático (decide y crea) o Manual (lo arma el cliente). Arranca en Automático. */
-  const esManual = String(decisiones.modo || 'Automático') === 'Manual';
-  const cambiarModo = (m: string) => {
-    setManual(m === 'Manual');
-    void d.guardar({ datos: { modo: m } });
-    setToast(m === 'Manual' ? 'Modo manual: usted arma todo y el modelo no decide por usted' : 'Modo automático: el modelo elige, crea y prueba; usted aprueba');
-  };
   // Si el negocio ya había elegido manual, el panel lo respeta al abrir.
   useEffect(() => { if (decisiones.modo) setManual(String(decisiones.modo) === 'Manual'); }, [decisiones.modo]);
   /** Guarda una decisión en el onboarding, con su aviso: se puede cambiar cuando quiera. */
@@ -164,6 +158,8 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
       ? (Array.isArray(actual) ? (actual.includes(valor) ? actual.filter(x => x !== valor) : [...actual, valor]) : [valor])
       : valor;
     void d.guardar({ datos: { [campo]: nuevo } });
+    // El modo manda la vista: en Manual la pantalla trabaja con el material que sube el cliente.
+    if (campo === 'modo') setManual(valor === 'Manual');
     setToast(`${etiqueta}: ${Array.isArray(nuevo) ? (nuevo.join(', ') || 'ninguno') : String(nuevo)}`);
   };
   const [manual, setManual] = useState(false);
@@ -475,35 +471,17 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
                   <div className="bs">Suba la información y el material. Sinkroo elige el tipo de campaña, el ángulo y el público, crea todo y lo manda a MiroFish. <b>Todo lo que suba pasa por ahí.</b></div>
                 </div>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 7, alignItems: 'flex-end' }}>
-                <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                  {!esManual && (
-                    <Button title="Lo lleva al paso 2, donde se ve el mercado trabajando con lo que su negocio tenga evaluado en MiroFish. Todavía no le pide nada al motor: para eso hay que subir el material y mandarlo a evaluar."
-                      onClick={() => { setToast('El paso 2 muestra lo que su negocio tenga evaluado en MiroFish: todavía no se le pidió nada al motor'); setPaso(2); }}>
-                      <I_Play size={14} /> Ir al paso 2
-                    </Button>
-                  )}
-                  {/* ============ ACÁ SE DECIDE CÓMO TRABAJA EL MODELO ============ */}
-                  <span className="chip-grid" style={{ gap: 6 }}>
-                    <span
-                      className={`chip${!esManual ? ' sel' : ''}`}
-                      onClick={() => cambiarModo('Automático')}
-                      title="Automático: el modelo decide y crea. Con el estudio de su mercado elige qué tipo de publicación y qué campaña le convienen, arma la pieza, la prueba en MiroFish (5 jueces y 500 del público) y usted solo aprueba o no. Es como arranca su cuenta."
-                    ><I_Robot size={13} /> Automático</span>
-                    <span
-                      className={`chip${esManual ? ' sel' : ''}`}
-                      onClick={() => cambiarModo('Manual')}
-                      title="Manual: usted arma la campaña y sube su material. El modelo no decide por usted, pero le sigue sirviendo: le prueba las piezas en MiroFish y le muestra lo que el mercado hace. Se puede volver a Automático cuando quiera."
->{
-                      <><I_Upload size={13} /> Manual</>
-                    }</span>
-                  </span>
-                </div>
-                <span className="tiny muted">
-                  {esManual
-                    ? 'Manual: usted arma todo. El modelo no decide por usted.'
-                    : 'Automático: el modelo elige, crea y prueba. Usted aprueba.'}
-                </span>
+              <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+                {!manual && (
+                  <Button title="Lo lleva al paso 2, donde se ve el mercado trabajando con lo que su negocio tenga evaluado en MiroFish. Todavía no le pide nada al motor: para eso hay que subir el material y mandarlo a evaluar."
+                    onClick={() => { setToast('El paso 2 muestra lo que su negocio tenga evaluado en MiroFish: todavía no se le pidió nada al motor'); setPaso(2); }}>
+                    <I_Play size={14} /> Ir al paso 2
+                  </Button>
+                )}
+                <Button variant="outline" className="btn-sm" title={manual ? 'Volver al camino con Sinkroo' : 'Si ya tiene las imágenes o los videos hechos, súbalos y MiroFish los puntúa'}
+                  onClick={() => setManual(!manual)}>
+                  {manual ? <><I_Robot size={13} /> Mejor que lo haga Sinkroo</> : <><I_Upload size={13} /> Ya tengo todo listo</>}
+                </Button>
               </div>
             </div>
           </Card>
@@ -521,6 +499,7 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
               El motor usa esto para decidir, y se puede cambiar cuando quiera. <b>Empieza en Automático:</b> el sistema elige el tipo de publicación y de campaña, lo crea, lo prueba en MiroFish y usted solo aprueba.
             </div>
             {([
+              { k: 'modo', label: 'Quién decide', ops: ['Automático', 'Compartido', 'Manual'], ayuda: 'Automático: el sistema elige y crea, y usted aprueba. Compartido: hace solo lo reversible. Manual: usted arma todo.' },
               { k: 'presupuesto', label: 'Cuánto invertir por día en campañas', ops: PRESUPUESTOS, ayuda: 'Es el techo del gasto en la red. Publicar en sus redes no toca este dinero.' },
               { k: 'canales', label: 'Dónde quiere que trabaje', ops: ['WhatsApp', 'Instagram', 'Facebook', 'TikTok'], multi: true, ayuda: 'WhatsApp cierra la conversación; las redes llevan la gente a ella.' },
               { k: 'publicaciones_semana', label: 'Cuánto quiere publicar en sus redes', ops: ['1 a 2 por semana', '3 a 5 por semana', '6 a 10 por semana', 'Que lo decida el sistema'], ayuda: 'Contenido propio, sin pauta.' },
