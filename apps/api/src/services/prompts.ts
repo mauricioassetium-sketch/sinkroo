@@ -92,10 +92,15 @@ function tipografiaDe(av: any, conTexto: boolean) {
 export function promptDePieza(datos: {
   pieza: string; plaza: Plaza; av: any; creadoras?: any[]; huecos?: any[]; cuidado?: string[]; fuente: string;
   referencia: { anunciante: string; dias: number };
+  /** El guion real de la pieza propuesta: de ahí salen las escenas y las frases de pantalla. */
+  guion?: string[];
   /** El estilo de la pieza que el mercado sostiene («ugc de cliente (celular en el salón)», «produccion de marca»…). */
   estiloDelMercado?: string;
 }): PromptGeneracion {
   const { pieza, plaza, av, referencia } = datos;
+  // El guion REAL de la pieza propuesta: de ahí salen las escenas y las frases que van en pantalla.
+  const guion = (datos.guion ?? []) as string[];
+  const enMayuscula = (t: string) => t === t.toUpperCase() && /[A-ZÁÉÍÓÚÑ]/.test(t) && t.length >= 4;
   const vertical = /9:16|reel|historia/i.test(plaza.plaza) || /vertical/i.test(plaza.formato);
   const esVideo = /video/i.test(plaza.formato) || vertical;
   const conTexto = !/sin texto/i.test(plaza.tipografia || '');
@@ -111,16 +116,46 @@ export function promptDePieza(datos: {
   const senalProducto = /sin persona|producto solo|el resultado solo/i.test(`${plaza.formato} ${plaza.gancho ?? ''}`);
   const esUgc = senalUgc && !senalProducto;
 
+  /**
+   * LAS ESCENAS salen del guion real de la pieza (si lo hay): de cada línea se sacan los segundos, la
+   * acción y las frases entre comillas, que son las únicas que pueden ir en pantalla o en voz. Un verso
+   * de la analítica («el testimonio de la clienta con su nombre») NO es copy: nunca se pone en pantalla.
+   */
+  const escenasDelGuion = guion.map((linea, i) => {
+    const seg = (linea.match(/^\s*([0-9]+\s*[-–]\s*[0-9]+|[0-9]+)\s*s/) || [])[1] || `${i + 1}`;
+    const frases = [...linea.matchAll(/[«"]([^»"]{4,90})[»"]/g)].map(m => m[1].trim());
+    // Lo que va en pantalla, en orden: 1) la frase que el guion marca con «texto en pantalla» o «texto:»,
+    // 2) una frase en mayúsculas (la convención del guion), 3) nada (no se inventa copy).
+    const marcada = (linea.match(/texto(?:\s+en\s+pantalla)?\s*:?\s*[«"]([^»"]{4,90})[»"]/i) || [])[1];
+    const enPantalla = (marcada || frases.find(enMayuscula) || '').trim();
+    const voz = frases.find(f => f !== enPantalla) || '';
+    const accion = linea
+      .replace(/^\s*[0-9]+\s*[-–]?\s*[0-9]*\s*s\s*·?\s*/i, '')
+      .replace(/[«"][^»"]{0,90}[»"]/g, '')
+      .replace(/\btexto\s+en\s+pantalla\s*:?\s*/gi, ' ')
+      .replace(/\b(y\s+la\s+voz(\s+del?\s+\w+)?|y\s+la\s+voz)\s*:?\s*/gi, ' ')
+      .replace(/\s*[,;:]\s*(?=[,;:]|$)/g, '')
+      .replace(/\s{2,}/g, ' ')
+      .replace(/^[\s,;:.·-]+|[\s,;:.·-]+$/g, '').trim();
+    return { s: seg.replace(/\s/g, ''), plano: '', accion, texto_en_pantalla: enPantalla, voz };
+  });
   const escenas = esVideo
-    ? [
-      { s: '0-3', plano: 'primer plano, vertical, celular en mano', accion: `arranca con la frase que nombra el problema: «${plaza.gancho}»`, texto_en_pantalla: plaza.gancho.toUpperCase().slice(0, 44), voz: 'la clienta habla en primera persona' },
-      { s: '3-10', plano: 'plano medio del lugar real', accion: 'muestra el antes (el problema) sin adjetivos: lo que se ve, se entiende', texto_en_pantalla: '', voz: 'explica por qué volvió' },
-      { s: '10-18', plano: 'detalle, misma luz', accion: 'el resultado y la prueba: el antes y el después en el mismo plano', texto_en_pantalla: '', voz: 'la clienta describe el cambio' },
-      { s: '18-25', plano: 'plano medio a cámara', accion: `cierre con la promesa del hueco: ${hueco || 'el mantenimiento'}`, texto_en_pantalla: 'SE LO RECORDAMOS NOSOTROS', voz: 'cierre directo a cámara' },
-    ]
+    ? (escenasDelGuion.length
+      ? escenasDelGuion.map((e, i) => ({
+        ...e,
+        plano: ['primer plano, vertical, celular en mano', 'plano medio del lugar real', 'detalle, misma luz', 'plano medio a cámara'][i] || 'plano medio',
+      }))
+      : [
+        { s: '0-3', plano: 'primer plano, vertical, celular en mano', accion: 'arranca nombrando el problema concreto del cliente', texto_en_pantalla: '', voz: 'la clienta habla en primera persona' },
+        { s: '3-18', plano: 'plano medio y detalle, misma luz', accion: 'el antes y el después en el mismo plano, sin adjetivos', texto_en_pantalla: '', voz: 'la clienta describe el cambio' },
+        { s: '18-25', plano: 'plano medio a cámara', accion: `cierre con la promesa del hueco: ${hueco || 'el mantenimiento'}`, texto_en_pantalla: '', voz: 'cierre directo a cámara' },
+      ])
     : [
       { s: 'única', plano: 'plano detalle del producto o del resultado', accion: 'el resultado como protagonista, sin persona en cuadro', texto_en_pantalla: '', voz: 'sin voz: todo el mensaje va en el copy' },
     ];
+
+  /** La frase que de verdad va sobre la imagen: sale del guion (en mayúsculas), nunca de una descripción. */
+  const fraseEnPantalla = escenas.map(e => e.texto_en_pantalla).find(Boolean) || '';
 
   const prompt = [
     esVideo ? 'Vertical 9:16 mobile-shot video ad, 25 seconds.' : 'Square 1:1 image ad for social feed.',
@@ -130,7 +165,7 @@ export function promptDePieza(datos: {
     `Setting and subject: ${plaza.plaza.includes('Reels') ? 'customer at home receiving the service result' : 'the product/result alone'} — real skin tones, real hair, real environment with the brand sign visible in the background.`,
     `Colour direction: dominant palette ${paleta.join(', ')}; ${(av?.paletas?.[0]?.nota as string) || 'warm, high-contrast, no oversaturation'}.`,
     conTexto
-      ? `On-image text: ${typo.familia}, ${typo.peso}, ${typo.caja}, ${typo.tratamiento}, placed ${typo.ubicacion}. Short claim in capital letters, no more than 6 words.`
+      ? `On-image text: ${typo.familia}${/negrita|bold/i.test(typo.familia) ? '' : `, ${typo.peso}`}, ${typo.caja}, ${typo.tratamiento}, placed ${typo.ubicacion}.${fraseEnPantalla ? ` The exact claim to render is: "${fraseEnPantalla}".` : ''} Short claim in capital letters, no more than 8 words.`
       : 'No text burned into the image: the copy lives in the ad text only.',
     'Composition: subject in the lower two thirds, negative space at the top for the text; high contrast so it reads on a phone in daylight.',
     esVideo ? 'Camera: handheld phone, vertical, one or two continuous shots, no transitions, no stock footage.' : 'Camera: single still frame, slightly tilted angle, shallow depth of field from a real lens.',
@@ -171,7 +206,12 @@ export function promptDePieza(datos: {
       rol: (av?.paletas?.[0]?.nota as string) || 'el color lo pone el producto; el fondo se mantiene apagado',
       contraste: 'alto contraste para que se lea en una pantalla de celular a pleno sol',
     },
-    tipografia: { ...typo, texto_exacto: conTexto ? plaza.gancho : 'sin texto sobre la imagen' },
+    tipografia: {
+      ...typo,
+      texto_exacto: conTexto
+        ? (fraseEnPantalla || 'por definir: la frase de pantalla sale del guion de la pieza, no de la descripción del ángulo')
+        : 'sin texto sobre la imagen',
+    },
     iluminacion: 'luz natural suave y difusa, sin sombras duras, sin flash',
     camara: esVideo
       ? 'celular en vertical, plano medio y detalle, movimiento leve de mano, sin estabilizador ni drone'
@@ -287,6 +327,7 @@ export function promptsDelInforme(inf: {
   return {
     pieza,
     prompts: plazas.map(plaza => promptDePieza({
+      guion: (propuesta.guion ?? []) as string[],
       pieza, plaza, av: i?.analitica_visual, creadoras: i?.creadoras, huecos: i?.huecos,
       cuidado: i?.cuidado, fuente: inf?.fuente || '', referencia,
       estiloDelMercado: String(masVieja?.estilo || ''),
