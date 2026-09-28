@@ -253,10 +253,10 @@ export function promptDePieza(datos: {
       {
         campo: 'on-image text',
         sale_de: conTexto
-          ? `la tipografía medida: ${typo.familia} · ${typo.peso} · ${typo.caja} · ${typo.tratamiento} · ${typo.ubicacion}`
+          ? `la tipografía medida en las creatividades: ${typo.familia} · ${typo.caja} · ${typo.tratamiento} · ${typo.ubicacion}`
           : 'las piezas sostenidas de esa plaza NO llevan texto sobre la imagen',
         como_se_usa: conTexto
-          ? 'se copian familia, peso, caja, tratamiento y ubicación; el texto es el gancho que el mercado usa'
+          ? `se copian familia, caja, tratamiento y ubicación de la pieza medida; la frase exacta sale del guion de la pieza (${fraseEnPantalla ? `«${fraseEnPantalla}»` : 'y si el guion no la marca, no se escribe ninguna'})`
           : 'se prohíbe el texto quemado en el píxel: todo el mensaje va en el copy del anuncio',
       },
       {
