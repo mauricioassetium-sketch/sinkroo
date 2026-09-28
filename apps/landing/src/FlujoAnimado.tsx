@@ -5,7 +5,7 @@
 // un archivo que ya está en `public/`) donde el búho de Sinkroo recorre las siete etapas del modelo:
 //
 //      1. SU NEGOCIO      el material cae al motor
-//      2. INVESTIGA       seis agentes leen el mercado
+//      2. INVESTIGA       ocho agentes leen el mercado
 //      3. ESCRIBE         se escriben las piezas, una por red
 //      4. MIROFISH PRUEBA cinco jueces votan con su nota y el público opina (bocadillos)
 //      5. USTED APRUEBA   el visto bueno: un instante
@@ -264,7 +264,7 @@ export function FlujoAnimado() {
         </title>
         <desc id="flujo-desc">
           Dibujo animado del modelo de Sinkroo. El búho recorre siete etapas en trece segundos: 1) SU
-          NEGOCIO: el material del negocio cae al motor. 2) INVESTIGA: seis agentes leen el mercado.
+          NEGOCIO: el material del negocio cae al motor. 2) INVESTIGA: ocho agentes leen el mercado.
           3) ESCRIBE: se escriben las piezas, una por red. 4) MIROFISH PRUEBA: cinco jueces votan con
           su nota y el público opina, por ejemplo «me engancha el arranque», «no entiendo qué
           ofrecen» y «yo la compraría». 5) USTED APRUEBA: usted marca el visto bueno. 6) SE PUBLICA:
@@ -364,7 +364,7 @@ export function FlujoAnimado() {
         </g>
 
         {/* ==========================================================================================
-            ETAPA 2 — INVESTIGA. Seis agentes leyendo el mercado, con lupa y gráfico.
+            ETAPA 2 — INVESTIGA. Ocho agentes leyendo el mercado, con lupa y gráfico.
             ========================================================================================== */}
         <g className="flujo-etapa flujo-e2">
           <Panel x={140} y={28} w={140} h={222} />
@@ -372,7 +372,7 @@ export function FlujoAnimado() {
               pegado al borde del recuadro. El recuadro y su luz NO se tocan. */}
           <g transform="translate(210 139) scale(0.91) translate(-210 -139)">
           <text className="flujo-chico" x={152} y={42}>
-            6 AGENTES
+            8 AGENTES
           </text>
           <text className="flujo-chico" x={152} y={54}>
             EL MERCADO

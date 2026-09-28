@@ -42,7 +42,7 @@ export const IMAGENES = {
   buho: '/67.png',
   portada: '/6-web.jpg',
   /* Bloque 4 · QUÉ HACEMOS — una pantalla por paso, y cada una con lo que dice su tarjeta: el paso 1
-     son los seis agentes investigando, el paso 2 las piezas ya creadas y el paso 3 los cinco jueces
+     son los ocho agentes investigando, el paso 2 las piezas ya creadas y el paso 3 los cinco jueces
      ordenándolas. Son las capturas ANCHAS de escritorio que mandó el dueño (1200 px de ancho, con la
      barra del navegador recortada): la tarjeta las muestra enteras, sin recortar. */
   investigacion: '/capturas/investigacion.jpg',
@@ -212,7 +212,7 @@ const ES: Contenido = {
        gastar · lo que mide después. */
     titulos: [
       'SINKROO ES SU EQUIPO DE MARKETING COMPLETO',
-      'SEIS AGENTES LEEN SU MERCADO CADA MAÑANA',
+      'OCHO AGENTES LEEN SU MERCADO CADA MAÑANA',
       'CADA PIEZA SE PRUEBA ANTES DE GASTAR UN PESO',
       'MIDE LO QUE PASÓ EN SUS REDES, PESO POR PESO',
     ],
@@ -250,15 +250,15 @@ const ES: Contenido = {
         numero: '01',
         titulo: 'LA INVESTIGACIÓN',
         texto:
-          'Seis agentes leen su mercado y guardan cada hallazgo con su fuente: qué publica la competencia, con qué colores, en qué duración, con qué gancho y a qué precio.',
+          'Ocho agentes leen TODO su mercado —no un competidor: los negocios de su rubro en su ciudad— y guardan cada hallazgo con su fuente. Quién pauta y quién no (ahí está la oportunidad), qué publica, con qué colores, en qué duración, con qué gancho y a qué precio. Y cuáles de esas piezas llevan meses funcionando: esas son las que ya probaron que sirven.',
         imagen: IMAGENES.investigacion,
-        alt: 'Panel de Sinkroo: lo que investigaron los 6 agentes (colores, duración, gancho y cuándo publican) y lo que crearon, en la pantalla «Campañas».',
+        alt: 'Panel de Sinkroo: lo que investigaron los agentes del mercado (colores, duración, gancho y cuándo publican) y lo que crearon, en la pantalla «Campañas».',
       },
       {
         numero: '02',
         titulo: 'LA CREACIÓN',
         texto:
-          'Con esos hallazgos, el motor escribe las piezas de cada red en su formato y con su texto. Cada pieza nace de un hallazgo, no de una corazonada.',
+          'Con esos hallazgos, el motor escribe la pieza de cada red en el formato que ya funciona en su mercado, con los colores y el tipo de letra que se midieron en las piezas que aguantan. Cada pieza nace de un hallazgo, no de una corazonada.',
         imagen: IMAGENES.creacion,
         alt: 'Panel de Sinkroo: las piezas ya escritas, cada una con su puntaje y su veredicto, en la pantalla «Campañas».',
       },
@@ -283,12 +283,12 @@ const ES: Contenido = {
       {
         numero: '2',
         titulo: 'INVESTIGA',
-        texto: 'Los seis agentes salen a leer el mercado y vuelven con hallazgos con fuente.',
+        texto: 'Los ocho agentes salen a leer su mercado completo —los negocios del rubro en su ciudad, quién pauta y quién no— y vuelven con hallazgos con fuente. Lo vuelven a hacer cada mañana y lo dejan guardado: semana a semana se ve qué sigue funcionando y qué se cayó.',
       },
       {
         numero: '3',
         titulo: 'ESCRIBE',
-        texto: 'El motor redacta la pieza de cada red en el formato de esa red.',
+        texto: 'El motor redacta la pieza de cada red en el formato que ya funciona en su mercado, con los colores y el tipo de letra medidos en las piezas que aguantan, y con el pedido completo de cada pieza listo para producir.',
       },
       {
         numero: '4',
@@ -323,7 +323,7 @@ const ES: Contenido = {
         numero: '01',
         nombre: 'EL EQUIPO DE INVESTIGACIÓN',
         texto:
-          'Seis agentes que leen el mercado y dejan todo por escrito con su fuente. Cada hallazgo que usan después las piezas viene de ahí.',
+          'Ocho agentes que leen su mercado completo —los negocios de su rubro en su ciudad, quién pauta y quién no— y dejan todo por escrito con su fuente. Cada hallazgo que usan después las piezas viene de ahí. Y uno de ellos entrega el pedido completo de cada pieza: formato, colores, tipografía, escenas, texto y cierre, medido en el mercado.',
         dibujo: 'investigacion',
       },
       {

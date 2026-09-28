@@ -20,7 +20,7 @@ const PANEL = '/panel/';
 /** Los seis pasos, una línea cada uno. */
 const PASOS = [
   'Conecta su negocio: sus datos, su material y sus redes.',
-  'El equipo investiga: seis agentes leen el mercado y guardan cada hallazgo con la fuente.',
+  'El equipo investiga: ocho agentes leen su mercado completo y guardan cada hallazgo con la fuente.',
   'El motor escribe las piezas.',
   'MiroFish las prueba: cinco jueces y quinientos del público.',
   'Usted aprueba: lo que pasa el filtro se publica; lo que no, se corrige.',
