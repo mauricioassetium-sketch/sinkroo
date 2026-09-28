@@ -190,8 +190,10 @@ export function recomendarFormatos(piezas: any[], plazas: any[]) {
 }
 
 export type MapaReal =
-  | { ok: true; ciudad: string; lugares: number; conNombre: number; nombres: string[]; zonas: { z: string; n: number }[]; oficio: string; url: string; caja: string; porNombre: boolean }
-  | { ok: false; falta: string };
+  | { ok: true; ciudad: string; pais: string; lugares: number; conNombre: number; nombres: string[]; zonas: { z: string; n: number }[]; oficio: string; url: string; caja: string; porNombre: boolean }
+  // Cuando lo que falla es el listado de negocios, la ciudad y el PAÍS igual se devuelven: son dos
+  // lecturas distintas y el país es lo que deja priorizar lo que le sirve al negocio.
+  | { ok: false; falta: string; pais?: string; ciudad?: string };
 
 /**
  * EL MAPA REAL DEL MERCADO (Lux). Ubica la ciudad con Nominatim y le pide a Overpass todos los negocios
@@ -203,23 +205,32 @@ export async function leerMapaReal(rubro: string, zona: string): Promise<MapaRea
 
   let caja = '';
   let ciudad = zona;
+  let pais = '';
   try {
-    const geo = await pedirJson(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(zona)}`, 15000);
+    let geo: any = null;
+    for (let intento = 0; intento < 2 && !geo; intento++) {
+      if (intento) await new Promise(r => setTimeout(r, 2500));
+      try {
+        geo = await pedirJson(`https://nominatim.openstreetmap.org/search?format=json&limit=1&addressdetails=1&q=${encodeURIComponent(zona)}`, 15000);
+      } catch { geo = null; }
+    }
     const bb = Array.isArray(geo) && geo[0]?.boundingbox;
     if (bb && bb.length === 4) {
       // Nominatim devuelve [sur, norte, oeste, este]; Overpass quiere (sur,oeste,norte,este).
       caja = `${bb[0]},${bb[2]},${bb[1]},${bb[3]}`;
       ciudad = String(geo[0].display_name || zona).split(',')[0].trim() || zona;
+      // El país del negocio, en código de dos letras: es lo que después deja priorizar lo que le sirve.
+      pais = String(geo[0]?.address?.country_code || '').toUpperCase();
     }
   } catch { /* si no ubica la ciudad, se dice abajo: no se estima un mercado sin caja */ }
 
-  if (!caja) return { ok: false, falta: `no se pudo ubicar «${zona}» en el mapa: sin ciudad no se cuenta el mercado` };
+  if (!caja) return { ok: false, falta: `no se pudo ubicar «${zona}» en el mapa: sin ciudad no se cuenta el mercado`, pais };
 
   const mapa = filtrosDeRubro(rubro || '');
   const porNombre = mapa.filtros.length === 0;
   const palabra = (String(rubro || '').split(' ')[0] || '').replace(/[^a-záéíóúñ]/gi, '').toLowerCase();
   if (porNombre && palabra.length < 3) {
-    return { ok: false, falta: 'no se sabe qué buscar en el mapa: falta el rubro del negocio y su descripción (Primeros pasos)' };
+    return { ok: false, falta: 'no se sabe qué buscar en el mapa: falta el rubro del negocio y su descripción (Primeros pasos)', pais, ciudad };
   }
   const clausulas = (porNombre ? [`node["name"~"${palabra}",i]`, `way["name"~"${palabra}",i]`] : mapa.filtros)
     .map(f => `${f}(${caja});`).join('\n  ');
@@ -242,7 +253,7 @@ export async function leerMapaReal(rubro: string, zona: string): Promise<MapaRea
         cuenta.set(z, (cuenta.get(z) || 0) + 1);
       }
       return {
-        ok: true, ciudad, lugares: els.length, conNombre: nombres.length, nombres,
+        ok: true, ciudad, pais, lugares: els.length, conNombre: nombres.length, nombres,
         zonas: [...cuenta.entries()].map(([z, n]) => ({ z, n })).sort((a, b) => b.n - a.n).slice(0, 6),
         oficio: mapa.oficio || `negocios que se llaman «${rubro}»`,
         url, caja: `(${caja})`, porNombre,
@@ -251,7 +262,7 @@ export async function leerMapaReal(rubro: string, zona: string): Promise<MapaRea
       ultimoError = String((e as Error).message || e).slice(0, 90);
     }
   }
-  return { ok: false, falta: `OpenStreetMap no respondió en dos intentos (${ultimoError}): se reintenta en la próxima corrida` };
+  return { ok: false, falta: `OpenStreetMap no respondió en dos intentos (${ultimoError}): se reintenta en la próxima corrida`, pais, ciudad };
 }
 
 export type Informe = {
@@ -637,13 +648,18 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
       [tend.temas.map(t => t.tema)]);
     recurrentes = rr.rows as any[];
   } catch { /* primera corrida: todavía no hay histórico de tendencias */ }
+  const paisNegocio = mapa.pais || '';
+  // Solo se guardan las que le sirven a este negocio: las que se hablan en su país, las regionales y
+  // las que tocan su rubro. Lo que pasa en mercados que no son el suyo no se guarda: no es ruido útil.
+  const utiles = tend.temas.filter(t => !paisNegocio || t.paises.includes(paisNegocio) || t.alcance.startsWith('regional') || t.toca_el_rubro);
   try {
-    for (const t of tend.temas) {
+    for (const t of utiles) {
       await db.query(
-        `INSERT INTO tendencias (business_id, geo, tema, alcance, toca_el_rubro, paises, fecha)
-         VALUES ($1, $2, $3, $4, $5, $6, current_date)
-         ON CONFLICT (business_id, tema, fecha) DO NOTHING`,
-        [ctx.businessId, ctx.zona || '', t.tema, t.alcance, t.toca_el_rubro, t.paises]);
+        `INSERT INTO tendencias (business_id, geo, pais, tema, alcance, toca_el_rubro, paises, fecha)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, current_date)
+         ON CONFLICT (business_id, tema, fecha) DO UPDATE SET pais = EXCLUDED.pais
+          WHERE EXCLUDED.pais <> ''`,
+        [ctx.businessId, ctx.zona || '', paisNegocio, t.tema, t.alcance, t.toca_el_rubro, t.paises]);
     }
   } catch { /* si el guardado falla, la tarea igual se entrega */ }
 
@@ -660,7 +676,11 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
       el_que_iris_usa: 'el prompt de cada plaza se arma sobre este formato, y lo cita en su traza',
       quien_repite_molde: repiteMolde,
       series_detectadas: series,
+      pais_del_negocio: paisNegocio || 'no se pudo leer del mapa',
       temas_de_hoy: tend.temas.slice(0, 20).map(t => ({ tema: t.tema, paises: t.paises, alcance: t.alcance })),
+      temas_que_le_sirven: utiles.length,
+      temas_descartados: tend.temas.length - utiles.length,
+      porque_se_descartan: 'lo que se habla en mercados que no son el suyo no se guarda ni se muestra',
       tocan_el_rubro: tocan.length ? tocan : 'ninguno de los temas de hoy toca su rubro (lo normal: las tendencias del día son noticia y deporte)',
       recurrentes_de_otros_dias: recurrentes.length ? recurrentes : 'primera corrida: el histórico empieza hoy (mañana ya se ve qué tema es de un día y qué tema sigue)',
       alcance_cultural: {

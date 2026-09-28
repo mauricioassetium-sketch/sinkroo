@@ -260,10 +260,17 @@ export async function motorRoutes(app: FastifyInstance, db: Pool) {
        SELECT t.tema, t.alcance, t.toca_el_rubro, t.paises, t.fecha, p.dias
          FROM tendencias t JOIN por_tema p ON p.tema = t.tema
         WHERE t.business_id = $1 AND t.fecha >= current_date - interval '30 days'
-        ORDER BY t.fecha DESC, array_length(t.paises, 1) DESC, t.tema LIMIT 80`, [u.business_id]);
+          -- Lo que se necesita: lo que se habla en SU país, lo regional y lo que toca su rubro.
+          AND (t.pais = '' OR t.pais = ANY(t.paises) OR t.alcance LIKE 'regional%' OR t.toca_el_rubro)
+        ORDER BY t.toca_el_rubro DESC, array_length(t.paises, 1) DESC, t.fecha DESC, t.tema LIMIT 80`, [u.business_id]);
+    const fuera = await db.query(
+      `SELECT count(*)::int AS n FROM tendencias
+        WHERE business_id = $1 AND fecha >= current_date - interval '30 days'
+          AND NOT (pais = '' OR pais = ANY(paises) OR alcance LIKE 'regional%' OR toca_el_rubro)`, [u.business_id]);
     return {
       tendencias: r.rows,
-      como_se_lee: 'alcance: un solo país es local; varios de la región es regional; si aparece también en España o Estados Unidos, no es cosa nuestra.',
+      descartadas: fuera.rows[0]?.n ?? 0,
+      como_se_lee: 'solo se muestra lo que se habla en el país del negocio, lo regional y lo que toca su rubro. Lo demás se descarta: son mercados que no son el suyo.',
     };
   });
 

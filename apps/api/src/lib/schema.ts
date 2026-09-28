@@ -282,6 +282,10 @@ export async function migrate(db: Pool): Promise<void> {
       UNIQUE (business_id, tema, fecha)
     );
 
+    -- El país del negocio, en código de dos letras: con esto se prioriza lo que le sirve (lo que se habla
+    -- en su país y lo regional) y se deja fuera lo que pasa en mercados que no son el suyo.
+    ALTER TABLE tendencias ADD COLUMN IF NOT EXISTS pais TEXT NOT NULL DEFAULT '';
+
     CREATE INDEX IF NOT EXISTS idx_tendencias_business ON tendencias(business_id, fecha DESC);
 
     -- LOS PROMPTS DE GENERACIÓN: lo que el equipo de arte entrega para cada pieza y cada plaza. Todavía
