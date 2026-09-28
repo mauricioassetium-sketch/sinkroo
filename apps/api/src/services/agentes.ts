@@ -35,6 +35,7 @@ export const AGENTES = [
   { id: 'rumi', nombre: 'Rumi', oficio: 'Conversaciones' },
   { id: 'iris', nombre: 'Iris', oficio: 'Arte y prompts' },
   { id: 'nova', nombre: 'Nova', oficio: 'Formatos y tendencias' },
+  { id: 'tino', nombre: 'Tino', oficio: 'Decisión' },
 ];
 
 /** Cómo se identifica el motor ante OpenStreetMap: Overpass y Nominatim lo exigen y limitan por IP. */
@@ -712,6 +713,78 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
       falta: tend.fallos.length ? `países que no respondieron: ${tend.fallos.join(' · ')}` : '',
       porque: 'Estar al día no es acumular titulares: es saber qué formato aguanta en su mercado, qué se repite, y qué de lo que se habla afuera aplica acá y qué no.',
       fuente: `${inf?.fuente || 'sin informe del rubro'} + tendencias por país (RSS público)`,
+    },
+  });
+
+  // ---------------- TINO · la decisión: qué se publica y qué campaña, con lo medido ----------------
+  // Lee las decisiones del negocio (lo que contestó en Primeros pasos) y el mercado medido, y decide.
+  // En Automático decide y el cliente aprueba; en Manual no decide por él: le prueba y le muestra.
+  let decisiones: Record<string, any> = {};
+  try {
+    const o = await db.query('SELECT datos FROM onboarding WHERE business_id = $1', [ctx.businessId]);
+    decisiones = (o.rows[0]?.datos ?? {}) as Record<string, any>;
+  } catch { /* sin decisiones cargadas: el motor trabaja en Automático y decide él */ }
+  const modo = String(decisiones.modo || 'Automático');
+  const presupuesto = String(decisiones.presupuesto || '');
+  const canales = Array.isArray(decisiones.canales) ? (decisiones.canales as string[]) : [];
+  const ritmo = String(decisiones.publicaciones_semana || '');
+  const contenido = String(decisiones.contenido_diario || '');
+  const plazaVideo = formatosRecomendados.find((f: any) => f.tipo === 'video') ?? null;
+  const plazaImagen = formatosRecomendados.find((f: any) => f.tipo === 'imagen') ?? null;
+  const masVieja = [...piezas].sort((a, b) => (Number(b.dias) || 0) - (Number(a.dias) || 0))[0];
+  const cierraPorWhats = piezas.some(p => /whatsapp|mensaje/i.test(String(p.cta || '')));
+
+  tareas.push({
+    agente: 'tino', orden: 10,
+    que: piezas.length
+      ? `Decidió qué publicar y qué campaña para este negocio, en modo ${modo}${presupuesto ? `, con ${presupuesto} de techo` : ''}`
+      : 'No pudo proponer publicación ni campaña: falta la lectura del mercado de su rubro',
+    resultado: piezas.length ? {
+      fuente_tipo: 'las decisiones del negocio (Primeros pasos) + el informe del mercado + el formato que aguanta por plaza',
+      modo,
+      quien_decide: modo === 'Manual'
+        ? 'el cliente: el motor no decide por él, solo le prueba las piezas y le muestra el mercado'
+        : 'el motor: elige, crea y prueba; el cliente aprueba o no',
+      propuesta_publicacion: {
+        tipo: plazaVideo ? `video (${plazaVideo.formato_recomendado})` : 'video vertical 9:16',
+        estilo: plazaVideo?.formato_recomendado || '',
+        red: canales.length ? canales.join(', ') : 'sin definir: el motor elige la red donde el mercado sostiene ese formato',
+        por_que: plazaVideo?.por_que || 'es el formato que el mercado ya premió con tiempo',
+        referencia: masVieja ? `${masVieja.anunciante}, ${masVieja.dias} días activo` : '',
+        imagen_para_feed: plazaImagen ? `${plazaImagen.formato_recomendado} — ${plazaImagen.por_que}` : '',
+      },
+      propuesta_campana: {
+        objetivo: canales.length
+          ? (canales.some(c => /whatsapp/i.test(c)) ? 'conversaciones por WhatsApp: la gente escribe y usted cierra' : 'tráfico a su página, con la red que eligió')
+          : 'sin definir: el motor propone conversaciones por WhatsApp y el cliente confirma',
+        red: canales.length ? canales.join(', ') : 'sin definir',
+        presupuesto_diario: presupuesto || 'sin definir: el motor propone y el cliente confirma (nunca gasta sin su OK)',
+        cierre: cierraPorWhats ? 'por WhatsApp, que es el botón de las piezas que aguantan en su rubro' : 'el botón que usa su mercado',
+        por_que: 'sale del botón que el mercado ya usa, del canal que el negocio declaró y del techo que él puso',
+      },
+      contenido: {
+        publicacion_diaria: contenido || 'sin definir: el motor propone mantener las redes activas',
+        cadencia: ritmo || 'sin definir: el motor la propone según lo que su mercado sostiene',
+        formato_por_red: formatosRecomendados.map((f: any) => `${f.plaza} → ${f.formato_recomendado}`),
+        costo: 'publicar en sus redes no gasta pauta: consume créditos del plan (producir, probar y medir)',
+      },
+      cuando_cambiar: {
+        regla: 'cuando el molde que gana en su rubro cambie, o cuando la pieza pierda rendimiento',
+        con_las_cuentas_conectadas: 'se mira la fatiga y el costo por conversación de lo publicado, y con eso se decide si se genera una pieza nueva y cada cuánto',
+        sin_las_cuentas: 'sin las cuentas conectadas NO se puede saber la fatiga real ni el costo por venta: se decide por el mercado (el molde y sus días) y se dice, no se inventa',
+        base_medida: masVieja ? `hoy manda ${masVieja.anunciante}, activo hace ${masVieja.dias} días` : '',
+      },
+      falta: [
+        'el generador de imagen y video, para que el prompt se vuelva archivo',
+        canales.length ? '' : 'que el negocio diga dónde quiere trabajar (Primeros pasos o Campañas)',
+        presupuesto ? '' : 'que el negocio fije su techo por día (o el motor propone y él confirma)',
+        'las cuentas conectadas, para medir lo publicado y decidir los cambios con datos propios',
+      ].filter(Boolean),
+      porque: 'Es la decisión que el dueño pidió: con lo que el negocio ya dijo y el mercado ya medido, qué publicar y qué campaña armar. En Automático la toma y la explica; en Manual se la deja en la mano.',
+      fuente: `${inf?.fuente || 'sin informe del rubro'} + las decisiones del negocio`,
+    } : {
+      sin_fuente: 'falta la lectura del mercado de su rubro (el informe): sin eso no se decide qué publicar',
+      fuente: 'sin fuente',
     },
   });
 
