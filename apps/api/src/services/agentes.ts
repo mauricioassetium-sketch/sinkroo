@@ -559,7 +559,7 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
 
   // (b) LAS SERIES: cuando la misma palabra se repite en dos piezas del mismo anunciante, hay capítulo.
   const veto = new Set(['http', 'https', 'whatsapp', 'alisado', 'keratina', 'cabello', 'flores', 'ramos', 'este', 'esta', 'para', 'como', 'sobre', 'desde', 'nuestro', 'nuestra', 'siempre', 'todos']);
-  const series: { anunciante: string; palabra: string; en_piezas: number; molde: string }[] = [];
+  const series: { anunciante: string; palabra: string; en_piezas: number; tipo: string; molde: string }[] = [];
   for (const [anunciante, m] of moldes) {
     const suyas = piezas.filter(p => p.anunciante === anunciante);
     if (suyas.length < 2) continue;
