@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Card, Badge, Button, Dinero, NotaMoneda } from '../components/ui';
 import { ViewHead, Bars, Ring } from '../components/viz';
-import { Publicar } from '../components/Publicar';
 import { FlujoMiroFish } from '../components/FlujoMiroFish';
 import { Stepper, IngestaManual, Galeria, PASOS_CAMPANA, type PasoCampana } from '../components/CampanaPasos';
 import { MotorEnVivo } from '../components/MotorEnVivo';
@@ -156,6 +155,17 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
   const [recienElegido, setRecienElegido] = useState<Record<string, string | string[]>>({});
   /** El valor que se muestra: lo recién presionado o, si no, lo que hay guardado. */
   const valorDe = (campo: string): string | string[] | undefined => recienElegido[campo] ?? (decisiones[campo] as string | string[] | undefined);
+  /** Lo que el sistema necesita saber para decidir solo: si falta algo, se dice y se manda a Primeros pasos. */
+  const chequeos = [
+    { listo: !!d.negocio?.name && String(d.negocio?.description || '').length >= 20, t: 'Su negocio: cómo se llama y qué hace' },
+    { listo: !!(decisiones.negocio_que && decisiones.prod_1), t: 'Qué vende y a qué precio' },
+    { listo: (d.archivos?.length ?? 0) > 0, t: 'Su material: fotos, videos o catálogo' },
+    { listo: Array.isArray(decisiones.canales) && (decisiones.canales as string[]).length > 0, t: 'Dónde quiere que trabaje (sus redes)' },
+  ];
+  const primerosPasosListos = chequeos.every(c => c.listo);
+  /** La decisión que tomó Tino en la última corrida (es lo que el cliente ve en Automático). */
+  const decisionTino = (d.corridas.flatMap(c => c.tareas ?? []).find(t => t.agente === 'tino')?.resultado ?? null) as any;
+
   /** El estatus de un grupo, en corto: «Automático», «WhatsApp, Instagram», «sin definir». */
   const estatusDe = (campo: string) => {
     const v = valorDe(campo);
@@ -488,10 +498,17 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
               </div>
               <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
                 {!manual && (
-                  <Button title="Lo lleva al paso 2, donde se ve el mercado trabajando con lo que su negocio tenga evaluado en MiroFish. Todavía no le pide nada al motor: para eso hay que subir el material y mandarlo a evaluar."
-                    onClick={() => { setToast('El paso 2 muestra lo que su negocio tenga evaluado en MiroFish: todavía no se le pidió nada al motor'); setPaso(2); }}>
-                    <I_Play size={14} /> Ir al paso 2
-                  </Button>
+                  primerosPasosListos ? (
+                    <Button title="Lo lleva al paso 2, donde se ve el mercado trabajando con lo que su negocio tenga evaluado en MiroFish. Todavía no le pide nada al motor: para eso hay que subir el material y mandarlo a evaluar."
+                      onClick={() => { setToast('El paso 2 muestra lo que su negocio tenga evaluado en MiroFish: todavía no se le pidió nada al motor'); setPaso(2); }}>
+                      <I_Play size={14} /> Ir al paso 2
+                    </Button>
+                  ) : (
+                    <Button variant="outline" title="Para avanzar, el sistema necesita la información de su negocio. Se completa en Primeros pasos: qué hace, qué vende, su material y sus redes."
+                      onClick={() => { setVista('onboarding'); setToast('Complete Primeros pasos: con eso el sistema ya puede decidir solo qué publicar y qué campaña armar'); }}>
+                      <I_Upload size={14} /> Completar Primeros pasos
+                    </Button>
+                  )
                 )}
                 <Button variant="outline" className="btn-sm" title={manual ? 'Volver al camino con Sinkroo' : 'Si ya tiene las imágenes o los videos hechos, súbalos y MiroFish los puntúa'}
                   onClick={() => setManual(!manual)}>
@@ -553,7 +570,79 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
 
           {manual
             ? <div style={{ marginTop: 16 }}><IngestaManual setToast={setToast} ir={setPaso} /></div>
-            : <Publicar setToast={setToast} modo={modo} irAConversaciones={() => setVista('conversaciones')} soloIngesta />}
+            : (
+              <>
+                {/* ==================== EN AUTOMÁTICO NO SE ELIGE NADA ====================
+                    El sistema decide con el mercado y los datos del negocio; el cliente ve QUÉ decidió y
+                    aprueba. Las decisiones de publicación y de campaña se contestan en Primeros pasos,
+                    no acá: por eso acá solo se muestra lo que el sistema resolvió. */}
+                <Card
+                  className="decide"
+                  title={<span className="row" style={{ gap: 8 }}><I_Robot size={14} style={{ color: 'var(--purple3)' }} /> Lo que decide el sistema</span>}
+                  action={<Badge tone="purple">{estatusDe('modo') === 'sin definir' ? 'Automático' : estatusDe('modo')}</Badge>}
+                >
+                  {decisionTino ? (
+                    <>
+                      <div className="bs" style={{ marginBottom: 10 }}>
+                        En Automático usted no elige: el sistema decide con su mercado y sus datos, y usted aprueba. Esto fue lo que decidió:
+                      </div>
+                      <div className="guards">
+                        {([
+                          { k: 'Qué publica', v: decisionTino.propuesta_publicacion?.tipo, s: decisionTino.propuesta_publicacion?.por_que, e: decisionTino.propuesta_publicacion?.referencia ? `Se apoya en ${decisionTino.propuesta_publicacion.referencia}` : '' },
+                          { k: 'Qué campaña', v: decisionTino.propuesta_campana?.objetivo, s: decisionTino.propuesta_campana?.por_que, e: `Techo por día: ${decisionTino.propuesta_campana?.presupuesto_diario || 'sin definir'}` },
+                          { k: 'Contenido en sus redes', v: decisionTino.contenido?.publicacion_diaria, s: decisionTino.contenido?.cadencia, e: (decisionTino.contenido?.formato_por_red || []).join(' · ') },
+                          { k: 'Cuándo cambia', v: decisionTino.cuando_cambiar?.regla, s: decisionTino.cuando_cambiar?.sin_las_cuentas, e: decisionTino.cuando_cambiar?.base_medida || '' },
+                        ] as { k: string; v?: string; s?: string; e?: string }[]).filter(x => x.v).map(x => (
+                          <div key={x.k} className="guard">
+                            <span className="guard-lb">{x.k}<small>{x.v}</small>{x.s ? <small>{x.s}</small> : null}{x.e ? <small>{x.e}</small> : null}</span>
+                          </div>
+                        ))}
+                      </div>
+                      {((decisionTino.falta || []) as string[]).length > 0 && (
+                        <div className="acc-why"><b>Para que decida con todo:</b> {(decisionTino.falta as string[]).join(' · ')}</div>
+                      )}
+                    </>
+                  ) : (
+                    <EstadoVacio
+                      titulo="Todavía no hay una decisión que mostrar"
+                      texto="El sistema decide cuando tiene su mercado leído y sus datos. Corre la investigación cada mañana, y se puede adelantar desde el paso 2 con el material cargado."
+                      accion="Ver el mercado investigado"
+                      onAccion={() => setVista('mercado')}
+                    />
+                  )}
+                </Card>
+
+                {/* ==================== LO QUE HACE FALTA PARA QUE PUEDA DECIDIR SOLO ==================== */}
+                <Card
+                  title={<span className="row" style={{ gap: 8 }}><I_Upload size={14} style={{ color: 'var(--purple3)' }} /> Con esto el sistema trabaja solo</span>}
+                  action={<Badge tone={primerosPasosListos ? 'green' : 'amber'}>{primerosPasosListos ? 'completo' : `${chequeos.filter(c => !c.listo).length} por completar`}</Badge>}
+                >
+                  <div className="bs" style={{ marginBottom: 10 }}>
+                    El sistema decide solo cuando tiene el mercado, sus redes y su modelo de negocio. Eso se completa en <b>Primeros pasos</b>, no acá: por eso no le pedimos que elija nada.
+                  </div>
+                  <div className="guards">
+                    {chequeos.map(c => (
+                      <div key={c.t} className="guard">
+                        <span className="guard-lb">{c.t}</span>
+                        <span className="guard-val" style={{ color: c.listo ? 'var(--green)' : 'var(--amber)' }}>{c.listo ? 'listo' : 'falta'}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="row" style={{ gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+                    <Button variant={primerosPasosListos ? 'outline' : 'primary'}
+                      title="Primeros pasos: su negocio, lo que vende, su material, sus redes y las decisiones de cómo quiere trabajar."
+                      onClick={() => { setVista('onboarding'); setToast('Primeros pasos: con eso el sistema ya puede decidir solo qué publicar y qué campaña armar'); }}>
+                      {primerosPasosListos ? 'Revisar Primeros pasos' : 'Completar Primeros pasos'}
+                    </Button>
+                    <Button disabled={!primerosPasosListos}
+                      title={primerosPasosListos ? 'Pasa al paso 2: el mercado y MiroFish trabajando con lo que su negocio tiene.' : 'Para avanzar falta completar Primeros pasos: el sistema necesita esa información para trabajar solo.'}
+                      onClick={() => { if (primerosPasosListos) { setPaso(2); setToast('Paso 2: el mercado y MiroFish con lo que su negocio tiene'); } else { setToast('Falta completar Primeros pasos para que el sistema pueda trabajar solo'); } }}>
+                      <I_Play size={14} /> Pasar al paso 2
+                    </Button>
+                  </div>
+                </Card>
+              </>
+            )}
         </>
       )}
 
