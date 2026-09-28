@@ -1,3 +1,6 @@
+// Esta primera línea no es un adorno: carga las claves del servidor (correo, redes, cifrado) ANTES de
+// que ningún otro módulo lea el entorno. Va primero por eso.
+import { entorno } from './lib/entorno.js';
 import Fastify from 'fastify';
 import { Pool } from 'pg';
 import { migrate } from './lib/schema.js';
@@ -106,6 +109,11 @@ export async function buildApp() {
   await archivosRoutes(app);
 
   try { await migrate(db); } catch (e: any) { app.log.warn(`migration pending: ${e.message}`); }
+
+  // Qué se cargó del archivo de claves del servidor: se dicen los NOMBRES, nunca los valores.
+  app.log.info(`entorno: ${entorno.puestas.length} ${entorno.puestas.length === 1 ? 'variable cargada' : 'variables cargadas'} de ${entorno.archivo}`
+    + (entorno.problema ? ` (${entorno.problema})` : '')
+    + (entorno.vacias.length ? ` · sin valor: ${entorno.vacias.join(', ')}` : ''));
 
   // LA INVESTIGACIÓN DIARIA: lo que la pantalla de entrada promete («investiga el mercado cada mañana»).
   // Corre la misma corrida del botón de Mercado, una vez al día por negocio, sin gastar créditos.
