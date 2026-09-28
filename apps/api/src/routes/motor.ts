@@ -251,10 +251,16 @@ export async function motorRoutes(app: FastifyInstance, db: Pool) {
    */
   app.get('/api/tendencias', async (req, reply) => {
     const u = await exigirSesion(req, reply); if (!u || !u.business_id) return;
+    // `dias` va por subconsulta: PostgreSQL no admite count(DISTINCT …) dentro de una ventana.
     const r = await db.query(
-      `SELECT tema, alcance, toca_el_rubro, paises, fecha, count(DISTINCT fecha) OVER (PARTITION BY tema)::int AS dias
-         FROM tendencias WHERE business_id = $1 AND fecha >= current_date - interval '30 days'
-        ORDER BY fecha DESC, array_length(paises, 1) DESC, tema LIMIT 80`, [u.business_id]);
+      `WITH por_tema AS (
+         SELECT tema, count(DISTINCT fecha)::int AS dias FROM tendencias
+          WHERE business_id = $1 AND fecha >= current_date - interval '30 days'
+          GROUP BY tema)
+       SELECT t.tema, t.alcance, t.toca_el_rubro, t.paises, t.fecha, p.dias
+         FROM tendencias t JOIN por_tema p ON p.tema = t.tema
+        WHERE t.business_id = $1 AND t.fecha >= current_date - interval '30 days'
+        ORDER BY t.fecha DESC, array_length(t.paises, 1) DESC, t.tema LIMIT 80`, [u.business_id]);
     return {
       tendencias: r.rows,
       como_se_lee: 'alcance: un solo país es local; varios de la región es regional; si aparece también en España o Estados Unidos, no es cosa nuestra.',

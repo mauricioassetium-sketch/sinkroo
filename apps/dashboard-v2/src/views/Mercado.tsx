@@ -308,6 +308,86 @@ ${p.prompt}` });
     });
   };
 
+
+  /**
+   * El botón de los formatos y las tendencias. Es el mismo panel de detalle que los otros dos:
+   * lo que Nova midió —el formato que aguanta en cada plaza, quién ya repite molde, las series que
+   * están corriendo— y lo que se está hablando por país, con su alcance cultural.
+   */
+  const abrirFormatos = () => {
+    const b: Bloque[] = [];
+    const tareaNova = d.corridas.flatMap(c => c.tareas ?? []).find(t => t.agente === 'nova');
+    const nova = (tareaNova?.resultado ?? {}) as any;
+    const rec = (nova.formatos_recomendados ?? []) as any[];
+
+    if (rec.length) {
+      b.push({ tipo: 'aviso', texto: 'El formato que aguanta en cada plaza: el molde que más se repite entre las piezas que el mercado sostiene', tono: 'green' });
+      b.push({
+        tipo: 'filas', items: rec.map(r => ({
+          t: `${r.plaza} → ${r.formato_recomendado}`,
+          s: [`${r.por_que}`, r.colores?.length ? `colores medidos: ${r.colores.join(' ')}` : '', r.tipografia ? `tipografía: ${r.tipografia}` : ''].filter(Boolean).join(' · '),
+          etiqueta: r.dias_sostenidos ? `${r.dias_sostenidos} días` : 'medido',
+          tono: 'purple' as const,
+        })),
+      });
+    } else {
+      b.push({ tipo: 'texto', texto: d.cargando ? 'Leyendo el back…' : 'Todavía no hay formatos medidos: se llenan cuando el equipo corra la investigación del mercado.' });
+    }
+
+    if (nova.quien_repite_molde?.length) {
+      b.push({ tipo: 'aviso', texto: 'Quién encontró ya su formato: repetir molde es la señal' });
+      b.push({ tipo: 'filas', items: nova.quien_repite_molde.map((q: any) => ({ t: q.anunciante, s: `${q.veces} de sus piezas usan el mismo molde: ${q.molde_que_repite}`, etiqueta: `${q.veces}×` })) });
+    }
+
+    if (nova.series_detectadas?.length) {
+      b.push({ tipo: 'aviso', texto: 'Series que ya están corriendo, sin que nadie las llame así', tono: 'green' });
+      b.push({ tipo: 'filas', items: nova.series_detectadas.map((s: any) => ({ t: `${s.anunciante}: «${s.palabra}»`, s: `${s.tipo} · molde: ${s.molde}`, etiqueta: `${s.en_piezas} piezas`, tono: 'green' as const })) });
+    }
+
+    if (nova.alcance_cultural) {
+      b.push({ tipo: 'datos', filas: [
+        { k: 'Temas de hoy en un solo país', v: String(nova.alcance_cultural.local ?? 0) },
+        { k: 'En varios países de la región', v: String(nova.alcance_cultural.regional ?? 0) },
+        { k: 'En varios mercados (no es cosa nuestra)', v: String(nova.alcance_cultural.global ?? 0), s: nova.alcance_cultural.como_se_lee },
+      ] });
+    }
+
+    if (d.tendencias.length) {
+      b.push({ tipo: 'aviso', texto: 'Lo que se está hablando: su alcance y si toca su rubro' });
+      b.push({
+        tipo: 'filas', items: d.tendencias.slice(0, 24).map(t => ({
+          t: t.tema,
+          s: [`${t.fecha ? String(t.fecha).slice(0, 10) : ''}`, `países: ${(t.paises || []).join(', ')}`, t.dias > 1 ? `aparece en ${t.dias} días: sigue` : 'un solo día'].filter(Boolean).join(' · '),
+          etiqueta: t.toca_el_rubro ? 'toca su rubro' : String(t.alcance || '').split(' (')[0],
+          tono: t.toca_el_rubro ? 'green' as const : 'muted' as const,
+        })),
+      });
+      b.push({ tipo: 'texto', texto: 'Cómo se lee: un tema de un solo país es local; varios de la región es regional; y si aparece también en España o Estados Unidos, no es cosa nuestra. Los temas del día suelen ser noticia y deporte: se usan como contexto y calendario, nunca como el mensaje central.' });
+    } else {
+      b.push({ tipo: 'texto', texto: 'Todavía no hay tendencias guardadas: se llenan en la corrida diaria.' });
+    }
+
+    if (nova.calendario_sugerido) {
+      const cal = Array.isArray(nova.calendario_sugerido)
+        ? nova.calendario_sugerido
+        : [{ tema: String(nova.calendario_sugerido), dias: 0 }];
+      b.push({ tipo: 'aviso', texto: 'Calendario: lo que se repite varios días y sí toca su rubro', tono: 'green' });
+      b.push({ tipo: 'filas', items: cal.map((c: any) => ({ t: c.tema, s: c.dias ? `aparece en ${c.dias} días` : '', etiqueta: c.dias ? `${c.dias} días` : 'nota', tono: 'green' as const })) });
+    }
+
+    if (nova.como_aplicarlo?.length) {
+      b.push({ tipo: 'aviso', texto: 'Cómo se aplica: las reglas, no la decoración' });
+      b.push({ tipo: 'pasos', items: nova.como_aplicarlo });
+    }
+
+    detalle({
+      titulo: 'Formatos y tendencias',
+      sub: 'Qué formato aguanta en cada plaza, quién ya lo encontró y qué se está hablando',
+      bloques: b,
+      fuente: 'la corrida del mercado de este negocio + el RSS público de tendencias por país',
+    });
+  };
+
   return (
     <div className="dash">
       <ViewHead
@@ -335,6 +415,13 @@ ${p.prompt}` });
               title="Abre los prompts de generación (imagen o video) que armó Iris con la analítica del mercado, y la traza de cómo se armó cada campo: colores, tipografía, formato, escenas y estilo UGC o toma. Todavía no hay generador conectado: esto queda listo para pegar. No cambia nada."
             >
               Ver los prompts de generación{d.prompts.length ? ` (${d.prompts.length})` : ''}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={abrirFormatos}
+              title="Abre lo que el equipo midió sobre formatos y tendencias: qué formato aguanta en cada plaza con sus días, quién ya repite molde, las series que están corriendo, y lo que se está hablando por país con su alcance (local, regional o de varios mercados). No cambia nada."
+            >
+              Ver formatos y tendencias
             </Button>
           </div>
         }

@@ -120,6 +120,18 @@ export type InformeMercado = {
   } | null;
 };
 
+/** Un tema de los que el país está hablando, con su alcance cultural y si toca el rubro del negocio. */
+export type Tendencia = {
+  tema: string;
+  /** local (un solo país) · regional (varios de la región) · global o de varios mercados. */
+  alcance: string;
+  toca_el_rubro: boolean;
+  paises: string[];
+  fecha: string;
+  /** En cuántas fechas distintas apareció: 1 = noticia de un día; más = algo que sigue. */
+  dias: number;
+};
+
 /** Un prompt de generación: el contrato que leerá el generador, con la traza de cómo se armó. */
 export type PromptGeneracion = {
   id: string;
@@ -225,6 +237,8 @@ export type Datos = {
   informeMercado: InformeMercado | null;
   /** Los prompts de generación (imagen o video) del negocio, con su traza. Vacío = todavía no hay. */
   prompts: PromptGeneracion[];
+  /** Lo que se está hablando en los países que se miran, con su alcance y su histórico. */
+  tendencias: Tendencia[];
   /** Las redes conectables con el back encendido: cuáles están configuradas, cuáles tienen cuenta
    *  conectada y cuándo se sincronizaron, más el resumen (`conectadas` de `total`). null = sin back, o
    *  el servidor no respondió a la consulta. */
@@ -244,7 +258,7 @@ const VACIO: Datos = {
   negocio: null, resumen: null, onboarding: null,
   campanas: [], piezas: [], evaluaciones: [], hallazgos: [], corridas: [],
   publico: null, conversaciones: [], archivos: [], creditos: null, calibracion: null, backtest: null, integraciones: null,
-  metricas: null, informeMercado: null, prompts: [], desvioPct: 0,
+  metricas: null, informeMercado: null, prompts: [], tendencias: [], desvioPct: 0,
   refrescar: async () => {}, guardar: async () => {}, arrancar: async () => {},
 };
 
@@ -268,7 +282,7 @@ export function ProveedorDatos({ children, modoDemo = false }: { children: React
     // En modo demostración no se lee el back ni con sesión abierta: la demostración no es la cuenta.
     if (!hayApi() || !token() || modoDemo) { setEstado(VACIO); return; }
     setEstado(e => ({ ...e, real: true, cargando: true, error: '' }));
-    const [neg, onb, camp, piez, eval_, hall, corr, publ, conv, arch, cred, calib, back, integ, metr, inform, prm] = await Promise.all([
+    const [neg, onb, camp, piez, eval_, hall, corr, publ, conv, arch, cred, calib, back, integ, metr, inform, prm, tend] = await Promise.all([
       traer<{ negocio: Negocio; resumen: Resumen; onboarding: { hechos: number[]; arrancado: boolean } } | null>('/api/negocio', null),
       traer<{ datos: Record<string, unknown>; hechos: number[]; arrancado: boolean }>('/api/onboarding', { datos: {}, hechos: [], arrancado: false }),
       traer<{ campanas: Campana[] }>('/api/campanas', { campanas: [] }),
@@ -286,6 +300,7 @@ export function ProveedorDatos({ children, modoDemo = false }: { children: React
       traer<Metricas | null>('/api/metricas', null),
       traer<InformeMercado | null>('/api/mercado/informe', null),
       traer<{ prompts: PromptGeneracion[] }>('/api/prompts', { prompts: [] }),
+      traer<{ tendencias: Tendencia[] }>('/api/tendencias', { tendencias: [] }),
     ]);
     setEstado({
       real: true, cargando: false, error: neg ? '' : 'no se pudo leer el negocio del servidor',
@@ -307,6 +322,7 @@ export function ProveedorDatos({ children, modoDemo = false }: { children: React
       metricas: metr,
       informeMercado: inform,
       prompts: prm.prompts || [],
+      tendencias: tend.tendencias || [],
       desvioPct: hall.desvio_actual_pct || 0,
       refrescar: async () => {},
       guardar: async () => {},

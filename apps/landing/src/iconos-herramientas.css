@@ -4,7 +4,7 @@
    QUÉ ES: cinco dibujos (un solo SVG en línea cada uno) que reemplazan a las cinco capturas de la
    sección «CON QUÉ TRABAJA». Uno por tarjeta:
 
-     01 · EL EQUIPO DE INVESTIGACIÓN   el mapa de datos y los seis agentes, con la lupa barriendo
+     01 · EL EQUIPO DE INVESTIGACIÓN   el mapa de datos y los ocho agentes, con la lupa barriendo
      02 · MIROFISH                     cinco fichas de juez que se llenan y el público que opina
      03 · EL PANEL                     la mini pantalla con sus módulos encendiéndose en secuencia
      04 · LAS MEDICIONES               las barras, la línea que sube y el desvío contra lo previsto
@@ -21,7 +21,7 @@
      3. NADA DEPENDE DE JAVASCRIPT, ni para animar ni para aparecer. El componente no tiene estado
         ni efectos: se pinta y ya.
      4. NADA ARRANCA ESCONDIDO SI NO HAY ANIMACIÓN. Con `prefers-reduced-motion: reduce` (mirá el
-        bloque al final) el dibujo queda ENTERO y QUIETO: los seis agentes, las cinco notas puestas,
+        bloque al final) el dibujo queda ENTERO y QUIETO: los ocho agentes, las cinco notas puestas,
         los cinco módulos encendidos, las barras crecidas y la pila llena. Nunca un cuadro vacío.
      5. COLORES DE SINKROO. Fondo oscuro, violetas y gris; el verde SÓLO en lo que sale bien: el
         punto medido que quedó por encima de lo previsto (04). Trazo fino y brillo suave.
@@ -120,13 +120,13 @@
   to { stroke-dashoffset: -10.8; }
 }
 
-/* El agente se prende a los 0,45 s de arrancar (9 % del ciclo) y queda encendido hasta el final;
+/* El agente se prende a los 0,45 s de arrancar (7,3 % del ciclo de 6,2 s) y queda encendido hasta el final;
    se apaga suavecito en el último tramo, para que el bucle pueda empezar de nuevo. La opacidad
    base es 0 —igual que el final de la animación— para que nadie esté encendido antes de su turno
    (el estado base es el que se ve mientras corre el `animation-delay`). */
 .ico-inv-agente {
   opacity: 0;
-  animation: icoInvAgente 5s ease-out infinite;
+  animation: icoInvAgente 6.2s ease-out infinite;
   animation-delay: var(--ico-retraso, 0s);
 }
 
@@ -136,6 +136,8 @@
 .ico-inv-agente--4 { --ico-retraso: 1.35s; }
 .ico-inv-agente--5 { --ico-retraso: 1.8s; }
 .ico-inv-agente--6 { --ico-retraso: 2.25s; }
+.ico-inv-agente--7 { --ico-retraso: 2.7s; }
+.ico-inv-agente--8 { --ico-retraso: 3.15s; }
 
 @keyframes icoInvAgente {
   0%, 3%    { opacity: 0; }

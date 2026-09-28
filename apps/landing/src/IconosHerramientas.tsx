@@ -28,7 +28,7 @@ export type CualHerramienta = 'investigacion' | 'mirofish' | 'panel' | 'medicion
 /** Qué se ve en cada uno, para quien no mira la pantalla. */
 const ROTULO: Record<CualHerramienta, string> = {
   investigacion:
-    'Dibujo animado: seis agentes se encienden uno por uno sobre un mapa de datos mientras una lupa barre la escena.',
+    'Dibujo animado: ocho agentes se encienden uno por uno sobre un mapa de datos mientras una lupa barre la escena.',
   mirofish:
     'Dibujo animado: cinco fichas de juez se van llenando con su nota mientras el público opina en bocadillos.',
   panel:
@@ -42,7 +42,7 @@ const ROTULO: Record<CualHerramienta, string> = {
 /* --------------------------------------------------------------------------------------------------
    01 · EL EQUIPO DE INVESTIGACIÓN
    El mapa de datos (retícula tenue y dos contornos que corren, a 2,5 s) y encima el equipo: seis
-   puntos —los seis agentes— que se prenden de izquierda a derecha, uno cada 0,45 s, en el mismo
+   puntos —los ocho agentes— que se prenden de izquierda a derecha, uno cada 0,45 s, en el mismo
    orden en que la lupa los va alcanzando. La lupa barre la escena de izquierda a derecha durante
    los cinco segundos, meciéndose a 1,25 s.
    -------------------------------------------------------------------------------------------------- */
@@ -51,8 +51,10 @@ const AGENTES: Array<[number, number]> = [
   [26, 52],
   [44, 19],
   [50, 46],
+  [60, 16],
   [70, 28],
   [74, 58],
+  [84, 44],
 ];
 
 function Investigacion() {
@@ -71,7 +73,7 @@ function Investigacion() {
       <path className="ico-inv-contorno" d="M12 70 C 26 58, 36 74, 50 62 S 74 44, 88 50" />
       <path className="ico-inv-contorno ico-inv-contorno--b" d="M12 40 C 26 30, 40 44, 54 34 S 78 22, 88 27" />
 
-      {/* El equipo: seis agentes, cada uno con su halo y su punto. */}
+      {/* El equipo: ocho agentes, cada uno con su halo y su punto. */}
       {AGENTES.map(([x, y], i) => (
         <g className={`ico-inv-agente ico-inv-agente--${i + 1}`} key={`agente-${i}`}>
           <circle className="ico-inv-halo" cx={x} cy={y} r="5.6" />
