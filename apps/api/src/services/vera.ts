@@ -187,6 +187,110 @@ export async function leerArchivos(db: Pool, businessId: string): Promise<{ text
   return { texto, fuentes };
 }
 
+/**
+ * EL VOCABULARIO DEL NEGOCIO. Además de las palabras que más se repiten en el material entregado, se
+ * busca el vocabulario de los negocios que no son de barrio: tecnología, activos digitales, regulación.
+ * Un negocio de tokenización no se entiende con un catálogo de oficios locales: se entiende por sus
+ * PALABRAS CLAVE, y con esas palabras se busca su categoría y quiénes hacen lo mismo en el mundo.
+ */
+const VOCABULARIO: string[] = [
+  'tokenizacion', 'tokenizar', 'rwa', 'real world assets', 'activos del mundo real', 'web3', 'web 3',
+  'blockchain', 'gemelos digitales', 'digital twin', 'security token', 'stablecoin', 'defi', 'nft',
+  'depin', 'custodia', 'kyc', 'aml', 'compliance', 'regulacion', 'mica', 'vara', 'difc', 'tokens',
+  'infraestructura', 'verificacion', 'trazabilidad', 'oraculos', 'smart contracts', 'contratos inteligentes',
+  'inteligencia artificial', 'machine learning', 'saas', 'api', 'marketplace', 'logistica', 'energia',
+  'carbono', 'inmobiliario', 'commodities', 'oro', 'mineria', 'seguros', 'banca', 'pagos', 'remesas',
+];
+
+/** Las palabras cortas que no dicen nada: se descartan al buscar los términos propios del negocio. */
+const VACIAS = new Set(['para', 'como', 'con', 'los', 'las', 'del', 'que', 'una', 'unos', 'unas', 'por',
+  'sus', 'este', 'esta', 'estos', 'estas', 'desde', 'entre', 'sobre', 'hacia', 'todo', 'toda', 'todos',
+  'todas', 'mas', 'menos', 'muy', 'sin', 'son', 'ser', 'esta', 'estan', 'hace', 'hacen', 'puede', 'pueden',
+  'nuestro', 'nuestra', 'clientes', 'empresa', 'negocio', 'servicio', 'servicios', 'producto', 'productos']);
+
+/** Las palabras clave del negocio: las del vocabulario que aparecen, más las que más se repiten. */
+export function palabrasClave(texto: string, cuantas = 12): { palabra: string; de: string }[] {
+  const t = normal(texto);
+  const encontradas: { palabra: string; de: string }[] = VOCABULARIO
+    .filter(v => t.includes(v))
+    .map(v => ({ palabra: v, de: 'el vocabulario del rubro' }));
+  const cuenta = new Map<string, number>();
+  for (const w of t.split(/[^a-z0-9áéíóúñ]+/)) {
+    if (w.length < 6 || VACIAS.has(w)) continue;
+    cuenta.set(w, (cuenta.get(w) || 0) + 1);
+  }
+  const propias = [...cuenta.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6)
+    .map(([palabra]) => ({ palabra, de: 'el material del negocio' }));
+  const vistas = new Set<string>();
+  return [...encontradas, ...propias].filter(p => !vistas.has(p.palabra) && (vistas.add(p.palabra), true)).slice(0, cuantas);
+}
+
+/**
+ * LA CATEGORÍA DEL NEGOCIO, en la enciclopedia abierta. Se prueba el término en español primero y, si
+ * no hay nada, en inglés: un negocio de tokenización se explica igual en los dos idiomas.
+ */
+export async function leerWikipedia(termino: string): Promise<{ ok: boolean; titulo: string; resumen: string; url: string; idioma: string; nota: string }> {
+  const limpio = String(termino || '').trim().replace(/\s+/g, '_');
+  if (!limpio) return { ok: false, titulo: '', resumen: '', url: '', idioma: '', nota: 'sin término que buscar' };
+  for (const idioma of ['es', 'en']) {
+    try {
+      const r = await fetch(`https://${idioma}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(limpio)}`, {
+        headers: { 'User-Agent': 'Sinkroo/1.0 (+https://sinkroo.com; info@sinkroo.com)', Accept: 'application/json' },
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!r.ok) continue;
+      const j = await r.json() as { title?: string; extract?: string; content_urls?: { desktop?: { page?: string } } };
+      if (j?.extract) {
+        return { ok: true, titulo: String(j.title || ''), resumen: String(j.extract).slice(0, 700),
+          url: j.content_urls?.desktop?.page || `https://${idioma}.wikipedia.org/wiki/${limpio}`, idioma, nota: '' };
+      }
+    } catch { /* se prueba el otro idioma */ }
+  }
+  return { ok: false, titulo: '', resumen: '', url: '', idioma: '', nota: `no hay artículo para «${termino}»` };
+}
+
+/**
+ * QUIÉNES SON SIMILARES. Se buscan entidades abiertas —organizaciones, proyectos, estándares— con el
+ * nombre del concepto y de las palabras clave. Sale de Wikidata, que es abierta y no pide clave: lo que
+ * devuelve son organizaciones con nombre, y cada una se puede mirar.
+ */
+export async function buscarSimilares(termino: string, cuantas = 6): Promise<{ nombre: string; que: string; url: string }[]> {
+  try {
+    const r = await fetch(`https://www.wikidata.org/w/api.php?action=wbsearchentities&search=${encodeURIComponent(termino)}&language=es&uselang=es&limit=${cuantas}&format=json&origin=*`, {
+      headers: { 'User-Agent': 'Sinkroo/1.0 (+https://sinkroo.com; info@sinkroo.com)', Accept: 'application/json' },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!r.ok) return [];
+    const j = await r.json() as { search?: { id: string; label?: string; description?: string }[] };
+    return (j.search || []).filter(x => x.label).map(x => ({
+      nombre: String(x.label), que: String(x.description || '').slice(0, 120),
+      url: `https://www.wikidata.org/wiki/${x.id}`,
+    }));
+  } catch { return []; }
+}
+
+/**
+ * ¿EL ARTÍCULO HABLA DE ESTA FAMILIA DE NEGOCIOS? Sin esta comprobación, «rwa» devuelve el artículo de un
+ * pueblo de Tanzania y eso se muestra como si fuera la categoría del negocio. Se exige que el resumen
+ * tenga palabras del rubro y que no sea de otra cosa (etnias, días, películas, plantas…).
+ */
+export function categoriaPertinente(resumen: string, termino: string): boolean {
+  const t = normal(resumen);
+  const propio = normal(termino).split(' ')[0];
+  const acepta = ['activo', 'token', 'blockchain', 'digital', 'financ', 'tecnolog', 'invers', 'mercado',
+    'propiedad', 'energ', 'carbono', 'verific', 'infraestructura', 'regulacion', 'contrato inteligente'];
+  const rechaza = ['etnia', 'grupo etnico', 'bantu', 'dia de la semana', 'pelicula', 'cancion', 'album',
+    'lengua', 'idioma', 'pueblo indigena', 'planta', 'animal', 'deporte', 'futbol', 'vehiculo'];
+  return propio.length > 1 && t.includes(propio) && acepta.some(a => t.includes(a)) && !rechaza.some(r => t.includes(r));
+}
+
+/** ¿Esa entidad de Wikidata es del rubro? Se exige que su propia descripción lo diga. */
+export function similarPertinente(que: string): boolean {
+  const t = normal(que);
+  return ['empresa', 'organizacion', 'protocolo', 'plataforma', 'tecnolog', 'blockchain', 'estandar',
+    'proyecto', 'compania', 'sociedad', 'startup', 'fundacion', 'servicio', 'sistema'].some(a => t.includes(a));
+}
+
 /** Los rubros del mapa de oficios: se busca cuál aparece en el material, con la frase que lo delató. */
 const OFICIOS: { rubro: string; palabras: string[] }[] = [
   { rubro: 'belleza · keratina y alisados', palabras: ['keratina', 'alisado', 'peluqueria', 'salon de belleza', 'estilista', 'cabello', 'barberia'] },

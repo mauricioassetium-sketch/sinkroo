@@ -1,6 +1,6 @@
 import type { Pool } from 'pg';
 import { promptsDelInforme, guardarPrompts } from './prompts.js';
-import { deducirNegocio, leerArchivos, leerPagina, type NegocioLeido } from './vera.js';
+import { buscarSimilares, categoriaPertinente, deducirNegocio, leerArchivos, leerPagina, leerWikipedia, palabrasClave, similarPertinente, type NegocioLeido } from './vera.js';
 
 // =============================================================================================
 // LOS SEIS AGENTES DEL EQUIPO — la investigación del mercado, con trabajo REAL.
@@ -361,6 +361,27 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
   });
   leido.fuentes = [...fuentesWeb, ...archivosLeidos.fuentes];
 
+  // LAS PALABRAS CLAVE Y LA CATEGORÍA, BUSCADAS AFUERA. No alcanza con lo que el negocio sube: hay que
+  // salir al mercado. Con las palabras del material (tokenización, rwa, web3…) se busca qué es esa
+  // categoría y quiénes son parecidos, en fuentes abiertas —la enciclopedia y Wikidata—, que no piden
+  // clave ni permiso. Con eso, buscar el rubro y la competencia deja de ser adivinanza.
+  const claves = palabrasClave([ctx.nombre, ctx.descripcion, leido.queHace, leido.rubro,
+    archivosLeidos.texto.slice(0, 4000), ...paginas.map(p => `${p.titulo} ${p.descripcion} ${p.texto}`)].join(' '), 12);
+  // Se prueban los términos del MÁS específico al más corto, y se acepta el primero que dé una categoría
+  // QUE TENGA QUE VER con el negocio. Un término corto y ambiguo («rwa») devuelve cualquier cosa.
+  const candidatos = claves.filter(c => c.de === 'el vocabulario del rubro').map(c => c.palabra)
+    .sort((a, b) => b.split(' ').length - a.split(' ').length || b.length - a.length).slice(0, 8);
+  let categoria: Awaited<ReturnType<typeof leerWikipedia>> | null = null;
+  let termino = '';
+  let similares: { nombre: string; que: string; url: string }[] = [];
+  for (const t of candidatos) {
+    const cat = await leerWikipedia(t);
+    if (!cat.ok || !categoriaPertinente(cat.resumen, t)) continue;
+    const sims = (await buscarSimilares(t, 8)).filter(s => similarPertinente(s.que)).slice(0, 6);
+    categoria = cat; termino = t; similares = sims;
+    if (sims.length) break;   // con categoría clara y quiénes son similares, ya está
+  }
+
   // Lo que descubrió se usa YA en esta corrida: los demás agentes leen de ctx.
   if (!ctx.rubro.trim() && leido.rubro) ctx.rubro = leido.rubro;
   if (leido.alcance !== 'sin_determinar') {
@@ -396,6 +417,14 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
       perfil_actualizado: perfilActualizado
         ? 'el rubro quedó cargado en su negocio con lo que se dedujo del material'
         : 'el negocio ya tenía su rubro cargado: no se tocó',
+      palabras_clave: claves,
+      categoria_del_negocio: categoria?.ok
+        ? { termino, titulo: categoria.titulo, resumen: categoria.resumen, fuente: `${categoria.idioma}.wikipedia.org`, url: categoria.url }
+        : { termino, nota: categoria?.nota || 'sin término para buscar la categoría' },
+      quienes_son_similares: similares.length
+        ? similares
+        : 'no se encontraron organizaciones con ese nombre en Wikidata: la competencia se busca por palabra clave, país por país',
+      como_lo_entendio: 'las palabras clave del material → la categoría en la enciclopedia abierta → las organizaciones con ese nombre en Wikidata → y con esas palabras se busca el mercado de cada país',
       falta: leido.falta,
       porque: 'Es el paso uno: sin entender qué es el negocio, el equipo sale a investigar sin saber qué buscar y vuelve con las manos vacías.',
       fuente: `material del negocio: ${links.length} ${links.length === 1 ? 'enlace' : 'enlaces'} y ${archivosLeidos.fuentes.length} ${archivosLeidos.fuentes.length === 1 ? 'archivo' : 'archivos'}`,
