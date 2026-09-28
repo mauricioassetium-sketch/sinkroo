@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Button, Badge } from '../components/ui';
 import {
-  SinkrooMark, I_Mail, I_Lock, I_Check, I_ArrowRight, I_User, I_Shield, I_Sparkle, I_Clock,
+  SinkrooMark, I_Mail, I_Lock, I_Check, I_ArrowRight, I_User, I_Shield, I_Sparkle, I_Clock, I_Eye,
 } from '../components/icons';
 import {
   baseApi, crearCuenta, entrar as entrarApi, hayApi, leerSeguridad, guardarToken, token,
@@ -80,6 +80,8 @@ export function PantallaLogin({ onEntrar, vuelta, sesionAbierta }: {
   const conBack = hayApi();
   const [paso, setPaso] = useState<'form' | 'correo'>('form');
   // El pin que llega al correo: se escribe acá y se confirma sin salir del panel.
+  // El ojo del campo de la contraseña: con él se ve lo que se escribió, para no entrar a ciegas.
+  const [verClave, setVerClave] = useState(false);
   const [pin, setPin] = useState('');
   const [pinError, setPinError] = useState('');
   const [pinOk, setPinOk] = useState('');
@@ -394,8 +396,20 @@ export function PantallaLogin({ onEntrar, vuelta, sesionAbierta }: {
             <label className="label">Contraseña</label>
             <span className="login-inp">
               <I_Lock size={15} />
-              <input className="input" type="password" value={clave} placeholder="••••••••"
+              <input className="input" type={verClave ? 'text' : 'password'} value={clave} placeholder="••••••••"
                 onChange={e => setClave(e.target.value)} />
+              {/* EL OJO: enseña lo que se escribió, para no entrar a ciegas. Es reversible: se vuelve a tapar. */}
+              <button type="button" onClick={() => setVerClave(v => !v)}
+                title={verClave
+                  ? 'Vuelve a tapar la contraseña: se ven puntos otra vez. No cambia nada de lo que escribió.'
+                  : 'Muestra la contraseña para revisarla antes de entrar. Se puede volver a tapar cuando quiera.'}
+                style={{
+                  position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
+                  background: 'transparent', border: 0, padding: 4, lineHeight: 0, cursor: 'pointer',
+                  color: verClave ? 'var(--purple2)' : 'var(--muted)',
+                }}>
+                <I_Eye size={15} />
+              </button>
             </span>
           </div>
 
