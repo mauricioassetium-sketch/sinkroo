@@ -427,6 +427,29 @@ ${p.prompt}` });
         }
       />
 
+      {/* ==================== SI EL NEGOCIO NO DIJO QUÉ HACE NI DÓNDE, SE DICE ACÁ MISMO ====================
+          Es lo primero que hay que ver en esta pantalla: sin rubro y sin ciudad el equipo sale a investigar
+          sin saber qué buscar, vuelve con las manos vacías y parece que el motor falló. No falló: le falta
+          el dato. El aviso lleva derecho a Primeros pasos. */}
+      {!d.cargando && !String(d.negocio?.description || '').trim() && !String(d.negocio?.zona || '').trim() && (
+        <Card className="decide" title={<span className="row" style={{ gap: 8 }}><I_Globe size={14} style={{ color: 'var(--amber)' }} /> El motor no puede investigar todavía</span>}
+          action={<Badge tone="amber">falta un dato suyo</Badge>}>
+          <div className="bs">
+            Para leer su mercado, el equipo necesita saber <b>qué hace su negocio</b> y <b>dónde vende</b>.
+            Hoy no los tiene, así que sale a investigar sin saber qué buscar y vuelve con las manos vacías:
+            por eso la investigación no arroja hallazgos. <b>No es una falla del motor: es un dato que falta.</b>
+          </div>
+          <div className="row" style={{ gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+            <Button title="Primeros pasos: cuénte qué hace su negocio, qué vende y dónde vende. Con eso el equipo ya puede leer su mercado."
+              onClick={() => { if (setVista) setVista('onboarding'); setToast('Complete Primeros pasos: sin el rubro y la ciudad el equipo no sabe qué buscar'); }}>
+              Completar Primeros pasos
+            </Button>
+            <Button variant="outline" title="Vuelve a leer lo que hay guardado en el servidor. No gasta créditos."
+              onClick={() => void d.refrescar()}>Volver a leer</Button>
+          </div>
+        </Card>
+      )}
+
       {/* ============ LOS HALLAZGOS Y EL PÚBLICO, LOS DOS DEL BACK ============ */}
       <div className="duo">
         <Card
