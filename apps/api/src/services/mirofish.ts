@@ -31,7 +31,7 @@ const SENSIBILIDAD = ['No le importa el precio','Mira el precio primero','Compar
 const ESTILOS = ['impulsivo','comparador','desconfiado','experto','nuevo'];
 
 /** Crea los 500 agentes del público para un negocio. Si ya están, no los repite. */
-export async function crearPublico(db: Pool, businessId: string, zonaBase = 'Medellín') {
+export async function crearPublico(db: Pool, businessId: string, zonaBase = '') {
   const ya = await db.query('SELECT count(*)::int AS n FROM publico_agentes WHERE business_id = $1', [businessId]);
   if (ya.rows[0].n >= 500) return { creados: 0, total: ya.rows[0].n };
 

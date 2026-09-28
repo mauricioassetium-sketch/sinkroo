@@ -96,7 +96,7 @@ export async function onboardingRoutes(app: FastifyInstance, db: Pool) {
     );
     // El público del negocio, con la zona que tenga cargada: la misma que usa el resto del motor.
     const zona = await query<{ zona: string }>('SELECT zona FROM businesses WHERE id = $1', [u.business_id]);
-    const publico = await crearPublico(db, u.business_id, zona[0]?.zona || 'Medellín');
+    const publico = await crearPublico(db, u.business_id, zona[0]?.zona || '');
     return { ok: true, arrancado: true, publico };
   });
 }

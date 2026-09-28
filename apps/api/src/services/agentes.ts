@@ -754,7 +754,7 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
   tareas.push({
     agente: 'nova', orden: 8,
     que: piezas.length || tend.temas.length
-      ? `Leyó ${piezas.length} formatos del mercado y ${tend.temas.length} temas que ${ctx.zona || 'el país'} está hablando hoy`
+      ? `Leyó ${piezas.length} formatos del mercado y ${tend.temas.length} temas de los que se está hablando hoy`
       : 'No pudo leer formatos ni tendencias y lo dice',
     resultado: {
       fuente_tipo: 'los formatos de las piezas vivas del informe + el RSS público de tendencias por país (CO, MX, AR, BR, ES, US)',
