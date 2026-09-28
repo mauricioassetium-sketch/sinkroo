@@ -50,7 +50,7 @@ export async function negocioRoutes(app: FastifyInstance, db: Pool) {
   app.get('/api/creditos', async (req, reply) => {
     const u = await exigirSesion(req, reply); if (!u || !u.business_id) return;
     const m = await db.query(
-      `SELECT delta, motivo, detalle, saldo, created_at FROM movimientos_creditos
+      `SELECT delta, motivo, detalle, saldo, created_at, vence_at FROM movimientos_creditos
         WHERE business_id = $1 ORDER BY created_at DESC LIMIT 100`, [u.business_id]);
     const saldo = await db.query(
       `SELECT COALESCE((SELECT saldo FROM movimientos_creditos WHERE business_id = $1 ORDER BY created_at DESC LIMIT 1), 0) AS saldo`,

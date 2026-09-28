@@ -288,6 +288,11 @@ export async function migrate(db: Pool): Promise<void> {
 
     CREATE INDEX IF NOT EXISTS idx_tendencias_business ON tendencias(business_id, fecha DESC);
 
+    -- LOS CRÉDITOS QUE VENCEN: los 5.000 de bienvenida valen el primer mes (30 días). Al vencer, lo que
+    -- no se usó se retira con su propio movimiento, así el saldo y su historia siguen cuadrando. El que
+    -- pagó un plan tiene créditos que no vencen: por eso la fecha va en el movimiento, no en el negocio.
+    ALTER TABLE movimientos_creditos ADD COLUMN IF NOT EXISTS vence_at TIMESTAMPTZ;
+
     -- LOS PROMPTS DE GENERACIÓN: lo que el equipo de arte entrega para cada pieza y cada plaza. Todavía
     -- no hay generador de imagen ni de video conectado, así que esto es el CONTRATO: el día que exista,
     -- genera con esto y no con una idea suelta. Guarda el prompt (en inglés, listo para pegar), el

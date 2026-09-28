@@ -60,7 +60,40 @@ export async function revisarInvestigacionDiaria(db: Pool, log: (m: string) => v
       LIMIT 12`);
   const negocios = r.rows as Negocio[];
   for (const n of negocios) await investigar(db, n, log);
+  // Y de paso: los créditos de bienvenida del primer mes que ya vencieron.
+  try { await vencerBienvenidas(db, log); } catch (e) { log(`no se pudieron vencer los créditos: ${String((e as Error).message).slice(0, 120)}`); }
   return { corridos: negocios.length };
+}
+
+/**
+ * LOS CRÉDITOS DE BIENVENIDA VENCEN A LOS 30 DÍAS. Al vencer, lo que no se usó se retira con un
+ * movimiento propio (motivo 'vencimiento'): el saldo sigue cuadrando con su historia y el negocio ve
+ * por qué bajó. Se retira, como mucho, lo que regaló la bienvenida: si además cargó créditos pagados,
+ * esos no se tocan (van sin fecha de vencimiento).
+ */
+export async function vencerBienvenidas(db: Pool, log: (m: string) => void) {
+  const r = await db.query(
+    `SELECT b.id, b.name,
+            (SELECT saldo FROM movimientos_creditos m WHERE m.business_id = b.id ORDER BY created_at DESC LIMIT 1) AS saldo,
+            (SELECT delta FROM movimientos_creditos m WHERE m.business_id = b.id AND m.motivo = 'bienvenida' ORDER BY created_at ASC LIMIT 1) AS regalo
+       FROM businesses b
+      WHERE EXISTS (SELECT 1 FROM movimientos_creditos m
+                     WHERE m.business_id = b.id AND m.motivo = 'bienvenida' AND m.vence_at IS NOT NULL AND m.vence_at <= now())
+        AND NOT EXISTS (SELECT 1 FROM movimientos_creditos m WHERE m.business_id = b.id AND m.motivo = 'vencimiento')`);
+  let n = 0;
+  for (const f of r.rows) {
+    const saldo = Number(f.saldo) || 0;
+    const regalo = Number(f.regalo) || 0;
+    const vencido = Math.min(saldo, regalo);
+    if (vencido <= 0) continue;
+    await db.query(
+      `INSERT INTO movimientos_creditos (business_id, delta, motivo, detalle, saldo)
+       VALUES ($1, $2, 'vencimiento', $3, $4)`,
+      [f.id, -vencido, `Vencieron los créditos de bienvenida del primer mes (${vencido} sin usar)`, saldo - vencido]);
+    log(`créditos de bienvenida vencidos en «${f.name}»: ${vencido} sin usar`);
+    n++;
+  }
+  return n;
 }
 
 /**

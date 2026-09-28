@@ -28,6 +28,8 @@ type Cuerpo = { nombre?: string; email?: string; clave?: string };
 /** Los créditos con los que arranca un negocio nuevo: alcanzan para el arranque completo (investigar,
  *  escribir, probar con los 5 jueces y los 500 del público) sin tener que cargar nada el primer día. */
 const CREDITOS_PLAN = 5000;
+/** Los créditos de bienvenida valen el primer mes: después, el negocio decide si compra un plan. */
+const DIAS_BIENVENIDA = 30;
 
 export async function authRoutes(app: FastifyInstance) {
   /** Crear cuenta. Crea también el negocio: el negocio es del usuario desde el primer momento. */
@@ -63,12 +65,15 @@ export async function authRoutes(app: FastifyInstance) {
 
     await execute(`INSERT INTO onboarding (business_id) VALUES ($1) ON CONFLICT (business_id) DO NOTHING`, [negocioId]);
 
-    // Los créditos de arranque. Es una asignación real, no un dato de ejemplo: queda escrita en el libro
-    // con su motivo, así el saldo y su historia nunca se contradicen.
+    // Los créditos de bienvenida del PRIMER MES. Vencen a los 30 días: el que no compró un plan no sigue
+    // usándolos gratis, y el que sí compró tiene créditos que no vencen (esos van sin fecha). Todo queda
+    // en el libro con su motivo, así el saldo y su historia nunca se contradicen.
     await execute(
-      `INSERT INTO movimientos_creditos (business_id, delta, motivo, detalle, saldo)
-       VALUES ($1, $2, 'bienvenida', $3, $2)`,
-      [negocioId, CREDITOS_PLAN, `Créditos de bienvenida: ${CREDITOS_PLAN}`],
+      `INSERT INTO movimientos_creditos (business_id, delta, motivo, detalle, saldo, vence_at)
+       VALUES ($1, $2, 'bienvenida', $3, $2, now() + ($4 || ' days')::interval)`,
+      [negocioId, CREDITOS_PLAN,
+        `Créditos de bienvenida del primer mes: ${CREDITOS_PLAN} · válidos ${DIAS_BIENVENIDA} días`,
+        String(DIAS_BIENVENIDA)],
     );
 
     const token = await abrirSesion(user[0].id);

@@ -362,7 +362,7 @@ export function PantallaLogin({ onEntrar, vuelta, sesionAbierta }: {
                 onClick={() => { setModo('crear'); setError(''); setRecuperar(''); }}>
                 Cree su cuenta acá
               </button>{' '}
-              y entre con su propio negocio: arranca con 5.000 créditos.
+              y entre con su propio negocio: arranca con 5.000 créditos del primer mes, sin pagar nada.
             </div>
           )}
 
