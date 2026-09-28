@@ -35,15 +35,24 @@ export async function motorRoutes(app: FastifyInstance, db: Pool) {
   app.post('/api/agentes/correr', async (req, reply) => {
     const u = await exigirSesion(req, reply); if (!u || !u.business_id) return;
     const ctx = await contexto(db, u.business_id);
-    // Para investigar alcanza con saber A QUÉ SE DEDICA el negocio y DÓNDE vende: el rubro y la zona
-    // (los dos datos del onboarding). La descripción ayuda —Nia escribe con sus palabras— pero si falta,
-    // Nia lo dice en su tarea en vez de frenar la corrida entera: los demás ya tienen con qué trabajar.
-    const sabeQueHace = (ctx.rubro && ctx.rubro.trim().length >= 3) || (ctx.descripcion && ctx.descripcion.length >= 20);
+    // Para arrancar alcanza con UNA de tres cosas: el rubro, la descripción, o MATERIAL que se pueda
+    // leer (un archivo suyo o un enlace). Vera —la primera agente— lee ese material y deduce el rubro:
+    // por eso NO se puede frenar la corrida por no tener el perfil lleno, que es justo lo que ella llena.
+    const material = await db.query(
+      `SELECT (SELECT count(*) FROM archivos a WHERE a.business_id = $1) AS archivos,
+              (SELECT count(*) FROM onboarding o
+                WHERE o.business_id = $1 AND length(coalesce(o.datos->>'negocio_links','')) > 4) AS enlaces`,
+      [u.business_id]).catch(() => ({ rows: [{ archivos: 0, enlaces: 0 }] }));
+    const cuantos = material.rows[0] as { archivos: number; enlaces: number };
+    const sabeQueHace = (ctx.rubro && ctx.rubro.trim().length >= 3)
+      || (ctx.descripcion && ctx.descripcion.length >= 20)
+      || Number(cuantos?.archivos) > 0
+      || Number(cuantos?.enlaces) > 0;
     if (!sabeQueHace) {
       return reply.status(400).send({
-        error: 'el motor necesita saber qué hace el negocio antes de investigar',
-        codigo: 'falta_descripcion',
-        detalle: 'complete el rubro o la descripción en Primeros pasos',
+        error: 'el motor no tiene con qué entender su negocio',
+        codigo: 'falta_material',
+        detalle: 'suba un archivo suyo (un PDF, un catálogo), pegue el enlace de su página o escriba qué hace, en Primeros pasos. Con cualquiera de los tres, el equipo sale a investigar',
       });
     }
     const r = await correrInvestigacion(db, ctx);

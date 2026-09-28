@@ -139,6 +139,11 @@ export function bienvenida(d: { negocio: string; enlace: string; codigo?: string
   ].join('\n');
   const html = conMarco(`Bienvenido, ${d.negocio}`, [
     'Su cuenta en Sinkroo quedó creada y este correo es el de entrada al panel.',
+    ...(d.codigo ? [
+      `<b>Su pin para confirmar el correo desde el panel es:</b> <span style="font-size:24px;letter-spacing:4px;font-weight:700">${d.codigo}</span>`,
+      'Escriba ese pin en la pantalla del panel donde le pedimos confirmar el correo. Sirve igual que el enlace de abajo.',
+      '',
+    ] : []),
     'Para confirmar que el correo es suyo, abra este enlace:',
     boton('Confirmar mi correo', d.enlace),
     'El enlace vence en 24 horas y sirve una sola vez.',

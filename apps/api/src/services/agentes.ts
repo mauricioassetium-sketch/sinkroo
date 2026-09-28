@@ -1,5 +1,6 @@
 import type { Pool } from 'pg';
 import { promptsDelInforme, guardarPrompts } from './prompts.js';
+import { deducirNegocio, leerArchivos, leerPagina, type NegocioLeido } from './vera.js';
 
 // =============================================================================================
 // LOS SEIS AGENTES DEL EQUIPO — la investigación del mercado, con trabajo REAL.
@@ -36,6 +37,8 @@ export const AGENTES = [
   { id: 'iris', nombre: 'Iris', oficio: 'Arte y prompts' },
   { id: 'nova', nombre: 'Nova', oficio: 'Formatos y tendencias' },
   { id: 'tino', nombre: 'Tino', oficio: 'Decisión' },
+  // Vera va PRIMERO: sin entender el negocio, los demás salen a investigar a ciegas.
+  { id: 'vera', nombre: 'Vera', oficio: 'Entender el negocio' },
 ];
 
 /** Cómo se identifica el motor ante OpenStreetMap: Overpass y Nominatim lo exigen y limitan por IP. */
@@ -212,7 +215,7 @@ export async function leerMapaReal(rubro: string, zona: string): Promise<MapaRea
     for (let intento = 0; intento < 2 && !geo; intento++) {
       if (intento) await new Promise(r => setTimeout(r, 2500));
       try {
-        geo = await pedirJson(`https://nominatim.openstreetmap.org/search?format=json&limit=1&addressdetails=1&q=${encodeURIComponent(zona)}`, 15000);
+        geo = await pedirJson(`https://nominatim.openstreetmap.org/search?format=json&limit=1&addressdetails=1&q=${encodeURIComponent(zona)}`, 8000);
       } catch { geo = null; }
     }
     const bb = Array.isArray(geo) && geo[0]?.boundingbox;
@@ -243,8 +246,8 @@ export async function leerMapaReal(rubro: string, zona: string): Promise<MapaRea
   let ultimoError = '';
   for (let intento = 0; intento < 2; intento++) {
     try {
-      if (intento) await new Promise(r => setTimeout(r, 3000));
-      const datos = await pedirJson(url, 35000);
+      if (intento) await new Promise(r => setTimeout(r, 1500));
+      const datos = await pedirJson(url, 20000);
       const els = (datos?.elements ?? []) as any[];
       const conNombre = els.filter(e => (e.tags || {}).name);
       const nombres = [...new Set(conNombre.map(e => String(e.tags.name).trim()))];
@@ -330,8 +333,88 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
   const corridaId = corrida.rows[0].id;
   const tareas: { agente: string; que: string; resultado: Record<string, unknown>; orden: number }[] = [];
 
+  // ---------------- VERA · ENTENDER EL NEGOCIO (y va primero) ----------------
+  // Lee lo que el negocio entregó —su descripción, sus enlaces y sus archivos— y deduce qué es: el rubro,
+  // si vende en una ciudad, en un país o en varias jurisdicciones, qué ofrece y por qué canales. Lo que
+  // deduce se usa en el resto de la corrida: si el perfil no tenía el rubro, queda cargado acá.
+  const links: string[] = await (async () => {
+    try {
+      const o = await db.query('SELECT datos FROM onboarding WHERE business_id = $1', [ctx.businessId]);
+      const v = (o.rows[0]?.datos as Record<string, unknown>)?.['negocio_links'];
+      const normalizar = (u: string) => (/^https?:\/\//i.test(u) ? u : (/^[\w.-]+\.[a-z]{2,}/i.test(u) ? `https://${u}` : ''));
+      if (Array.isArray(v)) return v.map(String).map(normalizar).filter(Boolean).slice(0, 6);
+      return String(v || '').split(/[\s,;]+/).map(normalizar).filter(Boolean).slice(0, 6);
+    } catch { return []; }
+  })();
+
+  const paginas: { url: string; titulo: string; descripcion: string; texto: string; ok: boolean; nota: string }[] = [];
+  const fuentesWeb: { tipo: string; nombre: string; leido: boolean; nota: string }[] = [];
+  const leidas = await Promise.all(links.map(async url => ({ url, ...(await leerPagina(url)) })));
+  for (const p of leidas) {
+    paginas.push(p);
+    fuentesWeb.push({ tipo: 'página', nombre: p.url.replace(/^https?:\/\//, '').slice(0, 60), leido: p.ok, nota: p.nota });
+  }
+  const archivosLeidos = await leerArchivos(db, ctx.businessId);
+  const leido: NegocioLeido = deducirNegocio({
+    nombre: ctx.nombre, descripcion: ctx.descripcion, rubroDeclarado: ctx.rubro, zona: ctx.zona,
+    material: archivosLeidos.texto, paginas,
+  });
+  leido.fuentes = [...fuentesWeb, ...archivosLeidos.fuentes];
+
+  // Lo que descubrió se usa YA en esta corrida: los demás agentes leen de ctx.
+  if (!ctx.rubro.trim() && leido.rubro) ctx.rubro = leido.rubro;
+  if (leido.alcance !== 'sin_determinar') {
+    ctx.zona = leido.alcance === 'global' ? 'negocio global (varias jurisdicciones)' : (leido.lugares[0] || ctx.zona);
+  }
+
+  // Y si el perfil no tenía el rubro, queda cargado: la próxima corrida ya arranca sabiéndolo.
+  let perfilActualizado = false;
+  try {
+    const actual = await db.query('SELECT rubro FROM businesses WHERE id = $1', [ctx.businessId]);
+    if (leido.rubro && !String(actual.rows[0]?.rubro || '').trim()) {
+      await db.query('UPDATE businesses SET rubro = $2 WHERE id = $1', [ctx.businessId, leido.rubro]);
+      perfilActualizado = true;
+    }
+  } catch { /* si no se puede escribir, la corrida sigue con lo leído */ }
+
+  tareas.push({
+    agente: 'vera', orden: 0,
+    que: leido.rubro
+      ? `Entendió el negocio: «${leido.rubro}» — ${leido.alcance === 'sin_determinar' ? 'todavía sin saber dónde vende' : `alcance ${leido.alcance}`}`
+      : 'No pudo determinar el rubro con el material entregado y lo dice',
+    resultado: {
+      fuente_tipo: 'la descripción del negocio, sus enlaces (se piden y se leen) y sus archivos (los PDF de texto se descomprimen y se leen)',
+      rubro_deducido: leido.rubro || 'sin determinar',
+      alcance: leido.alcance,
+      lugares_que_nombra: leido.lugares,
+      que_hace: leido.queHace,
+      que_ofrece: leido.queVende,
+      a_quien: leido.aQuien,
+      canales: leido.canales,
+      senales: leido.senales,
+      fuentes_leidas: leido.fuentes,
+      perfil_actualizado: perfilActualizado
+        ? 'el rubro quedó cargado en su negocio con lo que se dedujo del material'
+        : 'el negocio ya tenía su rubro cargado: no se tocó',
+      falta: leido.falta,
+      porque: 'Es el paso uno: sin entender qué es el negocio, el equipo sale a investigar sin saber qué buscar y vuelve con las manos vacías.',
+      fuente: `material del negocio: ${links.length} ${links.length === 1 ? 'enlace' : 'enlaces'} y ${archivosLeidos.fuentes.length} ${archivosLeidos.fuentes.length === 1 ? 'archivo' : 'archivos'}`,
+    },
+  });
+
   // ---------------- LUX · el mercado (OpenStreetMap de verdad + el informe de piezas vivas) ----------------
-  if (mapa.ok) {
+  if (leido.alcance === 'global') {
+    tareas.push({
+      agente: 'lux', orden: 1,
+      que: 'No contó locales en el mapa: su negocio no tiene una plaza fija',
+      resultado: {
+        fuente_tipo: 'la lectura del negocio (Vera)',
+        porque: 'Es un negocio de varias jurisdicciones: contar cuántos locales hay en una ciudad no dice nada de su mercado. Su mercado se lee por país, con los anuncios que corren en cada uno.',
+        sin_fuente: 'el conteo de locales del mapa no aplica a un negocio global',
+        fuente: 'Vera · lectura del negocio',
+      },
+    });
+  } else if (mapa.ok) {
     tareas.push({
       agente: 'lux', orden: 1,
       que: `Contó el mercado en el mapa: ${mapa.conNombre} ${mapa.oficio} con nombre en ${mapa.ciudad}`,
@@ -639,7 +722,11 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
   // (c) LO QUE EL PAÍS ESTÁ HABLANDO HOY, y si toca el rubro. El alcance sale de en qué países aparece:
   // un solo país es local; varios de la región, regional; y si además sale fuera de la región, no es cosa nuestra.
   const palabras = [...new Set(`${ctx.rubro} ${ctx.nombre} ${ctx.descripcion}`.toLowerCase().split(/[^a-záéíóúñ]+/).filter(w => w.length > 4))];
-  const tend = await leerTendencias(GEOS_TENDENCIA, palabras);
+  // Las tendencias se piden con tope corto: son seis fuentes de afuera y ninguna puede colgar la corrida.
+  const tend = await Promise.race([
+    leerTendencias(GEOS_TENDENCIA, palabras),
+    new Promise<{ temas: TemaTendencia[]; geos: string[]; fallos: string[] }>(res => setTimeout(() => res({ temas: [], geos: GEOS_TENDENCIA, fallos: ['las tendencias tardaron más de 20 segundos: se dejan para la próxima corrida'] }), 20_000)),
+  ]);
   const tocan = tend.temas.filter(t => t.toca_el_rubro);
   let recurrentes: { tema: string; dias: number }[] = [];
   try {
