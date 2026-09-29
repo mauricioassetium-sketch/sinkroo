@@ -206,7 +206,11 @@ const VOCABULARIO: string[] = [
 const VACIAS = new Set(['para', 'como', 'con', 'los', 'las', 'del', 'que', 'una', 'unos', 'unas', 'por',
   'sus', 'este', 'esta', 'estos', 'estas', 'desde', 'entre', 'sobre', 'hacia', 'todo', 'toda', 'todos',
   'todas', 'mas', 'menos', 'muy', 'sin', 'son', 'ser', 'esta', 'estan', 'hace', 'hacen', 'puede', 'pueden',
-  'nuestro', 'nuestra', 'clientes', 'empresa', 'negocio', 'servicio', 'servicios', 'producto', 'productos']);
+  'nuestro', 'nuestra', 'clientes', 'empresa', 'negocio', 'servicio', 'servicios', 'producto', 'productos',
+  // Los nombres de las entidades HTML no son palabras: cuando la página trae «&middot;», el lector se queda
+  // con «middot» y eso no puede salir como palabra clave del negocio.
+  'middot', 'nbsp', 'quot', 'amp', 'apos', 'rsquo', 'lsquo', 'ldquo', 'rdquo', 'hellip', 'ndash', 'mdash',
+  'aacute', 'eacute', 'iacute', 'oacute', 'uacute', 'ntilde', 'laquo', 'raquo', 'bull', 'thinsp', 'shy']);
 
 /** Las palabras clave del negocio: las del vocabulario que aparecen, más las que más se repiten. */
 export function palabrasClave(texto: string, cuantas = 12): { palabra: string; de: string }[] {
@@ -407,8 +411,10 @@ export function deducirNegocio(d: {
   ].filter(Boolean);
   if (canales.length) senales.push(`los canales salen del material: ${canales.join(', ')}`);
 
-  // 5) Qué vende: los precios y las palabras de producto que aparecen.
-  const queVende = [...new Set((todo.match(/\b(plan|servicio|producto|curso|membresia|suscripcion|certificacion|paquete|tratamiento|arreglo|sistema|plataforma|software)\w*/g) || []).slice(0, 6))];
+  // 5) Qué vende: las palabras de producto que aparecen, ENTERAS. No se acepta cualquier continuación (plan
+  //    + etario = «planetary», plan + ts = «plants»): la palabra tiene que estar escrita así, o en plural.
+  //    OJO con el plural: «planes?» quiere decir «plane» + s opcional, no «plan»/«planes» — va «plan(es)?».
+  const queVende = [...new Set((todo.match(/\b(plan(es)?|servicio(s)?|producto(s)?|curso(s)?|membresia(s)?|suscripcion(es)?|certificacion(es)?|paquete(s)?|tratamiento(s)?|arreglo(s)?|sistema(s)?|plataforma(s)?|software(s)?)\b/g) || []).slice(0, 6))];
 
   const falta: string[] = [];
   if (!rubro) falta.push('el rubro: no aparece con claridad en el material entregado');

@@ -925,7 +925,8 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
 
   // ---------------- TINO · la decisión: qué se publica y qué campaña, con lo medido ----------------
   // Lee las decisiones del negocio (lo que contestó en Primeros pasos) y el mercado medido, y decide.
-  // En Automático decide y el cliente aprueba; en Manual no decide por él: le prueba y le muestra.
+  // En Automático decide y el cliente aprueba; en Compartido deja todo preparado y se frena esperando el OK
+  // para publicar o gastar; en Manual no decide por él: le prueba las piezas y le muestra el mercado.
   let decisiones: Record<string, any> = {};
   try {
     const o = await db.query('SELECT datos FROM onboarding WHERE business_id = $1', [ctx.businessId]);
@@ -941,58 +942,164 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
   const masVieja = [...piezas].sort((a, b) => (Number(b.dias) || 0) - (Number(a.dias) || 0))[0];
   const cierraPorWhats = piezas.some(p => /whatsapp|mensaje/i.test(String(p.cta || '')));
 
+  // EL SALTO DIRECTO AL CREATIVO. Sin mercado no se espera: se decide igual con lo que el negocio ya dijo
+  // —el rubro deducido de su material, sus palabras clave y su categoría— y cada campo dice de dónde sale.
+  // Son dos casos distintos y se distinguen: la CATEGORÍA NUEVA (se leyeron anuncios y ninguno compite: no
+  // hay a quién copiar) y la corrida SIN INFORME del rubro (todavía no hay piezas vivas que leer).
+  const hayMercado = piezas.length > 0;
+  const categoriaNueva = Boolean(mercado?.categoria_nueva);
+  const porElNegocio = !hayMercado || categoriaNueva;
+  // Quién decide, en los tres modos que el panel ofrece. Compartido NO es «decide el motor»: prepara y frena.
+  const quienDecide = modo === 'Manual'
+    ? 'el cliente: el motor no decide por él, solo le prueba las piezas y le muestra el mercado'
+    : modo === 'Compartido'
+      ? 'los dos: el motor deja la pieza armada y se frena esperando su OK para publicar o gastar'
+      : 'el motor: elige, crea y prueba; el cliente aprueba o no';
+  const palabrasDeLaPieza = claves.map((c: any) => c.palabra).filter(Boolean);
+  // A quién le habla y qué se publica: primero lo que el negocio DECLARÓ en Primeros pasos (su público),
+  // después lo que se dedujo del material. Y de «qué vende» se descarta el término genérico (servicios,
+  // productos): si lo único que hay es genérico, la pieza se anuncia con lo que el negocio dice que HACE.
+  const publicoDeclarado = Array.isArray(decisiones.negocio_publico) ? (decisiones.negocio_publico as string[]).join(', ') : '';
+  const aQuienLeHabla = publicoDeclarado || leido.aQuien || 'su cliente';
+  const genericos = /^(plan(es)?|servicio(s)?|producto(s)?|sistema(s)?|plataforma(s)?|software(s)?|paquete(s)?|curso(s)?|membresia(s)?|suscripcion(es)?|certificacion(es)?|tratamiento(s)?|arreglo(s)?)$/;
+  const ofertaConcreta = (leido.queVende || []).find(v => !genericos.test(String(v).trim()));
+  const queSePublica = String(ofertaConcreta || leido.queHace || leido.rubro || ctx.rubro)
+    .replace(/\s+/g, ' ').trim().replace(/\s*\.\s*$/, '');
+  const materialQueYaTiene = `su material: ${links.length} ${links.length === 1 ? 'enlace' : 'enlaces'} y ${archivosLeidos.fuentes.length} ${archivosLeidos.fuentes.length === 1 ? 'archivo' : 'archivos'} leídos`;
+  const contenidoBloque = {
+    publicacion_diaria: contenido || 'sin definir: el motor propone mantener las redes activas',
+    cadencia: ritmo || 'sin definir: el motor la propone según lo que su mercado sostiene',
+    formato_por_red: formatosRecomendados.length
+      ? formatosRecomendados.map((f: any) => `${f.plaza} → ${f.formato_recomendado}`)
+      : 'todavía no hay formatos medidos de su rubro: el formato de la pieza es una elección nuestra, no una medición',
+    costo: 'publicar en sus redes no gasta pauta: consume créditos del plan (producir, probar y medir)',
+  };
+  const cuandoCambiar = {
+    regla: hayMercado
+      ? 'cuando el molde que gana en su rubro cambie, o cuando la pieza pierda rendimiento'
+      : 'cuando aparezca el primer comparable en su mercado, o cuando lo que publique empiece a traer conversaciones',
+    con_las_cuentas_conectadas: 'se mira la fatiga y el costo por conversación de lo publicado, y con eso se decide si se genera una pieza nueva y cada cuánto',
+    sin_las_cuentas: 'sin las cuentas conectadas NO se puede saber la fatiga real ni el costo por venta: se decide por el mercado (el molde y sus días) y se dice, no se inventa',
+    base_medida: masVieja
+      ? `hoy manda ${masVieja.anunciante}, activo hace ${masVieja.dias} días`
+      : 'sin mercado medido todavía: no hay un molde de referencia al que volver',
+  };
+
+  // LA PIEZA ARMADA SIN MERCADO: el rubro, las palabras clave y el material. No es un molde copiado de
+  // nadie —no hay de quién—: es lo que el negocio es, dicho en el idioma de su cliente. Cada campo dice si
+  // salió de un dato suyo o de una elección nuestra, porque elegir no es medir.
+  const piezaDelNegocio: Record<string, unknown> | null = (leido.rubro || ctx.rubro) ? {
+    fuente_tipo: 'el negocio mismo: el rubro deducido de su material, sus palabras clave y su categoría — todavía sin mercado con qué compararlo',
+    modo,
+    quien_decide: quienDecide,
+    por_que_sin_mercado: categoriaNueva
+      ? 'Su categoría todavía no existe en ese mercado: no hay a quién copiar ni contra quién compararse. La primera pieza no compite por precio ni por formato: explica la categoría y se queda con las palabras con las que el cliente la va a buscar.'
+      : 'Todavía no hay informe del mercado de su rubro. No se espera a tenerlo: la pieza se arma con lo que el negocio ya dijo y se corrige cuando haya mercado que leer.',
+    lo_que_entendimos_del_negocio: {
+      rubro: leido.rubro || ctx.rubro,
+      que_hace: leido.queHace,
+      que_ofrece: (leido.queVende || []).join(' · '),
+      a_quien: aQuienLeHabla,
+      categoria_en_la_enciclopedia: categoria?.ok
+        ? `${categoria.titulo} (${categoria.idioma}.wikipedia.org)`
+        : 'sin categoría encontrada para sus palabras clave',
+      quienes_son_similares: similares.length
+        ? similares.slice(0, 5).map(s => s.nombre).join(', ')
+        : 'no se encontraron organizaciones con ese nombre afuera',
+    },
+    palabras_clave_de_la_pieza: palabrasDeLaPieza.length
+      ? palabrasDeLaPieza
+      : 'sin palabras clave del material: se usan las del rubro',
+    material_que_ya_tiene: materialQueYaTiene,
+    la_pieza: {
+      que_se_publica: `${queSePublica}: explicado para ${aQuienLeHabla}, con las palabras con las que ese cliente lo buscaría`,
+      gancho: 'El problema concreto del cliente, en la primera línea, sin nombrar el producto.',
+      cuerpo: 'Qué cambia para el cliente, no qué tiene el producto.',
+      cierre: decisiones.negocio_objetivo
+        ? `la acción que el negocio pidió («${decisiones.negocio_objetivo}»), en un toque`
+        : 'la acción concreta, en un toque',
+      boton: canales.some(c => /whatsapp|mensaje/i.test(c))
+        ? 'WhatsApp: la gente escribe y usted cierra'
+        : (canales.length
+          ? `el botón de ${canales[0]} (elegido por nosotros: todavía no hay mercado medido que diga con qué botón cierra su rubro)`
+          : 'sin definir: falta que el negocio diga dónde quiere trabajar'),
+      formato: plazaVideo
+        ? `${plazaVideo.formato_recomendado} — ${plazaVideo.por_que}`
+        : 'video vertical 9:16 (elegido por nosotros: sin formatos medidos de su rubro, es el que se rueda con celular)',
+      donde_va: canales.length ? canales.join(', ') : 'sin definir: el motor propone y el cliente confirma',
+      elegido_por_nosotros: [
+        canales.length ? '' : 'el canal: todavía no dijo dónde quiere trabajar',
+        plazaVideo ? '' : 'el formato: sin mercado medido, video vertical 9:16 y no un molde ajeno',
+      ].filter(Boolean),
+    },
+    propuesta_campana: {
+      objetivo: decisiones.negocio_objetivo
+        ? `${decisiones.negocio_objetivo} — lo que el negocio pidió en Primeros pasos`
+        : 'sin definir: el motor propone y el cliente confirma',
+      red: canales.length ? canales.join(', ') : 'sin definir',
+      presupuesto_diario: presupuesto || 'sin definir: el motor propone y el cliente confirma (nunca gasta sin su OK)',
+      cierre: canales.some(c => /whatsapp/i.test(c))
+        ? 'por WhatsApp, que es el canal que el negocio declaró'
+        : 'el botón que permite el canal declarado',
+      por_que: 'sale de lo que el negocio declaró (objetivo, canal y techo), no del mercado: todavía no hay con qué compararlo',
+    },
+    contenido: contenidoBloque,
+    cuando_cambiar: cuandoCambiar,
+    falta: [
+      'el generador de imagen y video, para que el prompt se vuelva archivo',
+      'la lectura del mercado de su rubro (el informe), para corregir el rumbo con lo que el mercado ya premió con tiempo',
+      canales.length ? '' : 'que el negocio diga dónde quiere trabajar (Primeros pasos o Campañas)',
+      presupuesto ? '' : 'que el negocio fije su techo por día (o el motor propone y él confirma)',
+      'las cuentas conectadas, para medir lo publicado y decidir los cambios con datos propios',
+    ].filter(Boolean),
+    porque: 'Era el hueco: sin mercado, la decisión no salía. Tino ya no espera el informe — con el rubro, las palabras clave y el material arma la pieza, y dice qué falta. Cuando haya mercado que leer, la corrige con eso.',
+    fuente: `${materialQueYaTiene} + sus decisiones en Primeros pasos`,
+  } : null;
+
   tareas.push({
     agente: 'tino', orden: 10,
-    que: piezas.length
-      ? `Decidió qué publicar y qué campaña para este negocio, en modo ${modo}${presupuesto ? `, con ${presupuesto} de techo` : ''}`
-      : 'No pudo proponer publicación ni campaña: falta la lectura del mercado de su rubro',
-    resultado: piezas.length ? {
-      fuente_tipo: 'las decisiones del negocio (Primeros pasos) + el informe del mercado + el formato que aguanta por plaza',
-      modo,
-      quien_decide: modo === 'Manual'
-        ? 'el cliente: el motor no decide por él, solo le prueba las piezas y le muestra el mercado'
-        : 'el motor: elige, crea y prueba; el cliente aprueba o no',
-      propuesta_publicacion: {
-        tipo: plazaVideo ? `video (${plazaVideo.formato_recomendado})` : 'video vertical 9:16',
-        estilo: plazaVideo?.formato_recomendado || '',
-        red: canales.length ? canales.join(', ') : 'sin definir: el motor elige la red donde el mercado sostiene ese formato',
-        por_que: plazaVideo?.por_que || 'es el formato que el mercado ya premió con tiempo',
-        referencia: masVieja ? `${masVieja.anunciante}, ${masVieja.dias} días activo` : '',
-        imagen_para_feed: plazaImagen ? `${plazaImagen.formato_recomendado} — ${plazaImagen.por_que}` : '',
+    que: porElNegocio
+      ? (categoriaNueva
+        ? 'Decidió sin esperar mercado: en su categoría no hay con quién compararse, así que armó la pieza con el rubro, las palabras clave y su material'
+        : 'Decidió sin el informe del mercado: armó la pieza con el rubro, las palabras clave y el material del negocio')
+      : `Decidió qué publicar y qué campaña para este negocio, en modo ${modo}${presupuesto ? `, con ${presupuesto} de techo` : ''}`,
+    resultado: porElNegocio
+      ? (piezaDelNegocio ?? {
+        sin_fuente: 'no se puede armar la pieza: falta el rubro y el material del negocio (descripción, enlaces o archivos en Primeros pasos)',
+        fuente: 'sin fuente',
+      })
+      : {
+        fuente_tipo: 'las decisiones del negocio (Primeros pasos) + el informe del mercado + el formato que aguanta por plaza',
+        modo,
+        quien_decide: quienDecide,
+        propuesta_publicacion: {
+          tipo: plazaVideo ? `video (${plazaVideo.formato_recomendado})` : 'video vertical 9:16',
+          estilo: plazaVideo?.formato_recomendado || '',
+          red: canales.length ? canales.join(', ') : 'sin definir: el motor elige la red donde el mercado sostiene ese formato',
+          por_que: plazaVideo?.por_que || 'es el formato que el mercado ya premió con tiempo',
+          referencia: masVieja ? `${masVieja.anunciante}, ${masVieja.dias} días activo` : '',
+          imagen_para_feed: plazaImagen ? `${plazaImagen.formato_recomendado} — ${plazaImagen.por_que}` : '',
+        },
+        propuesta_campana: {
+          objetivo: canales.length
+            ? (canales.some(c => /whatsapp/i.test(c)) ? 'conversaciones por WhatsApp: la gente escribe y usted cierra' : 'tráfico a su página, con la red que eligió')
+            : 'sin definir: el motor propone conversaciones por WhatsApp y el cliente confirma',
+          red: canales.length ? canales.join(', ') : 'sin definir',
+          presupuesto_diario: presupuesto || 'sin definir: el motor propone y el cliente confirma (nunca gasta sin su OK)',
+          cierre: cierraPorWhats ? 'por WhatsApp, que es el botón de las piezas que aguantan en su rubro' : 'el botón que usa su mercado',
+          por_que: 'sale del botón que el mercado ya usa, del canal que el negocio declaró y del techo que él puso',
+        },
+        contenido: contenidoBloque,
+        cuando_cambiar: cuandoCambiar,
+        falta: [
+          'el generador de imagen y video, para que el prompt se vuelva archivo',
+          canales.length ? '' : 'que el negocio diga dónde quiere trabajar (Primeros pasos o Campañas)',
+          presupuesto ? '' : 'que el negocio fije su techo por día (o el motor propone y él confirma)',
+          'las cuentas conectadas, para medir lo publicado y decidir los cambios con datos propios',
+        ].filter(Boolean),
+        porque: 'Es la decisión que el dueño pidió: con lo que el negocio ya dijo y el mercado ya medido, qué publicar y qué campaña armar. En Automático la toma y la explica; en Compartido la deja pronta esperando el OK; en Manual se la deja entera en la mano.',
+        fuente: `${inf?.fuente || 'sin informe del rubro'} + las decisiones del negocio`,
       },
-      propuesta_campana: {
-        objetivo: canales.length
-          ? (canales.some(c => /whatsapp/i.test(c)) ? 'conversaciones por WhatsApp: la gente escribe y usted cierra' : 'tráfico a su página, con la red que eligió')
-          : 'sin definir: el motor propone conversaciones por WhatsApp y el cliente confirma',
-        red: canales.length ? canales.join(', ') : 'sin definir',
-        presupuesto_diario: presupuesto || 'sin definir: el motor propone y el cliente confirma (nunca gasta sin su OK)',
-        cierre: cierraPorWhats ? 'por WhatsApp, que es el botón de las piezas que aguantan en su rubro' : 'el botón que usa su mercado',
-        por_que: 'sale del botón que el mercado ya usa, del canal que el negocio declaró y del techo que él puso',
-      },
-      contenido: {
-        publicacion_diaria: contenido || 'sin definir: el motor propone mantener las redes activas',
-        cadencia: ritmo || 'sin definir: el motor la propone según lo que su mercado sostiene',
-        formato_por_red: formatosRecomendados.map((f: any) => `${f.plaza} → ${f.formato_recomendado}`),
-        costo: 'publicar en sus redes no gasta pauta: consume créditos del plan (producir, probar y medir)',
-      },
-      cuando_cambiar: {
-        regla: 'cuando el molde que gana en su rubro cambie, o cuando la pieza pierda rendimiento',
-        con_las_cuentas_conectadas: 'se mira la fatiga y el costo por conversación de lo publicado, y con eso se decide si se genera una pieza nueva y cada cuánto',
-        sin_las_cuentas: 'sin las cuentas conectadas NO se puede saber la fatiga real ni el costo por venta: se decide por el mercado (el molde y sus días) y se dice, no se inventa',
-        base_medida: masVieja ? `hoy manda ${masVieja.anunciante}, activo hace ${masVieja.dias} días` : '',
-      },
-      falta: [
-        'el generador de imagen y video, para que el prompt se vuelva archivo',
-        canales.length ? '' : 'que el negocio diga dónde quiere trabajar (Primeros pasos o Campañas)',
-        presupuesto ? '' : 'que el negocio fije su techo por día (o el motor propone y él confirma)',
-        'las cuentas conectadas, para medir lo publicado y decidir los cambios con datos propios',
-      ].filter(Boolean),
-      porque: 'Es la decisión que el dueño pidió: con lo que el negocio ya dijo y el mercado ya medido, qué publicar y qué campaña armar. En Automático la toma y la explica; en Manual se la deja en la mano.',
-      fuente: `${inf?.fuente || 'sin informe del rubro'} + las decisiones del negocio`,
-    } : {
-      sin_fuente: 'falta la lectura del mercado de su rubro (el informe): sin eso no se decide qué publicar',
-      fuente: 'sin fuente',
-    },
   });
 
   // ---------------- REX 2 · LOS PRECIOS QUE EL MERCADO PUBLICA EN SUS ANUNCIOS ----------------
