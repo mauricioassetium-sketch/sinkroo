@@ -1,0 +1,58 @@
+# .pre-commit-config.yaml
+# 文档: https://pre-commit.com
+# 更新所有 hooks 到最新稳定版: pre-commit autoupdate
+
+default_install_hook_types: [pre-commit, commit-msg]
+
+repos:
+  # ================= 1. 基础文件规范检查 =================
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace          # 清除行尾空格
+      - id: end-of-file-fixer            # 确保文件以换行符结尾
+      - id: check-yaml
+        args: ['--allow-multiple-documents']
+      - id: check-toml                   # 检查 pyproject.toml 等
+      - id: check-json                   # 检查 json 文件语法
+      - id: check-added-large-files
+        args: ['--maxkb=5000']           # 阻止提交 >5MB 的文件
+      - id: detect-private-key           # 检测意外提交的私钥
+
+  # ================= 2. Python 格式化 & Lint (Ruff) =================
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.9.10
+    hooks:
+      # 代码检查 & 自动修复
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+        types_or: [python, pyi]
+      # 代码格式化 (替代 black)
+      - id: ruff-format
+        types_or: [python, pyi]
+
+  # ================= 3. 静态类型检查 (Mypy) =================
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.14.1
+    hooks:
+      - id: mypy
+        args: [--ignore-missing-imports, --show-error-codes, --pretty]
+        additional_dependencies: []  # 按需添加类型拓展包: [types-requests, types-PyYAML]
+        types_or: [python, pyi]
+
+  # ================= 4. Markdown 文档格式化 =================
+  - repo: https://github.com/executablebooks/mdformat
+    rev: 0.7.21
+    hooks:
+      - id: mdformat
+        args: [--wrap, "120"]        # 设置单行最大字数，避免超长换行
+        additional_dependencies:
+          - mdformat-gfm             # 增加对 GitHub 风格 Markdown (表格、任务列表等) 的兼容支持
+        types_or: [markdown]
+
+  # ================= 5. Commit Message 格式校验 (Commitizen) =================
+  - repo: https://github.com/commitizen-tools/commitizen
+    rev: v3.27.0
+    hooks:
+      - id: commitizen
+        stages: [commit-msg]
