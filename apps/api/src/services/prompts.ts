@@ -1,4 +1,5 @@
 import type { Pool } from 'pg';
+import type { Identidad } from './identidad.js';
 
 // =============================================================================================
 // EL FORMATO DEL PROMPT DE GENERACIÓN — lo que el agente de arte entrega para que, cuando exista la
@@ -50,6 +51,10 @@ export type PromptGeneracion = {
   camara: string;
   audio: { voz: string; musica: string };
   marca: string;
+  /** El concepto creativo, cuando la pieza no copia un molde del mercado sino que propone uno: se dice como concepto. */
+  concepto?: string;
+  /** Los recursos de marca REALES (su logo, sus imágenes), con su dirección: nunca inventados. */
+  recursos?: string[];
   no_debe_aparecer: string[];
   /** Listo para pegar en el modelo. */
   prompt: string;
@@ -363,31 +368,76 @@ export function promptDelNegocio(datos: {
   idioma: { nombre: string; por_que: string };
   palabrasDeLaPieza: string[];
   rubro: string;
+  queHace?: string;
   canal: string;
   boton: string;
   material: string;
   fuente: string;
+  /** El tono que el negocio declaró en Primeros pasos: es suyo, no una elección de estilo. */
+  tono?: string[];
+  /** Lo que el negocio quiere lograr («que lo conozcan», «que compren»). */
+  objetivo?: string;
+  /** La identidad medida en SU PROPIA PÁGINA: colores, tipografía e imágenes. Sin página, null. */
+  identidad?: Identidad | null;
 }): { pieza: string; prompts: PromptGeneracion[] } {
   const pieza = datos.queSePublica || `Primera pieza de ${datos.negocio}`;
   const palabras = datos.palabrasDeLaPieza.length
     ? datos.palabrasDeLaPieza.slice(0, 6).join(', ')
     : 'sin palabras de la categoría todavía';
+  // Lo que hace el negocio, dicho corto y sin la puntuación suelta: es lo que va dentro del concepto y del
+  // prompt, así que tiene que leerse bien (una frase larga cortada por su borde, no a mitad de palabra).
+  const limpiar = (t: string) => String(t || '').replace(/\s+/g, ' ')
+    .replace(/\s+([,.;:])/g, '$1').replace(/[,;:]\s*(?=[,.;:])/g, '').replace(/[\s.,;:]+$/, '').trim();
+  const queHaceLargo = limpiar(datos.queHace || datos.queSePublica);
+  const queHace = queHaceLargo.length > 100 ? `${queHaceLargo.slice(0, 98).replace(/\s+\S*$/, '')}…` : queHaceLargo;
+  const id = datos.identidad && datos.identidad.leida ? datos.identidad : null;
+  const paleta = (id?.colores ?? []).slice(0, 4).map(c => c.hex);
+  const deLaPaleta = (id?.colores ?? []).slice(0, 4).map(c => `${c.hex} (${c.rol}, ${c.usos} veces en su CSS)`).join(' · ');
+  const tipo = id?.tipografias?.[0];
+  const imagenes = id?.imagenes ?? [];
+  const tono = (datos.tono ?? []).filter(Boolean).join(' y ') || 'claro y directo, el del negocio';
+
+  // ---------------------------------------------------------------------------------------------
+  // EL CONCEPTO. Cuando no hay mercado medido no hay un molde ajeno que copiar, y copiar un molde
+  // inventado sería mentir. Lo que SÍ se puede hacer, y es lo que hace un creador: contar el
+  // DESCUBRIMIENTO —que existe un sistema que las empresas ya usan para esto— con alguien real
+  // contándolo a cámara y el trabajo a la vista. El concepto se declara como concepto: es una
+  // elección nuestra, y se dice de dónde sale cada parte.
+  // ---------------------------------------------------------------------------------------------
+  const esServicio = !/\b(software|plataforma|sistema|app|api|panel|herramienta)\b/i.test(`${queHace} ${datos.rubro}`);
+  const concepto = [
+    `Descubrimiento contado por alguien real: una persona del negocio —o un cliente— cuenta a cámara que encontró`,
+    `un sistema que las empresas ya usan para esto: ${queHace || 'lo que el negocio vende'}. Lo muestra funcionando y explica qué cambia.`,
+    esServicio
+      ? `La forma es UGC a cámara con el trabajo real de fondo (no una pieza publicitaria): lo que se vende es que existe y cómo se usa.`
+      : `La forma es UGC a cámara más la pantalla del sistema funcionando: lo que se vende es que existe y cómo se usa.`,
+    `El gancho es el descubrimiento, no el producto: «así es como las empresas están verificando sus activos hoy» en vez de «compre X».`,
+    `Se dice en la lengua del que compra y con las palabras de su categoría, no con las internas del negocio.`,
+  ].join(' ');
+
   const escenas = [
-    { s: '0-5', plano: 'plano medio, celular a la altura de los ojos', accion: 'una persona del negocio, en su lugar real, dice el problema del cliente en una frase', texto_en_pantalla: '', voz: datos.gancho },
-    { s: '5-15', plano: 'plano detalle de la pantalla o del trabajo real', accion: 'se ve el trabajo haciéndose: la cuenta, el documento, el sistema, la verificación', texto_en_pantalla: '', voz: datos.cuerpo },
-    { s: '15-25', plano: 'plano medio, mirando a cámara', accion: 'cierra con la acción concreta y el botón a la vista', texto_en_pantalla: '', voz: datos.cierre },
+    { s: '0-4', plano: 'plano medio, celular a la altura de los ojos', accion: `una persona real del negocio arranca con el descubrimiento: que existe una forma nueva de ${queHace || 'hacer esto'} y que las empresas ya la usan`, texto_en_pantalla: '', voz: datos.gancho },
+    { s: '4-17', plano: esServicio ? 'plano detalle del trabajo real' : 'captura de pantalla del sistema + plano detalle', accion: `se ve cómo funciona de verdad: el paso a paso concreto de lo que hace ${datos.negocio}, sin jerga`, texto_en_pantalla: '', voz: datos.cuerpo },
+    { s: '17-25', plano: 'plano medio, mirando a cámara', accion: 'qué cambia para el que lo usa y la acción concreta, con el botón a la vista', texto_en_pantalla: '', voz: datos.cierre },
   ];
+
   const prompt = [
-    `Vertical 9:16 social ad for ${datos.negocio} (${datos.rubro}).`,
-    `Subject: a real person from the business, filmed with a phone in their actual workplace, talking to camera.`,
-    `Action: ${datos.queSePublica}. Showing the real work being done, not a studio set.`,
-    `Audience: ${datos.aQuien}.`,
-    `Scenes: 1) medium shot, the person states the client's problem; 2) close-up of the work itself (screen, document, device); 3) medium shot, the person closes with the concrete next step.`,
-    `On-image text: none by default (the message goes in the ad copy). If text is added, keep it short and in ${datos.idioma.nombre}.`,
-    `Colour direction: keep the brand's own colours (no measured palette yet — none is prescribed here).`,
-    `Look: natural light, handheld, no colour grading, no studio.`,
+    `Vertical 9:16 social ad, UGC style, for ${datos.negocio} (${datos.rubro}).`,
+    `Concept: a real person from the business talks to camera about discovering a system that companies already use for this: ${queHace || 'what the business sells'}. They show it working and explain what changes. It is a discovery story, not a product pitch.`,
+    `Subject: a real person from the business (or a real client), filmed on a phone in their actual workplace. Not an actor, not a model.`,
+    `Audience: ${datos.aQuien}. Language of the spoken and on-screen text: ${datos.idioma.nombre}.`,
+    `Scenes: 1) medium shot, the discovery hook ("this is how companies are doing it now"); 2) close-up or screen capture showing exactly how it works, step by step; 3) medium shot with what changes and the next step.`,
+    paleta.length
+      ? `Brand palette, measured on the client's own website: ${deLaPaleta}. Use these exact colours as the dominant palette.`
+      : `Colour direction: keep the brand's own colours (no measured palette — none is prescribed here).`,
+    (id?.tipografias ?? []).length
+      ? `Typography: their own website declares ${(id?.tipografias ?? []).map(t => `${t.familia} (${t.usos}x)`).join(', ')}${tipo?.tamano ? `; body size around ${tipo.tamano}` : ''} — use these families, most used first.`
+      : `Typography: use the client's own (none measured).`,
+    imagenes.length ? `Brand assets available (real, from their own site): ${imagenes.slice(0, 4).map(i => `${i.url} — ${i.para}`).join('; ')}.` : `No brand assets were read: do not invent a logo or imagery.`,
+    `On-image text: minimal, short, in ${datos.idioma.nombre}.`,
     `No third-party logos, no invented numbers, no promises of returns.`,
   ].join(' ');
+
   return {
     pieza,
     prompts: [{
@@ -395,37 +445,45 @@ export function promptDelNegocio(datos: {
       pieza,
       plaza: datos.canal ? `video vertical 9:16 · ${datos.canal}` : 'video vertical 9:16',
       tipo: 'video',
-      estilo: 'toma propia con celular (UGC del negocio)',
-      estilo_explicado: 'sin formatos medidos del rubro todavía: se rueda con el celular, con alguien real del negocio en su lugar de trabajo',
+      estilo: 'UGC: alguien real del negocio contando el descubrimiento a cámara',
+      estilo_explicado: 'sin formatos medidos del rubro todavía: se rueda con el celular, con alguien real del negocio en su lugar de trabajo, y la pieza cuenta el descubrimiento en vez de copiar un molde ajeno',
       proporcion: '9:16',
       duracion_s: 25,
+      concepto,
       referencia: { anunciante: '', dias: 0, que_se_toma: 'nada: no hay mercado medido todavía, así que no se copia ningún molde ajeno' },
       sujeto: {
-        quien: `alguien real de ${datos.negocio} (no un actor)`,
+        quien: `alguien real de ${datos.negocio} —o un cliente suyo— (no un actor)`,
         donde: 'el lugar donde ocurre el trabajo',
-        accion: `mostrar ${datos.queSePublica}`,
+        accion: `mostrar cómo funciona ${queHace || datos.queSePublica}`,
         vestuario: 'el de trabajo, como está todos los días',
         mirada: 'a cámara, hablando claro y sin leer',
       },
       escenas,
       colores: {
-        paleta: [],
-        rol: 'sin paleta medida: el color lo pone la identidad que el negocio ya usa, no una medición del mercado',
+        paleta,
+        rol: paleta.length
+          ? `medidos en su propia web, no elegidos por nosotros: ${deLaPaleta}`
+          : 'sin paleta medida: el color lo pone la identidad que el negocio ya usa, no una medición',
         contraste: 'alto contraste, para que se lea en un celular al sol',
       },
       tipografia: {
-        familia: 'la que el negocio ya usa (sin medir)', peso: '—', caja: '—', tratamiento: '—', ubicacion: '—',
-        texto_exacto: 'por defecto, ningún texto quemado en el píxel: todo el mensaje va en el copy del anuncio',
+        familia: tipo?.familia || 'la que el negocio ya usa (sin medir)',
+        peso: '—', caja: '—',
+        tratamiento: 'sin texto quemado por defecto: el mensaje va en el copy del anuncio',
+        ubicacion: 'si hay texto, abajo, en una línea',
+        texto_exacto: 'por defecto, ningún texto quemado en el píxel',
       },
       iluminacion: 'luz natural, la del lugar',
-      camara: 'celular, plano medio y detalle, sin trípode ni equipo',
+      camara: esServicio ? 'celular, plano medio y detalle del trabajo, sin trípode ni equipo' : 'celular para la persona y captura de pantalla para el sistema',
       audio: { voz: 'la voz del que habla, sin locutor', musica: 'sin música medida: si se usa, suave y con licencia' },
       marca: datos.negocio,
+      recursos: imagenes.slice(0, 6).map(i => `${i.url} — ${i.para}`),
       no_debe_aparecer: [
         'logos o marcas de terceros',
         'números, precios o rendimientos que el negocio no haya dicho',
         'texto quemado ilegible o en párrafos',
         'música sin licencia',
+        'un logo o una imagen de marca inventados: si no se leyó ninguno, no se pone',
       ],
       prompt,
       prompt_negativo: 'studio lighting, 3d render, stock footage, fake smiling models, tiny unreadable text, third-party logos, invented numbers, watermarks, distorted hands',
@@ -439,27 +497,36 @@ export function promptDelNegocio(datos: {
         cta_boton: datos.boton,
       },
       como_se_arma: [
-        { campo: 'el tema y el ángulo', sale_de: `lo que el negocio vende, dicho por él: ${datos.queSePublica}`, como_se_usa: 'es el asunto de la pieza; no se copia un molde ajeno porque todavía no hay mercado medido' },
+        { campo: 'el tema y el ángulo', sale_de: `lo que el negocio vende, dicho por él: ${datos.queSePublica}`, como_se_usa: 'es el asunto de la pieza; el ángulo es el descubrimiento, porque la categoría todavía no se conoce' },
+        { campo: 'el concepto', sale_de: 'una elección nuestra, dicha como tal: no hay mercado medido, así que no se copia un molde ajeno', como_se_usa: concepto },
+        { campo: 'el tono', sale_de: datos.tono?.length ? `el que el negocio declaró en Primeros pasos: ${tono}` : `no declaró tono: se usa ${tono}`, como_se_usa: 'manda en cómo habla la persona y en el ritmo del corte' },
+        { campo: 'los colores', sale_de: paleta.length ? `medidos en el CSS de su propia web: ${deLaPaleta}` : 'NO se midió ninguna identidad: no hay página legible y el negocio no la declaró', como_se_usa: paleta.length ? 'son los hex que va a usar la pieza, con el uso que cada uno tiene en su marca' : 'el campo queda vacío y dicho, en vez de inventar una paleta' },
+        { campo: 'la tipografía', sale_de: tipo ? `las declaraciones font-family de su web: ${tipo.familia} (${tipo.usos} veces declarada${tipo.tamano ? `, cuerpo de ${tipo.tamano}` : ''})` : 'no se midió ninguna tipografía', como_se_usa: 'es la familia real de su marca, no una fuente de catálogo' },
+        { campo: 'los recursos de marca', sale_de: (id?.imagenes ?? []).length ? `las imágenes que su web ya publica (${(id?.imagenes ?? []).length}), con su dirección real` : 'no se leyó ninguna imagen suya', como_se_usa: 'se usan como referencia: su logo y sus imágenes reales, nunca inventados' },
         { campo: 'a quién le habla', sale_de: `el público que el negocio declaró en Primeros pasos: ${datos.aQuien}`, como_se_usa: 'define el tono y el vocabulario del guion' },
         { campo: 'el idioma del texto y de la voz', sale_de: datos.idioma.por_que, como_se_usa: `la pieza va en ${datos.idioma.nombre}: el texto en pantalla, el copy y la voz` },
         { campo: 'las palabras de la categoría', sale_de: `el vocabulario de su rubro en el material: ${palabras}`, como_se_usa: 'son las palabras con las que su cliente lo va a buscar: entran en el copy, no como relleno' },
-        { campo: 'colour direction y on-image text', sale_de: 'NO hay analítica visual del rubro todavía: no se midió ninguna paleta ni tipografía', como_se_usa: 'esos campos quedan vacíos y dichos, en vez de inventar hex y familias que nadie midió' },
         { campo: 'las escenas y los segundos', sale_de: 'el gancho, el cuerpo y el cierre que decidió Tino, repartidos en tres escenas', como_se_usa: 'cada escena muestra algo que se puede filmar hoy con un celular' },
         { campo: 'el botón y el destino', sale_de: `el canal que el negocio declaró: ${datos.canal || 'sin definir'}`, como_se_usa: 'no va dentro del prompt de imagen: va en los parámetros de la pieza' },
       ],
       elegido_por_nosotros: [
+        'el concepto: contar el descubrimiento (no hay mercado medido que diga qué molde funciona)',
         'el formato: video vertical 9:16, sin formatos del rubro medidos todavía',
         'la duración de 25 s',
-        'el estilo: toma propia con celular, con alguien real del negocio',
+        'el vehículo: UGC a cámara con el trabajo real a la vista',
         'el número de escenas y su reparto de segundos',
         'el modelo o servicio de generación (todavía no hay ninguno conectado)',
       ],
       verificaciones: [
-        'Dice qué NO está medido: no lleva colores ni tipografías inventados.',
-        'El texto sale de la pieza que decidió Tino, no de una idea suelta.',
-        'La lengua de la pieza es la del que compra, y se dice de dónde sale.',
+        paleta.length
+          ? `Los colores NO son una elección nuestra: son los que ${datos.negocio} ya usa en su web, contados en su CSS (${(id?.colores ?? []).length} colores de marca; blanco, negro y grises quedaron afuera).`
+          : 'Dice qué NO está medido: no lleva colores ni tipografías inventados.',
+        tipo ? `La tipografía es la suya: ${tipo.familia}, la que declara su web.` : 'No se midió tipografía: el campo lo dice en vez de rellenarlo.',
+        imagenes.length ? `Los recursos de marca son los de su web (su logo y sus imágenes), con dirección real: ${imagenes.length}.` : 'No se leyó ninguna imagen suya: no se inventa un logo.',
+        'El concepto se declara como concepto y dice por qué: sin mercado medido no hay molde ajeno que copiar.',
+        'El texto sale de la pieza que decidió Tino, no de una idea suelta, y va en la lengua del que compra.',
         'Las escenas se pueden filmar hoy: no piden equipo ni producción.',
-        'El prompt está en inglés, listo para pegar en un modelo.',
+        'El prompt está en inglés, listo para pegar en un modelo, con los hex de su marca adentro.',
       ],
       fuente: datos.fuente,
     }],

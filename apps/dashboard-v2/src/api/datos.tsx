@@ -152,6 +152,10 @@ export type PromptGeneracion = {
     camara?: string;
     audio?: { voz: string; musica: string };
     marca?: string;
+    /** El concepto creativo, cuando la pieza no copia un molde del mercado sino que propone uno. */
+    concepto?: string;
+    /** Los recursos de marca reales (su logo, sus imágenes), con su dirección: nunca inventados. */
+    recursos?: string[];
     no_debe_aparecer?: string[];
     /** De dónde sale cada campo del prompt: dato medido → cómo se usa. */
     como_se_arma?: { campo: string; sale_de: string; como_se_usa: string }[];

@@ -269,7 +269,7 @@ export function ViewMercado({ setToast, setVista }: { setToast: (t: string) => v
         titulo: 'Prompts de generación (imagen o video)',
         sub: d.cargando ? 'Leyendo el back…' : 'Todavía no hay prompts para su negocio.',
         bloques: [
-          { tipo: 'texto', texto: 'Los arma Iris en la corrida del mercado, con la analítica visual del rubro: colores medidos, tipografía, formato y si la pieza es UGC o toma de producto. En cuanto la corrida los deje, aparecen acá, listos para pegar en un generador.' },
+          { tipo: 'texto', texto: 'Los arma Iris en la corrida del mercado. Si ya hay informe del rubro, usa la analítica visual medida ahí; si todavía no hay, usa la identidad medida en la propia página del negocio —sus colores, su tipografía y sus imágenes— y propone el concepto. En cuanto la corrida los deje, aparecen acá, listos para pegar en un generador.' },
         ],
         fuente: '',
         acciones: [{ label: 'Volver a leer', onClick: () => void d.refrescar(), variante: 'outline' }],
@@ -286,12 +286,20 @@ export function ViewMercado({ setToast, setVista }: { setToast: (t: string) => v
         tipo: 'datos', filas: [
           { k: 'Pieza', v: p.pieza },
           { k: 'Formato', v: `${p.proporcion}${det.escenas?.length ? ` · ${det.escenas.length} escenas` : ''}` },
-          { k: 'Referencia del mercado', v: `${det.referencia?.anunciante || '—'} · ${det.referencia?.dias || 0} días`, s: det.referencia?.que_se_toma },
-          { k: 'Colores medidos', v: (det.colores?.paleta || []).join(' ') || '—', s: det.colores?.rol },
+          { k: 'Referencia del mercado', v: det.referencia?.anunciante ? `${det.referencia.anunciante} · ${det.referencia.dias || 0} días` : 'sin mercado medido', s: det.referencia?.que_se_toma },
+          { k: 'Colores', v: (det.colores?.paleta || []).join(' ') || '—', s: det.colores?.rol },
           { k: 'Tipografía', v: det.tipografia ? `${det.tipografia.familia} · ${det.tipografia.tratamiento}` : 'sin texto sobre la imagen', s: det.tipografia?.ubicacion },
         ],
       });
+      if (det.concepto) {
+        b.push({ tipo: 'aviso', texto: 'El concepto de la pieza', tono: 'green' });
+        b.push({ tipo: 'texto', texto: String(det.concepto) });
+      }
       if (det.sujeto?.quien) b.push({ tipo: 'texto', texto: `Sujeto: ${det.sujeto.quien} · ${det.sujeto.donde || ''} · ${det.sujeto.accion || ''}` });
+      if (det.recursos?.length) {
+        b.push({ tipo: 'aviso', texto: 'Los recursos de marca que ya usa (reales, de su web)' });
+        b.push({ tipo: 'filas', items: det.recursos.map((x: string) => ({ t: x, etiqueta: 'recurso', tono: 'muted' as const })) });
+      }
       if ((det.escenas?.length ?? 0) > 1) {
         b.push({ tipo: 'pasos', items: det.escenas!.map(e => `${e.s} s · ${e.plano} — ${e.accion}${e.texto_en_pantalla ? ` [texto: ${e.texto_en_pantalla}]` : ''}`) });
       }

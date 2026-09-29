@@ -2,6 +2,7 @@ import type { Pool } from 'pg';
 import { promptDelNegocio, promptsDelInforme, guardarPrompts } from './prompts.js';
 import { buscarSimilares, categoriaPertinente, deducirNegocio, leerArchivos, leerPagina, leerWikipedia, palabrasClave, similarPertinente, type NegocioLeido } from './vera.js';
 import { detectarLengua, lenguaDePais, nombreDeLengua, terminoEnOtrasLenguas, VOCABULARIO_POR_LENGUA } from './lenguas.js';
+import { leerIdentidadDeLaPagina } from './identidad.js';
 
 // =============================================================================================
 // LOS SEIS AGENTES DEL EQUIPO — la investigación del mercado, con trabajo REAL.
@@ -1243,6 +1244,12 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
   // con lo que el negocio ya tiene —lo que vende, a quién le habla, las palabras de su categoría y la pieza
   // que decidió Tino— y los campos que nadie midió (colores, tipografía, formato del mercado) quedan vacíos
   // y DICHOS. Cuando haya mercado que leer, el del informe reemplaza a este.
+  // LA IDENTIDAD, MEDIDA EN SU PROPIA PÁGINA. Es lo primero que mira un creador y el negocio ya lo tiene
+  // publicado: sus colores, su tipografía y las imágenes que ya usa. No se pregunta ni se inventa: se lee de
+  // su CSS. Si no hay página legible, se dice el motivo y los campos quedan vacíos y dichos.
+  const identidad = links.length
+    ? await leerIdentidadDeLaPagina(String(links[0])).catch(() => null)
+    : null;
   const paqueteDelMercado = promptsDelInforme(inf ?? {}, formatosRecomendados);
   const paquete = paqueteDelMercado ?? (piezaDelNegocio ? promptDelNegocio({
     negocio: ctx.nombre,
@@ -1259,6 +1266,10 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
     canal: canales.join(', '),
     boton: canales.length ? `el botón de ${canales[0]}` : 'sin definir: falta que el negocio diga dónde quiere trabajar',
     material: materialQueYaTiene,
+    queHace: leido.queHace,
+    tono: Array.isArray(decisiones.tono) ? (decisiones.tono as string[]) : [],
+    objetivo: String(decisiones.negocio_objetivo || ''),
+    identidad,
     fuente: `${materialQueYaTiene} + la pieza que decidió Tino (todavía sin la analítica visual de su rubro)`,
   }) : null);
   let promptsGuardados = 0;
@@ -1271,7 +1282,13 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
     que: paqueteDelMercado
       ? `Armó ${paqueteDelMercado.prompts.length} prompts de generación (${tipos}) con los colores, la tipografía, el formato y el estilo medidos en su mercado`
       : paquete
-        ? `Armó el prompt de la pieza sin mercado medido: video vertical en ${lenguaDeLaPieza.nombre}, sin colores ni tipografía —no se midió ninguno— y lo dice`
+        ? [
+          'Armó el prompt de la pieza sin mercado medido:',
+          identidad?.leida
+            ? `con la identidad medida en su propia web (${identidad.colores.length} colores, ${identidad.tipografias.length} tipografías, ${identidad.imagenes.length} imágenes)`
+            : 'sin identidad que medir: no hay página legible y lo dice',
+          `y un concepto propio —contar el descubrimiento— en ${lenguaDeLaPieza.nombre}`,
+        ].join(' ')
         : 'No pudo armar los prompts y lo dice: falta la analítica visual del rubro',
     resultado: paqueteDelMercado ? {
       fuente_tipo: 'la analítica visual del informe del mercado + la pieza propuesta (el hueco que se ataca)',
@@ -1303,13 +1320,24 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
         colores: p.colores.paleta.length ? p.colores.paleta : 'sin paleta medida: el color lo pone la identidad que el negocio ya usa',
         tipografia: p.tipografia.familia,
         escenas: p.escenas.length,
+        concepto: p.concepto,
+        recursos: p.recursos,
         prompt: p.prompt,
         prompt_negativo: p.prompt_negativo,
         como_se_arma: p.como_se_arma,
         elegido_por_nosotros: p.elegido_por_nosotros,
         verificaciones: p.verificaciones,
       })),
-      lo_que_todavia_no_se_mide: ['los colores de su rubro', 'la tipografía', 'el formato que el mercado sostiene', 'la duración medida en las piezas vivas', 'el molde de una pieza que aguanta: no hay ninguna comparable'],
+      identidad_medida_en_su_web: identidad?.leida
+        ? {
+          url: identidad.url,
+          colores: identidad.colores,
+          tipografias: identidad.tipografias,
+          imagenes: identidad.imagenes,
+          como_se_midio: identidad.como_se_midio,
+        }
+        : { leida: false, motivo: identidad?.motivo || 'el negocio no cargó ninguna página web: la identidad se arma con lo que él dijo de sí mismo' },
+      lo_que_todavia_no_se_mide: ['la identidad de su rubro (sí la suya, medida en su web)', 'el formato que el mercado sostiene', 'la duración medida en las piezas vivas', 'el molde de una pieza que aguanta: no hay ninguna comparable'],
       porque: 'Sin mercado no se copia un molde ajeno ni se inventan colores: el prompt se arma con lo que el negocio ya tiene y los campos que nadie midió quedan vacíos y DICHOS. Cuando haya informe del mercado, ese prompt reemplaza a este.',
       falta: [
         'conectar el servicio de generación (hoy no hay ninguno escuchando)',
