@@ -581,65 +581,6 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
     } : { sin_fuente: 'no se pudieron cruzar los anuncios con las palabras del negocio', fuente: 'sin fuente' },
   });
 
-  // ---------------- REX 2 · LOS PRECIOS QUE EL MERCADO PUBLICA EN SUS ANUNCIOS ----------------
-  // Los precios no se estiman: se leen de los copies de los anuncios comparables, que es donde el mercado
-  // los publica. Se buscan las marcas de precio y se corta el numero a mano, sin expresiones complicadas:
-  // menos joyas que se rompan cuando el texto viene de una pagina ajena.
-  const preciosDelMercado: string[] = [];
-  for (const f of mercado?.comparables ?? []) {
-    const tx = String(f.copy || '');
-    for (const marca of ['US$', 'USD', '$']) {
-      let i = tx.indexOf(marca);
-      while (i >= 0) {
-        const resto = tx.slice(i + marca.length).replace(/^[ \t]+/, '');
-        const num = resto.match(/^[0-9][0-9.,]*/);
-        if (num) {
-          const p = (marca + ' ' + num[0]).trim();
-          if (!preciosDelMercado.includes(p)) preciosDelMercado.push(p);
-        }
-        i = tx.indexOf(marca, i + marca.length);
-      }
-    }
-  }
-  if (mercado && mercado.comparables.length) {
-    tareas.push({
-      agente: 'rex', orden: 11,
-      que: preciosDelMercado.length
-        ? ('Saco ' + preciosDelMercado.length + (preciosDelMercado.length === 1 ? ' precio' : ' precios') + ' que su mercado publica en los anuncios')
-        : 'Leyo los anuncios comparables: ninguno publica precio en la ficha (en su categoria no se compite por precio visible)',
-      resultado: {
-        fuente_tipo: 'los copies de los anuncios comparables, leidos por el trabajador',
-        comparables_leidos: mercado.comparables.length,
-        precios_encontrados: preciosDelMercado.slice(0, 12),
-        porque: 'Son precios que el propio mercado publica en su publicidad, no promedios estimados: con eso la pieza sabe donde ponerse.',
-        fuente: 'Biblioteca de Anuncios de Meta · lectura del trabajador',
-      },
-    });
-  }
-
-  // ---------------- KAI 2 · LOS BOTONES CON LOS QUE CIERRA SU MERCADO ----------------
-  // De los comparables se cuenta con que boton cierra cada uno: ese es el cierre que el mercado ya eligio.
-  const botonesDelMercado = new Map<string, number>();
-  for (const f of mercado?.comparables ?? []) {
-    const b = String(f.cta || '').trim();
-    if (b) botonesDelMercado.set(b, (botonesDelMercado.get(b) || 0) + 1);
-  }
-  if (mercado && mercado.comparables.length) {
-    tareas.push({
-      agente: 'kai', orden: 12,
-      que: botonesDelMercado.size
-        ? ('Conto como cierra su mercado: ' + Array.from(botonesDelMercado.keys()).slice(0, 3).join(', '))
-        : 'Leyo los anuncios comparables: las fichas no traen el boton (hay que abrirlos uno por uno para verlo)',
-      resultado: {
-        fuente_tipo: 'los botones de los anuncios comparables, leidos por el trabajador',
-        comparables_leidos: mercado.comparables.length,
-        botones_del_mercado: Array.from(botonesDelMercado.entries()).map(([boton, cuantos]) => ({ boton, cuantos })),
-        porque: 'El boton no se elige por gusto: se elige el que ya esta cerrando en ese mercado.',
-        fuente: 'Biblioteca de Anuncios de Meta · lectura del trabajador',
-      },
-    });
-  }
-
   // ---------------- REX · la demanda y el precio ----------------
   const precios = preciosDelInforme(inf);
   tareas.push({
@@ -1053,6 +994,65 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
       fuente: 'sin fuente',
     },
   });
+
+  // ---------------- REX 2 · LOS PRECIOS QUE EL MERCADO PUBLICA EN SUS ANUNCIOS ----------------
+  // Los precios no se estiman: se leen de los copies de los anuncios comparables, que es donde el mercado
+  // los publica. Se buscan las marcas de precio y se corta el numero a mano, sin expresiones complicadas:
+  // menos joyas que se rompan cuando el texto viene de una pagina ajena.
+  const preciosDelMercado: string[] = [];
+  for (const f of mercado?.comparables ?? []) {
+    const tx = String(f.copy || '');
+    for (const marca of ['US$', 'USD', '$']) {
+      let i = tx.indexOf(marca);
+      while (i >= 0) {
+        const resto = tx.slice(i + marca.length).replace(/^[ \t]+/, '');
+        const num = resto.match(/^[0-9][0-9.,]*/);
+        if (num) {
+          const p = (marca + ' ' + num[0]).trim();
+          if (!preciosDelMercado.includes(p)) preciosDelMercado.push(p);
+        }
+        i = tx.indexOf(marca, i + marca.length);
+      }
+    }
+  }
+  if (mercado && mercado.comparables.length) {
+    tareas.push({
+      agente: 'rex', orden: 11,
+      que: preciosDelMercado.length
+        ? ('Saco ' + preciosDelMercado.length + (preciosDelMercado.length === 1 ? ' precio' : ' precios') + ' que su mercado publica en los anuncios')
+        : 'Leyo los anuncios comparables: ninguno publica precio en la ficha (en su categoria no se compite por precio visible)',
+      resultado: {
+        fuente_tipo: 'los copies de los anuncios comparables, leidos por el trabajador',
+        comparables_leidos: mercado.comparables.length,
+        precios_encontrados: preciosDelMercado.slice(0, 12),
+        porque: 'Son precios que el propio mercado publica en su publicidad, no promedios estimados: con eso la pieza sabe donde ponerse.',
+        fuente: 'Biblioteca de Anuncios de Meta · lectura del trabajador',
+      },
+    });
+  }
+
+  // ---------------- KAI 2 · LOS BOTONES CON LOS QUE CIERRA SU MERCADO ----------------
+  // De los comparables se cuenta con que boton cierra cada uno: ese es el cierre que el mercado ya eligio.
+  const botonesDelMercado = new Map<string, number>();
+  for (const f of mercado?.comparables ?? []) {
+    const b = String(f.cta || '').trim();
+    if (b) botonesDelMercado.set(b, (botonesDelMercado.get(b) || 0) + 1);
+  }
+  if (mercado && mercado.comparables.length) {
+    tareas.push({
+      agente: 'kai', orden: 12,
+      que: botonesDelMercado.size
+        ? ('Conto como cierra su mercado: ' + Array.from(botonesDelMercado.keys()).slice(0, 3).join(', '))
+        : 'Leyo los anuncios comparables: las fichas no traen el boton (hay que abrirlos uno por uno para verlo)',
+      resultado: {
+        fuente_tipo: 'los botones de los anuncios comparables, leidos por el trabajador',
+        comparables_leidos: mercado.comparables.length,
+        botones_del_mercado: Array.from(botonesDelMercado.entries()).map(([boton, cuantos]) => ({ boton, cuantos })),
+        porque: 'El boton no se elige por gusto: se elige el que ya esta cerrando en ese mercado.',
+        fuente: 'Biblioteca de Anuncios de Meta · lectura del trabajador',
+      },
+    });
+  }
 
   for (const t of tareas) {
     await db.query(
