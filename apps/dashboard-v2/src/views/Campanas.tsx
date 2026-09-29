@@ -279,7 +279,13 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
   const juzgadasTotal = d.evaluaciones.length;
   const pasarondelMes = d.evaluaciones.filter(e => Number(e.puntaje) >= 80).length;
   const frenadas = d.evaluaciones.filter(e => Number(e.puntaje) < 80).length;
-  const artefactos = fuente.reduce((s, c) => s + c.artefactos, 0);
+  // LOS ARTEFACTOS SON LAS PIEZAS, Y SE CUENTAN LAS QUE EXISTEN — no las que cuelgan de una campaña.
+  // Antes se sumaban los artefactos de cada campaña: sin campaña, el motor podía haber producido quince
+  // piezas (con su imagen, su video y su prompt) y el contador seguía en 0. El trabajo estaba hecho y no
+  // se veía, que es justo lo que no puede pasar. Se toma el mayor de los dos: lo que hay no se esconde.
+  const piezasDelMotor = (d.piezas ?? []).length;
+  const artefactosDeCampanas = fuente.reduce((s, c) => s + c.artefactos, 0);
+  const artefactos = Math.max(piezasDelMotor, artefactosDeCampanas);
 
   // --- Las campañas, con el estado y el presupuesto que tienen AHORA (no los de la data original).
   // Así lo que hace un botón se ve en la misma pantalla: la fila, la tarjeta en vivo, el contador y
@@ -513,7 +519,9 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
       <ViewHead
         icon={<I_Megaphone size={19} />}
         titulo="Campañas"
-        sub="Es un flujo por etapas: usted sube lo que tiene, Sinkroo crea, MiroFish vota y usted decide mirando las piezas."
+        sub={artefactos > 0 && fuente.length === 0
+          ? `El motor ya produjo ${artefactos} ${artefactos === 1 ? 'pieza' : 'piezas'}: están en la galería, con su veredicto. Todavía no hay una campaña encima — se crea cuando usted quiera publicarlas.`
+          : 'Es un flujo por etapas: usted sube lo que tiene, Sinkroo crea, MiroFish vota y usted decide mirando las piezas.'}
         nums={[
           { v: String(fuente.length), l: 'campañas' },
           { v: <Dinero monto={diario} />, l: 'invertido por día', c: 'var(--green)' },
