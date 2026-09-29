@@ -106,4 +106,27 @@ export async function piezaRoutes(app: FastifyInstance, db: Pool) {
       return reply.status(404).send({ error: 'el archivo de la imagen no está en el servidor', codigo: 'sin_archivo' });
     }
   });
+
+  /**
+   * EL VIDEO DE LA PIEZA, montado (voz y subtítulos incluidos). Igual que la imagen: la dirección no es
+   * adivinable y exige sesión — una pieza sin publicar no puede quedar al alcance de cualquiera.
+   */
+  app.get('/api/piezas/:id/video', async (req, reply) => {
+    const u = await exigirSesion(req, reply); if (!u || !u.business_id) return;
+    const { id } = req.params as { id: string };
+    const r = await db.query(
+      `SELECT generacion->'video_generado'->>'archivo' AS archivo
+         FROM piezas WHERE id = $1 AND business_id = $2`, [id, u.business_id]);
+    const archivo = r.rows[0]?.archivo;
+    if (!archivo) return reply.status(404).send({ error: 'esa pieza no tiene video montado', codigo: 'sin_video' });
+    try {
+      const bytes = await readFile(archivo);
+      return reply.header('Content-Type', 'video/mp4')
+        .header('Cache-Control', 'private, max-age=3600')
+        .header('Accept-Ranges', 'bytes')
+        .send(bytes);
+    } catch {
+      return reply.status(404).send({ error: 'el archivo del video no está en el servidor', codigo: 'sin_archivo' });
+    }
+  });
 }

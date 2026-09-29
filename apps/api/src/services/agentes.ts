@@ -11,6 +11,7 @@ import { TARIFA, saldoDe, cobrarCreacion } from './creditos.js';
 import { capaDeOficio } from './oficio.js';
 import { planosDelGuion } from './planos.js';
 import { generarImagen, promptVisual } from './imagenes.js';
+import { generarVideo } from './video.js';
 import { aJson } from '../lib/json-seguro.js';
 
 // =============================================================================================
@@ -1583,24 +1584,66 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
           String((pz.detalle as any)?.variante?.angulo || '')],
       );
       const piezaId = String(insertada.rows[0].id);
-      // LA IMAGEN DE LAS PIEZAS DE IMAGEN: se pintan gratis (Pollinations) con un prompt visual corto,
-      // armado con lo medido del negocio. Si no responde, la pieza queda con su prompt y lo dice.
-      if (/imagen/i.test(String(pz.formato || ''))) {
+      // LA IMAGEN DE LA PIEZA (y el material del video). Una pieza de imagen se pinta con un prompt visual
+      // armado con lo medido del negocio; una de VIDEO también necesita material, porque el montaje se
+      // arma con NUESTRAS imágenes —no hace falta banco de imágenes ni llave de Pexels—. Si algo no
+      // responde, la pieza queda con su prompt y lo dice: pintar es un extra, no un requisito.
+      const esPiezaDeImagen = /imagen/i.test(String(pz.formato || ''));
+      const esPiezaDeVideo = /video/i.test(String(pz.formato || '')) && !/texto/i.test(String(pz.formato || ''));
+      const materiales: string[] = [];
+      if (esPiezaDeImagen || esPiezaDeVideo) {
         try {
           const visual = promptVisual({
             queHace: leido.queHace || ctx.descripcion,
             textoSobreLaImagen: String((pz.detalle as any)?.texto_sobre_la_imagen || ''),
             formato: pz.formato,
             colores: (identidad?.colores ?? []).map((c: { hex: string }) => c.hex),
+            lugar: ctx.zona,
+            tono: Array.isArray(decisiones.tono) ? decisiones.tono.join(' y ') : '',
           });
-          const img = await generarImagen({ businessId: ctx.businessId, piezaId, formato: pz.formato, prompt: visual });
-          if (img) {
+          const imagenes: unknown[] = [];
+          // Un video necesita más de un cuadro para no quedarse en una foto quieta.
+          const cuantas = esPiezaDeVideo ? 2 : 1;
+          for (let n = 0; n < cuantas; n++) {
+            const prompt = n === 0 ? visual : `${visual}, same scene from a closer detail, different angle`;
+            const img = await generarImagen({ businessId: ctx.businessId, piezaId, formato: pz.formato, prompt });
+            if (!img) continue;
+            imagenes.push(img);
+            materiales.push(img.archivo);
+          }
+          if (imagenes.length) {
             await db.query(
-              `UPDATE piezas SET generacion = jsonb_set(generacion, '{imagen_generada}', $2::jsonb) WHERE id = $1`,
-              [piezaId, aJson(img)],
+              `UPDATE piezas SET generacion = jsonb_set(jsonb_set(generacion, '{imagen_generada}', $2::jsonb),
+                                                         '{imagenes_generadas}', $3::jsonb) WHERE id = $1`,
+              [piezaId, aJson(imagenes[0]), aJson(imagenes)],
             );
           }
         } catch (e) { console.error('[imagen] no se pudo generar:', (e as Error)?.message); }
+      }
+      // EL VIDEO DE LA PIEZA: se monta con nuestro material, la voz que corresponde a su tono y subtítulos
+      // nativos (gratis, sin GPU, sin llaves nuevas). Si el montaje falla, la pieza se queda con su guion,
+      // sus planos y sus imágenes, y lo dice.
+      //
+      // NO SE ESPERA: montar tarda minutos y la corrida no puede quedarse colgada por eso (el panel, a
+      // través de nginx, corta antes). El pedido sale y la pieza se actualiza cuando el video está listo;
+      // la ficha lo muestra en cuanto aparece. Es el mismo criterio que la lectura de anuncios.
+      if (esPiezaDeVideo && materiales.length) {
+        const tonoDeLaPieza = Array.isArray(decisiones.tono) ? decisiones.tono.join(' y ') : '';
+        void (async () => {
+          try {
+            const vid = await generarVideo({
+              businessId: ctx.businessId, piezaId, formato: pz.formato, titulo: pz.titulo,
+              copy: String(pz.texto || ''), materiales, tono: tonoDeLaPieza,
+            });
+            if (vid) {
+              await db.query(
+                `UPDATE piezas SET generacion = jsonb_set(generacion, '{video_generado}', $2::jsonb) WHERE id = $1`,
+                [piezaId, aJson(vid)],
+              );
+              console.log('[video] montado:', vid.archivo, vid.peso, 'bytes,', vid.segundos, 's,', vid.voz);
+            }
+          } catch (e) { console.error('[video] no se pudo montar:', (e as Error)?.message); }
+        })();
       }
       escritasAhora++;
       // LOS PLANOS: solo las piezas de video tienen guion que desglosar. Se guardan dentro de la pieza
