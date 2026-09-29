@@ -4,6 +4,7 @@ import { exigirSesion } from '../lib/auth.js';
 import { exigirCuerpo, limpiar, limpiarLista } from '../lib/seguridad.js';
 import { conAvisoDePin, exigirPin } from '../lib/pin.js';
 import { correrInvestigacion, desvioActual } from '../services/agentes.js';
+import { lanzarLecturaDeAnuncios, loQueDedujoVera, paisesDeclarados } from '../services/programador.js';
 import { crearPublico, evaluar } from '../services/mirofish.js';
 
 // =============================================================================================
@@ -60,6 +61,12 @@ export async function motorRoutes(app: FastifyInstance, db: Pool) {
       });
     }
     const r = await correrInvestigacion(db, ctx);
+    // Y sale a leer la Biblioteca de Anuncios con las palabras y los países del negocio: sin esto, la
+    // corrida cuenta el mercado solo con lo que ya estaba guardado. No se espera: si tarda, no frena.
+    lanzarLecturaDeAnuncios(
+      { id: u.business_id, nombre: ctx.nombre, descripcion: ctx.descripcion, rubro: ctx.rubro, zona: ctx.zona },
+      await loQueDedujoVera(db, u.business_id), await paisesDeclarados(db, u.business_id),
+      (m) => req.log.info(m));
     return reply.status(201).send(r);
   });
 

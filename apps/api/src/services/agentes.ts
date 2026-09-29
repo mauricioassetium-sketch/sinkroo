@@ -490,7 +490,51 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
     },
   });
 
-  // ---------------- REX · la demanda y los precios ----------------
+  // ---------------- LUX 2 · LAS PIEZAS VIVAS LEÍDAS POR EL TRABAJADOR ----------------
+  // La tabla de anuncios leídos tiene lo que la Biblioteca de Anuncios entregó para ESTE negocio: sus
+  // palabras clave, sus países, los anunciantes y desde cuándo corre cada anuncio. Hasta ahora nadie la
+  // leía: el trabajador escribía y ningún agente pasaba por ahí.
+  let lectura: { fichas: number; paises: number; anunciantes: number; ejemplos: string[]; mas_viejo: string; dias: number } | null = null;
+  try {
+    const r = await db.query(
+      `SELECT count(*)::int AS fichas, count(DISTINCT pais)::int AS paises,
+              count(DISTINCT anunciante)::int AS anunciantes,
+              (array_agg(DISTINCT anunciante))[1:8] AS ejemplos,
+              min(fecha_inicio) AS mas_viejo
+         FROM anuncios_leidos WHERE business_id = $1`, [ctx.businessId]);
+    const f = r.rows[0] as Record<string, unknown> | undefined;
+    if (Number(f?.fichas) > 0) {
+      const meses: Record<string, number> = { Jan: 1, Feb: 2, Mar: 3, Apr: 4, May: 5, Jun: 6, Jul: 7, Aug: 8, Sep: 9, Oct: 10, Nov: 11, Dec: 12 };
+      const m = String(f?.mas_viejo || '').match(/([A-Za-z]+) (\d+), (\d{4})/);
+      const dias = m ? Math.round((Date.now() - new Date(Number(m[3]), meses[m[1]] - 1, Number(m[2])).getTime()) / 86400000) : -1;
+      lectura = {
+        fichas: Number(f?.fichas), paises: Number(f?.paises), anunciantes: Number(f?.anunciantes),
+        ejemplos: (f?.ejemplos as string[]) ?? [], mas_viejo: String(f?.mas_viejo || ''), dias,
+      };
+    }
+  } catch { /* sin tabla o sin filas: se dice abajo, no se inventa */ }
+
+  tareas.push({
+    agente: 'lux', orden: 2,
+    que: lectura
+      ? `Leyó ${lectura.fichas} anuncios activos de su mercado en ${lectura.paises} ${lectura.paises === 1 ? 'país' : 'países'}: el más viejo lleva ${lectura.dias} días`
+      : 'No hay anuncios leídos de su mercado todavía',
+    resultado: lectura ? {
+      fuente_tipo: 'la Biblioteca de Anuncios de Meta, leída por el trabajador del sistema',
+      anuncios_activos: lectura.fichas,
+      paises_leidos: lectura.paises,
+      anunciantes_distintos: lectura.anunciantes,
+      ejemplos_de_anunciantes: lectura.ejemplos,
+      el_mas_viejo: `${lectura.mas_viejo} (${lectura.dias} días corriendo)`,
+      porque: 'Son anuncios activos hoy en su categoría, con su fecha de inicio: los que llevan meses corriendo son los que rinden.',
+      fuente: 'Biblioteca de Anuncios de Meta · lectura del trabajador',
+    } : {
+      sin_fuente: 'falta que el trabajador lea la Biblioteca de Anuncios para este negocio (la corrida lo lanza sola)',
+      fuente: 'sin fuente',
+    },
+  });
+
+  // ---------------- REX · la demanda y el precio ----------------
   const precios = preciosDelInforme(inf);
   tareas.push({
     agente: 'rex', orden: 3,
@@ -933,6 +977,15 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
       dato: `0 con nombre, ${mapa.lugares} lugares mapeados en ${mapa.ciudad}${mapa.porNombre ? ` (buscado por «${ctx.rubro}»)` : ''}`,
       porque: 'No es que el mercado no exista: es que OpenStreetMap no lo tiene cargado. La lista real se completa con la búsqueda web y la lectura de anuncios.',
       fuente: `OpenStreetMap · Overpass · ${mapa.url}`,
+    });
+  }
+  if (lectura && lectura.fichas > 0) {
+    hallazgos.push({
+      tipo: 'mercado',
+      titulo: `Su mercado tiene ${lectura.fichas} anuncios activos${lectura.dias >= 0 ? `: el más viejo lleva ${lectura.dias} días` : ''}`,
+      dato: `${lectura.fichas} anuncios en ${lectura.paises} ${lectura.paises === 1 ? 'país' : 'países'} · ${lectura.anunciantes} anunciantes distintos${lectura.ejemplos.length ? ` · ${lectura.ejemplos.slice(0, 4).join(', ')}` : ''}`,
+      porque: 'Es su categoría leída en la Biblioteca de Anuncios: quién está pautando y desde cuándo. Los que llevan meses son los que rinden.',
+      fuente: 'Biblioteca de Anuncios de Meta · lectura del trabajador',
     });
   }
   if (piezas.length) {

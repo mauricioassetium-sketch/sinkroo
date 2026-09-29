@@ -53,7 +53,7 @@ const PAIS_DE: Record<string, string> = {
  * digitales…) y los LUGARES que nombra el material. Con eso el trabajador sabe qué buscar y dónde,
  * en vez de leer siempre las mismas palabras en el mismo país.
  */
-async function loQueDedujoVera(db: Pool, businessId: string): Promise<{ palabras: string[]; paises: string[] }> {
+export async function loQueDedujoVera(db: Pool, businessId: string): Promise<{ palabras: string[]; paises: string[] }> {
   try {
     const r = await db.query(
       `SELECT t.resultado FROM tareas_corrida t JOIN corridas c ON c.id = t.corrida_id
@@ -74,7 +74,7 @@ async function loQueDedujoVera(db: Pool, businessId: string): Promise<{ palabras
  * eligió, expandidos a sus mercados principales. Si no declaró nada, se devuelve vacío: el sistema es
  * global y no da por sentado ningún país.
  */
-async function paisesDeclarados(db: Pool, businessId: string): Promise<string[]> {
+export async function paisesDeclarados(db: Pool, businessId: string): Promise<string[]> {
   try {
     const r = await db.query('SELECT datos FROM onboarding WHERE business_id = $1', [businessId]);
     const datos = (r.rows[0]?.datos ?? {}) as Record<string, unknown>;
@@ -93,7 +93,7 @@ async function paisesDeclarados(db: Pool, businessId: string): Promise<string[]>
  * mano, solo que ahora lo lanza el programador en vez de una persona. No se espera su respuesta: si
  * tarda, no frena la investigación del día; lo que lea queda en la tabla de anuncios leídos.
  */
-function lanzarLecturaDeAnuncios(
+export function lanzarLecturaDeAnuncios(
   n: Negocio, dedujo: { palabras: string[]; paises: string[] },
   declarados: string[], log: (m: string) => void,
 ) {
