@@ -3,6 +3,8 @@ import { promptDelNegocio, promptsDelInforme, guardarPrompts } from './prompts.j
 import { buscarSimilares, categoriaPertinente, deducirNegocio, leerArchivos, leerPagina, leerWikipedia, palabrasClave, similarPertinente, type NegocioLeido } from './vera.js';
 import { detectarLengua, lenguaDePais, nombreDeLengua, terminoEnOtrasLenguas, VOCABULARIO_POR_LENGUA } from './lenguas.js';
 import { leerIdentidadDeLaPagina } from './identidad.js';
+import { armarInformeDelMercadoLeido } from './mercado.js';
+import { aJson } from '../lib/json-seguro.js';
 
 // =============================================================================================
 // LOS SEIS AGENTES DEL EQUIPO — la investigación del mercado, con trabajo REAL.
@@ -648,10 +650,11 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
   // La tabla de anuncios leídos tiene lo que la Biblioteca de Anuncios entregó para ESTE negocio: sus
   // palabras clave, sus países, los anunciantes y desde cuándo corre cada anuncio. Hasta ahora nadie la
   // leía: el trabajador escribía y ningún agente pasaba por ahí.
-  let lectura: { fichas: number; paises: number; anunciantes: number; ejemplos: string[]; mas_viejo: string; dias: number } | null = null;
+  let lectura: { fichas: number; distintos: number; paises: number; anunciantes: number; ejemplos: string[]; mas_viejo: string; dias: number } | null = null;
   try {
     const r = await db.query(
       `SELECT count(*)::int AS fichas, count(DISTINCT pais)::int AS paises,
+              count(DISTINCT id_anuncio)::int AS distintos,
               count(DISTINCT anunciante)::int AS anunciantes,
               (array_agg(DISTINCT anunciante))[1:8] AS ejemplos,
               -- La fecha más vieja, saltando las fichas que no traen fecha: el min() de un texto con
@@ -665,7 +668,7 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
       const m = String(f?.mas_viejo || '').match(/([A-Za-z]+) (\d+), (\d{4})/);
       const dias = m ? Math.round((Date.now() - new Date(Number(m[3]), meses[m[1]] - 1, Number(m[2])).getTime()) / 86400000) : -1;
       lectura = {
-        fichas: Number(f?.fichas), paises: Number(f?.paises), anunciantes: Number(f?.anunciantes),
+        fichas: Number(f?.fichas), distintos: Number(f?.distintos), paises: Number(f?.paises), anunciantes: Number(f?.anunciantes),
         ejemplos: (f?.ejemplos as string[]) ?? [], mas_viejo: String(f?.mas_viejo || ''), dias,
       };
     }
@@ -674,11 +677,12 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
   tareas.push({
     agente: 'lux', orden: 2,
     que: lectura
-      ? `Leyó ${lectura.fichas} anuncios activos de su mercado en ${lectura.paises} ${lectura.paises === 1 ? 'país' : 'países'}: el más viejo lleva ${lectura.dias} días`
+      ? `Leyó su mercado: ${lectura.fichas.toLocaleString('es-CO')} fichas de ${lectura.distintos.toLocaleString('es-CO')} anuncios distintos en ${lectura.paises} ${lectura.paises === 1 ? 'país' : 'países'}: el más viejo lleva ${lectura.dias} días corriendo`
       : 'No hay anuncios leídos de su mercado todavía',
     resultado: lectura ? {
       fuente_tipo: 'la Biblioteca de Anuncios de Meta, leída por el trabajador del sistema',
-      anuncios_activos: lectura.fichas,
+      fichas_leidas: lectura.fichas,
+      anuncios_activos: lectura.distintos,
       paises_leidos: lectura.paises,
       anunciantes_distintos: lectura.anunciantes,
       ejemplos_de_anunciantes: lectura.ejemplos,
@@ -698,6 +702,7 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
   // decir que esa categoría todavía no existe en ese mercado: hay que entenderlo y decirlo así, porque no
   // es falta de datos — es un negocio que va primero, y eso se ataca derecho desde el creativo.
   let mercado: { comparables: any[]; ruido: number; total: number; categoria_nueva: boolean; palabras: string[]; terminos: string[] } | null = null;
+  let anunciosDeFormacion = 0;
   try {
     const palabras = [...new Set(`${ctx.rubro} ${ctx.descripcion} ${leido.rubro}`.toLowerCase()
       .split(/[^a-záéíóúñ0-9]+/).filter(w => w.length >= 5))].slice(0, 12);
@@ -709,18 +714,76 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
     const terminos = [...new Set(Object.values(palabrasPorLengua).flat()
       .map(t => String(t).toLowerCase().replace(/\s+/g, ' ').trim()).filter(t => t.length >= 3))];
     const reTerminos = terminos.map(t => new RegExp(`(^|[^a-z0-9áéíóúñ])${escapar(t)}([^a-z0-9áéíóúñ]|$)`));
+    // UN ANUNCIO, UNA VEZ, CON SU MEJOR TEXTO. La Biblioteca devuelve la misma pieza muchas veces —una por
+    // palabra buscada y por país— y de una fila a otra cambia lo que trae. Elegir «la primera» o «la más
+    // larga» traía el texto de sistema o una coletilla, no el anuncio: se probó y el mercado salía con
+    // escuelas, gestores de contraseñas y fábricas que no compiten. Acá se agrupa por anuncio y, de todas
+    // sus filas, se queda el texto que de verdad habla de la categoría (el que más señales nombra).
     const r = await db.query(
-      `SELECT anunciante, copy, cta, pais, fecha_inicio
-         FROM anuncios_leidos WHERE business_id = $1 AND anunciante <> ''
-        ORDER BY fecha_inicio DESC LIMIT 400`, [ctx.businessId]);
-    const filas = r.rows as any[];
-    const puntua = (f: any) => {
-      const texto = `${f.anunciante} ${f.copy}`.toLowerCase();
-      return palabras.filter(w => texto.includes(w)).length + reTerminos.filter(re => re.test(texto)).length;
+      `SELECT id_anuncio, anunciante, copy, cta, pais, fecha_inicio
+         FROM anuncios_leidos
+        WHERE business_id = $1 AND id_anuncio <> ''
+          -- Solo las fechas que se pueden leer: una fecha rara rompía el ordenamiento y toda la lectura.
+          AND fecha_inicio ~ '^[A-Z][a-z]{2} [0-9]{1,2}, [0-9]{4}$'`, [ctx.businessId]);
+    // LA PALABRA SE BUSCA ENTERA, también las del propio negocio. Con `includes`, «rwa» hacía comparable a
+    // «Raffles World Academy» y «token» a cualquiera que dijera «tokens»: con eso, medio mercado era falso.
+    const entera = (w: string) => new RegExp(`(?<![\\p{L}\\p{N}])${escapar(w)}(?![\\p{L}\\p{N}])`, 'iu');
+    const rePalabras = palabras.map(entera);
+    // QUIÉN COMPITE LO DECIDE LA CATEGORÍA, NO UNA PALABRA SUELTA DEL DUEÑO. Las palabras del negocio salen de
+    // su descripción y del rótulo de su industria, y ahí entran «servicios», «digitales», «security», «token»:
+    // buscando con eso entraban como competidores un gestor de contraseñas (por «security»), un medidor de luz
+    // prepago (por «token») y una escuela (por «tokenización»). Un anuncio compite si su texto nombra un
+    // TÉRMINO DE LA CATEGORÍA (el vocabulario de Lex, en todas las lenguas); las palabras del dueño solo ordenan.
+    const señales = (texto: string) => {
+      const t = reTerminos.filter(re => re.test(texto)).length;
+      const p2 = rePalabras.filter(re => re.test(texto)).length;
+      return t * 2 + p2;
     };
-    const comparables = filas.filter(f => puntua(f) > 0).sort((a, b) => puntua(b) - puntua(a));
-    const ruido = filas.length - comparables.length;
-    mercado = { comparables, ruido, total: filas.length, categoria_nueva: filas.length > 0 && comparables.length === 0, palabras, terminos };
+    const esDeCategoria = (texto: string) => reTerminos.some(re => re.test(texto));
+    // Un curso o una maestría sobre el tema no compite con el servicio: vende formación. Se aparta, y se dice.
+    // Un curso, una escuela o una maestría sobre el tema no compite con el servicio: vende formación.
+    const ES_FORMACION = /maestr[ií]a|posgrado|diplomatura|bootcamp|curso de|cursos de|aprend[eé] a|certificaci[oó]n|academia|clases de|school|escuela|colegio|universidad|instituto|educaci[oó]n/i;
+    // La Biblioteca trae basura además de anuncios: textos del sistema y avisos sin texto.
+    const ES_SISTEMA = /ads use this creative|EU transparency/i;
+    const limpiaTexto = (t: any) => String(t ?? '').replace(/[\u200b-\u200d\ufeff]/g, ' ').replace(/\s+/g, ' ').trim();
+
+    type Anuncio = { id: string; anunciante: string; copy: string; cta: string; pais: string; paises: string[]; fecha_inicio: string; señales: number };
+    const porAnuncio = new Map<string, Anuncio>();
+    for (const f of r.rows as any[]) {
+      const id = String(f.id_anuncio);
+      const texto = limpiaTexto(f.copy);
+      const valido = texto.length >= 60 && !ES_SISTEMA.test(texto);
+      const anun = limpiaTexto(f.anunciante);
+      const pais = limpiaTexto(f.pais);
+      const ya = porAnuncio.get(id);
+      if (!ya) {
+        porAnuncio.set(id, {
+          id, anunciante: anun, copy: valido ? texto : '', cta: limpiaTexto(f.cta), pais, paises: pais ? [pais] : [],
+          fecha_inicio: limpiaTexto(f.fecha_inicio), señales: valido ? señales(`${anun} ${texto}`) : -1,
+        });
+        continue;
+      }
+      if (pais && !ya.paises.includes(pais)) ya.paises.push(pais);
+      if (anun && !ya.anunciante) ya.anunciante = anun;
+      if (!ya.cta && f.cta) ya.cta = limpiaTexto(f.cta);
+      // La fecha más vieja de sus filas: es desde cuándo corre la pieza.
+      if (ya.fecha_inicio && f.fecha_inicio) {
+        const aDias = (x: string) => { const m = x.match(/([A-Za-z]{3})\w*\s+(\d{1,2}),\s*(\d{4})/); return m ? Number(m[3]) * 10000 + (['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].indexOf(m[1]) + 1) * 100 + Number(m[2]) : 0; };
+        if (aDias(ya.fecha_inicio) && aDias(f.fecha_inicio) && aDias(f.fecha_inicio) < aDias(ya.fecha_inicio)) ya.fecha_inicio = limpiaTexto(f.fecha_inicio);
+      }
+      // El texto que se queda es el que más habla de la categoría; si empatan, el más largo.
+      if (valido) {
+        const s2 = señales(`${anun} ${texto}`);
+        if (s2 > ya.señales || (s2 === ya.señales && texto.length > ya.copy.length)) { ya.copy = texto; ya.señales = s2; }
+      }
+    }
+    const anuncios = [...porAnuncio.values()].filter(a => a.copy && a.señales > 0 && esDeCategoria(`${a.anunciante} ${a.copy}`));
+    anunciosDeFormacion = anuncios.filter(a => ES_FORMACION.test(`${a.anunciante} ${a.copy}`)).length;
+    const filas = anuncios;
+    const comparables = anuncios.filter(a => !ES_FORMACION.test(`${a.anunciante} ${a.copy}`)).sort((a, b) => b.señales - a.señales);
+    const total = porAnuncio.size;
+    const ruido = total - comparables.length;
+    mercado = { comparables, ruido, total, categoria_nueva: total > 0 && comparables.length === 0, palabras, terminos };
   } catch { mercado = null; }
 
   tareas.push({
@@ -728,24 +791,88 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
     que: mercado
       ? (mercado.categoria_nueva
         ? `Separó el mercado: de ${mercado.total} anuncios leídos, ninguno es de su categoría — es un negocio nuevo en ese mercado`
-        : `Separó el mercado: ${mercado.comparables.length} comparables de ${mercado.ruido} que son ruido de la palabra clave`)
+        : `Separó el mercado: ${mercado.comparables.length} anuncios comparables y ${mercado.ruido} que no compiten, sobre ${mercado.total} anuncios distintos leídos${anunciosDeFormacion ? ` (${anunciosDeFormacion} de esos son cursos o escuelas sobre el tema: se apartan, venden formación, no el servicio)` : ''}`)
       : 'No pudo separar el mercado y lo dice',
     resultado: mercado ? {
       fuente_tipo: 'los anuncios leídos, cruzados con las palabras del propio negocio',
       comparables: mercado.comparables.slice(0, 12).map((f: any) => ({
-        anunciante: f.anunciante, copy: String(f.copy || '').slice(0, 130), cta: f.cta, pais: f.pais, desde: f.fecha_inicio,
+        anunciante: f.anunciante, copy: String(f.copy || '').slice(0, 130), cta: f.cta, pais: (f.paises ?? [f.pais]).join(' · '), desde: f.fecha_inicio,
       })),
       cuantos_comparables: mercado.comparables.length,
       cuantos_son_ruido: mercado.ruido,
       categoria_nueva: mercado.categoria_nueva,
       terminos_de_la_categoria_usados: mercado.terminos,
-      como_se_separo: `se quedó el anunciante o el copy que nombra alguna de las palabras del negocio (${mercado.palabras.join(', ')}) o uno de los términos de su categoría en su lengua (${mercado.terminos.slice(0, 8).join(', ')})`,
+      como_se_separo: `un anuncio compite si su texto nombra la categoría con una palabra entera —alguno de los términos de su categoría en sus lenguas (${mercado.terminos.slice(0, 10).join(', ')})— y no es un curso ni una maestría sobre el tema (eso vende formación, no el servicio). Las palabras del negocio (${mercado.palabras.join(', ')}) solo ordenan: con «security» o «token» sueltos entraban un gestor de contraseñas y un medidor prepago`,
+      anuncios_de_formacion_apartados: anunciosDeFormacion,
+      comparables_de_verdad: mercado.comparables.length,
+      // Las palabras y los términos con los que se separó el mercado, guardados para poder auditar el umbral
+      palabras_del_negocio: mercado.palabras,
+      terminos_de_la_categoria: mercado.terminos,
       porque: mercado.categoria_nueva
         ? 'Nadie comparable en su mercado: la categoría todavía no existe ahí. No es falta de datos — es que este negocio va primero, y se ataca derecho desde el creativo con lo que ya identificamos.'
-        : 'De la lista completa solo una parte compite con este negocio; el resto entra por la palabra clave y no sirve para comparar.',
+        : 'De la lista completa solo una parte compite con este negocio; el resto entra por la palabra clave y no sirve para comparar. Cada anuncio cuenta una vez (la Biblioteca lo devuelve repetido por palabra y por país) y la palabra se busca entera: un anuncio cuyo texto no nombra la categoría no compite.',
       fuente: 'Biblioteca de Anuncios de Meta · lectura del trabajador',
     } : { sin_fuente: 'no se pudieron cruzar los anuncios con las palabras del negocio', fuente: 'sin fuente' },
   });
+
+  // ---------------- EL INFORME DEL MERCADO · ARMADO CON LO QUE SE LEYÓ ----------------
+  // Hasta acá el motor leía el mercado de verdad —miles de anuncios activos— y NADIE escribía el informe:
+  // la tabla del informe quedaba vacía y el panel decía «falta» para siempre, con el mercado ya leído. Por
+  // eso el negocio veía investigación y ningún resultado. El informe se arma con esa misma lectura —quiénes
+  // juegan, las piezas que aguantan, el patrón, lo saturado y el hueco— y queda guardado con su fecha.
+  // Lo que no se puede saber con estas fichas (las creatividades, el precio, la demanda) se dice que falta.
+  let informeDelMercado: { resumen: string; comparables: number; huecos: number } | null = null;
+  if (mercado && mercado.comparables.length) {
+    try {
+      const paisesLeidos = (await db.query(
+        `SELECT DISTINCT pais FROM anuncios_leidos WHERE business_id = $1 AND pais <> '' ORDER BY pais`,
+        [ctx.businessId],
+      )).rows.map((r: any) => String(r.pais));
+      const armado = armarInformeDelMercadoLeido({
+        comparables: mercado.comparables, total: mercado.total, ruido: mercado.ruido, paises: paisesLeidos,
+        fichasLeidas: lectura?.fichas, anunciosDistintos: lectura?.distintos,
+      });
+      await db.query(
+        `INSERT INTO mercado_informes (business_id, rubro, ciudad, claves, origen, fuente, payload)
+         VALUES ($1, $2, $3, $4, 'motor', $5, $6)`,
+        [ctx.businessId, leido.rubro || ctx.rubro, paisesLeidos.join(' · '), mercado.palabras,
+          `Biblioteca de Anuncios de Meta, leída por el trabajador del sistema: ${mercado.total} anuncios activos en ${paisesLeidos.length} ${paisesLeidos.length === 1 ? 'país' : 'países'}`,
+          aJson(armado)],
+      );
+      informeDelMercado = { resumen: armado.resumen, comparables: mercado.comparables.length, huecos: armado.huecos.length };
+      tareas.push({
+        agente: 'lux', orden: 4,
+        que: `Armó el informe de su mercado con lo que se leyó: ${mercado.comparables.length} comparables, ${armado.jugadores.length} anunciantes, ${armado.huecos.length} huecos`,
+        resultado: {
+          fuente_tipo: 'los anuncios activos de su mercado, ya leídos, contados uno por uno',
+          resumen: armado.resumen,
+          jugadores: armado.jugadores.slice(0, 8),
+          piezas_vivas: armado.piezas.length,
+          el_mas_sostenido_dias: armado.piezas[0]?.dias ?? 0,
+          boton_que_repiten: armado.patron.find(x => /bot[oó]n/i.test(x.k))?.v || '',
+          saturacion: armado.saturacion,
+          huecos: armado.huecos,
+          guardado: 'el informe queda guardado en su negocio, con la fecha de esta lectura: la pantalla de Mercado lo muestra entero',
+          porque: 'El informe ES el resultado del mercado. Se arma con lo que ya se leyó y dice lo que le falta, en vez de no existir hasta tener todo.',
+          falta: armado.falta,
+          fuente: 'Biblioteca de Anuncios de Meta · lectura del trabajador',
+        },
+      });
+    } catch (e) {
+      // Si la escritura falla, queda dicho acá Y en el registro: un fallo silencioso dejaría al negocio sin
+      // informe y sin saber por qué.
+      const err = e as any;
+      console.error('[informe del mercado] no se pudo guardar:', err?.message, '·', err?.detail ?? '', '·', err?.where ?? '', '· posición', err?.position ?? '');
+      tareas.push({
+        agente: 'lux', orden: 4, que: 'No pudo guardar el informe de su mercado y lo dice',
+        resultado: {
+          sin_fuente: `el informe no se pudo guardar: ${String(err?.message).slice(0, 160)}`,
+          detalle_tecnico: [err?.detail, err?.where, err?.position ? `posición ${err.position}` : '', err?.code].filter(Boolean).join(' · ').slice(0, 300),
+          fuente: 'sin fuente: la escritura del informe falló',
+        },
+      });
+    }
+  }
 
   // ---------------- REX · la demanda y el precio ----------------
   const precios = preciosDelInforme(inf);
@@ -1420,7 +1547,7 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
     await db.query(
       `INSERT INTO tareas_corrida (corrida_id, agente, que, resultado, creditos, orden)
        VALUES ($1, $2, $3, $4::jsonb, 0, $5)`,
-      [corridaId, t.agente, t.que, JSON.stringify(t.resultado), t.orden],
+      [corridaId, t.agente, t.que, aJson(t.resultado), t.orden],
     );
   }
 

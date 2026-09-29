@@ -248,13 +248,18 @@ export async function motorRoutes(app: FastifyInstance, db: Pool) {
         hay: false, rubro: ctx.rubro, ciudad: ctx.zona, origen: '', generado_at: null, fuente: '',
         informe: null,
         falta: [
-          !ctx.zona
-            ? 'falta la ciudad o zona del negocio: sin ella no se sabe qué mercado leer (se pone en Primeros pasos)'
-            : (ctx.rubro || ctx.descripcion)
-              ? `la ciudad sí está («${ctx.zona}») y el negocio dice a qué se dedica: lo que falta es la corrida de su rubro`
-              : 'falta saber a qué se dedica el negocio: con la descripción de Primeros pasos ya se puede leer su mercado',
-          'falta que el equipo corra la lectura de piezas vivas de ese rubro y esa ciudad: de ahí salen los jugadores, las piezas sostenidas, el patrón y los huecos',
+          (ctx.rubro || ctx.descripcion)
+            ? 'el equipo todavía no armó el informe de su mercado: lo arma la corrida de investigación (Mercado → «Que el motor investigue ahora»)'
+            : 'falta saber a qué se dedica el negocio: con la descripción de Primeros pasos ya se puede leer su mercado',
+          ctx.zona
+            ? `la lectura de los anuncios activos de «${ctx.rubro}» en ${ctx.zona}: de ahí salen los jugadores, las piezas que aguantan, el patrón y los huecos`
+            : 'la lectura de los anuncios activos por país: su negocio no tiene una ciudad fija y no le hace falta para tener su mercado',
         ],
+        // Sin ciudad no se puede exigir una: un negocio que vende por internet tiene mercado por país, no por
+        // ciudad. Decirlo acá evita que la pantalla pida un dato que no hace falta para leer su mercado.
+        nota_ciudad: ctx.zona
+          ? ''
+          : 'su mercado se lee por país, con los anuncios activos que corren en cada uno: la ciudad no hace falta',
       });
     }
     return reply.send({
