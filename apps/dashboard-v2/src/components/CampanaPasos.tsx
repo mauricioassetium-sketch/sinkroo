@@ -252,6 +252,8 @@ type PiezaGal = {
   imagen: { url: string; ancho: number; alto: number; peso: number; fuente: string; prompt_visual?: string } | null;
   /** El video montado de esta pieza, con la voz con la que se hizo y por qué esa voz. */
   video: { url: string; peso: number; segundos: number; voz: string; voz_porque: string; fuente: string } | null;
+  /** Si el montaje falló, por qué. Sin esto, un fallo se veía igual que «todavía no está». */
+  video_error: { motivo: string; cuando?: string } | null;
   /** Los planos del guion (solo las piezas de video): prompt, negativo, duración y audio de cada uno. */
   planos: { planos: { n: number; duracion_s: number; prompt: string; prompt_negativo: string; audio?: string }[]; duracion_total_s: number; motor: string; estilo_unificado: string; modelos_declarados: { video: string; audio: string } } | null;
   /** La especificación del formato: qué es, qué produce y con qué criterios se juzga. */
@@ -293,6 +295,7 @@ export function Galeria({ setToast, ir }: { modo: Modo; setToast: (t: string) =>
       planos: ((g as { planos?: never }).planos ?? null),
       imagen: ((g as { imagen_generada?: never }).imagen_generada ?? null),
       video: ((g as { video_generado?: never }).video_generado ?? null),
+      video_error: ((g as { video_error?: never }).video_error ?? null),
       prompt: porNombre ?? null,
     };
   });
@@ -386,10 +389,25 @@ export function Galeria({ setToast, ir }: { modo: Modo; setToast: (t: string) =>
           const sinPunto = o.puntaje === null;
           return (
             <div key={o.id} className={`pz ${sel ? 'sel' : ''}`}>
+              {/* EL RECUADRO NO VA VACÍO: si la pieza tiene su imagen generada, se ve acá —es lo que el
+                  motor produjo y lo que el dueño necesita mirar para decidir—. Y si es de video, el estado
+                  del montaje se dice: el video tarda minutos y no puede parecer que no existe. */}
               <div className="pz-frame" style={{ background: 'linear-gradient(150deg, var(--bg3), var(--bg2) 70%, var(--bg3))' }}>
                 <span className="pz-pos">{i + 1}</span>
                 <span className="pz-formato">{esVideo(o.formato) ? <><I_Film size={12} /> {o.formato.toLowerCase()}</> : <><I_Image size={12} /> {o.formato.toLowerCase()}</>}</span>
-                <span className="pz-ico">{esVideo(o.formato) ? <I_Film size={30} /> : <I_Image size={30} />}</span>
+                {o.imagen
+                  ? <div className="pz-art"><ImagenDeLaPieza url={o.imagen.url} /></div>
+                  : <span className="pz-ico">{esVideo(o.formato) ? <I_Film size={30} /> : <I_Image size={30} />}</span>}
+                {esVideo(o.formato) && (
+                  <span className={`pz-video ${o.video ? 'listo' : o.video_error ? 'fallo' : 'montando'}`}
+                    title={o.video
+                      ? `El video está montado: ${o.video.segundos} s, voz ${o.video.voz}. Ábralo en «Ver ficha».`
+                      : o.video_error
+                        ? `El montaje falló: ${o.video_error.motivo}`
+                        : 'El motor está montando el video: es un video de verdad, con voz y subtítulos, y tarda unos minutos en estar. Aparece acá solo.'}>
+                    {o.video ? `▶ video listo · ${o.video.segundos} s` : o.video_error ? 'el video no salió' : 'montando el video…'}
+                  </span>
+                )}
               </div>
               <div className="pz-body">
                 <div className="row spread" style={{ gap: 8 }}>
