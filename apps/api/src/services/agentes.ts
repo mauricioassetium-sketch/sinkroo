@@ -3,7 +3,8 @@ import { promptDelNegocio, promptsDelInforme, guardarPrompts } from './prompts.j
 import { buscarSimilares, categoriaPertinente, deducirNegocio, leerArchivos, leerPagina, leerWikipedia, palabrasClave, similarPertinente, type NegocioLeido } from './vera.js';
 import { detectarLengua, lenguaDePais, nombreDeLengua, terminoEnOtrasLenguas, VOCABULARIO_POR_LENGUA } from './lenguas.js';
 import { leerIdentidadDeLaPagina } from './identidad.js';
-import { armarInformeDelMercadoLeido } from './mercado.js';
+import { armarInformeDelMercadoLeido, type InformeDelMercado } from './mercado.js';
+import { armarLaPieza } from './pieza.js';
 import { aJson } from '../lib/json-seguro.js';
 
 // =============================================================================================
@@ -703,6 +704,8 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
   // es falta de datos — es un negocio que va primero, y eso se ataca derecho desde el creativo.
   let mercado: { comparables: any[]; ruido: number; total: number; categoria_nueva: boolean; palabras: string[]; terminos: string[] } | null = null;
   let anunciosDeFormacion = 0;
+  // El informe armado con la lectura del mercado: de acá sale el hueco que ataca la pieza.
+  let armadoDelInforme: InformeDelMercado | null = null;
   try {
     const palabras = [...new Set(`${ctx.rubro} ${ctx.descripcion} ${leido.rubro}`.toLowerCase()
       .split(/[^a-záéíóúñ0-9]+/).filter(w => w.length >= 5))].slice(0, 12);
@@ -839,6 +842,7 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
           `Biblioteca de Anuncios de Meta, leída por el trabajador del sistema: ${mercado.total} anuncios activos en ${paisesLeidos.length} ${paisesLeidos.length === 1 ? 'país' : 'países'}`,
           aJson(armado)],
       );
+      armadoDelInforme = armado;
       informeDelMercado = { resumen: armado.resumen, comparables: mercado.comparables.length, huecos: armado.huecos.length };
       tareas.push({
         agente: 'lux', orden: 4,
@@ -1540,6 +1544,77 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
         porque: 'El boton no se elige por gusto: se elige el que ya esta cerrando en ese mercado.',
         fuente: 'Biblioteca de Anuncios de Meta · lectura del trabajador',
       },
+    });
+  }
+
+  // ---------------- LA PIEZA, ESCRITA Y LISTA PARA PUBLICAR ----------------
+  // El motor decidía qué publicar y lo explicaba, pero la PIEZA no existía como texto: no había nada que
+  // aprobar, nada que publicar y nada que medir («0 piezas produjo el motor»), y el modelo no tenía ni un
+  // caso. Acá se escribe con el material del negocio, con el ángulo que ningún comparable usa, y con el
+  // arte medido en su propia web. Queda guardada, y no se duplica si es la misma de la corrida anterior.
+  try {
+    const botonDeLaPieza = canales.some(c => /whatsapp|mensaje/i.test(c))
+      ? 'Escriba por WhatsApp'
+      : (canales.length ? `Escriba por ${canales[0]}` : '');
+    const piezaEscrita = armarLaPieza({
+      negocio: {
+        nombre: ctx.nombre, queHace: leido.queHace, descripcion: ctx.descripcion,
+        ofrece: Array.isArray(leido.queVende) ? leido.queVende : [], aQuien: aQuienLeHabla,
+      },
+      canales, boton: botonDeLaPieza,
+      formato: plazaVideo ? String(plazaVideo.formato_recomendado) : 'video vertical 9:16',
+      lengua: lenguaDeLaPieza.nombre,
+      objetivo: String(decisiones.negocio_objetivo || ''),
+      hueco: armadoDelInforme?.huecos?.[0] ?? null,
+      saturado: armadoDelInforme?.saturacion ?? [],
+      comparables: mercado?.comparables ?? [],
+      identidad: identidad ?? null,
+    });
+    const yaEsta = await db.query(
+      `SELECT id FROM piezas WHERE business_id = $1 AND titulo = $2 AND texto = $3 LIMIT 1`,
+      [ctx.businessId, piezaEscrita.titulo, piezaEscrita.texto],
+    );
+    if (!yaEsta.rows.length) {
+      await db.query(
+        `INSERT INTO piezas (business_id, titulo, formato, texto, guion, estado, generacion)
+         VALUES ($1, $2, $3, $4, $5, 'lista para publicar', $6::jsonb)`,
+        [ctx.businessId, piezaEscrita.titulo, piezaEscrita.formato, piezaEscrita.texto, piezaEscrita.guion, aJson(piezaEscrita.detalle)],
+      );
+    }
+    const angulo = armadoDelInforme?.huecos?.[0];
+    tareas.push({
+      agente: 'nia', orden: 11,
+      que: [
+        yaEsta.rows.length
+          ? 'La pieza escrita es la misma que la de la corrida anterior: no se duplicó'
+          : 'Dejó la pieza escrita y lista para publicar',
+        `${piezaEscrita.texto.split('\n').filter(Boolean).length} líneas, escritas en ${String((piezaEscrita.detalle as any).lengua_del_texto || '')}`,
+        angulo ? `con el ángulo que ningún comparable usa (${angulo.que.replace(/^de /, '')})` : 'sin ángulo medido: falta la lectura del mercado',
+      ].join(' · '),
+      resultado: {
+        fuente_tipo: 'el material del propio negocio, ordenado como un anuncio, y el hueco medido en su mercado',
+        es_la_misma_que_antes: yaEsta.rows.length > 0,
+        titulo: piezaEscrita.titulo,
+        como_empieza: piezaEscrita.texto.split('\n')[0],
+        lineas: piezaEscrita.texto.split('\n').filter(Boolean).length,
+        lengua_del_texto: (piezaEscrita.detalle as any).lengua_del_texto,
+        lengua_del_mercado: lenguaDeLaPieza.nombre,
+        aviso_de_material: (piezaEscrita.detalle as any).aviso_de_material,
+        formato: piezaEscrita.formato,
+        angulo_que_ninguno_usa: angulo ? { que: angulo.que, como: angulo.como } : 'sin hueco medido todavía',
+        arte: piezaEscrita.detalle.arte,
+        referencia_del_mercado: piezaEscrita.detalle.referencia_del_mercado,
+        lo_que_falta: piezaEscrita.detalle.lo_que_falta,
+        donde_la_ve_el_dueno: 'Campañas → «La pieza, lista para publicar»: ahí está el texto entero, con su formato, su botón y el arte medido de su web',
+        porque: 'Sin la pieza escrita no hay nada que aprobar ni nada que medir: es el paso que convierte la investigación en algo que se publica.',
+        fuente: 'material del negocio + informe del mercado + su propia web',
+      },
+    });
+  } catch (e) {
+    console.error('[la pieza] no se pudo escribir:', (e as Error)?.message);
+    tareas.push({
+      agente: 'nia', orden: 11, que: 'No pudo dejar la pieza escrita y lo dice',
+      resultado: { sin_fuente: `la pieza no se pudo escribir: ${String((e as Error)?.message).slice(0, 160)}`, fuente: 'sin fuente: la escritura de la pieza falló' },
     });
   }
 

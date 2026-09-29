@@ -168,6 +168,19 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
   /** La decisión que tomó Tino en la última corrida (es lo que el cliente ve en Automático). */
   const decisionTino = (d.corridas.flatMap(c => c.tareas ?? []).find(t => t.agente === 'tino')?.resultado ?? null) as any;
 
+  // LA PIEZA ESCRITA: el texto que el motor dejó listo para publicar, con lo que lo sostiene. Si todavía
+  // no hay ninguna, no se muestra una de ejemplo: se dice que el motor la escribe en la próxima corrida.
+  const piezaLista = (d.piezas && d.piezas[0]) ? d.piezas[0] : null;
+  const piezaDet = (piezaLista?.generacion ?? {}) as any;
+  const copiarPieza = async (texto: string, que: string) => {
+    try {
+      await navigator.clipboard.writeText(texto);
+      setToast(`${que} copiado: ya lo puede pegar en su red`);
+    } catch {
+      setToast('el navegador no dejó copiar solo: seleccione el texto y cópielo a mano');
+    }
+  };
+
   /** El estatus de un grupo, en corto: «Automático», «WhatsApp, Instagram», «sin definir». */
   const estatusDe = (campo: string) => {
     const v = valorDe(campo);
@@ -665,6 +678,109 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
                     </Button>
                   </div>
                 </Card>
+
+                {/* ==================== LA PIEZA, ESCRITA: LO QUE SE PUBLICA ====================
+                    Todo lo de acá sale del servidor: el texto del motor y lo que lo sostiene (el ángulo que
+                    ningún comparable usa, el arte medido en su propia web). Lo que no se pudo medir se dice. */}
+                {piezaLista ? (
+                  <div className="duo" style={{ marginTop: 16 }}>
+                    <Card
+                      title={<span className="row" style={{ gap: 8 }}><I_File size={14} style={{ color: 'var(--purple3)' }} /> La pieza, lista para publicar</span>}
+                      action={<Badge tone="purple">{piezaLista.formato}</Badge>}
+                    >
+                      <div className="bs" style={{ marginBottom: 10 }}>
+                        Escrita con su material, no con el de otros: esto es lo que se publica. Cópielo y publíquelo en su red — el sistema todavía no publica por usted.
+                      </div>
+                      <div style={{ whiteSpace: 'pre-wrap', fontSize: 13.5, lineHeight: 1.7, borderLeft: '3px solid var(--purple2)', paddingLeft: 12, marginBottom: 12 }}>
+                        {piezaLista.texto || 'la pieza quedó sin texto: su material no alcanzó para armarlo'}
+                      </div>
+                      {(piezaDet.partes || []).length > 0 && (
+                        <div className="guards" style={{ marginBottom: 12 }}>
+                          {(piezaDet.partes as { k: string; v: string }[]).map(p => (
+                            <div key={p.k} className="guard">
+                              <span className="guard-lb">{p.k}<small>{p.v || 'sin material para esta parte'}</small></span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {piezaLista.guion ? (
+                        <div className="bs" style={{ whiteSpace: 'pre-wrap', marginBottom: 12 }}>
+                          <b>El guion, escena por escena</b>{'\n'}{piezaLista.guion}
+                        </div>
+                      ) : null}
+                      <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+                        <Button variant="primary" title="Copia el texto de la pieza para pegarlo en su red" onClick={() => copiarPieza(piezaLista.texto || '', 'el texto')}>
+                          Copiar el texto
+                        </Button>
+                        {piezaLista.guion ? (
+                          <Button variant="outline" title="Copia el guion, escena por escena, para grabarlo" onClick={() => copiarPieza(piezaLista.guion || '', 'el guion')}>
+                            Copiar el guion
+                          </Button>
+                        ) : null}
+                      </div>
+                    </Card>
+
+                    <Card
+                      title={<span className="row" style={{ gap: 8 }}><I_Trend size={14} style={{ color: 'var(--purple3)' }} /> Con qué sale esta pieza</span>}
+                      action={<Badge tone={piezaDet.angulo_que_ninguno_usa?.que ? 'green' : 'muted'}>{piezaDet.angulo_que_ninguno_usa?.que ? 'con ángulo medido' : 'sin mercado medido'}</Badge>}
+                    >
+                      <div className="guards">
+                        {([
+                          { k: 'El ángulo que ninguno usa', v: piezaDet.angulo_que_ninguno_usa?.que ? String(piezaDet.angulo_que_ninguno_usa.que).replace(/^de /, '') : 'todavía no hay hueco medido: falta la lectura de su mercado', s: piezaDet.angulo_que_ninguno_usa?.como },
+                          { k: 'En qué lengua sale', v: `el texto está en ${piezaDet.lengua_del_texto || 'sin medir'}`, s: `su mercado anuncia en ${piezaDet.lengua_del_mercado || 'sin medir'}: traducir la pieza es trabajo del escritor, no se inventa` },
+                          { k: 'Contra qué se mide', v: piezaDet.referencia_del_mercado?.anunciante ? `${piezaDet.referencia_del_mercado.anunciante} — ${piezaDet.referencia_del_mercado.dias} días con el mismo anuncio` : 'sin comparables leídos', s: piezaDet.referencia_del_mercado?.dice ? `dice: «${String(piezaDet.referencia_del_mercado.dice).slice(0, 120)}»` : '' },
+                          { k: 'Dónde va', v: (piezaDet.donde_va || []).length ? (piezaDet.donde_va as string[]).join(' · ') : 'sin redes declaradas', s: piezaDet.boton ? `cierra con: ${piezaDet.boton}` : '' },
+                        ] as { k: string; v?: string; s?: string }[]).filter(x => x.v).map(x => (
+                          <div key={x.k} className="guard">
+                            <span className="guard-lb">{x.k}<small>{x.v}</small>{x.s ? <small>{x.s}</small> : null}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {piezaDet.arte?.colores?.length ? (
+                        <>
+                          <div className="bs" style={{ margin: '12px 0 8px' }}>
+                            <b>El arte, medido en su propia web:</b> estos colores y esta tipografía son los que su web ya usa. La pieza sale con su cara, no con una prestada.
+                          </div>
+                          <div className="duo" style={{ gap: 8 }}>
+                            {(piezaDet.arte.colores as { hex: string; veces: number; rol: string }[]).slice(0, 4).map(c => (
+                              <div key={c.hex} className="swatch" title={`${c.hex}: aparece ${c.veces} veces en el CSS de su web`}>
+                                <span className="swatch-color" style={{ background: c.hex }} />
+                                <span><span className="swatch-n">{c.rol || 'color'}</span><span className="swatch-hex">{c.hex} · {c.veces} usos</span></span>
+                              </div>
+                            ))}
+                          </div>
+                          {(piezaDet.arte.tipografias || []).length > 0 && (
+                            <div className="tiny muted" style={{ marginTop: 8 }}>
+                              Tipografía: {(piezaDet.arte.tipografias as { familia: string; tamano: string }[]).map(x => `${x.familia}${x.tamano ? ` (${x.tamano})` : ''}`).join(' · ')}
+                              {(piezaDet.arte.imagenes_reales || []).length > 0 ? ` · ${(piezaDet.arte.imagenes_reales as string[]).length} imágenes suyas para usar` : ''}
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <div className="bs" style={{ marginTop: 12 }}>{piezaDet.arte?.sin_fuente || 'sin identidad medida: no hay una web legible que leer'}</div>
+                      )}
+
+                      {piezaDet.aviso_del_cuerpo ? (
+                        <div className="acc-why" style={{ marginTop: 12 }}><b>Falta material:</b> {piezaDet.aviso_del_cuerpo}</div>
+                      ) : null}
+                      {piezaDet.aviso_de_material ? (
+                        <div className="acc-why" style={{ marginTop: 8 }}><b>Ojo con el material:</b> {piezaDet.aviso_de_material}</div>
+                      ) : null}
+                      {(piezaDet.lo_que_falta || []).length > 0 && (
+                        <div className="tiny muted" style={{ marginTop: 10 }}>
+                          Lo que todavía no se puede poner: {(piezaDet.lo_que_falta as string[]).join(' · ')}
+                        </div>
+                      )}
+                    </Card>
+                  </div>
+                ) : (
+                  <EstadoVacio
+                    titulo="Todavía no hay una pieza escrita"
+                    texto="El motor la escribe al final de cada corrida, con el material que usted subió: queda acá con su texto, su formato y el arte medido de su web."
+                    icono={<I_File size={22} />}
+                  />
+                )}
               </>
             )}
         </>

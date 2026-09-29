@@ -25,7 +25,15 @@ export type Campana = {
   id: string; nombre: string; forma: string; estado: string; presupuesto: number;
   destinos: string[]; objetivo: string; piezas: number; roas: number | null; gasto: number; created_at: string;
 };
-export type Pieza = { id: string; titulo: string; formato: string; estado: string; created_at: string; puntaje: number | null };
+export type Pieza = {
+  id: string; titulo: string; formato: string; estado: string; created_at: string; puntaje: number | null;
+  /** El texto final, listo para pegar en la red. Vacío si el motor todavía no escribió la pieza. */
+  texto?: string;
+  /** El guion, escena por escena: solo en las piezas de video. */
+  guion?: string;
+  /** De dónde sale cada parte, el ángulo medido, el arte de su web y lo que falta. */
+  generacion?: Record<string, any>;
+};
 export type Evaluacion = { id: string; titulo: string; puntaje: number; orden: number | null; total_publico: number; created_at: string };
 export type Hallazgo = { id: string; tipo: string; titulo: string; dato: string; porque: string; fuente: string; created_at: string };
 export type Corrida = { id: string; motivo: string; estado: string; creditos: number; empezada_at: string; tareas: TareaCorrida[] };
