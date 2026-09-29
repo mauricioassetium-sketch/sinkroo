@@ -25,6 +25,35 @@ const CADA_MS = Number(process.env.INVESTIGAR_REVISA_MIN || 30) * 60 * 1000;
 /** Un negocio al que se le puede leer el mercado hoy. */
 type Negocio = { id: string; nombre: string; descripcion: string; rubro: string; zona: string };
 
+/** Los lugares que nombra el negocio, en código de país: así el trabajador sabe dónde leer. */
+const PAIS_DE: Record<string, string> = {
+  medellin: 'CO', bogota: 'CO', cali: 'CO', barranquilla: 'CO', colombia: 'CO',
+  mexico: 'MX', chile: 'CL', peru: 'PE', argentina: 'AR', brasil: 'BR', ecuador: 'EC',
+  panama: 'PA', espana: 'ES', 'estados unidos': 'US', usa: 'US', uae: 'AE', dubai: 'AE',
+  'emiratos arabes': 'AE', 'arabia saudi': 'SA', 'reino unido': 'GB', alemania: 'DE', singapur: 'SG',
+};
+
+/**
+ * LO QUE VERA DEJÓ ESCRITO sobre este negocio: sus PALABRAS CLAVE (rwa, tokenización, gemelos
+ * digitales…) y los LUGARES que nombra el material. Con eso el trabajador sabe qué buscar y dónde,
+ * en vez de leer siempre las mismas palabras en el mismo país.
+ */
+async function loQueDedujoVera(db: Pool, businessId: string): Promise<{ palabras: string[]; paises: string[] }> {
+  try {
+    const r = await db.query(
+      `SELECT t.resultado FROM tareas_corrida t JOIN corridas c ON c.id = t.corrida_id
+        WHERE c.business_id = $1 AND t.agente = 'vera' AND t.resultado ? 'palabras_clave'
+        ORDER BY c.empezada_at DESC LIMIT 1`, [businessId]);
+    const res = (r.rows[0]?.resultado ?? {}) as { palabras_clave?: { palabra: string; de: string }[]; lugares_que_nombra?: string[] };
+    // Primero el vocabulario del rubro (es el que nombra la categoría); si no hay, las palabras propias.
+    const delVocabulario = (res.palabras_clave ?? []).filter(p => p.de === 'el vocabulario del rubro').map(p => p.palabra);
+    const propias = (res.palabras_clave ?? []).map(p => p.palabra);
+    const palabras = [...new Set([...delVocabulario, ...propias])].filter(p => p.length >= 3).slice(0, 4);
+    const paises = [...new Set((res.lugares_que_nombra ?? []).map(l => PAIS_DE[String(l).toLowerCase().trim()]).filter(Boolean))].slice(0, 3);
+    return { palabras, paises };
+  } catch { return { palabras: [], paises: [] }; }
+}
+
 /**
  * LA LECTURA DE ANUNCIOS, encadenada a la investigación: después de que los agentes investigan, el
  * trabajador sale a la Biblioteca de Anuncios de Meta con las palabras del rubro del negocio y los
@@ -32,11 +61,16 @@ type Negocio = { id: string; nombre: string; descripcion: string; rubro: string;
  * mano, solo que ahora lo lanza el programador en vez de una persona. No se espera su respuesta: si
  * tarda, no frena la investigación del día; lo que lea queda en la tabla de anuncios leídos.
  */
-function lanzarLecturaDeAnuncios(n: Negocio, log: (m: string) => void) {
-  const palabras = String(n.rubro || '').toLowerCase().split(/[^a-záéíóúñ0-9]+/)
-    .filter(w => w.length >= 4 && w.length <= 24).slice(0, 4);
+function lanzarLecturaDeAnuncios(n: Negocio, dedujo: { palabras: string[]; paises: string[] }, log: (m: string) => void) {
+  // Las palabras y los países salen de lo que dedujo Vera; si todavía no hay nada, se cae al rubro del
+  // perfil y a Colombia. Nunca se leen palabras inventadas ni un mercado que el negocio no nombró.
+  const palabras = dedujo.palabras.length
+    ? dedujo.palabras
+    : String(n.rubro || '').toLowerCase().split(/[^a-záéíóúñ0-9]+/).filter(w => w.length >= 4 && w.length <= 24).slice(0, 4);
   if (!palabras.length) return;
-  const paises = (process.env.LECTURA_PAISES || 'CO').split(',').map(p => p.trim().toUpperCase()).filter(Boolean);
+  const paises = dedujo.paises.length
+    ? dedujo.paises
+    : (process.env.LECTURA_PAISES || 'CO').split(',').map(p => p.trim().toUpperCase()).filter(Boolean);
   const args = [new URL('../../workers/lector-anuncios.mjs', import.meta.url).pathname,
     '--negocio', n.id, '--salida', `/tmp/anuncios-${n.id}.json`];
   for (const palabra of palabras) for (const pais of paises) args.push(`${palabra}:${pais}`);
@@ -87,7 +121,7 @@ export async function revisarInvestigacionDiaria(db: Pool, log: (m: string) => v
   for (const n of negocios) {
     await investigar(db, n, log);
     // Y de una, la lectura de anuncios con las palabras del rubro que quedó en el perfil (lo que dedujo Vera).
-    lanzarLecturaDeAnuncios(n, log);
+    lanzarLecturaDeAnuncios(n, await loQueDedujoVera(db, n.id), log);
   }
   // Y de paso: los créditos de bienvenida del primer mes que ya vencieron.
   try { await vencerBienvenidas(db, log); } catch (e) { log(`no se pudieron vencer los créditos: ${String((e as Error).message).slice(0, 120)}`); }
