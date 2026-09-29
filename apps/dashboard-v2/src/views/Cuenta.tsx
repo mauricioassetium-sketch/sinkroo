@@ -9,7 +9,7 @@ import { MODOS, PLANES, type Modo } from '../data/demo';
 import { useDatos, type IntegracionRed } from '../api/datos';
 // Las acciones de la conexión con Instagram (conectar, sincronizar, desconectar) van al back con el
 // token de la sesión: es el mismo cliente que usa la capa de datos, no una puerta nueva.
-import { arrancarMotor, baseApi, recordarRed, token } from '../api/cliente';
+import { arrancarMotor, baseApi, cambiarClaveConLaActual, recordarRed, token } from '../api/cliente';
 // La seguridad de la cuenta (el PIN y el correo): la tarjeta de abajo lee el estado real y el aviso del
 // PIN se abre desde aquí, que es donde están las acciones que lo piden.
 import { useSeguridad } from '../lib/seguridad';
@@ -74,6 +74,14 @@ function ViewCuentaNegocio({ setToast, modo, setModo }: { setToast: (t: string) 
   const [historial, setHistorial] = useState<{ hora: string; t: string; s: string }[]>([]);
   /** La auto-recarga: cambia lo que dice la tarjeta de créditos y evita que el motor se detenga. */
   const [autoRecarga, setAutoRecarga] = useState(false);
+  // El cambio de contraseña desde adentro: pide la actual, porque tener el panel abierto no prueba que sea
+  // usted —el portátil puede estar abierto en la oficina—.
+  const [claveActual, setClaveActual] = useState('');
+  const [claveNuevaCl, setClaveNuevaCl] = useState('');
+  const [claveRepetirCl, setClaveRepetirCl] = useState('');
+  const [avisoClave, setAvisoClave] = useState('');
+  const [errorClave, setErrorClave] = useState('');
+  const [yendoClave, setYendoClave] = useState(false);
   /** La hora en que se encendió: es la que se muestra en la línea de la pantalla, no una hora fija. */
   const [autoRecargaDesde, setAutoRecargaDesde] = useState('');
   /** La acción que está en curso en una de las redes (conectar, sincronizar, desconectar): mientras
@@ -665,6 +673,68 @@ function ViewCuentaNegocio({ setToast, modo, setModo }: { setToast: (t: string) 
           <div className="acc-why">
             <b>Días de autonomía</b> es la traducción de los créditos a algo que se entiende:
             cuánto puede seguir trabajando el motor si no recarga.
+          </div>
+        </Card>
+
+        <Card
+          title={<span className="row" style={{ gap: 8 }}><I_Lock size={14} style={{ color: 'var(--purple2)' }} /> Su contraseña</span>}
+          action={<Badge tone="muted">la elige usted</Badge>}
+        >
+          <div className="bs" style={{ marginBottom: 12 }}>
+            Para cambiarla hay que escribir la actual: tener el panel abierto no es prueba de que sea usted.
+            Al cambiarla, las sesiones que quedaron abiertas en otros lados se cierran.
+          </div>
+          <div className="login-campo">
+            <label className="label">Contraseña actual</label>
+            <span className="login-inp">
+              <I_Lock size={15} />
+              <input className="input" type="password" value={claveActual} placeholder="••••••••"
+                onChange={e => setClaveActual(e.target.value)} />
+            </span>
+          </div>
+          <div className="login-campo">
+            <label className="label">Contraseña nueva</label>
+            <span className="login-inp">
+              <I_Lock size={15} />
+              <input className="input" type="password" value={claveNuevaCl} placeholder="••••••••"
+                onChange={e => setClaveNuevaCl(e.target.value)} />
+            </span>
+          </div>
+          <div className="login-campo">
+            <label className="label">Repita la contraseña nueva</label>
+            <span className="login-inp">
+              <I_Lock size={15} />
+              <input className="input" type="password" value={claveRepetirCl} placeholder="••••••••"
+                onChange={e => setClaveRepetirCl(e.target.value)} />
+            </span>
+          </div>
+          {avisoClave && <div className="login-ok"><I_Check size={13} /> {avisoClave}</div>}
+          {errorClave && <div className="login-error">{errorClave}</div>}
+          <Button
+            className="btn-sm"
+            title="Cambia su contraseña. Necesita la actual: así, si alguien dejó su sesión abierta, no puede cambiarla sin saberla."
+            disabled={yendoClave}
+            onClick={async () => {
+              setAvisoClave(''); setErrorClave('');
+              if (claveNuevaCl.trim().length < 6) { setErrorClave('La contraseña nueva necesita al menos 6 caracteres.'); return; }
+              if (claveNuevaCl !== claveRepetirCl) { setErrorClave('Las dos contraseñas nuevas tienen que ser iguales.'); return; }
+              setYendoClave(true);
+              try {
+                const r = await cambiarClaveConLaActual({ actual: claveActual, clave: claveNuevaCl });
+                setAvisoClave(r.detalle || 'Contraseña cambiada.');
+                setClaveActual(''); setClaveNuevaCl(''); setClaveRepetirCl('');
+              } catch (e) {
+                const err = e as { message?: string; codigo?: string };
+                setErrorClave(err.codigo === 'clave_mala'
+                  ? 'La contraseña actual no es la correcta.'
+                  : (err.message || 'No se pudo cambiar la contraseña.'));
+              } finally { setYendoClave(false); }
+            }}>
+            {yendoClave ? 'Cambiando…' : 'Cambiar la contraseña'}
+          </Button>
+          <div className="acc-why" style={{ marginTop: 10 }}>
+            ¿No se acuerda de la actual? Cierre sesión y use <b>«Olvidé mi contraseña»</b>: le llega un
+            código de 6 dígitos al correo de la cuenta y con él elige una nueva.
           </div>
         </Card>
 
