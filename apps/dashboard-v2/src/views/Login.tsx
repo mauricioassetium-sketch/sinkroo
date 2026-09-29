@@ -567,7 +567,12 @@ export function PantallaLogin({ onEntrar, vuelta, sesionAbierta }: {
               title={conBack
                 ? 'Le manda un código de 6 dígitos a su correo para elegir una contraseña nueva'
                 : 'Le envía el enlace para cambiar la contraseña al correo que escribió'}
-              onClick={() => { setRecuperar(email); setError(''); }}>Olvidé mi contraseña</button>
+              onClick={() => {
+                  // Si el correo está vacío, `recuperar` quedaba vacío y el botón no hacía NADA visible: se
+                  // marca siempre, y el paso 1 pide el correo. También se vuelve al paso 1 y se limpian los avisos.
+                  setRecuperar(email.trim() || ' ');
+                  setError(''); setPasoClave('pedir'); setAvisoClave(''); setErrorClave(''); setCodigoClave('');
+                }}>Olvidé mi contraseña</button>
           </div>
 
           <div className="login-legal">
