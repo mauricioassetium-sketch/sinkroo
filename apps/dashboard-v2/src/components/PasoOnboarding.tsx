@@ -127,13 +127,23 @@ export function CamposPaso({ paso }: { paso: PasoOnb }) {
             </div>
           )}
           <div className="onb-links-in">
+            {/* El borde se pone rojo apenas hay algo escrito y sin agregar: lo escrito no cuenta hasta que
+                se pulse Agregar, y eso hay que verlo en el momento, no descubrirlo después. */}
             <input className="input" value={borrador}
+              style={borrador.trim() ? { borderColor: '#ef4444', boxShadow: '0 0 0 1px rgba(239,68,68,.35)' } : undefined}
               placeholder={lista.length ? 'Pegue otro enlace' : 'Pegue el primero (Instagram, web, ficha…)'}
               onChange={e => setTexto(s => ({ ...s, [campo.id]: e.target.value }))}
+              onBlur={() => { if (borrador.trim()) onb.avisar('Pulse Agregar para cargar el enlace: lo escrito todavía no cuenta'); }}
               onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); agregar(); } }} />
             <Button variant="outline" className="btn-sm" title="Suma este enlace a la lista: puede cargar todos los que tenga"
               onClick={agregar}><I_Plus size={13} /> Agregar</Button>
           </div>
+          {borrador.trim().length > 0 && (
+            <div style={{ color: '#fca5a5', fontSize: 12.5, fontWeight: 700, marginTop: 7 }}>
+              Pulse «Agregar» para cargar el enlace. Mientras no lo agregue, el motor no lo lee: el enlace
+              es obligatorio para entender su negocio.
+            </div>
+          )}
           <div className="tiny muted">
             {lista.length === 0
               ? 'Puede cargar varias: Instagram, web, Facebook, TikTok, la ficha de Google.'

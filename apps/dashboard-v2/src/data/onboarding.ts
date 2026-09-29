@@ -220,10 +220,10 @@ export const PASOS_ONB: PasoOnb[] = [
     titular: 'Suba lo que ya tiene',
     paraQue: 'Con esto el motor escribe con su información real: precios, promesas, condiciones y su tono, tal como usted los tiene escritos.',
     infiere: 'Si no sube nada, arranca con su descripción y lo que encuentre en sus páginas y redes.',
-    minima: ['archivos'],
+    minima: ['archivos', 'negocio_links'],
     campos: [
-      { id: 'negocio_links', etiqueta: 'Sus páginas y redes (opcional)', tipo: 'links',
-        ayuda: 'De ahí el motor saca solo los precios, el tono, el catálogo y cada cuánto publica.' },
+      { id: 'negocio_links', etiqueta: 'Sus páginas y redes', tipo: 'links',
+        ayuda: 'Obligatorio: pegue el enlace y PULSE AGREGAR para cargarlo. De ahí el motor saca solo los precios, el tono, el catálogo y cada cuánto publica.' },
       { id: 'docs', etiqueta: 'Sus archivos', tipo: 'docs', ayuda: 'Suelte aquí lo que tenga o elija archivos: PDF, Word, Excel, PowerPoint, fotos, videos o audios. Puede subir varios a la vez, hasta 25 MB por archivo.' },
     ],
     nota: 'Los archivos se pueden sacar cuando quiera y nada se publica con ellos sin que lo vea antes: primero pasa por el panel.',
