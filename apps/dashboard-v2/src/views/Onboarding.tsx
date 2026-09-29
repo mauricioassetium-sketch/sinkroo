@@ -73,13 +73,36 @@ export function ViewOnboarding({ setToast, setVista }: { setToast: (t: string) =
       {/* El stepper: el mismo de Campañas, para que las dos etapas del producto se lean igual.
           Con NADA cargado, el proceso entero late en rojo y una flecha dice por dónde empezar: el
           negocio no tiene que adivinar dónde está la puerta. */}
-      <div className={'pasos' + (listos.length === 0 ? ' onb-alarma' : '')}>
-        {listos.length === 0 && (
-          <div className="onb-flecha" title="Complete el primer paso y el motor ya puede empezar a trabajar con su negocio. Nada de lo que ponga se pierde.">
-            <I_ArrowRight size={15} style={{ transform: 'rotate(90deg)', flexShrink: 0 }} />
-            Complete el primer paso para comenzar
+      {/* LA ALARMA: mientras no haya ningún paso hecho, late en rojo hasta que el negocio empiece. Va
+          arriba del todo, con sus propios estilos y su propia animación en línea, para que ninguna clase
+          de la lista (ni su orden, ni su rejilla) la pueda tapar ni dejar fuera de vista. */}
+      {listos.length === 0 && (
+        <>
+          <style>{`
+            @keyframes onbLate { 0%,100% { box-shadow: 0 0 0 0 rgba(239,68,68,.5); } 50% { box-shadow: 0 0 0 14px rgba(239,68,68,0); } }
+            @keyframes onbBaja { 0%,100% { transform: translateY(0); opacity: 1; } 50% { transform: translateY(9px); opacity: .6; } }
+            @media (prefers-reduced-motion: reduce) { .onb-flecha-viva { animation: none !important; } }
+          `}</style>
+          <div style={{
+            border: '2px solid #ef4444', borderRadius: 16, padding: '14px 16px', marginBottom: 14,
+            background: 'rgba(239,68,68,.09)', animation: 'onbLate 1.9s ease-in-out infinite',
+          }}>
+            <span className="onb-flecha-viva" style={{
+              color: '#fca5a5', fontSize: 15, fontWeight: 800, display: 'inline-flex',
+              alignItems: 'center', gap: 9, animation: 'onbBaja 1.6s ease-in-out infinite',
+            }}>
+              <I_ArrowRight size={18} style={{ transform: 'rotate(90deg)', flexShrink: 0 }} />
+              Complete el primer paso para comenzar
+            </span>
+            <div style={{ color: '#fca5a5', fontSize: 12.5, marginTop: 7, fontWeight: 600 }}>
+              Mientras no lo haga, el motor no tiene con qué trabajar: su negocio, lo que vende y su
+              material son lo que lo pone en marcha.
+            </div>
           </div>
-        )}
+        </>
+      )}
+
+      <div className={'pasos' + (listos.length === 0 ? ' onb-alarma' : '')}>
         {onb.pasos.map(p => (
           <button key={p.n} className={`paso ${onb.paso === p.n ? 'on' : ''} ${listos.includes(p.n) ? 'done' : ''}`}
             title={`${p.t}: ${p.d}. ${listos.includes(p.n) ? 'Ya está hecho: puede volver a cambiarlo.' : 'Falta.'}`}
