@@ -26,7 +26,9 @@ async function contexto(db: Pool, businessId: string) {
     rubro: String(b.rows[0]?.rubro || ''),
     // Sin zona declarada va VACÍA: poner una ciudad por defecto es inventarle un mercado al negocio
     // (pasó: salió un hallazgo hablando de Medellín para un negocio que nunca la nombró).
-    zona: String(b.rows[0]?.zona || ''),
+    // La ciudad: la que el negocio eligió en Primeros pasos. Si no eligió ninguna, va vacía: un negocio
+    // global no tiene ciudad y el sistema no le inventa una (antes caía en Medellín por defecto).
+    zona: String(b.rows[0]?.zona || datos.ciudad || ''),
   };
 }
 

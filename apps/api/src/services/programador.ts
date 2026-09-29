@@ -25,6 +25,21 @@ const CADA_MS = Number(process.env.INVESTIGAR_REVISA_MIN || 30) * 60 * 1000;
 /** Un negocio al que se le puede leer el mercado hoy. */
 type Negocio = { id: string; nombre: string; descripcion: string; rubro: string; zona: string };
 
+/**
+ * LOS CONTINENTES Y SUS PAÍSES. El negocio no tiene por qué saber códigos ISO: elige un continente y el
+ * sistema lee en los mercados principales de ese continente. Es una lista declarada —se ve qué países
+ * cubre cada uno— y no se inventa por negocio.
+ */
+const PAISES_DEL_CONTINENTE: Record<string, string[]> = {
+  latinoamerica: ['CO', 'MX', 'AR', 'CL', 'PE', 'BR', 'EC', 'PA'],
+  'america del norte': ['US', 'CA', 'MX'],
+  europa: ['ES', 'GB', 'DE', 'FR', 'IT', 'NL'],
+  'medio oriente': ['AE', 'SA', 'QA', 'KW'],
+  asia: ['SG', 'JP', 'IN', 'ID'],
+  africa: ['ZA', 'NG', 'KE'],
+  oceania: ['AU', 'NZ'],
+};
+
 /** Los lugares que nombra el negocio, en código de país: así el trabajador sabe dónde leer. */
 const PAIS_DE: Record<string, string> = {
   medellin: 'CO', bogota: 'CO', cali: 'CO', barranquilla: 'CO', colombia: 'CO',
@@ -55,22 +70,43 @@ async function loQueDedujoVera(db: Pool, businessId: string): Promise<{ palabras
 }
 
 /**
+ * LOS PAÍSES QUE DECLARÓ EL NEGOCIO en Primeros pasos: los que marcó uno por uno y los continentes que
+ * eligió, expandidos a sus mercados principales. Si no declaró nada, se devuelve vacío: el sistema es
+ * global y no da por sentado ningún país.
+ */
+async function paisesDeclarados(db: Pool, businessId: string): Promise<string[]> {
+  try {
+    const r = await db.query('SELECT datos FROM onboarding WHERE business_id = $1', [businessId]);
+    const datos = (r.rows[0]?.datos ?? {}) as Record<string, unknown>;
+    const sueltos = Array.isArray(datos.paises) ? (datos.paises as string[]).map(p => String(p).toUpperCase().trim()) : [];
+    const delContinente = Array.isArray(datos.continentes)
+      ? (datos.continentes as string[]).flatMap(c => PAISES_DEL_CONTINENTE[String(c).toLowerCase().trim()] || [])
+      : [];
+    return [...new Set([...sueltos, ...delContinente])].filter(p => /^[A-Z]{2}$/.test(p)).slice(0, 6);
+  } catch { return []; }
+}
+
+/**
  * LA LECTURA DE ANUNCIOS, encadenada a la investigación: después de que los agentes investigan, el
  * trabajador sale a la Biblioteca de Anuncios de Meta con las palabras del rubro del negocio y los
  * países donde opera (LECTURA_PAISES, por defecto Colombia). Es el mismo trabajador que se probó a
  * mano, solo que ahora lo lanza el programador en vez de una persona. No se espera su respuesta: si
  * tarda, no frena la investigación del día; lo que lea queda en la tabla de anuncios leídos.
  */
-function lanzarLecturaDeAnuncios(n: Negocio, dedujo: { palabras: string[]; paises: string[] }, log: (m: string) => void) {
+function lanzarLecturaDeAnuncios(
+  n: Negocio, dedujo: { palabras: string[]; paises: string[] },
+  declarados: string[], log: (m: string) => void,
+) {
   // Las palabras y los países salen de lo que dedujo Vera; si todavía no hay nada, se cae al rubro del
   // perfil y a Colombia. Nunca se leen palabras inventadas ni un mercado que el negocio no nombró.
   const palabras = dedujo.palabras.length
     ? dedujo.palabras
     : String(n.rubro || '').toLowerCase().split(/[^a-záéíóúñ0-9]+/).filter(w => w.length >= 4 && w.length <= 24).slice(0, 4);
   if (!palabras.length) return;
-  const paises = dedujo.paises.length
-    ? dedujo.paises
-    : (process.env.LECTURA_PAISES || 'CO').split(',').map(p => p.trim().toUpperCase()).filter(Boolean);
+  // Los países: primero los que Vera encontró en el material, más los que el negocio declaró (países
+  // sueltos y continentes). SIN NADA POR DEFECTO: si no hay ni uno, no se lee — porque el sistema es
+  // global y no puede dar por sentado que un negocio opera en Colombia, ni en ningún país.
+  const paises = dedujo.paises.length ? dedujo.paises : declarados;
   const args = [new URL('../../workers/lector-anuncios.mjs', import.meta.url).pathname,
     '--negocio', n.id, '--salida', `/tmp/anuncios-${n.id}.json`];
   for (const palabra of palabras) for (const pais of paises) args.push(`${palabra}:${pais}`);
@@ -121,7 +157,7 @@ export async function revisarInvestigacionDiaria(db: Pool, log: (m: string) => v
   for (const n of negocios) {
     await investigar(db, n, log);
     // Y de una, la lectura de anuncios con las palabras del rubro que quedó en el perfil (lo que dedujo Vera).
-    lanzarLecturaDeAnuncios(n, await loQueDedujoVera(db, n.id), log);
+    lanzarLecturaDeAnuncios(n, await loQueDedujoVera(db, n.id), await paisesDeclarados(db, n.id), log);
   }
   // Y de paso: los créditos de bienvenida del primer mes que ya vencieron.
   try { await vencerBienvenidas(db, log); } catch (e) { log(`no se pudieron vencer los créditos: ${String((e as Error).message).slice(0, 120)}`); }
