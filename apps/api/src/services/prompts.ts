@@ -346,6 +346,126 @@ export function promptsDelInforme(inf: {
   };
 }
 
+/**
+ * EL PROMPT CUANDO TODAVÍA NO HAY MERCADO MEDIDO. Es el caso de la categoría nueva o de la corrida sin
+ * informe: no hay analítica visual que copiar, así que NO se inventan colores ni tipografías —esos campos
+ * van vacíos y dichos— y el prompt se arma con lo que el negocio ya tiene: lo que vende, a quién le habla,
+ * las palabras de su categoría y la pieza que Tino decidió (gancho, cuerpo y cierre). La lengua del texto
+ * es la del que compra, no la del dueño. Cuando haya mercado que leer, el prompt del informe lo reemplaza.
+ */
+export function promptDelNegocio(datos: {
+  negocio: string;
+  queSePublica: string;
+  aQuien: string;
+  gancho: string;
+  cuerpo: string;
+  cierre: string;
+  idioma: { nombre: string; por_que: string };
+  palabrasDeLaPieza: string[];
+  rubro: string;
+  canal: string;
+  boton: string;
+  material: string;
+  fuente: string;
+}): { pieza: string; prompts: PromptGeneracion[] } {
+  const pieza = datos.queSePublica || `Primera pieza de ${datos.negocio}`;
+  const palabras = datos.palabrasDeLaPieza.length
+    ? datos.palabrasDeLaPieza.slice(0, 6).join(', ')
+    : 'sin palabras de la categoría todavía';
+  const escenas = [
+    { s: '0-5', plano: 'plano medio, celular a la altura de los ojos', accion: 'una persona del negocio, en su lugar real, dice el problema del cliente en una frase', texto_en_pantalla: '', voz: datos.gancho },
+    { s: '5-15', plano: 'plano detalle de la pantalla o del trabajo real', accion: 'se ve el trabajo haciéndose: la cuenta, el documento, el sistema, la verificación', texto_en_pantalla: '', voz: datos.cuerpo },
+    { s: '15-25', plano: 'plano medio, mirando a cámara', accion: 'cierra con la acción concreta y el botón a la vista', texto_en_pantalla: '', voz: datos.cierre },
+  ];
+  const prompt = [
+    `Vertical 9:16 social ad for ${datos.negocio} (${datos.rubro}).`,
+    `Subject: a real person from the business, filmed with a phone in their actual workplace, talking to camera.`,
+    `Action: ${datos.queSePublica}. Showing the real work being done, not a studio set.`,
+    `Audience: ${datos.aQuien}.`,
+    `Scenes: 1) medium shot, the person states the client's problem; 2) close-up of the work itself (screen, document, device); 3) medium shot, the person closes with the concrete next step.`,
+    `On-image text: none by default (the message goes in the ad copy). If text is added, keep it short and in ${datos.idioma.nombre}.`,
+    `Colour direction: keep the brand's own colours (no measured palette yet — none is prescribed here).`,
+    `Look: natural light, handheld, no colour grading, no studio.`,
+    `No third-party logos, no invented numbers, no promises of returns.`,
+  ].join(' ');
+  return {
+    pieza,
+    prompts: [{
+      clave: `${pieza} · video vertical`,
+      pieza,
+      plaza: datos.canal ? `video vertical 9:16 · ${datos.canal}` : 'video vertical 9:16',
+      tipo: 'video',
+      estilo: 'toma propia con celular (UGC del negocio)',
+      estilo_explicado: 'sin formatos medidos del rubro todavía: se rueda con el celular, con alguien real del negocio en su lugar de trabajo',
+      proporcion: '9:16',
+      duracion_s: 25,
+      referencia: { anunciante: '', dias: 0, que_se_toma: 'nada: no hay mercado medido todavía, así que no se copia ningún molde ajeno' },
+      sujeto: {
+        quien: `alguien real de ${datos.negocio} (no un actor)`,
+        donde: 'el lugar donde ocurre el trabajo',
+        accion: `mostrar ${datos.queSePublica}`,
+        vestuario: 'el de trabajo, como está todos los días',
+        mirada: 'a cámara, hablando claro y sin leer',
+      },
+      escenas,
+      colores: {
+        paleta: [],
+        rol: 'sin paleta medida: el color lo pone la identidad que el negocio ya usa, no una medición del mercado',
+        contraste: 'alto contraste, para que se lea en un celular al sol',
+      },
+      tipografia: {
+        familia: 'la que el negocio ya usa (sin medir)', peso: '—', caja: '—', tratamiento: '—', ubicacion: '—',
+        texto_exacto: 'por defecto, ningún texto quemado en el píxel: todo el mensaje va en el copy del anuncio',
+      },
+      iluminacion: 'luz natural, la del lugar',
+      camara: 'celular, plano medio y detalle, sin trípode ni equipo',
+      audio: { voz: 'la voz del que habla, sin locutor', musica: 'sin música medida: si se usa, suave y con licencia' },
+      marca: datos.negocio,
+      no_debe_aparecer: [
+        'logos o marcas de terceros',
+        'números, precios o rendimientos que el negocio no haya dicho',
+        'texto quemado ilegible o en párrafos',
+        'música sin licencia',
+      ],
+      prompt,
+      prompt_negativo: 'studio lighting, 3d render, stock footage, fake smiling models, tiny unreadable text, third-party logos, invented numbers, watermarks, distorted hands',
+      parametros: {
+        aspect_ratio: '9:16',
+        resolucion: '1080x1920',
+        duracion_s: 25,
+        escenas: escenas.length,
+        fps: 30,
+        idioma_del_texto: datos.idioma.nombre,
+        cta_boton: datos.boton,
+      },
+      como_se_arma: [
+        { campo: 'el tema y el ángulo', sale_de: `lo que el negocio vende, dicho por él: ${datos.queSePublica}`, como_se_usa: 'es el asunto de la pieza; no se copia un molde ajeno porque todavía no hay mercado medido' },
+        { campo: 'a quién le habla', sale_de: `el público que el negocio declaró en Primeros pasos: ${datos.aQuien}`, como_se_usa: 'define el tono y el vocabulario del guion' },
+        { campo: 'el idioma del texto y de la voz', sale_de: datos.idioma.por_que, como_se_usa: `la pieza va en ${datos.idioma.nombre}: el texto en pantalla, el copy y la voz` },
+        { campo: 'las palabras de la categoría', sale_de: `el vocabulario de su rubro en el material: ${palabras}`, como_se_usa: 'son las palabras con las que su cliente lo va a buscar: entran en el copy, no como relleno' },
+        { campo: 'colour direction y on-image text', sale_de: 'NO hay analítica visual del rubro todavía: no se midió ninguna paleta ni tipografía', como_se_usa: 'esos campos quedan vacíos y dichos, en vez de inventar hex y familias que nadie midió' },
+        { campo: 'las escenas y los segundos', sale_de: 'el gancho, el cuerpo y el cierre que decidió Tino, repartidos en tres escenas', como_se_usa: 'cada escena muestra algo que se puede filmar hoy con un celular' },
+        { campo: 'el botón y el destino', sale_de: `el canal que el negocio declaró: ${datos.canal || 'sin definir'}`, como_se_usa: 'no va dentro del prompt de imagen: va en los parámetros de la pieza' },
+      ],
+      elegido_por_nosotros: [
+        'el formato: video vertical 9:16, sin formatos del rubro medidos todavía',
+        'la duración de 25 s',
+        'el estilo: toma propia con celular, con alguien real del negocio',
+        'el número de escenas y su reparto de segundos',
+        'el modelo o servicio de generación (todavía no hay ninguno conectado)',
+      ],
+      verificaciones: [
+        'Dice qué NO está medido: no lleva colores ni tipografías inventados.',
+        'El texto sale de la pieza que decidió Tino, no de una idea suelta.',
+        'La lengua de la pieza es la del que compra, y se dice de dónde sale.',
+        'Las escenas se pueden filmar hoy: no piden equipo ni producción.',
+        'El prompt está en inglés, listo para pegar en un modelo.',
+      ],
+      fuente: datos.fuente,
+    }],
+  };
+}
+
 /** Guarda los prompts del negocio: es el contrato que va a leer el generador cuando exista. */
 export async function guardarPrompts(db: Pool, businessId: string, paquete: { pieza: string; prompts: PromptGeneracion[] }, corridaId?: string | null) {
   let n = 0;

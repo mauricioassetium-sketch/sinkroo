@@ -1,6 +1,7 @@
 import type { Pool } from 'pg';
-import { promptsDelInforme, guardarPrompts } from './prompts.js';
+import { promptDelNegocio, promptsDelInforme, guardarPrompts } from './prompts.js';
 import { buscarSimilares, categoriaPertinente, deducirNegocio, leerArchivos, leerPagina, leerWikipedia, palabrasClave, similarPertinente, type NegocioLeido } from './vera.js';
+import { detectarLengua, lenguaDePais, nombreDeLengua, terminoEnOtrasLenguas, VOCABULARIO_POR_LENGUA } from './lenguas.js';
 
 // =============================================================================================
 // LOS SEIS AGENTES DEL EQUIPO — la investigación del mercado, con trabajo REAL.
@@ -431,6 +432,156 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
     },
   });
 
+  // ---------------- LEX · LAS LENGUAS: en qué lengua se busca su mercado ----------------
+  // El mismo negocio no se busca igual en cada plaza: el texto que se busca tiene que estar en la lengua del
+  // que compra ahí. Y hay una segunda lengua que NO es la del dueño: la de la CATEGORÍA. En activos digitales
+  // la categoría está escrita en inglés —el artículo de «tokenización» en español habla del análisis léxico de
+  // un texto, no de tokenizar activos—, así que buscar solo con las palabras del dueño busca otra cosa.
+  // De acá sale con qué palabras se busca el mercado y en qué lenguas, en qué lengua va la pieza, y qué se
+  // perdió por buscar en una sola lengua. Lo que no se puede verificar, no se inventa: se dice.
+  // La lengua se mide aparte: la de SUS palabras (lo que el dueño escribió y subió) y la de sus páginas. Un
+  // negocio de Dubái puede tener la web en inglés y hablarle al equipo en español, y las dos cosas cuentan.
+  const textoDelDueno = [ctx.nombre, ctx.descripcion, leido.queHace, (leido.queVende || []).join(' '), archivosLeidos.texto.slice(0, 4000)].join(' ');
+  const textoDeSusPaginas = paginas.map(p => `${p.titulo} ${p.descripcion} ${p.texto.slice(0, 3000)}`).join(' ');
+  const lenguasDelDueno = detectarLengua(textoDelDueno);
+  const lenguasDeSusPaginas = detectarLengua(textoDeSusPaginas);
+  const lenguaDelNegocio = lenguasDelDueno[0] ?? lenguasDeSusPaginas[0]
+    ?? { codigo: 'es', nombre: 'español', marcas: 0, delata: 'por descarte: el material no traía texto suficiente para medirlo' };
+  const terminosDelMaterial = claves.map((c: any) => String(c.palabra));
+  // En qué lenguas está escrito el vocabulario de su categoría. Si el material nombra términos ingleses del
+  // rubro, la categoría se busca así en el mundo, aunque el dueño escriba en español.
+  const lenguasDeLaCategoria = Object.keys(VOCABULARIO_POR_LENGUA)
+    .filter(l => VOCABULARIO_POR_LENGUA[l].some(t => terminosDelMaterial.includes(t)));
+
+  // Las plazas donde ya se buscó, y en qué lengua están los avisos que volvieron. Se cuenta con marcas de
+  // cada lengua sobre el copy leído: no es adivinanza, es lo que hay en la tabla de avisos.
+  let plazas: { pais: string; avisos: number; en_espanol: number; en_ingles: number; palabras: string }[] = [];
+  try {
+    const r = await db.query(
+      `SELECT pais, count(*)::int AS avisos,
+              count(*) FILTER (WHERE lower(copy) ~ '(^|[^a-z])(el|la|los|las|para|usted|nuestro|con|desde|entre)([^a-z]|$)')::int AS en_espanol,
+              count(*) FILTER (WHERE lower(copy) ~ '(^|[^a-z])(the|you|your|with|for|and|get|our|more)([^a-z]|$)')::int AS en_ingles,
+              string_agg(DISTINCT palabra, ' · ') AS palabras
+         FROM anuncios_leidos WHERE business_id = $1 GROUP BY pais ORDER BY count(*) DESC LIMIT 12`, [ctx.businessId]);
+    plazas = r.rows as any[];
+  } catch { /* primera corrida: todavía no hay ninguna lectura de avisos */ }
+  const avisosTotales = plazas.reduce((s, p) => s + Number(p.avisos || 0), 0);
+  const avisosEnIngles = plazas.reduce((s, p) => s + Number(p.en_ingles || 0), 0);
+  const avisosEnEspanol = plazas.reduce((s, p) => s + Number(p.en_espanol || 0), 0);
+
+  // Las lenguas con las que se busca: la del negocio, la de su categoría, y la de cada plaza donde no se habla
+  // ninguna de las dos. La de la plaza se suma solo si hay con qué NOMBRAR la categoría en esa lengua: la
+  // enciclopedia abierta da el término y su artículo; cuando no lo tiene, se dice que se busca en la lengua de
+  // la categoría en vez de inventar una traducción.
+  const lenguasDeBusqueda: { codigo: string; nombre: string; para_que: string }[] = [];
+  const sumarLengua = (codigo: string, para_que: string) => {
+    if (!codigo || lenguasDeBusqueda.some(l => l.codigo === codigo)) return;
+    lenguasDeBusqueda.push({ codigo, nombre: nombreDeLengua(codigo), para_que });
+  };
+  sumarLengua(lenguaDelNegocio.codigo, 'es la lengua de su material y de su primer mercado');
+  if (lenguasDeSusPaginas[0]) {
+    sumarLengua(lenguasDeSusPaginas[0].codigo, 'sus propias páginas están escritas en esa lengua: es la carta de presentación que ya usa con sus clientes');
+  }
+  for (const l of lenguasDeLaCategoria) {
+    sumarLengua(l, l === 'en'
+      ? 'su categoría está escrita en inglés: así la busca el mercado en el mundo'
+      : 'aparece en el vocabulario de su categoría');
+  }
+  const plazasACubrir = plazas
+    .map(p => ({ pais: String(p.pais), lengua: lenguaDePais(String(p.pais)) }))
+    .filter(p => p.lengua && !lenguasDeBusqueda.some(l => l.codigo === p.lengua));
+
+  // Las palabras de búsqueda por lengua: el vocabulario de la categoría en esa lengua, más los términos que el
+  // propio material del negocio trae en ella. El vocabulario viene del catálogo del sistema, no de un traductor.
+  const palabrasPorLengua: Record<string, string[]> = {};
+  for (const l of lenguasDeBusqueda) {
+    const delCatalogo = VOCABULARIO_POR_LENGUA[l.codigo] ?? [];
+    const delMaterial = l.codigo === lenguaDelNegocio.codigo ? terminosDelMaterial : [];
+    palabrasPorLengua[l.codigo] = [...new Set([...delCatalogo, ...delMaterial])].slice(0, 10);
+  }
+  // Y la lengua de la plaza, con el término de la categoría en esa lengua si la enciclopedia lo tiene.
+  const equivalencias: { pais: string; lengua: string; termino: string; titulo: string; url: string }[] = [];
+  const plazasSinTermino: { pais: string; lengua: string }[] = [];
+  if (plazasACubrir.length) {
+    const anclas = (palabrasPorLengua.en ?? []).slice(0, 3);
+    await Promise.race([
+      Promise.all(plazasACubrir.slice(0, 2).map(async (p) => {
+        const hallados: { idioma: string; titulo: string; url: string }[] = [];
+        for (const ancla of anclas) {
+          const eq = await terminoEnOtrasLenguas(ancla, [p.lengua]);
+          for (const e of eq) hallados.push({ idioma: e.idioma, titulo: e.titulo, url: e.url });
+        }
+        if (hallados.length) {
+          sumarLengua(p.lengua, `en ${p.pais} el que compra lee en ${nombreDeLengua(p.lengua)}: el término de la categoría lo da la enciclopedia abierta`);
+          palabrasPorLengua[p.lengua] = [...new Set([...hallados.map(h => h.titulo), ...anclas.slice(0, 2)])];
+          for (const h of hallados) equivalencias.push({ pais: p.pais, lengua: p.lengua, termino: anclas[0], titulo: h.titulo, url: h.url });
+        } else {
+          plazasSinTermino.push(p);
+        }
+      })),
+      new Promise(res => setTimeout(res, 8000)),
+    ]);
+  }
+
+  // La lengua de la pieza: la del que compra, no la del dueño. Se mide con los avisos ya leídos en sus plazas.
+  const lenguaDeLaPieza = (leido.alcance === 'global' && avisosEnIngles > avisosEnEspanol)
+    ? { codigo: 'en', nombre: 'inglés', tambien: lenguaDelNegocio.nombre,
+      por_que: `en su mercado el aviso se escribe en inglés: ${avisosEnIngles} de ${avisosTotales} avisos leídos están en inglés contra ${avisosEnEspanol} en español, y su categoría está escrita en inglés` }
+    : { codigo: lenguaDelNegocio.codigo, nombre: lenguaDelNegocio.nombre, tambien: '',
+      por_que: `su material y los avisos de su mercado están en ${lenguaDelNegocio.nombre}` };
+
+  tareas.push({
+    agente: 'lex', orden: 1,
+    que: lenguasDeBusqueda.length > 1
+      ? `Reconoció las lenguas de su mercado: se busca en ${lenguasDeBusqueda.map(l => l.nombre).join(', ')}`
+      : `Reconoció la lengua de su mercado: se busca en ${lenguasDeBusqueda[0]?.nombre || lenguaDelNegocio.nombre}`,
+    resultado: {
+      fuente_tipo: 'la lengua del material del negocio (medida con las palabras de cada lengua), el vocabulario de su categoría en cada lengua, la enciclopedia abierta (con el artículo) y los avisos que el trabajador ya leyó',
+      lengua_del_negocio: {
+        lengua: lenguaDelNegocio.nombre, codigo: lenguaDelNegocio.codigo,
+        como_se_leyo: lenguaDelNegocio.delata,
+        otras_que_aparecen: lenguasDelDueno.slice(1).map(l => `${l.nombre} (${l.delata})`),
+        de_donde: 'lo que el dueño escribió y subió: su descripción, lo que vende y sus archivos',
+      },
+      lengua_de_sus_paginas: lenguasDeSusPaginas.length
+        ? `sus páginas están en ${lenguasDeSusPaginas.map(l => `${l.nombre} (${l.delata})`).join(' y ')}`
+        : 'no se pudo medir la lengua de sus páginas: no se leyó ninguna',
+      lengua_de_la_categoria: lenguasDeLaCategoria.length
+        ? `se busca en ${lenguasDeLaCategoria.map(l => nombreDeLengua(l)).join(' y ')}: son las lenguas en las que su material nombra la categoría (${terminosDelMaterial.filter(t => lenguasDeLaCategoria.some(l => VOCABULARIO_POR_LENGUA[l].includes(t))).join(', ')})`
+        : 'todavía no se reconoció el vocabulario de su categoría en el material',
+      lenguas_de_busqueda: lenguasDeBusqueda,
+      palabras_por_lengua: palabrasPorLengua,
+      termino_de_la_categoria_en_la_lengua_de_la_plaza: equivalencias.length
+        ? equivalencias.map(e => `${e.pais}: «${e.titulo}» por «${e.termino}» — ${e.url}`)
+        : 'la categoría no está escrita en la lengua de sus plazas: se busca con el término inglés, que es el del mercado',
+      plan_por_plaza: plazas.map(p => ({
+        plaza: p.pais,
+        avisos_leidos: p.avisos,
+        con_que_palabras_se_busco: p.palabras,
+        lengua_del_que_compra: lenguaDePais(String(p.pais)) ? nombreDeLengua(lenguaDePais(String(p.pais))) : 'no se pudo determinar y no se supone',
+        en_que_lengua_estan_los_avisos: Number(p.en_ingles) > Number(p.en_espanol)
+          ? `inglés (${p.en_ingles} de ${p.avisos})`
+          : Number(p.en_espanol) > Number(p.en_ingles)
+            ? `español (${p.en_espanol} de ${p.avisos})`
+            : 'no se distingue: no hay marcas suficientes en los avisos',
+      })),
+      la_pieza_en_que_lengua: lenguaDeLaPieza,
+      lo_que_se_pierde: [
+        plazasSinTermino.length
+          ? `en ${plazasSinTermino.map(p => p.pais).join(' y ')} el que compra lee en ${plazasSinTermino.map(p => nombreDeLengua(p.lengua)).join(' y ')} y no hay término de la categoría en esa lengua: se busca en inglés`
+          : '',
+        lenguasDeBusqueda.some(l => l.codigo === 'en') && !lenguasDeBusqueda.some(l => l.codigo === 'es')
+          ? '' : 'la categoría del negocio, en su lengua, trae otro sentido: en la enciclopedia en español «tokenización» es el análisis léxico de un texto, no la tokenización de activos',
+        avisosTotales
+          ? `de ${avisosTotales} avisos leídos, ${avisosEnIngles} están en inglés y ${avisosEnEspanol} en español: buscar en una sola lengua deja afuera al resto del mercado`
+          : '',
+      ].filter(Boolean),
+      falta: plazas.length ? [] : ['la primera lectura de avisos: sin avisos no se puede medir en qué lengua está escribiendo su mercado'],
+      porque: 'El texto que se busca tiene que estar en la lengua del que compra. Buscar la categoría en la lengua del dueño trae otro mercado, y buscar en una sola lengua deja afuera plazas enteras: por eso la lengua se decide antes de leer, no después.',
+      fuente: 'el material del negocio + la enciclopedia abierta + los avisos leídos por el trabajador',
+    },
+  });
+
   // ---------------- LUX · el mercado (OpenStreetMap de verdad + el informe de piezas vivas) ----------------
   if (leido.alcance === 'global') {
     tareas.push({
@@ -543,19 +694,30 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
   // COMPARABLE de un lado, el RUIDO del otro. Y si después de separar no queda nadie comparable, quiere
   // decir que esa categoría todavía no existe en ese mercado: hay que entenderlo y decirlo así, porque no
   // es falta de datos — es un negocio que va primero, y eso se ataca derecho desde el creativo.
-  let mercado: { comparables: any[]; ruido: number; total: number; categoria_nueva: boolean; palabras: string[] } | null = null;
+  let mercado: { comparables: any[]; ruido: number; total: number; categoria_nueva: boolean; palabras: string[]; terminos: string[] } | null = null;
   try {
     const palabras = [...new Set(`${ctx.rubro} ${ctx.descripcion} ${leido.rubro}`.toLowerCase()
       .split(/[^a-záéíóúñ0-9]+/).filter(w => w.length >= 5))].slice(0, 12);
+    // Y LOS TÉRMINOS DE LA CATEGORÍA, EN SU LENGUA (Lex). Un competidor que se anuncia en inglés con «asset
+    // tokenization» ES comparable, y con las palabras del dueño —en español— quedaba contado como ruido: la
+    // lista de palabras decidía quién es del mercado, y estaba en una sola lengua. Los términos van con
+    // límites de palabra, porque «rwa» tiene tres letras y suelto coincide con cualquier cosa.
+    const escapar = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const terminos = [...new Set(Object.values(palabrasPorLengua).flat()
+      .map(t => String(t).toLowerCase().replace(/\s+/g, ' ').trim()).filter(t => t.length >= 3))];
+    const reTerminos = terminos.map(t => new RegExp(`(^|[^a-z0-9áéíóúñ])${escapar(t)}([^a-z0-9áéíóúñ]|$)`));
     const r = await db.query(
       `SELECT anunciante, copy, cta, pais, fecha_inicio
          FROM anuncios_leidos WHERE business_id = $1 AND anunciante <> ''
         ORDER BY fecha_inicio DESC LIMIT 400`, [ctx.businessId]);
     const filas = r.rows as any[];
-    const puntua = (f: any) => palabras.filter(w => `${f.anunciante} ${f.copy}`.toLowerCase().includes(w)).length;
+    const puntua = (f: any) => {
+      const texto = `${f.anunciante} ${f.copy}`.toLowerCase();
+      return palabras.filter(w => texto.includes(w)).length + reTerminos.filter(re => re.test(texto)).length;
+    };
     const comparables = filas.filter(f => puntua(f) > 0).sort((a, b) => puntua(b) - puntua(a));
     const ruido = filas.length - comparables.length;
-    mercado = { comparables, ruido, total: filas.length, categoria_nueva: filas.length > 0 && comparables.length === 0, palabras };
+    mercado = { comparables, ruido, total: filas.length, categoria_nueva: filas.length > 0 && comparables.length === 0, palabras, terminos };
   } catch { mercado = null; }
 
   tareas.push({
@@ -573,7 +735,8 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
       cuantos_comparables: mercado.comparables.length,
       cuantos_son_ruido: mercado.ruido,
       categoria_nueva: mercado.categoria_nueva,
-      como_se_separo: `se quedó el anunciante o el copy que nombra alguna de las palabras del negocio: ${mercado.palabras.join(', ')}`,
+      terminos_de_la_categoria_usados: mercado.terminos,
+      como_se_separo: `se quedó el anunciante o el copy que nombra alguna de las palabras del negocio (${mercado.palabras.join(', ')}) o uno de los términos de su categoría en su lengua (${mercado.terminos.slice(0, 8).join(', ')})`,
       porque: mercado.categoria_nueva
         ? 'Nadie comparable en su mercado: la categoría todavía no existe ahí. No es falta de datos — es que este negocio va primero, y se ataca derecho desde el creativo con lo que ya identificamos.'
         : 'De la lista completa solo una parte compite con este negocio; el resto entra por la palabra clave y no sirve para comparar.',
@@ -746,47 +909,6 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
     },
   });
 
-  // ---------------- IRIS · el arte: el prompt de generación de cada plaza ----------------
-  // El sistema todavía no genera imagen ni video. Lo que sí hace, y es lo que el dueño pidió, es
-  // entregar el PROMPT COMPLETO —colores, tipografía, formato, escenas, UGC o toma de producto— con la
-  // traza de cómo se armó cada campo con lo que se midió en el mercado. Queda guardado como contrato:
-  // el día que haya generador conectado, genera con esto.
-  const paquete = promptsDelInforme(inf ?? {}, formatosRecomendados);
-  let promptsGuardados = 0;
-  if (paquete) {
-    try { promptsGuardados = await guardarPrompts(db, ctx.businessId, paquete, corridaId); } catch { promptsGuardados = 0; }
-  }
-  const tipos = paquete ? [...new Set(paquete.prompts.map(p => p.tipo))].join(' y ') : '';
-  tareas.push({
-    agente: 'iris', orden: 9,
-    que: paquete
-      ? `Armó ${paquete.prompts.length} prompts de generación (${tipos}) con los colores, la tipografía, el formato y el estilo medidos en su mercado`
-      : 'No pudo armar los prompts y lo dice: falta la analítica visual del rubro',
-    resultado: paquete ? {
-      fuente_tipo: 'la analítica visual del informe del mercado + la pieza propuesta (el hueco que se ataca)',
-      pieza: paquete.pieza,
-      guardados_en: 'la tabla de prompts del negocio (el contrato que leerá el generador)',
-      guardados: promptsGuardados,
-      prompts: paquete.prompts.map(p => ({
-        plaza: p.plaza, tipo: p.tipo, estilo: p.estilo, proporcion: p.proporcion, duracion_s: p.duracion_s,
-        colores: p.colores.paleta,
-        tipografia: `${p.tipografia.familia} · ${p.tipografia.tratamiento} · ${p.tipografia.ubicacion}`,
-        escenas: p.escenas.length,
-        prompt: p.prompt,
-        prompt_negativo: p.prompt_negativo,
-        como_se_arma: p.como_se_arma,
-        elegido_por_nosotros: p.elegido_por_nosotros,
-        verificaciones: p.verificaciones,
-      })),
-      porque: 'Todavía no hay generador de imagen ni de video conectado: lo que sí se puede hacer hoy, y se hizo, es dejar el prompt completo y su traza. Cuando el generador exista, se genera con esto y no con una idea suelta.',
-      falta: 'conectar el servicio de generación (hoy no hay ninguno escuchando)',
-      fuente: inf?.fuente || '',
-    } : {
-      sin_fuente: 'falta la analítica visual del rubro (colores, tipografía, encuadre y plazas) para poder armar el prompt',
-      fuente: 'sin fuente',
-    },
-  });
-
   // ---------------- NOVA · formatos y tendencias (lo cultural) ----------------
   // (a) LOS FORMATOS QUE EL MERCADO YA PREMIÓ. No la opinión de nadie: lo que está corriendo y aguanta.
   const formatos = new Map<string, number>();
@@ -842,6 +964,10 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
   // (c) LO QUE EL PAÍS ESTÁ HABLANDO HOY, y si toca el rubro. El alcance sale de en qué países aparece:
   // un solo país es local; varios de la región, regional; y si además sale fuera de la región, no es cosa nuestra.
   const palabras = [...new Set(`${ctx.rubro} ${ctx.nombre} ${ctx.descripcion}`.toLowerCase().split(/[^a-záéíóúñ]+/).filter(w => w.length > 4))];
+  // Y LOS TÉRMINOS DE LA CATEGORÍA EN TODAS LAS LENGUAS (Lex): lo que se habla de este rubro se nombra en la
+  // lengua de cada plaza, y con una sola lista de palabras el tema nunca «toca el rubro» en las otras lenguas
+  // (en Brasil se habla en portugués y en Estados Unidos en inglés).
+  for (const t of Object.values(palabrasPorLengua).flat()) palabras.push(String(t).toLowerCase());
   // Las tendencias se piden con tope corto: son seis fuentes de afuera y ninguna puede colgar la corrida.
   const tend = await Promise.race([
     leerTendencias(GEOS_TENDENCIA, palabras),
@@ -1012,6 +1138,8 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
       : 'sin palabras clave del material: se usan las del rubro',
     material_que_ya_tiene: materialQueYaTiene,
     la_pieza: {
+      idioma: `${lenguaDeLaPieza.nombre}${lenguaDeLaPieza.tambien ? ` (y también ${lenguaDeLaPieza.tambien})` : ''}`,
+      por_que_ese_idioma: lenguaDeLaPieza.por_que,
       que_se_publica: `${queSePublica}: explicado para ${aQuienLeHabla}, con las palabras con las que ese cliente lo buscaría`,
       gancho: 'El problema concreto del cliente, en la primera línea, sin nombrar el producto.',
       cuerpo: 'Qué cambia para el cliente, no qué tiene el producto.',
@@ -1073,6 +1201,8 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
         modo,
         quien_decide: quienDecide,
         propuesta_publicacion: {
+          idioma: `${lenguaDeLaPieza.nombre}${lenguaDeLaPieza.tambien ? ` (y también ${lenguaDeLaPieza.tambien})` : ''}`,
+          por_que_ese_idioma: lenguaDeLaPieza.por_que,
           tipo: plazaVideo ? `video (${plazaVideo.formato_recomendado})` : 'video vertical 9:16',
           estilo: plazaVideo?.formato_recomendado || '',
           red: canales.length ? canales.join(', ') : 'sin definir: el motor elige la red donde el mercado sostiene ese formato',
@@ -1100,6 +1230,95 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
         porque: 'Es la decisión que el dueño pidió: con lo que el negocio ya dijo y el mercado ya medido, qué publicar y qué campaña armar. En Automático la toma y la explica; en Compartido la deja pronta esperando el OK; en Manual se la deja entera en la mano.',
         fuente: `${inf?.fuente || 'sin informe del rubro'} + las decisiones del negocio`,
       },
+  });
+
+  // ---------------- IRIS · el arte: el prompt de generación de cada plaza ----------------
+  // El sistema todavía no genera imagen ni video. Lo que sí hace, y es lo que el dueño pidió, es
+  // entregar el PROMPT COMPLETO —colores, tipografía, formato, escenas, UGC o toma de producto— con la
+  // traza de cómo se armó cada campo con lo que se midió en el mercado. Queda guardado como contrato:
+  // el día que haya generador conectado, genera con esto.
+  // SIN MERCADO MEDIDO NO SE INVENTA NADA: si todavía no hay analítica visual del rubro, el prompt se arma
+  // con lo que el negocio ya tiene —lo que vende, a quién le habla, las palabras de su categoría y la pieza
+  // que decidió Tino— y los campos que nadie midió (colores, tipografía, formato del mercado) quedan vacíos
+  // y DICHOS. Cuando haya mercado que leer, el del informe reemplaza a este.
+  const paqueteDelMercado = promptsDelInforme(inf ?? {}, formatosRecomendados);
+  const paquete = paqueteDelMercado ?? (piezaDelNegocio ? promptDelNegocio({
+    negocio: ctx.nombre,
+    queSePublica,
+    aQuien: aQuienLeHabla,
+    gancho: 'la persona dice el problema concreto de su cliente en la primera frase, sin nombrar el producto',
+    cuerpo: 'se ve el trabajo real haciéndose: qué cambia para el cliente, no qué tiene el producto',
+    cierre: decisiones.negocio_objetivo
+      ? `la acción que el negocio pidió («${decisiones.negocio_objetivo}»), en un toque`
+      : 'la acción concreta, en un toque',
+    idioma: { nombre: lenguaDeLaPieza.nombre, por_que: lenguaDeLaPieza.por_que },
+    palabrasDeLaPieza,
+    rubro: leido.rubro || ctx.rubro,
+    canal: canales.join(', '),
+    boton: canales.length ? `el botón de ${canales[0]}` : 'sin definir: falta que el negocio diga dónde quiere trabajar',
+    material: materialQueYaTiene,
+    fuente: `${materialQueYaTiene} + la pieza que decidió Tino (todavía sin la analítica visual de su rubro)`,
+  }) : null);
+  let promptsGuardados = 0;
+  if (paquete) {
+    try { promptsGuardados = await guardarPrompts(db, ctx.businessId, paquete, corridaId); } catch { promptsGuardados = 0; }
+  }
+  const tipos = paquete ? [...new Set(paquete.prompts.map((p: any) => p.tipo))].join(' y ') : '';
+  tareas.push({
+    agente: 'iris', orden: 9,
+    que: paqueteDelMercado
+      ? `Armó ${paqueteDelMercado.prompts.length} prompts de generación (${tipos}) con los colores, la tipografía, el formato y el estilo medidos en su mercado`
+      : paquete
+        ? `Armó el prompt de la pieza sin mercado medido: video vertical en ${lenguaDeLaPieza.nombre}, sin colores ni tipografía —no se midió ninguno— y lo dice`
+        : 'No pudo armar los prompts y lo dice: falta la analítica visual del rubro',
+    resultado: paqueteDelMercado ? {
+      fuente_tipo: 'la analítica visual del informe del mercado + la pieza propuesta (el hueco que se ataca)',
+      pieza: paqueteDelMercado.pieza,
+      guardados_en: 'la tabla de prompts del negocio (el contrato que leerá el generador)',
+      guardados: promptsGuardados,
+      prompts: paqueteDelMercado.prompts.map(p => ({
+        plaza: p.plaza, tipo: p.tipo, estilo: p.estilo, proporcion: p.proporcion, duracion_s: p.duracion_s,
+        colores: p.colores.paleta,
+        tipografia: `${p.tipografia.familia} · ${p.tipografia.tratamiento} · ${p.tipografia.ubicacion}`,
+        escenas: p.escenas.length,
+        prompt: p.prompt,
+        prompt_negativo: p.prompt_negativo,
+        como_se_arma: p.como_se_arma,
+        elegido_por_nosotros: p.elegido_por_nosotros,
+        verificaciones: p.verificaciones,
+      })),
+      porque: 'Todavía no hay generador de imagen ni de video conectado: lo que sí se puede hacer hoy, y se hizo, es dejar el prompt completo y su traza. Cuando el generador exista, se genera con esto y no con una idea suelta.',
+      falta: 'conectar el servicio de generación (hoy no hay ninguno escuchando)',
+      fuente: inf?.fuente || '',
+    } : paquete ? {
+      fuente_tipo: 'el material del negocio y la pieza que decidió Tino — todavía SIN la analítica visual de su rubro',
+      pieza: paquete.pieza,
+      guardados_en: 'la tabla de prompts del negocio (el contrato que leerá el generador)',
+      guardados: promptsGuardados,
+      idioma_de_la_pieza: `${lenguaDeLaPieza.nombre} — ${lenguaDeLaPieza.por_que}`,
+      prompts: paquete.prompts.map((p: any) => ({
+        plaza: p.plaza, tipo: p.tipo, estilo: p.estilo, proporcion: p.proporcion, duracion_s: p.duracion_s,
+        colores: p.colores.paleta.length ? p.colores.paleta : 'sin paleta medida: el color lo pone la identidad que el negocio ya usa',
+        tipografia: p.tipografia.familia,
+        escenas: p.escenas.length,
+        prompt: p.prompt,
+        prompt_negativo: p.prompt_negativo,
+        como_se_arma: p.como_se_arma,
+        elegido_por_nosotros: p.elegido_por_nosotros,
+        verificaciones: p.verificaciones,
+      })),
+      lo_que_todavia_no_se_mide: ['los colores de su rubro', 'la tipografía', 'el formato que el mercado sostiene', 'la duración medida en las piezas vivas', 'el molde de una pieza que aguanta: no hay ninguna comparable'],
+      porque: 'Sin mercado no se copia un molde ajeno ni se inventan colores: el prompt se arma con lo que el negocio ya tiene y los campos que nadie midió quedan vacíos y DICHOS. Cuando haya informe del mercado, ese prompt reemplaza a este.',
+      falta: [
+        'conectar el servicio de generación (hoy no hay ninguno escuchando)',
+        'la analítica visual del rubro: llega con el informe del mercado y reemplaza a este prompt',
+        'el guion escrito escena por escena (hoy el prompt lleva la regla de cada tramo)',
+      ],
+      fuente: paquete.prompts[0]?.fuente || '',
+    } : {
+      sin_fuente: 'falta la analítica visual del rubro (colores, tipografía, encuadre y plazas) y tampoco hay pieza que Tino haya decidido con el material del negocio',
+      fuente: 'sin fuente',
+    },
   });
 
   // ---------------- REX 2 · LOS PRECIOS QUE EL MERCADO PUBLICA EN SUS ANUNCIOS ----------------
