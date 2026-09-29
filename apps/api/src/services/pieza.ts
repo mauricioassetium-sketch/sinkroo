@@ -242,7 +242,10 @@ export function armarLaPieza(d: {
       lo_que_falta: [
         'la prueba social (casos, clientes, números): no está en el material cargado, y no se inventa',
         'el precio: el negocio no lo cargó, y el mercado casi no lo publica',
-        'las creatividades (fotos y video finales): el sistema todavía no genera imagen ni video',
+        // La imagen de la pieza se genera (FLUX) y el video de las piezas de video se monta con voz y
+        // subtítulos. Lo que NO se inventa es la música (solo si el negocio ya la tiene con licencia) y el
+        // recorte fino para el feed de las piezas que no son verticales todavía no está hecho.
+        'la música con licencia y el recorte fino para el feed: la imagen y el video ya se generan, pero la música no se inventa y el recorte cuadrado falta',
       ],
       como_se_armo: [
         'el texto sale del material del negocio, en su orden de anuncio: problema, qué cambia, cierre y botón',

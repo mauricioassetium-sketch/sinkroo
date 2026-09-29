@@ -1384,7 +1384,8 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
   });
 
   // ---------------- IRIS · el arte: el prompt de generación de cada plaza ----------------
-  // El sistema todavía no genera imagen ni video. Lo que sí hace, y es lo que el dueño pidió, es
+  // El sistema ya genera la imagen de la pieza (FLUX) y monta el video de las piezas de video. Lo que
+  // sí hace, y es lo que el dueño pidió, es
   // entregar el PROMPT COMPLETO —colores, tipografía, formato, escenas, UGC o toma de producto— con la
   // traza de cómo se armó cada campo con lo que se midió en el mercado. Queda guardado como contrato:
   // el día que haya generador conectado, genera con esto.

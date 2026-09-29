@@ -7,7 +7,7 @@ import { claseDeFormato, ESPECIFICACION, proporcionDe } from './formatos.js';
 // EL FORMATO DEL PROMPT DE GENERACIÓN — lo que el agente de arte entrega para que, cuando exista la
 // capacidad de generar imágenes o videos, se genere con ESTO y no con una idea suelta.
 //
-// Nace de una regla del dueño: el sistema todavía no genera archivos, pero SÍ tiene que entregar el
+// Nace de una regla del dueño: el prompt es un entregable y ahora además hay imagen y video generados, pero SÍ tiene que entregar el
 // prompt completo —colores, tipografía, formato, si es UGC o toma de producto, escenas, texto en
 // pantalla, audio, marca y lo que NO debe aparecer— con todo medido en el mercado.
 //
