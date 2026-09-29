@@ -305,6 +305,28 @@ export async function migrate(db: Pool): Promise<void> {
 
     CREATE INDEX IF NOT EXISTS idx_suscripciones_business ON suscripciones(business_id, created_at DESC);
 
+    -- LOS ANUNCIOS LEÍDOS: lo que el trabajador de lectura saca de la Biblioteca de Anuncios de Meta,
+    -- por palabra clave y por país. Es la materia prima del informe del mercado: quién anuncia, con qué
+    -- copy, con qué botón y desde cuándo (los días corriendo son el filtro de calidad). Se guarda por
+    -- (palabra, país, id del anuncio): si el anuncio vuelve a aparecer, se actualiza su lectura.
+    CREATE TABLE IF NOT EXISTS anuncios_leidos (
+      id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      business_id   UUID REFERENCES businesses(id) ON DELETE CASCADE,
+      palabra       TEXT NOT NULL DEFAULT '',
+      pais          TEXT NOT NULL DEFAULT '',
+      id_anuncio    TEXT NOT NULL DEFAULT '',
+      anunciante    TEXT NOT NULL DEFAULT '',
+      copy          TEXT NOT NULL DEFAULT '',
+      cta           TEXT NOT NULL DEFAULT '',
+      destino       TEXT NOT NULL DEFAULT '',
+      fecha_inicio  TEXT NOT NULL DEFAULT '',
+      plataformas   TEXT[] NOT NULL DEFAULT '{}',
+      leido_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+      UNIQUE (palabra, pais, id_anuncio)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_anuncios_leidos ON anuncios_leidos(palabra, pais, leido_at DESC);
+
     -- LOS CRÉDITOS QUE VENCEN: los 5.000 de bienvenida valen el primer mes (30 días). Al vencer, lo que
     -- no se usó se retira con su propio movimiento, así el saldo y su historia siguen cuadrando. El que
     -- pagó un plan tiene créditos que no vencen: por eso la fecha va en el movimiento, no en el negocio.

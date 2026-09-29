@@ -1,3 +1,4 @@
+import { spawn } from 'node:child_process';
 import type { Pool } from 'pg';
 import { correrInvestigacion } from './agentes.js';
 
@@ -23,6 +24,30 @@ const CADA_MS = Number(process.env.INVESTIGAR_REVISA_MIN || 30) * 60 * 1000;
 
 /** Un negocio al que se le puede leer el mercado hoy. */
 type Negocio = { id: string; nombre: string; descripcion: string; rubro: string; zona: string };
+
+/**
+ * LA LECTURA DE ANUNCIOS, encadenada a la investigación: después de que los agentes investigan, el
+ * trabajador sale a la Biblioteca de Anuncios de Meta con las palabras del rubro del negocio y los
+ * países donde opera (LECTURA_PAISES, por defecto Colombia). Es el mismo trabajador que se probó a
+ * mano, solo que ahora lo lanza el programador en vez de una persona. No se espera su respuesta: si
+ * tarda, no frena la investigación del día; lo que lea queda en la tabla de anuncios leídos.
+ */
+function lanzarLecturaDeAnuncios(n: Negocio, log: (m: string) => void) {
+  const palabras = String(n.rubro || '').toLowerCase().split(/[^a-záéíóúñ0-9]+/)
+    .filter(w => w.length >= 4 && w.length <= 24).slice(0, 4);
+  if (!palabras.length) return;
+  const paises = (process.env.LECTURA_PAISES || 'CO').split(',').map(p => p.trim().toUpperCase()).filter(Boolean);
+  const args = [new URL('../../workers/lector-anuncios.mjs', import.meta.url).pathname,
+    '--negocio', n.id, '--salida', `/tmp/anuncios-${n.id}.json`];
+  for (const palabra of palabras) for (const pais of paises) args.push(`${palabra}:${pais}`);
+  try {
+    const hijo = spawn(process.execPath, args, { env: process.env, detached: true, stdio: 'ignore' });
+    hijo.unref();
+    log(`lectura de anuncios lanzada para «${n.nombre}»: ${palabras.join(', ')} en ${paises.join(', ')}`);
+  } catch (e) {
+    log(`no se pudo lanzar la lectura de anuncios de «${n.nombre}»: ${String((e as Error).message).slice(0, 120)}`);
+  }
+}
 
 /** Corre la investigación de un negocio y deja constancia en el log. Nunca tumba el programador. */
 async function investigar(db: Pool, n: Negocio, log: (m: string) => void) {
@@ -59,7 +84,11 @@ export async function revisarInvestigacionDiaria(db: Pool, log: (m: string) => v
       ORDER BY b.created_at
       LIMIT 12`);
   const negocios = r.rows as Negocio[];
-  for (const n of negocios) await investigar(db, n, log);
+  for (const n of negocios) {
+    await investigar(db, n, log);
+    // Y de una, la lectura de anuncios con las palabras del rubro que quedó en el perfil (lo que dedujo Vera).
+    lanzarLecturaDeAnuncios(n, log);
+  }
   // Y de paso: los créditos de bienvenida del primer mes que ya vencieron.
   try { await vencerBienvenidas(db, log); } catch (e) { log(`no se pudieron vencer los créditos: ${String((e as Error).message).slice(0, 120)}`); }
   return { corridos: negocios.length };

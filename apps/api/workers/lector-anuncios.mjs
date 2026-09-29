@@ -25,7 +25,8 @@
 //   Cada argumento es palabra:país (ISO2). El archivo de salida se reescribe y se VA COMPLETANDO.
 // =============================================================================================
 
-import { writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
+import pg from 'pg';
 
 const CDP = process.env.CDP_URL || 'http://127.0.0.1:9222';
 const ESPERA_CARGA = Number(process.env.ESPERA_CARGA || 9000);
@@ -35,7 +36,12 @@ const MAX_FICHAS = Number(process.env.MAX_FICHAS || 80);
 const salidaIdx = process.argv.indexOf('--salida');
 const SALIDA = salidaIdx > -1 ? String(process.argv[salidaIdx + 1] || '') : '/tmp/anuncios-leidos.json';
 // Los objetivos son palabra:país. Se salta el valor de --salida, que no es un objetivo.
-const objetivos = process.argv.slice(2).filter((a, i) => !a.startsWith('--') && i + 1 !== salidaIdx);
+const negocioIdx = process.argv.indexOf('--negocio');
+const NEGOCIO = negocioIdx > -1 ? String(process.argv[negocioIdx + 1] || '') : '';
+const objetivos = process.argv.slice(2).filter((a, i) =>
+  !a.startsWith('--') && i + 1 !== salidaIdx && i + 1 !== negocioIdx);
+/** La base: si el trabajador corre con DATABASE_URL (lo que hace el back al encadenarlo), guarda ahí. */
+const pool = process.env.DATABASE_URL ? new pg.Pool({ connectionString: process.env.DATABASE_URL }) : null;
 if (!objetivos.length) {
   console.error('Falta qué buscar. Ejemplo: node workers/lector-anuncios.mjs --salida /tmp/f.json "keratina:CO"');
   process.exit(2);
@@ -102,19 +108,7 @@ async function abrirSesion() {
  * Devuelve el id, la fecha de inicio y el texto que traiga la ficha. Es el mismo criterio que se usó a
  * mano: no se inventan campos que la plataforma no muestra.
  */
-const EXTRACTOR = `(() => {
-  const nodos = [...document.querySelectorAll('div')].filter(d => /Library ID:/i.test(d.innerText||'') && (d.innerText||'').length < 4000);
-  const porId = new Map();
-  for (const n of nodos) {
-    const t = (n.innerText||'').replace(/\\s+/g,' ').trim();
-    const id = (t.match(/Library ID:\\s*(\\d+)/)||[])[1]; if (!id) continue;
-    const fecha = (t.match(/Started running on ([A-Za-z]+ \\d+, \\d{4})/)||[])[1] || '';
-    const plazas = [...new Set((t.match(/Facebook|Instagram|Audience Network|Messenger|Threads/g)||[]))];
-    const texto = t.replace(/Library ID:.*$/,'').replace(/Started running on.*$/,'').replace(/^Active\\s*/,'').trim().slice(0,220);
-    if (!porId.has(id)) porId.set(id, { id, fecha, plataformas: plazas, texto });
-  }
-  return JSON.stringify([...porId.values()]);
-})()`;
+const EXTRACTOR = readFileSync(new URL('./extractor-fichas.js', import.meta.url), 'utf8');
 
 /** Una consulta: palabra clave en un país. Devuelve las fichas que la plataforma entregó. */
 async function leer(sesion, palabra, pais) {
@@ -133,6 +127,31 @@ async function leer(sesion, palabra, pais) {
   return { palabra, pais, total: total || '(sin contador)', sinAnuncios: !!vacio, fichas: fichas.slice(0, MAX_FICHAS) };
 }
 
+/**
+ * Guarda las fichas en la base, además del archivo. `negocio` es el negocio al que le sirve la lectura
+ * (vacío cuando es una lectura suelta, sin negocio). Se actualiza la fecha si el anuncio vuelve a
+ * aparecer: lo que importa es desde cuándo corre, y eso lo dice la plataforma.
+ */
+async function guardarEnBase(consulta) {
+  if (!pool) return 0;
+  let n = 0;
+  for (const f of consulta.fichas || []) {
+    try {
+      await pool.query(
+        `INSERT INTO anuncios_leidos (business_id, palabra, pais, id_anuncio, anunciante, copy, cta, destino, fecha_inicio, plataformas)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+         ON CONFLICT (palabra, pais, id_anuncio) DO UPDATE SET
+           anunciante = COALESCE(NULLIF(EXCLUDED.anunciante,''), anuncios_leidos.anunciante),
+           copy = COALESCE(NULLIF(EXCLUDED.copy,''), anuncios_leidos.copy),
+           leido_at = now()`,
+        [NEGOCIO || null, consulta.palabra, consulta.pais, f.id, f.anunciante || '', f.copy || '',
+          f.cta || '', f.destino || '', f.fecha || '', f.plataformas || []]);
+      n++;
+    } catch (e) { console.error(`no se pudo guardar el anuncio ${f.id}: ${String(e.message).slice(0, 80)}`); }
+  }
+  return n;
+}
+
 // ---------------------------------- La corrida ----------------------------------
 const resultado = { leido_at: new Date().toISOString(), consultas: [] };
 for (const objetivo of objetivos) {
@@ -141,9 +160,11 @@ for (const objetivo of objetivos) {
     const sesion = await abrirSesion();
     const r = await leer(sesion, palabra, pais.toUpperCase());
     resultado.consultas.push(r);
+    const enBase = await guardarEnBase(r);
     const viejas = r.fichas.filter(f => f.fecha).length;
     console.log(`${palabra} · ${pais.toUpperCase()}: ${r.total} · ${r.fichas.length} fichas (${viejas} con fecha)`
-      + (r.sinAnuncios ? ' · la plataforma dice que no hay anuncios' : ''));
+      + (r.sinAnuncios ? ' · la plataforma dice que no hay anuncios' : '')
+      + (pool ? ` · ${enBase} guardadas en la base` : ''));
   } catch (e) {
     // Una consulta que falla no tumba la corrida: se anota con su causa y se sigue.
     resultado.consultas.push({ palabra, pais: pais.toUpperCase(), error: String(e.message || e).slice(0, 200) });
@@ -152,5 +173,6 @@ for (const objetivo of objetivos) {
   // Se guarda AL MOMENTO: si el navegador se cae después, lo leído no se pierde.
   writeFileSync(SALIDA, JSON.stringify(resultado, null, 2));
 }
+await pool?.end().catch(() => {});
 const total = resultado.consultas.reduce((n, c) => n + (c.fichas?.length || 0), 0);
 console.log(`\nGuardado en ${SALIDA}: ${resultado.consultas.length} consultas, ${total} fichas.`);
