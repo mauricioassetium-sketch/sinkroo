@@ -1,3 +1,4 @@
+import type { CapaDeOficio } from './oficio.js';
 import type { Pool } from 'pg';
 import type { Identidad } from './identidad.js';
 import { claseDeFormato, ESPECIFICACION, proporcionDe } from './formatos.js';
@@ -90,6 +91,8 @@ export type PromptGeneracion = {
   };
   /** Lo que el prompt NO puede llenar solo y queda marcado para que lo escriba el dueño. */
   lo_que_falta?: string[];
+  /** La capa de oficio del motor de prompts instalado: qué se tomó de él y qué se descartó. */
+  oficio?: { de_donde: string; motor: string; que_se_tomo: string[]; que_se_descarto: string[]; porque_se_descarto: string } | null;
   fuente: string;
 };
 
@@ -538,6 +541,8 @@ export function promptDelNegocio(datos: {
   formato?: string;
   /** El título de la pieza: es la clave con la que se guarda su prompt, para que sea SIEMPRE el suyo. */
   piezaTitulo?: string;
+  /** La capa de oficio del motor de prompts instalado: su vocabulario técnico, ya filtrado. */
+  oficio?: CapaDeOficio | null;
 }): { pieza: string; prompts: PromptGeneracion[] } {
   const pieza = datos.piezaTitulo || datos.queSePublica || `Primera pieza de ${datos.negocio}`;
   const palabras = datos.palabrasDeLaPieza.length
@@ -693,7 +698,10 @@ export function promptDelNegocio(datos: {
     imagenes.length
       ? `BRAND ASSETS (real, read from their own site — where each one goes): ${imagenes.slice(0, 5).map((i, k) => `${i.url} (${i.para})${/logo|icon|favicon/i.test(`${i.para} ${i.url}`) ? ' → end card only, bottom centre, about 12% of the width' : `${esVideo ? ` → as B-roll in shot ${Math.min(2, partes.length)}` : ' → its own image, as the frame or as an inset'}` }`).join('; ')}. Do not invent a logo or any imagery that is not in this list.`
       : 'BRAND ASSETS: none were read from their site. Do not invent a logo or imagery.',
-    `NEGATIVE — must not appear: stock actors or actresses, fake accents, template transitions, flashing or animated text, more than 7 words on screen at once, more than 2 lines of on-screen text, distorted hands, invented or third-party logos, watermarks, oversaturated colours, plastic skin, any text error, any number, price or return the client did not say${esVideo ? ', epic or trailer music, motion blur' : ', any motion or video look'}.`,
+    datos.oficio
+      ? `CRAFT (photographic technique, taken from the installed prompt engine and filtered to what belongs in an ad): ${datos.oficio.terminos.join(', ')}.`
+      : '',
+    `NEGATIVE — must not appear: an anime, cartoon or illustration look (this is a real photograph or a photorealistic image), stock actors or actresses, fake accents, template transitions, flashing or animated text, more than 7 words on screen at once, more than 2 lines of on-screen text, distorted hands, invented or third-party logos, watermarks, oversaturated colours, plastic skin, any text error, any number, price or return the client did not say${esVideo ? ', epic or trailer music, motion blur' : ', any motion or video look'}.`,
     sector
       ? `COMPLIANCE (regulated ground — this client works with digital assets, RWA and security tokens): no implicit financial advice, no mention of any regulator or licence, no yield, return or performance figure, no "guaranteed", no "risk-free", no comparison against financial products. Every claim must come from the client's own material. If a disclaimer is used, it is exactly "Not financial advice" and only if the client asks for it.`
       : 'COMPLIANCE: no claim that the client did not make; no regulator, no guarantees, no invented figures.',
@@ -871,6 +879,15 @@ export function promptDelNegocio(datos: {
         cuando_hace_falta_una_cara_real: 'si la pieza necesita la cara de un cliente de verdad (una prueba, un testimonio), se graba con el celular: no se genera.',
         que_cambia_en_el_prompt: 'las líneas habladas van cortas (15 palabras máximo, el resto a voz en off) y se pide el aspecto de una grabación, no una persona auténtica.',
       },
+      oficio: datos.oficio
+        ? {
+          de_donde: datos.oficio.fuente,
+          motor: `${datos.oficio.motor} ${datos.oficio.version}`,
+          que_se_tomo: datos.oficio.terminos,
+          que_se_descarto: datos.oficio.descartado,
+          porque_se_descarto: 'el motor es de prompts artísticos: su catálogo de estilos son movimientos de arte (arquitectura románica, Rasquache) y eso no tiene nada que hacer en el aviso de una empresa. Se toma su vocabulario técnico —luz, lente, encuadre— y se descarta lo demás.',
+        }
+        : null,
       idioma_del_prompt: {
         voz: datos.idioma.nombre, pantalla: datos.idioma.nombre,
         terminos_que_se_quedan: terminos,

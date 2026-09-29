@@ -8,6 +8,7 @@ import { armarLaPieza } from './pieza.js';
 import { vocabularioDe } from './corrector.js';
 import { crearPublico, evaluar as evaluarConMiroFish } from './mirofish.js';
 import { TARIFA, saldoDe, cobrarCreacion } from './creditos.js';
+import { capaDeOficio } from './oficio.js';
 import { aJson } from '../lib/json-seguro.js';
 
 // =============================================================================================
@@ -1588,8 +1589,12 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
     if (!paqueteDelMercado && piezaDelNegocio) {
       for (const pz of aEscribir) {
         try {
+          // LA CAPA DE OFICIO: el motor de prompts instalado aporta su vocabulario técnico (luz, lente,
+          // encuadre). Se pide con la semilla del título, así cada pieza recibe siempre la misma capa.
+          const oficio = await capaDeOficio(pz.titulo).catch(() => null);
           const pq = promptDelNegocio({
             ...camposDelPrompt,
+            oficio,
             formato: pz.formato,
             piezaTitulo: pz.titulo,
             guion: String(pz.guion || '').split('\n').map(l => l.trim()).filter(Boolean),
