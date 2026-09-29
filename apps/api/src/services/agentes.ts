@@ -5,6 +5,7 @@ import { detectarLengua, lenguaDePais, nombreDeLengua, terminoEnOtrasLenguas, VO
 import { leerIdentidadDeLaPagina } from './identidad.js';
 import { armarInformeDelMercadoLeido, type InformeDelMercado } from './mercado.js';
 import { armarLaPieza } from './pieza.js';
+import { vocabularioDe } from './corrector.js';
 import { crearPublico, evaluar as evaluarConMiroFish } from './mirofish.js';
 import { aJson } from '../lib/json-seguro.js';
 
@@ -1570,6 +1571,16 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
       saturado: armadoDelInforme?.saturacion ?? [],
       comparables: mercado?.comparables ?? [],
       identidad: identidad ?? null,
+      // El vocabulario medido: lo que el negocio dice que ofrece y vende, lo que dice de sí mismo, y los
+      // términos de su categoría y de su mercado en todas sus lenguas. Contra eso se corrigen los tipeos.
+      vocabulario: vocabularioDe([
+        // OJO: la descripción del negocio NO entra acá. Es el texto que se corrige: si entra, sus propios
+        // errores quedan «conocidos» y no se corrigen nunca (pasó con «geelos»).
+        leido.queVende, leido.queHace, leido.rubro, ctx.rubro, ctx.nombre,
+        String(decisiones.prod_1 || ''), String(decisiones.prod_2 || ''),
+        String(decisiones.negocio_que || ''),
+        mercado?.palabras, mercado?.terminos, armadoDelInforme?.saturacion,
+      ]),
     });
     const yaEsta = await db.query(
       `SELECT id FROM piezas WHERE business_id = $1 AND titulo = $2 AND texto = $3 LIMIT 1`,

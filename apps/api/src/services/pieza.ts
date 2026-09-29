@@ -18,6 +18,7 @@
 import { diasEnElAire } from './mercado.js';
 import { detectarLengua } from './lenguas.js';
 import { sinSueltos } from '../lib/json-seguro.js';
+import { corregirConVocabulario } from './corrector.js';
 
 export type PiezaArmada = {
   titulo: string;
@@ -50,6 +51,9 @@ export function armarLaPieza(d: {
   saturado: string[];
   /** Los anuncios comparables, para citar al que más aguanta como referencia de la categoría. */
   comparables: { anunciante: string; copy: string; fecha_inicio: string; paises?: string[] }[];
+  /** Las palabras que el motor ya midió (lo que el negocio ofrece, su categoría, su mercado): contra eso
+   *  se corrigen los errores de tipeo del material, para no publicar «geelos» donde dice «gemelos». */
+  vocabulario: string[];
   identidad: { leida: boolean; url?: string; colores?: { hex: string; usos: number; rol?: string }[]; tipografias?: { familia: string; usos: number; tamano?: string }[]; imagenes?: { url: string; para?: string }[] } | null;
 }): PiezaArmada {
   const frases = enFrases(d.negocio.descripcion);
@@ -83,17 +87,28 @@ export function armarLaPieza(d: {
     : `Escríbanos por ${canal} y lo vemos con su caso.`;
   const boton = d.boton && !/sin definir/.test(d.boton) ? d.boton : `Escribir por ${canal}`;
 
-  const texto = [gancho, cuerpo, cierre, `→ ${boton}`].filter(Boolean).join('\n\n');
+  const textoCrudo = [gancho, cuerpo, cierre, `→ ${boton}`].filter(Boolean).join('\n\n');
+
+  // LOS ERRORES DE TIPEO DEL MATERIAL: la pieza se arma con sus palabras, así que un error de tipeo saldría
+  // publicado tal cual. Se corrige lo que está a uno o dos cambios de una palabra que el motor ya midió, y
+  // cada corrección se dice: el dueño ve qué se le cambió y por qué.
+  const arreglado = corregirConVocabulario(textoCrudo, d.vocabulario);
+  const texto = arreglado.texto;
+  const tituloArreglado = corregirConVocabulario(gancho, d.vocabulario);
+  const correcciones = {
+    ...arreglado.correcciones.reduce((acc, c) => ({ ...acc, [c.de]: c.a }), {} as Record<string, string>),
+    ...tituloArreglado.correcciones.reduce((acc, c) => ({ ...acc, [c.de]: c.a }), {} as Record<string, string>),
+  };
 
   // El guion, solo si la pieza es de video: qué se ve y qué se dice, escena por escena.
   const esVideo = /video|reel|vertical|tiktok/i.test(d.formato);
   const guion = esVideo
-    ? [
+    ? corregirConVocabulario([
         `0-3 s · SE VE: ${gancho.length > 90 ? `${gancho.slice(0, 90)}…` : gancho}`,
         `3-10 s · SE VE: el producto o el trabajo en marcha, sin adornos${(resto[0] || ofrece[0]) ? `\n            DICE: ${resto[0] || ofrece[0]}` : ''}`,
         resto[1] ? `10-20 s · SE VE: una prueba de que funciona\n            DICE: ${resto[1]}` : '',
         `20-30 s · DICE: ${cierre}\n            EN PANTALLA: ${boton}`,
-      ].filter(Boolean).join('\n')
+      ].filter(Boolean).join('\n'), d.vocabulario).texto
     : '';
 
   // La referencia que aguanta en su categoría: el anuncio con más días activo entre los comparables.
@@ -106,7 +121,7 @@ export function armarLaPieza(d: {
   const tipografias = (d.identidad?.tipografias ?? []).slice(0, 2);
 
   return {
-    titulo: gancho.length > 90 ? `${gancho.slice(0, 87)}…` : gancho,
+    titulo: tituloArreglado.texto.length > 90 ? `${tituloArreglado.texto.slice(0, 87)}…` : tituloArreglado.texto,
     formato: d.formato,
     texto,
     guion,
@@ -119,6 +134,12 @@ export function armarLaPieza(d: {
       ],
       aviso_de_material: avisoDeMaterial,
       aviso_del_cuerpo: cuerpoDebil,
+      // Los errores de tipeo que se corrigieron, para que el dueño lo sepa: se corrigen contra lo que el
+      // motor ya midió, no contra un diccionario cualquiera.
+      correcciones_de_tipeo: Object.entries(correcciones).map(([de, a]) => ({ de, a })),
+      por_que_se_corrigio: Object.keys(correcciones).length
+        ? 'venían así en su material y no son palabras de su categoría: esa palabra existe en lo que usted mismo cargó o en el vocabulario de su mercado'
+        : '',
       // ---------- qué es y de dónde sale cada línea ----------
       // La lengua del TEXTO es la del material del negocio —de ahí salen las palabras—, no la del mercado:
       // decir que la pieza está en inglés porque el mercado lo está sería mentir sobre lo que se lee.

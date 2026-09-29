@@ -793,6 +793,13 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
                       {piezaDet.aviso_de_material ? (
                         <div className="acc-why" style={{ marginTop: 8 }}><b>Ojo con el material:</b> {piezaDet.aviso_de_material}</div>
                       ) : null}
+                      {(piezaDet.correcciones_de_tipeo || []).length > 0 && (
+                        <div className="acc-why" style={{ marginTop: 8 }}>
+                          <b>Se corrigió su material:</b>{' '}
+                          {(piezaDet.correcciones_de_tipeo as { de: string; a: string }[]).map(c => `«${c.de}» → «${c.a}»`).join(' · ')}
+                          {piezaDet.por_que_se_corrigio ? `. ${piezaDet.por_que_se_corrigio}` : ''}
+                        </div>
+                      )}
                       {(piezaDet.lo_que_falta || []).length > 0 && (
                         <div className="tiny muted" style={{ marginTop: 10 }}>
                           Lo que todavía no se puede poner: {(piezaDet.lo_que_falta as string[]).join(' · ')}
