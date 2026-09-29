@@ -1,0 +1,10 @@
+---
+description: A glow, optionally neon
+stacking: true
+---
+
+Start
+===
+- one of:
+    - {#glow}
+    - neon {#glow}

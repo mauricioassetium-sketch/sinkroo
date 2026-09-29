@@ -1,0 +1,122 @@
+/* ---------- Composer corner (preview + clear, upper-right of the prompt box) ---------- */
+.composer-corner {
+  position: absolute;
+  top: 0.45rem;
+  right: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  z-index: 2;
+}
+
+/* The clear-x sits inline in the corner cluster (no longer absolutely positioned). */
+.composer-corner .clear-x {
+  position: static;
+}
+
+/* The validity icon lives alone in the upper-LEFT corner of the prompt box (flipped from the
+   right). The editor's first line is indented (below) so typed text clears it. */
+.composer-corner-left {
+  position: absolute;
+  top: 0.55rem;
+  left: 0.95rem; /* align the icon's column with the editor's text (which now starts below it) */
+  display: flex;
+  align-items: center;
+  z-index: 2;
+}
+
+/* Left-align the glyph within its box so it sits in the same column as the text below it. */
+.composer-corner-left .dpl-status {
+  width: auto;
+  justify-content: flex-start;
+}
+
+/* The live-preview trigger as a bare icon (no button chrome) in the corner. */
+.preview-corner {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: none;
+  border-radius: 50%;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.preview-corner:hover {
+  color: var(--accent);
+}
+
+/* The prompt-settings gear as a bare corner icon, sharing the corner cluster with the preview. */
+.composer-corner .prompt-settings-gear {
+  display: inline-flex;
+}
+
+/* Mobile/tablet: the prompt-settings gear popover becomes a full-width bottom sheet over a dimming
+   backdrop (see mobile-sheets.css). Both are `position:fixed` children of this corner, so the
+   corner's `z-index:2` would trap them in its stacking context — pinning the sheet BELOW the Home
+   FAB (z-50) and, worse, below its own dark scrim. Drop the corner's stacking context here so the
+   fixed scrim + sheet escape to the root context (z 90/91) and paint over the whole page. The corner
+   icons still sit above the editor text on their own (they're absolutely positioned, later in DOM). */
+@media (width <= 1024px) {
+  .composer-corner {
+    z-index: auto;
+  }
+}
+
+.gear-corner {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: none;
+  border-radius: 50%;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.gear-corner:hover,
+.gear-corner.on {
+  color: var(--accent);
+}
+
+/* Live DPL validity icon — ✓ clean / ✕ on errors; shares the corner cluster with preview + gear. */
+.dpl-status {
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: help;
+  user-select: none;
+}
+
+.dpl-status.ok {
+  color: var(--ok, #16a34a);
+}
+
+.dpl-status.warn {
+  color: var(--warn, #d97706);
+}
+
+.dpl-status.bad {
+  color: var(--error, #dc2626);
+}
+
+/* In the Manage editor head, sit it just left of Save with a little breathing room. */
+.mg-status {
+  margin-right: 4px;
+}
+

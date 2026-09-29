@@ -1,0 +1,70 @@
+node_modules/
+user-settings.js
+user-settings.json
+/output/**
+!**/.gitkeep
+results.json
+*.lnk
+*-private*
+*private-*
+
+# Local build/CI helper scripts & logs at the repo root (machine-specific, regenerated,
+# never meant to be tracked). Underscore-prefixed by convention; transient logs go in tmp/.
+/_*.bat
+/_*.log
+/_*.sh
+
+# Generated documentation. jsdoc.config.json + scripts/build-docs.mjs ARE tracked;
+# the generated site is not. JSDoc (docdash) builds the unified doc-site (code API +
+# the notes wired in as tutorials) into docs/jsdoc/; build-docs.mjs stages the note
+# tutorial pages under tmp/jsdoc-tutorials/ (tmp/ is already ignored). The whole
+# /docs/ tree is generated output (the retired Doxygen build used /docs/html/).
+/docs/
+# list-cleanup audit artifacts (generated)
+scripts/list-cleanup/out/
+
+# Test artifacts (coverage, Playwright report/results). Vitest/Playwright CONFIGS,
+# the tests/ suite, and the committed visual baselines (tests/e2e/*-snapshots/)
+# ARE tracked; only the generated reports below are not.
+/coverage/
+targets/web/coverage/
+targets/mobile/coverage/
+/playwright-report/
+/test-results/
+/.vitest/
+
+# Local-file storage backend — the legacy flat file + its post-migration rename, the previous
+# per-namespace folder (now migrated under user/) + its aside, and the current user/settings/ store.
+# All user data; never tracked — only the user/ scaffold (README + .gitkeep) is.
+targets/web/.gui-storage.json
+targets/web/.gui-storage.json.migrated
+targets/web/user-settings/
+targets/web/user-settings.migrated/
+/user/settings/*
+!/user/settings/.gitkeep
+
+# Local Netlify folder
+.netlify
+
+# Test / build artifacts (never tracked)
+scripts/list-cleanup/out/
+/tmp/
+/.lighthouseci/
+
+# Large-scale perf-suite fixture files (created on disk during a run, removed on teardown; a stray
+# one after an interrupted run must never be committed). See tests/perf/.
+engine/data/**/perf-harness-*
+# Perf profiling output (scripts/profile-scenarios.mjs — CDP traces + the summary JSON)
+/perf-profile/
+
+# Owner's personal, machine-local scratch todo (informal brain-dump; never project notes)
+notes/todo.txt
+
+# Local screenshot-toolkit output (scripts/screenshots/capture.mjs). The published set is emitted
+# into docs/jsdoc/screenshots by the Pages workflow, not committed. See scripts/screenshots/README.md
+/screenshots-preview/
+engine/core/metroCatalogData.js
+engine/core/metroCatalogData.*.js
+
+# Visual-parity screenshots (scripts/mobile-visual-parity.mjs) — machine-local review output.
+artifacts/

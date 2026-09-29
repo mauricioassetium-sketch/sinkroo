@@ -1,0 +1,29 @@
+node_modules/
+output/
+playwright-report/
+test-results/
+docs/
+tmp/
+assets/
+src/web/frontend/lib/
+targets/web/
+targets/mobile/
+engine/data/*.csv
+engine/data/*.json
+engine/data/sources/
+package-lock.json
+user-settings.json
+results.json
+
+# Prose & doc-nav are not governed by Prettier (its config here targets JS/JSON/YAML code style;
+# the living notes use compact Markdown tables on purpose). Format check stays meaningful for code.
+*.md
+*.dox
+
+# Build/runtime artifacts under targets/ (gitignored; never a format input)
+targets/web/dist/
+targets/web/dist-ssr/
+targets/web/coverage/
+targets/web-shell/app/
+targets/web-shell/target/
+targets/web-shell/gen/

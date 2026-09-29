@@ -1,0 +1,64 @@
+/*
+    Copyright 2022 juenbug12851
+
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+        http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+*/
+
+/**
+ * @file
+ * @brief Pipeline stage: the final whitespace / comma / AND tidy. Notes: notes/reference/prompt-dsl.md.
+ */
+
+/*
+ * 1. Remove empty commas that don't look good
+ * 2. Remove extra spaces that don't look good
+ */
+
+/**
+ * Cleanup pipeline stage: collapse stray whitespace, drop empty `()` and empty
+ * comma segments, and fix `AND,` artifacts — producing the finished prompt string.
+ * @param {string} prompt The prompt after all earlier stages.
+ * @param {object} [settings] Unused (stage-signature parity).
+ * @param {object} [imageSettings] Unused.
+ * @param {object} [upscaleSettings] Unused.
+ * @returns {string} The tidied prompt.
+ */
+export default function cleanup(prompt, _settings, _imageSettings, _upscaleSettings) {
+  // Get rid of extra spaces
+  prompt = prompt.replaceAll(/ +/gm, " ");
+
+  // Remove space before parenthesis
+  prompt = prompt.replaceAll(" )", ")");
+
+  // Get rid of empty parenthesis
+  prompt = prompt.replaceAll(/\( *\)/gm, "");
+
+  // Get rid of unesesary commas
+  prompt = prompt.split(",");
+  const newPromt = [];
+
+  for (const part of prompt) {
+    const el = part.trim();
+    if (el != "") newPromt.push(el);
+  }
+
+  prompt = newPromt.join(", ");
+
+  // STOP SEEPING THROUGH
+  // This is my 3rd check
+  // We can't have commas or anything after AND only spaces
+  prompt = prompt.replaceAll("AND,", "AND");
+
+  // Return prompt
+  return prompt;
+}

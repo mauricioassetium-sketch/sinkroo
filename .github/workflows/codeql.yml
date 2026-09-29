@@ -1,0 +1,46 @@
+name: CodeQL
+
+# GitHub's native SAST — scans the JavaScript/TypeScript for security issues. Findings land in the
+# repo's Security → Code scanning tab. Free for public repositories. No build step: JS/TS is
+# interpreted, so CodeQL analyzes the sources directly.
+#
+# RELEASE-GATED, like the rest of CI (owner, 2026-07-12): the release PR into `main` and pushes to
+# `main` — plus a WEEKLY scan, which is kept deliberately. A security scan that only ever runs when you
+# happen to ship would let a newly-published query sit undiscovered for as long as you don't release;
+# the schedule costs nothing in the edit loop and closes that hole.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "0 6 * * 1" # Mondays 06:00 UTC
+
+# Least privilege at the top level; the analyze job below elevates only what CodeQL needs.
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: Analyze (javascript-typescript)
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81 # v4.37.3
+        with:
+          languages: javascript-typescript
+          config-file: ./.github/codeql/codeql-config.yml
+          queries: security-and-quality
+
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81 # v4.37.3
+        with:
+          category: "/language:javascript-typescript"

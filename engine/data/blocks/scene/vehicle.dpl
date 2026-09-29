@@ -1,0 +1,31 @@
+---
+description: A vehicle, optionally weathered or wrecked
+---
+
+weather-fx
+===
+- one of (25% nothing):
+    - {#ice}
+    - {#underwater}
+
+Start
+===
+vehicle, {scene/vehicle}
+- {#color} paint
+- $intensity-word detailing
+- {mood} atmosphere
+- maybe:
+    - polished
+    - chrome trim
+    - showroom shine
+- otherwise:
+    - dirty
+    - rusted
+    - dented
+    - broken
+    - abandoned
+    - {#eerie}
+- 25% {#mystical}
+- {style/construct}
+
+{#weather}

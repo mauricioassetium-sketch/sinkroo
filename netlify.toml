@@ -1,0 +1,25 @@
+# Netlify build for the React + Vite SPA in targets/web/.
+# The netlify.toml sits at the repo root and paths are repo-root-relative. `npm --prefix targets/web`
+# runs the SPA's scripts in its own package dir.
+# The deployed site is fully static — there is NO server code: BYOK requests go directly
+# from the browser to the provider the user picked. (The former serverless generate/rewrite
+# proxy was retired; providers that can't be called directly from a browser are disabled in
+# the online build rather than relayed.)
+
+[build]
+  command = "npm --prefix targets/web install && npm --prefix targets/web run build"
+  publish = "targets/web/dist"
+
+# Build the ONLINE variant: Generate works for browser-direct providers (BYOK, called straight
+# from the browser), while the local-only features (Gallery / Single view, local SD providers,
+# NSFW) and any provider that would need a server render disabled with a link to the full desktop
+# version. Vite inlines this at build time (import.meta.env.VITE_ONLINE).
+[build.environment]
+  VITE_ONLINE = "true"
+
+# SPA fallback: every path serves index.html so client routing works. Real files in the publish
+# dir (e.g. /legal/*.html, /fonts/*) are served directly and take precedence over this rule.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

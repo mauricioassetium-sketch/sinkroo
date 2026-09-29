@@ -1,0 +1,12 @@
+name: CodeQL config
+
+# Scope CodeQL to the code we maintain. Generated/build output, the JSDoc site, the read-only
+# reference clones, and vendored deps are excluded to keep the scan focused and the Security tab
+# signal high.
+paths-ignore:
+  - "**/dist"
+  - "**/coverage"
+  - "**/node_modules"
+  - docs
+  - assets/references
+  - "**/*.min.js"

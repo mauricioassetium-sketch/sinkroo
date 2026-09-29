@@ -1,0 +1,15 @@
+---
+description: An interior room
+---
+
+Start
+===
+room, interior, {room}
+- {#room-state}
+- {style/general}
+- furniture
+- window
+- $intensity-word clutter
+- {time}
+- [i>70%] richly decorated, ornate
+- [i<25%] minimalist, sparse

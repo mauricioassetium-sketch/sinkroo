@@ -1,0 +1,72 @@
+name: Docs (GitHub Pages)
+
+# Builds the JSDoc doc-site (the code API + the living notes wired in as tutorial pages, via
+# scripts/build-docs.mjs with the docdash template) and deploys it to GitHub Pages on every
+# push to main. README.md is the Pages home (jsdoc `opts.readme`).
+# See notes/reference/documentation.md and notes/reference/deployment.md.
+#
+# One-time setup on the repo: Settings -> Pages -> Build and deployment -> Source = GitHub Actions.
+
+# Auto-deploy on push to main: build-docs.mjs resolves notes/ + assets/ + README +
+# jsdoc.config.json and the code (src/ + targets/web/) all at the repo root, and `npm run docs` is green.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow one concurrent deploy; don't cancel an in-progress run.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Generate docs (JSDoc + notes)
+        run: npm run docs
+
+      # Regenerate the release screenshots + GIF walkthroughs and drop them INTO the built docs site
+      # (docs/jsdoc/screenshots), so they publish with every release and are reachable at
+      # <pages-url>/screenshots/. They are never committed to the repo. See scripts/screenshots/.
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Capture release screenshots
+        run: node scripts/screenshots/capture.mjs --build --out docs/jsdoc/screenshots
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          # build-docs.mjs writes the site to the REPO-ROOT docs/jsdoc (next to jsdoc.config.json),
+          # and upload-pages-artifact paths are repo-root-relative (ignores working-directory).
+          path: docs/jsdoc
+
+  deploy:
+    name: Deploy to Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5.0.0

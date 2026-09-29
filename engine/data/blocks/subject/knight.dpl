@@ -1,0 +1,22 @@
+---
+description: A knight / warrior character
+---
+
+Start
+===
+knight, warrior, {#portrait}
+- one of:
+    - plate armor
+    - chainmail
+    - nordic armor
+    - ornate gilded armor
+- helmet
+- holding a sword
+- 50% tattered cape
+- 50% kite shield
+- {emotion}
+- {#mystical}
+- {#general-state}
+- character design
+- [i>70%] intricate engraved filigree
+- [i<25%] plain weathered gear

@@ -1,0 +1,324 @@
+/* ---------- DPL editor (CodeMirror) ---------- */
+
+/* A controlled CodeMirror instance dressed to read like the textarea it replaced. Colors come
+   from the --dpl-* variables so highlighting follows the light/dark theme. */
+.dpl-editor {
+  display: flex;
+  min-width: 0;
+}
+
+.dpl-editor .cm-editor {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  color: var(--fg);
+}
+
+.dpl-editor .cm-editor.cm-focused {
+  outline: none;
+}
+
+.dpl-editor .cm-scroller {
+  font-family: var(--font-body);
+  line-height: 1.5;
+  overflow: auto;
+}
+
+.dpl-editor .cm-content {
+  padding: 0;
+  caret-color: var(--accent);
+}
+
+.dpl-editor .cm-line {
+  padding: 0;
+}
+
+.dpl-editor .cm-placeholder {
+  color: var(--faint);
+}
+
+.dpl-editor .cm-cursor {
+  border-left-color: var(--accent);
+}
+
+.dpl-editor .cm-selectionBackground,
+.dpl-editor .cm-content ::selection {
+  background: var(--accent-soft);
+}
+
+.dpl-editor.cm-focused .cm-selectionBackground,
+.dpl-editor .cm-focused .cm-selectionBackground {
+  background: var(--accent-soft);
+}
+
+/* Token colors */
+.cm-dpl-gen {
+  color: var(--dpl-gen);
+  font-weight: 600;
+}
+
+.cm-dpl-list {
+  color: var(--dpl-list);
+}
+
+.cm-dpl-ref {
+  color: var(--dpl-ref);
+}
+
+.cm-dpl-weight {
+  color: var(--dpl-weight);
+}
+
+.cm-dpl-gate {
+  color: var(--dpl-gate);
+  font-weight: 600;
+}
+
+.cm-dpl-keyword {
+  color: var(--dpl-keyword);
+}
+
+.cm-dpl-bullet {
+  color: var(--muted);
+}
+
+.cm-dpl-heading {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.cm-dpl-comment {
+  color: var(--faint);
+  font-style: italic;
+}
+
+.cm-dpl-dial {
+  color: var(--dpl-dial);
+  font-weight: 600;
+}
+
+.cm-dpl-fmdelim {
+  color: var(--dpl-fmdelim);
+  font-weight: 700;
+}
+
+.cm-dpl-fmkey {
+  color: var(--dpl-fmkey);
+  font-weight: 600;
+}
+
+.cm-dpl-fmval {
+  color: var(--dpl-fmval);
+}
+
+.cm-dpl-secname {
+  color: var(--dpl-section);
+  font-weight: 700;
+}
+
+.cm-dpl-secname-special {
+  color: var(--dpl-section-special);
+  font-weight: 700;
+}
+
+/* ---------- Gutters: line numbers + the `+` action gutter ---------- */
+
+/* The gutter background, the active-line body, the active-line NUMBER, and the selection color now
+   live in the shared CodeMirror `theme` (lib/editorChrome.js) — NOT here. A plain-CSS override on
+   `.cm-gutters` / `.cm-activeLine` sits at the same specificity as CodeMirror's own gutter
+   baseTheme and loses to it on source order (CM injects its \3c style> after our bundle), which is
+   exactly what let CM's light defaults — a bright-white gutter (#f5f5f5) and a milky active-line
+   wash — leak through in dark mode. A `theme` extension gets StyleModule priority over the
+   baseTheme, so it wins. Only gutter LAYOUT (font + number padding) stays here. */
+.dpl-editor .cm-gutters {
+  font-family: var(--font-body);
+}
+
+.dpl-editor .cm-lineNumbers .cm-gutterElement {
+  padding: 0 6px 0 8px;
+  min-width: 1.6em;
+}
+
+/* The `+` line-action gutter and its marker. */
+.dpl-editor .dpl-la-gutter {
+  min-width: 18px;
+}
+
+.dpl-editor .dpl-la-gutter .cm-gutterElement {
+  cursor: pointer;
+  padding: 0;
+}
+
+.dpl-plus {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-top: 1px;
+  border-radius: 5px;
+  color: var(--muted);
+  font-weight: 700;
+  line-height: 1;
+  transition:
+    background 0.12s ease,
+    color 0.12s ease;
+}
+
+.dpl-la-gutter .cm-gutterElement:hover .dpl-plus {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+/* ---------- The context-aware line-action menu (position:fixed on body) ---------- */
+.dpl-la-menu {
+  position: fixed;
+  z-index: 9999;
+  min-width: 200px;
+  max-width: 280px;
+  padding: 4px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgb(0 0 0 / 28%);
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--fg);
+}
+
+.dpl-la-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.dpl-la-back {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+}
+
+.dpl-la-back:hover {
+  color: var(--accent);
+}
+
+.dpl-la-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 9px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dpl-la-item:hover {
+  background: var(--accent-soft);
+}
+
+.dpl-la-arrow {
+  color: var(--faint);
+}
+
+/* ---------- The hover intensity/focus dials ---------- */
+.dpl-dials {
+  position: fixed;
+  z-index: 9999;
+  transform: translate(-50%, calc(-100% - 8px));
+  display: flex;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 26%);
+}
+
+.dpl-dial {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  user-select: none;
+}
+
+.dpl-dial-svg {
+  cursor: grab;
+  touch-action: none;
+}
+
+.dpl-dial-svg:active {
+  cursor: grabbing;
+}
+
+.dpl-dial-track {
+  fill: none;
+  stroke: var(--border);
+  stroke-width: 4;
+  stroke-linecap: round;
+}
+
+.dpl-dial-fill {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 4;
+  stroke-linecap: round;
+}
+
+.dpl-dial-needle {
+  stroke: var(--fg);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.dpl-dial-home {
+  stroke: var(--faint);
+  stroke-width: 1.5;
+}
+
+.dpl-dial-hub {
+  fill: var(--accent);
+}
+
+.dpl-dial.is-default .dpl-dial-needle {
+  stroke: var(--muted);
+}
+
+.dpl-dial.is-default .dpl-dial-hub {
+  fill: var(--muted);
+}
+
+.dpl-dial-num {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--fg);
+  line-height: 1;
+}
+
+.dpl-dial.is-default .dpl-dial-num {
+  color: var(--muted);
+}
+
+.dpl-dial-label {
+  font-size: 10px;
+  letter-spacing: 0.03em;
+  color: var(--faint);
+  text-transform: lowercase;
+}
+

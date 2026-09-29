@@ -1,0 +1,23 @@
+---
+description: A log cabin in dense forest
+---
+
+Start
+===
+((cabin, log cabin)), dense forest, dense trees
+- fog
+- hill
+- valley
+- 25% winter, snow landscape, {#ice}
+- 20% {#eerie}
+- 25% {#mystical}
+- 30% {#wildlife}
+- {#water}
+- worn weathered logs
+- stone chimney
+- 50% smoke rising from the chimney
+- winding path
+- {time}
+- [i<25%] tiny secluded hut
+
+{#nature}, {#weather}, up close

@@ -1,0 +1,27 @@
+---
+description: Outer space scene
+---
+
+Start
+===
+space, outer space
+- 50% one of:
+    - astronaut
+    - {#spaceship}
+- nebula
+- galaxy
+- {#color} $intensity-word sun
+- {#color} $intensity-word moon
+- {#color} $intensity-word {planet}
+- {#color} stars
+- shooting star
+- comet
+- distant galaxies
+- star cluster
+- black hole
+- supernova
+- cosmic dust
+- $intensity-word starfield
+- {#mystical}
+- colorful
+

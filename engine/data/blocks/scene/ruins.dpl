@@ -1,0 +1,41 @@
+---
+description: Ruins of a building, ship, room, city, or vehicle
+---
+
+Start
+===
+- one of:
+    - ship, {scene/ship}
+    - room, interior, {room}
+    - house
+    - city, street view, {city}
+    - building
+    - vehicle, {scene/vehicle}
+- abandoned ruins
+- rubble
+- {mood} atmosphere
+- $intensity-word decay
+- cracked
+- crumbling
+- [i>70%] vast sprawling ruins
+- [i<25%] a single ruined fragment
+
+; extra depth — admitted at lower focus, stripped as focus rises
+[f<65%] rusted metal, broken windows
+[f<60%] overgrown vines, creeping moss
+[f<55%] collapsed roof, exposed beams
+[f<50%] scattered debris, clutter
+[f<45%] graffiti, faded signs
+[f<40%] {style/general}
+
+; out-of-subject fluff — only at low focus
+[f<25%] a campfire left by scavengers
+[f<20%] a lone wanderer picking through the wreckage
+
+; atmosphere garnish
+[f<70%] {#nature}
+[f<55%] {#wildlife}
+[f<50%] {#eerie}
+[f<40%] {#mystical}
+[f<35%] {#ice}
+[f<70%] {#weather}

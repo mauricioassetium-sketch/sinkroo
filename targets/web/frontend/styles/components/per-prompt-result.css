@@ -1,0 +1,300 @@
+/* ---------- Per-prompt result (prompt + image batches) ---------- */
+
+/* Higher specificity than `.prompts li` so column + stretch actually win — otherwise the
+   gallery shrinks to content width (≈3 columns) and the placeholders stack. */
+.prompts li.prompt-result {
+  flex-direction: column;
+  gap: 0.6rem;
+  align-items: stretch;
+
+  /* Render-containment: rows outside the viewport skip layout, paint, AND image decode, so a list
+     of 1000 prompts (each with up to ~10 image thumbnails) stays smooth to scroll and cheap to keep
+     mounted across tab switches — the browser only does the work for the rows actually on screen.
+     `contain-intrinsic-size` is the placeholder size used before a row has been rendered once (a
+     prompt-only row ≈ one text line); it self-corrects to the real height once scrolled into view. */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 3rem;
+}
+
+.prompt-line {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+}
+
+.prompt-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.prompt-dpl {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: var(--faint);
+  cursor: copy;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.prompt-dpl:hover {
+  color: var(--accent);
+}
+
+.prompt-original {
+  color: var(--muted);
+}
+
+.prompt-original::before {
+  content: "original: ";
+  color: var(--faint);
+  font-weight: 700;
+}
+
+.prompt-text {
+  min-width: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.results-head-right {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.source-dpl {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  margin-bottom: 0.7rem;
+  padding: 0.5rem 0.65rem;
+  background: var(--panel-2);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+}
+
+.source-dpl-label {
+  flex: none;
+  margin-top: 0.15rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--accent);
+}
+
+.source-dpl-text {
+  flex: 1;
+  min-width: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--fg-soft);
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.prompt-actions {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  flex: none;
+}
+
+.gen-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.7rem;
+  font-size: 0.76rem;
+  border-radius: var(--radius-pill);
+  background: var(--accent-soft);
+  border: 1px solid transparent;
+  color: var(--accent);
+}
+
+.gen-btn:hover {
+  border-color: var(--accent);
+}
+
+/* "Clear" actions as flat trash-icon buttons (both desktop + mobile): the per-prompt clear and the
+   results-header "Clear all". Muted by default, red on hover. */
+.clear-all-btn,
+.copy-mini.clear-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.28rem;
+  border: none;
+  background: none;
+  color: var(--faint);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+
+.clear-all-btn svg,
+.copy-mini.clear-icon-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.clear-all-btn:hover,
+.copy-mini.clear-icon-btn:hover {
+  color: var(--danger, #e5484d);
+  background: var(--chip-hover);
+}
+
+/* --- Compact (<=768px): "More images" → icon only; prompt text full-width below the number. --- */
+@media (width <= 768px) {
+  .gen-btn-label {
+    display: none;
+  }
+
+  .gen-btn {
+    padding: 0.4rem 0.5rem;
+  }
+
+  .prompt-line {
+    flex-wrap: wrap;
+  }
+
+  .prompt-line .idx {
+    order: 1;
+  }
+
+  .prompt-line .prompt-actions {
+    order: 2;
+    margin-left: auto;
+  }
+
+  .prompt-line .prompt-main {
+    order: 3;
+    flex-basis: 100%;
+  }
+}
+
+.batch {
+  border-top: 1px solid var(--border-soft);
+  padding-top: 0.55rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.batch-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.batch-label {
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.batch-status {
+  color: var(--accent);
+}
+
+.batch-loading {
+  font-size: 0.82rem;
+  color: var(--muted);
+  padding: 1rem;
+  text-align: center;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  color: var(--faint);
+  font-size: 0.74rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.link-btn:hover {
+  color: var(--accent);
+  border: none;
+}
+
+.clear-imgs {
+  align-self: flex-start;
+  margin-top: 0.1rem;
+}
+
+/* image action overlay */
+.gallery figure {
+  position: relative;
+}
+
+.img-actions {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  display: flex;
+  gap: 3px;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.gallery figure:hover .img-actions,
+.img-actions:focus-within {
+  opacity: 1;
+}
+
+.img-actions button {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  line-height: 1;
+  border-radius: 6px;
+  background: rgb(0 0 0 / 60%);
+  border: 1px solid rgb(255 255 255 / 18%);
+  color: #fff;
+}
+
+.img-actions button:hover {
+  background: rgb(0 0 0 / 85%);
+  border-color: var(--accent);
+}
+
+/* loading placeholder (shimmer) + fade-in on load */
+.img-skeleton {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: linear-gradient(100deg, var(--bg-2) 30%, var(--chip-hover) 50%, var(--bg-2) 70%);
+  background-size: 200% 100%;
+  animation: shimmer 1.25s ease-in-out infinite;
+}
+

@@ -1,0 +1,8 @@
+aerial view
+bird view
+groundview
+Head shot
+helicopter view
+roadview
+street view
+telescope view

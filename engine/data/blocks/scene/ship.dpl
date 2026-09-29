@@ -1,0 +1,34 @@
+---
+description: A ship, optionally weathered or wrecked
+---
+
+weather-fx
+===
+- one of (25% nothing):
+    - {#ice}
+    - {#underwater}
+
+Start
+===
+ship, {scene/ship}
+- 50% +weather-fx
+- {#color} hull
+- $intensity-word sails
+- {mood} atmosphere
+- rigging
+- maybe:
+    - polished deck
+    - gleaming brass
+    - billowing sails
+- otherwise:
+    - weathered
+    - barnacle-crusted
+    - torn sails
+    - abandoned
+    - ghost ship
+    - wrecked
+    - {#eerie}
+- 25% {#mystical}
+- {style/construct}
+
+{#weather}

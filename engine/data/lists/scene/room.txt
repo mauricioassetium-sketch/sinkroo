@@ -1,0 +1,28 @@
+Attic
+Basement
+Bedroom
+Cellar
+Closet
+Den
+Dining Room
+Entrance hall
+Foyer
+Game Room
+Garage
+Guest Room
+Home Gym
+Home Office
+Home Theatre Room
+Kitchen
+Laundry Room
+Library
+Linen Closet
+Living Room
+Loft
+Master Bedroom
+Music Room
+Pantry
+Reception Room
+Shed
+Storage Room
+Sunroom

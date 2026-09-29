@@ -1,0 +1,47 @@
+---
+description: A beach / coastal scene — sand, surf, and sky
+---
+
+winter-beach
+===
+- snowy beach
+- ({#ice})
+- cold grey surf
+
+tropical-beach
+===
+- tropical
+- maybe palm trees
+- otherwise palm tree
+- turquoise water
+
+Start
+===
+beach
+- 25% +winter-beach
+- otherwise +tropical-beach
+- ocean
+- seaside
+- sandy shore
+- $intensity-word waves
+- {time}
+- [i>65%] dramatic crashing surf
+- [i<25%] calm still shallows
+
+; extra depth — admitted at lower focus, stripped as focus rises
+[f<65%] sea foam
+[f<60%] sea shells, smooth pebbles
+[f<55%] tide pools
+[f<50%] driftwood
+[f<45%] distant sailboat
+[f<35%] rocky headland, sea cliffs
+
+; out-of-subject fluff — only at low focus
+[f<25%] beach umbrellas, deck chairs
+[f<20%] a coastal town in the distance
+
+; atmosphere garnish
+[f<70%] {#nature}
+[f<55%] {#eerie}
+[f<35%] {#mystical}
+[f<70%] {#weather}

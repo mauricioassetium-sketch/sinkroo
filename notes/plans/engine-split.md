@@ -1,0 +1,92 @@
+# Plan — Split into engine-v1-2 (frozen) + engine-v3 (the project)
+
+> **Superseded / reversed (2026-07-02).** This split has since been **undone**: `engine-v1-2/` was
+> removed from the tree (it lives in git history + the reference clone under `assets/references/`), and
+> `engine-v3/`'s contents were flattened back up to the **repo root**, so there is one project again.
+> This page is kept as the historical record of why/how the split was done; the `engine-v3/…` paths it
+> describes are now at the repo root. See the changelog entry for 2026-07-02.
+
+**Status: core split DONE & verified on `feature/legacy-isolation` (Stages 1–5). Follow-ups below.**
+Untangle the repo into two clearly
+labeled, fully disconnected trees that share **zero files**:
+
+- **`engine-v1-2/`** — the **literal pre-revival snapshot** (commit `241a148`, 2023-04-07, CommonJS),
+  restored as-is. Frozen, untouched, self-contained: its own `package.json` + `package-lock.json` +
+  `webui.bat`/`update.bat`, and `web/` contained inside it. It is **bulk code on its way out** — kept
+  runnable until deleted, but NOT a maintained project (no CI, no VERSION, no release flow of its own).
+- **`engine-v3/`** — **the** project. The new system (core engine + SPA) relocated here, self-contained,
+  with the project's `package.json` / configs / CI pointing at it. Root becomes a thin wrapper.
+
+Locked decisions (owner, 2026-06-25):
+- **Single project.** Only `engine-v3` is developed/maintained/released. `engine-v1-2` is frozen bulk.
+- **engine-v1-2 = pre-revival restore from git history** (not the current ESM-migrated legacy). The current
+  transitional legacy code in `src/` (classic server, CLI, old `prompt-modules` stages, `common.js`,
+  image/upscale/animation, `src/web/`) is **deleted** from the project — the old system is preserved by the
+  `engine-v1-2` snapshot, so the in-between version is redundant.
+- **engine-v3 keeps the `v1`/`v2`/`v3` block subfolders**, but v1/v2 generator code (unchanged) is
+  reorganized and re-wired to the **new** keyword lists + SFW/NSFW gating — same output, new plumbing.
+- **No expansions in engine-v3** (already moved to blocks + removed from the SPA UX).
+- **Zero shared files** between the two trees.
+- Root **README** must tell users where old (`engine-v1-2`, complete/frozen) and new (`engine-v3`, active)
+  live, and that the old is complete.
+
+## Target layout
+```
+random-ai-prompt/
+├── engine-v1-2/      pre-revival snapshot — frozen, self-contained (DONE)
+├── engine-v3/        THE project: engine/core/, web-app/, data/ (dynprompts v1/v2/v3 + new lists, NO expansions),
+│                     tests/, scripts/, package.json, vite/vitest/playwright/eslint configs, VERSION
+├── notes/            repo-level notes (stay at root)
+├── .github/          CI — retargeted into engine-v3/
+├── README.md         root: points to both; marks engine-v1-2 complete/frozen
+└── .git, CLAUDE.md, fairyfox node
+```
+
+## Execution stages (each verified)
+1. **DONE** — Restore `241a148` into `engine-v1-2/` (git archive → extract).
+2. Scaffold `engine-v3/`; `git mv` the new system in, **preserving relative structure** so sibling relative
+   imports stay valid (e.g. `web-app → ../../../engine/core`, `data` generators → `../engine/helpers/...`). Move:
+   `engine/core/`, the kernel modules, `web-app/`, `data/` (minus `expansions/`), `tests/`, `scripts/`,
+   `package.json` + lockfile, all configs, `VERSION`.
+3. **Drop** expansions from engine-v3 (`data/expansions*`, the expansion stage if new engine still imports it
+   — verify) and **delete** the transitional legacy `src/` files (preserved in engine-v1-2).
+4. Fix root-relative references: CI `working-directory` / `npm --prefix`, `package.json` scripts, the smoke
+   test target, doc-site build paths.
+5. **Verify both:** engine-v3 → `lint` + `smoke` + `web-app build` + Vitest green; engine-v1-2 → actually
+   boots (CLI + classic server) and behaves as before *(caveat: it's CommonJS for older Node + era deps —
+   may need its pinned Node/deps; document if so)*. Write the root README.
+6. Commit (changelog in the merge commit), merge `--no-ff` into `dev`, delete branch, push.
+
+## Landmines
+- `chdir.js` repo-root `".."` math — it's **legacy-only**, rides into engine-v1-2; engine-v3 doesn't use it.
+- `data/` generators use relative `../engine/helpers/keywordRepeater.js` — fine as long as `data/` and `src/`
+  move **together** under engine-v3 (relative depth preserved).
+- The smoke test currently boots `common.js` (legacy) — retarget to the engine-v3 core path.
+- CRLF noise: the working tree shows mass `M` files with empty `git diff` (`core.autocrlf=true`) — ignore; stage only real changes.
+
+## Follow-ups
+Done (2026-06-25): **engine-v3 deps pruned** (removed express/pug/yargs/open/cli-progress/crc — `npm install`
+dropped 149 packages, smoke + 84 tests green); **`CLAUDE.md` reframed** (intro + Build/Run scoped to
+engine-v3); **`status.md` + `context/architecture.md`** got structure banners; loose ends cleaned (stale
+:7861 server killed, stray log removed).
+
+Also done (2026-06-26): **v3-only** (v1/v2 generations deleted) and the **expansion mechanism fully
+removed** (engine stage, classifier, both loaders, SPA UI, data, dead code). **CI fixed** (switched
+install to `npm install` — npm's cross-platform `@emnapi` lockfile bug). **`systems/*` + `project`
+deep-dives** got structure banners. **Released 2.7.0** (`main` + tag `v2.7.0`; `VERSION` stays at repo root).
+
+Still open:
+- **Doc-site (`npm run docs`) + Pages** — `build-docs.mjs` resolves `notes/`/`assets/` at the repo root
+  while `src/`/`web-app/` are under `engine-v3/`, and jsdoc's config/cwd are no longer co-located. Needs a
+  two-base-dir fix (repo root for notes/assets/README; engine-v3 for src/data/web-app + jsdoc). Until then
+  the release docs-zip is `continue-on-error` and `pages.yml` auto-deploy is paused (`workflow_dispatch`
+  only). **This is the main remaining follow-up.**
+- **Deeper notes body** — `systems/*` / `context/*` paragraphs still describe the pre-split single tree
+  (entry docs carry banners; full body rewrites are low-value polish).
+- **Release process** — reconcile the `release.yml` tag-gate vs the manual-tag git-flow (see
+  `sessions/2026-06-26.md`).
+- **fairyfox registry** — confirm how the hub tracks the relocated `engine-v3/` project (owner, hub-side).
+
+## See also
+- [`generate-page-triage.md`](generate-page-triage.md) — the Sweep prune this unblocks (trivial once isolated).
+- `classic-server-read-only` memory — the standing "old is being deleted" directive.

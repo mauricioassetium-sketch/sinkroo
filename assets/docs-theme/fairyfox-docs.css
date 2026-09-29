@@ -1,0 +1,23 @@
+/* ============================================================================
+   fairyfox-docs.css — the doc-site theme entry.
+
+   The build (scripts/build-docs.mjs) copies this over docdash's generated
+   styles/jsdoc.css, so it is the single authoritative stylesheet driving
+   docdash's DOM. It is intentionally tiny: it @imports small, focused partials
+   from ./theme/ (also copied into styles/theme/ at build time). Native browser
+   @import — no bundler. Order matters: tokens first, then the base, then the
+   layout/chrome/content layers, then the injected widgets.
+
+   Visuals reproduce the fairyfox.io docs-site design system (warm palette,
+   Fraunces/Inter/JetBrains) so these docs read as part of fairyfox.io. The
+   header, subnav, footer and reader menu are injected by fairyfox-docs.js.
+   ========================================================================== */
+
+@import "theme/tokens.css";
+@import "theme/base.css";
+@import "theme/layout.css";
+@import "theme/chrome.css";
+@import "theme/content.css";
+@import "theme/reader.css";
+@import "theme/coins.css";
+@import "theme/download.css";

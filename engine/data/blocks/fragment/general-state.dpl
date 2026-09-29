@@ -1,0 +1,17 @@
+---
+description: General condition — clean/reflective or dirty/broken
+---
+
+Start
+===
+- {mood} atmosphere
+- maybe:
+    - reflective surface
+    - polished
+    - pristine
+- otherwise:
+    - weathered
+    - grunge
+    - cracked
+    - broken
+- $intensity-word wear

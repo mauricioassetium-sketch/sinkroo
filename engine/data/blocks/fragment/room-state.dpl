@@ -1,0 +1,25 @@
+---
+description: Room condition — clean/reflective or dirty/rundown, plus furnishings
+---
+
+Start
+===
+- {mood} atmosphere
+- maybe:
+    - reflective surface
+    - polished
+    - pristine
+- otherwise:
+    - dirty
+    - cobwebs
+    - grunge
+    - rundown
+    - peeling wallpaper
+    - mold
+    - shattered glass
+- $intensity-word clutter
+- furniture
+- accessories
+- window
+- furnished
+- {style/general}
