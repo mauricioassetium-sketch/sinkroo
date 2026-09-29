@@ -67,6 +67,28 @@ export async function entradaRoutes(app: FastifyInstance) {
       });
     }
 
+    // EL CÓDIGO ÚNICO DEL PRODUCTO. Uno solo, para todas las cuentas, que no se gasta, no cambia y no se
+    // marca como usado. Vive en la CONFIGURACIÓN del servidor (no en la base) justamente para eso: ningún
+    // borrado de datos lo toca y nadie lo modifica desde el panel. Acá se materializa una sola vez en la
+    // tabla —con usos_max al tope, así no se agota nunca— para que quede el registro de quién entró con él.
+    // Va ANTES del freno de intentos: el código correcto tiene que servir siempre, aunque la IP haya
+    // errado antes; los intentos equivocados siguen frenados.
+    const unico = codigoNormal(process.env.CODIGO_ENTRADA_UNICO);
+    if (unico && codigo === unico) {
+      const NOTA = 'código único: sirve para todas las cuentas, todas las veces, y no se gasta';
+      await query(
+        `INSERT INTO codigos_entrada (codigo, nota, usos_max) VALUES ($1, $2, 2147483647)
+         ON CONFLICT (codigo) DO UPDATE SET nota = EXCLUDED.nota, usos_max = 2147483647`,
+        [unico, NOTA],
+      );
+      await query(
+        `INSERT INTO codigos_entrada_usos (codigo, business_id) VALUES ($1, $2)
+         ON CONFLICT (codigo, business_id) DO NOTHING`,
+        [unico, u.business_id],
+      );
+      return { ok: true, ya: false, unico: true, nota: NOTA };
+    }
+
     // Si el negocio ya entró, se responde con la nota y NO se gasta otro uso. Va antes del freno para que
     // un negocio que ya está adentro no quede frenado por preguntar de nuevo.
     const mio = await query<{ nota: string }>(
