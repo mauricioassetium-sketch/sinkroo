@@ -9,6 +9,7 @@ import { vocabularioDe } from './corrector.js';
 import { crearPublico, evaluar as evaluarConMiroFish } from './mirofish.js';
 import { TARIFA, saldoDe, cobrarCreacion } from './creditos.js';
 import { capaDeOficio } from './oficio.js';
+import { planosDelGuion } from './planos.js';
 import { aJson } from '../lib/json-seguro.js';
 
 // =============================================================================================
@@ -1581,6 +1582,21 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
           String((pz.detalle as any)?.variante?.angulo || '')],
       );
       escritasAhora++;
+      // LOS PLANOS: solo las piezas de video tienen guion que desglosar. Se guardan dentro de la pieza
+      // (`generacion.planos`), en su propia fila, para que la ficha del panel los muestre junto al prompt.
+      // Solo VIDEO: un reel de texto lleva tarjetas, no planos filmados; una imagen no tiene planos.
+      if (/^video/i.test(String(pz.formato || '').trim()) && String(pz.guion || '').trim().length >= 40) {
+        try {
+          const planos = await planosDelGuion(String(pz.guion));
+          if (planos) {
+            await db.query(
+              `UPDATE piezas SET generacion = jsonb_set(generacion, '{planos}', $2::jsonb)
+                WHERE business_id = $1 AND titulo = $3 AND texto = $4`,
+              [ctx.businessId, aJson(planos), pz.titulo, pz.texto],
+            );
+          }
+        } catch (e) { console.error('[planos] no se pudo desglosar el guion:', (e as Error)?.message); }
+      }
     }
     // EL PROMPT DE CADA PIEZA, EN SU FORMATO. Una pieza de imagen pide UNA imagen (sin planos, sin voz, sin
     // segundos) y su texto sobre la imagen; una de video pide el paquete completo. Antes se guardaba un solo

@@ -196,6 +196,8 @@ type PiezaGal = {
   tarjetas: { n: number; texto: string; segundos: number; fondo: string }[];
   /** El texto que va encima, cuando la pieza es una imagen. */
   texto_sobre_la_imagen: string;
+  /** Los planos del guion (solo las piezas de video): prompt, negativo, duración y audio de cada uno. */
+  planos: { planos: { n: number; duracion_s: number; prompt: string; prompt_negativo: string; audio?: string }[]; duracion_total_s: number; motor: string; estilo_unificado: string; modelos_declarados: { video: string; audio: string } } | null;
   /** La especificación del formato: qué es, qué produce y con qué criterios se juzga. */
   formato_pide: { nombre?: string; que_es?: string; entregable?: string; como_se_arma?: string; criterios_con_los_que_se_juzga?: string[] } | null;
 };
@@ -232,6 +234,7 @@ export function Galeria({ setToast, ir }: { modo: Modo; setToast: (t: string) =>
       tarjetas: ((g as { tarjetas?: { n: number; texto: string; segundos: number; fondo: string }[] }).tarjetas ?? []),
       texto_sobre_la_imagen: String((g as { texto_sobre_la_imagen?: string }).texto_sobre_la_imagen || ''),
       formato_pide: ((g as { lo_que_el_formato_pide?: never }).lo_que_el_formato_pide ?? null),
+      planos: ((g as { planos?: never }).planos ?? null),
       prompt: porNombre ?? null,
     };
   });
@@ -374,6 +377,23 @@ export function Galeria({ setToast, ir }: { modo: Modo; setToast: (t: string) =>
                       <div className="op-row">
                         <span className="op-k">El texto sobre la imagen</span>
                         <span className="bs">{o.texto_sobre_la_imagen}</span>
+                      </div>
+                    ) : null}
+                    {o.planos && o.planos.planos.length ? (
+                      <div className="op-row">
+                        <span className="op-k">Los planos, para el generador de video</span>
+                        <span className="bs">
+                          <span className="tiny muted" style={{ display: 'block' }}>
+                            {`${o.planos.planos.length} planos · ${o.planos.duracion_total_s} s en total · ${o.planos.motor} · para ${o.planos.modelos_declarados.video}`}
+                          </span>
+                          {o.planos.planos.map(p => (
+                            <span style={{ display: 'block', marginTop: 6 }} key={p.n}>
+                              {`Plano ${p.n} · ${p.duracion_s} s`}
+                              <span className="tiny muted" style={{ display: 'block' }}>{p.prompt}</span>
+                              {p.prompt_negativo ? <span className="tiny muted" style={{ display: 'block' }}>{`No debe aparecer: ${p.prompt_negativo}`}</span> : null}
+                            </span>
+                          ))}
+                        </span>
                       </div>
                     ) : null}
                     {o.formato_pide ? (
