@@ -1,5 +1,6 @@
 import type { Pool } from 'pg';
 import type { Identidad } from './identidad.js';
+import { claseDeFormato, ESPECIFICACION, proporcionDe } from './formatos.js';
 
 // =============================================================================================
 // EL FORMATO DEL PROMPT DE GENERACIÓN — lo que el agente de arte entrega para que, cuando exista la
@@ -613,10 +614,14 @@ export function promptDelNegocio(datos: {
   // salía pidiendo un video de 30 segundos.
   // ---------------------------------------------------------------------------------------------
   const formatoPieza = String(datos.formato || 'video vertical 9:16');
-  // OJO: «reel con texto SOBRE IMAGEN» es un video, no una imagen: se decide por lo que ES (video, reel,
-  // historia, clip) y no por las palabras sueltas del formato.
-  const esVideo = /\b(video|reel|reels|historia|story|tiktok|clip)\b/i.test(formatoPieza);
-  const proporcion = /9:16|vertical|reel/i.test(formatoPieza) ? '9:16' : /1:1|cuadrad/i.test(formatoPieza) ? '1:1' : '9:16';
+  // CADA FORMATO ES OTRA COSA y se decide por lo que ES: un video (planos y voz), un REEL DE TEXTO
+  // (tarjetas que se leen, sin voz ni audio) o una IMAGEN (un cuadro con su texto). «Reel con texto sobre
+  // imagen» es un reel de texto —no un video con voz, y tampoco una imagen— y antes caía del lado del video.
+  const clase = claseDeFormato(formatoPieza);
+  const spec = ESPECIFICACION[clase];
+  const esVideo = clase === 'video';
+  const esReelTexto = clase === 'reel_texto';
+  const proporcion = proporcionDe(formatoPieza);
   const resolucion = proporcion === '9:16' ? '1080x1920' : '1080x1080';
 
   // LA RUTA DE PRODUCCIÓN, DICHA. Un generador de video NO puede entregar una persona real: cada persona que
@@ -630,6 +635,17 @@ export function promptDelNegocio(datos: {
     esVideo ? 'LINE LENGTH: every spoken line must be 15 words or fewer so it can sound conversational; if a line is longer, split it into two shots or move it to voice-over. No monologues.' : 'ONE FRAME: this piece is a single image — no lines to speak, all the message goes in the on-image text.',
     `SUBJECT: someone from the business${esVideo ? ' (or a client)' : ''} in their actual workplace, on a phone. In route (B) they are a generated performer: keep them ordinary — everyday clothes, real workspace, no model looks, no stock-photo smile.`,
   ].join('\n');
+
+  // Las tarjetas del reel de texto: la misma cuenta que hace la pieza, para que el prompt no invente otras.
+  const tarjetasReel = esReelTexto
+    ? String(datos.guion ?? '').split('\n').filter(l => /TARJETA/i.test(l)).map((l, i) => {
+      const t = (l.match(/TEXTO\s*:\s*«([^»]*)»/i) || [])[1] || '';
+      const s2 = Number((l.match(/\((\d+)\s*s en pantalla\)/i) || [])[1] || 2);
+      const f = (l.match(/FONDO\s*:\s*(.+)$/i) || [])[1] || '';
+      return { n: i + 1, texto: t, segundos: s2, fondo: f.trim() };
+    })
+    : [];
+  const totalReel = tarjetasReel.reduce((s2, t) => s2 + t.segundos, 0) || totalS;
 
   const bloqueVideo = [
     'DELIVERABLE — produce a complete production package, in this order:',
@@ -650,6 +666,16 @@ export function promptDelNegocio(datos: {
       : 'WHAT THE IMAGE SHOWS: the system or the result at work, in a real environment, readable with the sound off.',
     'COMPOSITION: subject in the lower two thirds, negative space at the top for the text, high contrast so it reads on a phone in daylight. One single frame: no sequence, no before/after split unless the on-image text asks for it.',
     'STILL IMAGE ONLY: a photograph or a photorealistic render. Do not describe motion, camera moves, time passing or sound.',
+  ];
+
+  // El REEL DE TEXTO: tarjetas que se leen sobre una imagen. Sin voz, sin audio, sin planos de actuación.
+  const bloqueReelTexto = [
+    'DELIVERABLE — produce a complete plan for a TEXT-OVER-IMAGE REEL (there is no voice and no audio in this piece: the message is read, not heard):',
+    `1) THE CARDS, one by one: the exact text of each card, its seconds on screen and which image it sits on. ${tarjetasReel.length} cards, ${totalReel} seconds in total.`,
+    `2) THE BACKGROUND IMAGE PROMPT, ready to paste into Midjourney, DALL·E or Flux. Vertical 9:16, ${resolucion}.`,
+    '3) THE ON-SCREEN RULES: every card in capitals or clearly readable type, maximum 7 words, maximum 2 lines, no blinking, no animated type, no transitions other than a cut.',
+    `THE CARDS: ${tarjetasReel.map(t => `card ${t.n} (${t.segundos} s) — "${t.texto}" over ${t.fondo}`).join(' | ')}.`,
+    'NO VOICE, NO MUSIC, NO SOUND: whoever watches this does it with the phone in silence. Everything the piece has to say is written on the cards. A card that cannot be read in the seconds it is on screen is a card that does not exist.',
   ];
 
   const bloqueComun = [
@@ -674,7 +700,7 @@ export function promptDelNegocio(datos: {
     `FILL BEFORE SHOOTING — the system will not invent these: ${faltaEnElPrompt.join('; ')}.`,
   ];
 
-  const prompt = [...(esVideo ? bloqueVideo : bloqueImagen), ...bloqueComun].filter(Boolean).join('\n');
+  const prompt = [...(esVideo ? bloqueVideo : esReelTexto ? bloqueReelTexto : bloqueImagen), ...bloqueComun].filter(Boolean).join('\n');
 
   const hojaDeRodaje = partes.map(p => ({
     plano_n: p.n, desde_s: p.desde, hasta_s: p.hasta, segundos: p.hasta - p.desde,
@@ -693,13 +719,15 @@ export function promptDelNegocio(datos: {
       clave: `${pieza} · video vertical`,
       pieza,
       plaza: datos.canal ? `video vertical 9:16 · ${datos.canal}` : 'video vertical 9:16',
-      tipo: esVideo ? 'video' : 'imagen',
+      tipo: esVideo ? 'video' : esReelTexto ? 'reel de texto' : 'imagen',
       estilo: esVideo
         ? 'UGC: alguien real del negocio contando el descubrimiento a cámara'
-        : 'imagen fija con el texto encima: el trabajo real, sin persona que hable',
+        : esReelTexto
+          ? 'reel de texto: tarjetas que se leen sobre una imagen suya, sin voz ni audio'
+          : 'imagen fija con el texto encima: el trabajo real, sin persona que hable',
       estilo_explicado: 'sin formatos medidos del rubro todavía: se rueda con el celular, con alguien real del negocio en su lugar de trabajo, y la pieza cuenta el descubrimiento en vez de copiar un molde ajeno',
       proporcion,
-      duracion_s: esVideo ? totalS : null,
+      duracion_s: esVideo ? totalS : esReelTexto ? totalReel : null,
       concepto,
       referencia: { anunciante: '', dias: 0, que_se_toma: 'nada: no hay mercado medido todavía, así que no se copia ningún molde ajeno' },
       sujeto: {

@@ -19,6 +19,7 @@ import { diasEnElAire } from './mercado.js';
 import { detectarLengua } from './lenguas.js';
 import { sinSueltos } from '../lib/json-seguro.js';
 import { corregirConVocabulario } from './corrector.js';
+import { claseDeFormato, ESPECIFICACION, segundosDeLectura, tarjetasDeTexto } from './formatos.js';
 
 export type PiezaArmada = {
   titulo: string;
@@ -126,15 +127,35 @@ export function armarLaPieza(d: {
   };
 
   // El guion, solo si la pieza es de video: qué se ve y qué se dice, escena por escena.
-  const esVideo = /video|reel|vertical|tiktok/i.test(formato);
-  const guion = esVideo
+  // CADA FORMATO ES OTRA COSA: el video lleva planos y voz; el reel de texto, tarjetas que se leen (sin
+  // voz y sin audio); la imagen, un solo cuadro con su texto. Antes todo lo que dijera «reel» se armaba
+  // como video, y por eso un reel de texto aparecía con escenas «que se ven» y con voz.
+  const clase = claseDeFormato(formato);
+  const spec = ESPECIFICACION[clase];
+  const imagenesPropias = (d.identidad?.imagenes ?? []).filter(i => !/logo|icon|favicon/i.test(`${i.para || ''} ${i.url}`));
+  const fondoDe = (i: number) => imagenesPropias.length
+    ? `su imagen ${imagenesPropias[i % imagenesPropias.length].url}`
+    : 'una imagen suya (o una foto del trabajo, si no hay ninguna cargada)';
+
+  // LAS TARJETAS del reel de texto: una frase por tarjeta, con los segundos que necesita para leerse.
+  const tarjetas = clase === 'reel_texto'
+    ? tarjetasDeTexto([gancho, ...String(cuerpo || '').split('\n').filter(Boolean), boton]).map((t, i) => ({
+      n: i + 1, texto: t, segundos: segundosDeLectura(t), fondo: fondoDe(i),
+    }))
+    : [];
+
+  const guion = clase === 'video'
     ? corregirConVocabulario([
         `0-3 s · SE VE: ${gancho.length > 90 ? `${gancho.slice(0, 90)}…` : gancho}`,
         `3-10 s · SE VE: el producto o el trabajo en marcha, sin adornos${(resto[0] || ofrece[0]) ? `\n            DICE: ${resto[0] || ofrece[0]}` : ''}`,
         resto[1] ? `10-20 s · SE VE: una prueba de que funciona\n            DICE: ${resto[1]}` : '',
         `20-30 s · DICE: ${cierre}\n            EN PANTALLA: ${boton}`,
       ].filter(Boolean).join('\n'), d.vocabulario).texto
-    : '';
+    : clase === 'reel_texto'
+      ? tarjetas.map(t => `TARJETA ${t.n} (${t.segundos} s en pantalla) · TEXTO: «${t.texto}» · FONDO: ${t.fondo}`).join('\n')
+      : '';
+  // La imagen no tiene guion: tiene su texto encima, que es todo el mensaje.
+  const textoSobreLaImagen = clase === 'imagen' ? (gancho.length > 60 ? `${gancho.slice(0, 57)}…` : gancho) : '';
 
   // La referencia que aguanta en su categoría: el anuncio con más días activo entre los comparables.
   // No se copia: se cita, para saber contra qué se mide esta pieza.
@@ -157,6 +178,17 @@ export function armarLaPieza(d: {
         { k: 'Qué cambia', v: cuerpo },
         { k: 'Cómo cierra', v: `${cierre} → ${boton}` },
       ],
+      // QUÉ FORMATO ES Y QUÉ PIDE ESE FORMATO: la ficha del panel muestra esto, así el dueño ve si la
+      // pieza está armada como lo que dice ser (y no como un video con voz cuando es un reel de texto).
+      clase_de_pieza: clase,
+      lo_que_el_formato_pide: {
+        nombre: spec.nombre, que_es: spec.que_es, entregable: spec.entregable, como_se_arma: spec.como_se_arma,
+        lleva_voz: spec.lleva_voz, lleva_audio: spec.lleva_audio, lleva_planos: spec.lleva_planos,
+        lleva_tarjetas: spec.lleva_tarjetas, lleva_texto_sobre_la_imagen: spec.lleva_texto_sobre_la_imagen,
+        criterios_con_los_que_se_juzga: spec.criterios.map(c => `${c.nombre}: ${c.criterio}`),
+      },
+      tarjetas: tarjetas.length ? tarjetas : undefined,
+      texto_sobre_la_imagen: textoSobreLaImagen || undefined,
       aviso_de_material: avisoDeMaterial,
       // De dónde sale el ángulo de esta variante, y si el material no tenía frase para él.
       variante: d.variante

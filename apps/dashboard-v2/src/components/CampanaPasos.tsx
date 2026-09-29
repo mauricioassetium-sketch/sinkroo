@@ -190,6 +190,14 @@ type PiezaGal = {
   guion: string;
   /** El prompt de generación del servidor. null = el motor todavía no dejó ninguno. */
   prompt: PromptGeneracion | null;
+  /** Qué clase de pieza es (video, reel de texto o imagen) y qué pide ese formato. */
+  clase: string;
+  /** Las tarjetas del reel de texto: cada una con su texto y sus segundos. */
+  tarjetas: { n: number; texto: string; segundos: number; fondo: string }[];
+  /** El texto que va encima, cuando la pieza es una imagen. */
+  texto_sobre_la_imagen: string;
+  /** La especificación del formato: qué es, qué produce y con qué criterios se juzga. */
+  formato_pide: { nombre?: string; que_es?: string; entregable?: string; como_se_arma?: string; criterios_con_los_que_se_juzga?: string[] } | null;
 };
 
 const esVideo = (f: string) => /video|reel/i.test(f);
@@ -205,6 +213,7 @@ export function Galeria({ setToast, ir }: { modo: Modo; setToast: (t: string) =>
   const piezas: PiezaGal[] = d.piezas.map((p: PiezaBack) => {
     const ev = d.evaluaciones.find(e => e.id === p.id || e.titulo.trim().toLowerCase() === p.titulo.trim().toLowerCase());
     const punto = p.puntaje ?? ev?.puntaje ?? null;
+    const g = (p.generacion ?? {}) as Record<string, unknown>;
     // El prompt que le corresponde: el que nombra esta pieza; si el motor dejó uno solo, ese (y la ficha
     // dice a qué pieza lo escribió, para no dar por hecho que es de esta).
     const prompts = d.prompts ?? [];
@@ -217,6 +226,12 @@ export function Galeria({ setToast, ir }: { modo: Modo; setToast: (t: string) =>
       formato: p.formato || 'sin formato', estado: p.estado || 'sin estado',
       fecha: p.created_at ? creada(p.created_at) : '',
       texto: String(p.texto || ''), guion: String(p.guion || ''),
+      // Lo que la pieza trae de su formato: las tarjetas del reel, el texto sobre la imagen y qué pide ese
+      // formato. Va en `generacion`, que es lo que el motor dejó armado al escribirla.
+      clase: String((g as { clase_de_pieza?: string }).clase_de_pieza || ''),
+      tarjetas: ((g as { tarjetas?: { n: number; texto: string; segundos: number; fondo: string }[] }).tarjetas ?? []),
+      texto_sobre_la_imagen: String((g as { texto_sobre_la_imagen?: string }).texto_sobre_la_imagen || ''),
+      formato_pide: ((g as { lo_que_el_formato_pide?: never }).lo_que_el_formato_pide ?? null),
       prompt: porNombre ?? null,
     };
   });
@@ -351,8 +366,28 @@ export function Galeria({ setToast, ir }: { modo: Modo; setToast: (t: string) =>
                     </div>
                     {o.guion ? (
                       <div className="op-row">
-                        <span className="op-k">El guion, escena por escena</span>
+                        <span className="op-k">{o.clase === 'reel_texto' ? 'Las tarjetas, una por una' : 'El guion, escena por escena'}</span>
                         <span className="bs" style={{ whiteSpace: 'pre-wrap' }}>{o.guion}</span>
+                      </div>
+                    ) : null}
+                    {o.texto_sobre_la_imagen ? (
+                      <div className="op-row">
+                        <span className="op-k">El texto sobre la imagen</span>
+                        <span className="bs">{o.texto_sobre_la_imagen}</span>
+                      </div>
+                    ) : null}
+                    {o.formato_pide ? (
+                      <div className="op-row">
+                        <span className="op-k">Este formato y cómo se juzga</span>
+                        <span className="bs">
+                          <span style={{ display: 'block' }}>{`${o.formato_pide.nombre || 'sin formato declarado'}: ${o.formato_pide.que_es || ''}`}</span>
+                          {o.formato_pide.entregable ? (
+                            <span className="tiny muted" style={{ display: 'block', marginTop: 6 }}>{`Produce: ${o.formato_pide.entregable}`}</span>
+                          ) : null}
+                          {(o.formato_pide.criterios_con_los_que_se_juzga || []).map((c, k) => (
+                            <span className="tiny muted" style={{ display: 'block' }} key={k}>{`· ${c}`}</span>
+                          ))}
+                        </span>
                       </div>
                     ) : null}
                     <div className="op-row">

@@ -1687,13 +1687,13 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
   // el mismo número sería quitarlo dos veces.
   try {
     const aProbar = (await db.query(
-      `SELECT p.id, p.titulo, p.texto, p.formato, p.ronda, p.angulo
+      `SELECT p.id, p.titulo, p.texto, p.formato, p.ronda, p.angulo, p.generacion
          FROM piezas p
         WHERE p.business_id = $1
           AND NOT EXISTS (SELECT 1 FROM evaluaciones e WHERE e.pieza_id = p.id)
         ORDER BY p.created_at DESC LIMIT $2`,
       [ctx.businessId, ronda ? VARIANTES.length : 1])).rows as
-      { id: string; titulo: string; texto: string; formato: string; ronda: number; angulo: string }[];
+      { id: string; titulo: string; texto: string; formato: string; ronda: number; angulo: string; generacion: Record<string, unknown> }[];
     const saldo = await saldoDe(db, ctx.businessId);
     const cuesta = aProbar.length * TARIFA.evaluarPieza;
 
@@ -1739,7 +1739,11 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
         reacciones: Record<string, number>; publico: unknown; prediccion: unknown;
       }[] = [];
       for (const pz of aProbar) {
-        const r = await evaluarConMiroFish(db, ctx.businessId, { id: pz.id, titulo: pz.titulo, texto: pz.texto, formato: pz.formato }) as any;
+        // Se le pasa la pieza CON lo que trae armado de su formato (sus tarjetas, su texto sobre la imagen):
+        // los jueces juzgan lo que la pieza es, no una idea genérica.
+        const r = await evaluarConMiroFish(db, ctx.businessId, {
+          id: pz.id, titulo: pz.titulo, texto: pz.texto, formato: pz.formato, generacion: pz.generacion,
+        }) as any;
         probadas.push({
           id: pz.id, titulo: pz.titulo, formato: pz.formato, angulo: pz.angulo,
           puntaje: Number(r.puntaje), puesto: Number(r.orden),

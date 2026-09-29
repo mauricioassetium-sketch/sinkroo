@@ -1,4 +1,5 @@
 import type { Pool } from 'pg';
+import { claseDeFormato, ESPECIFICACION } from './formatos.js';
 import { TARIFA } from './creditos.js';
 import { azar, desvioActual, semillaDe } from './agentes.js';
 
@@ -62,7 +63,7 @@ export async function crearPublico(db: Pool, businessId: string, zonaBase = '') 
 }
 
 /** Lo que un agente del público piensa de la pieza, según su perfil y lo que la pieza dice. */
-function reaccionDe(perfil: { edad: number; interes: string; sensibilidad: string; estilo: string }, pieza: { texto: string; formato: string }, az: () => number) {
+function reaccionDe(perfil: { edad: number; interes: string; sensibilidad: string; estilo: string }, pieza: { texto: string; formato: string }, az: () => number, clase: 'video' | 'reel_texto' | 'imagen' = 'video') {
   let voto = 45 + az() * 35;                                   // base: 45 a 80
   if (/precio|\$|cop|usd/i.test(pieza.texto)) voto += 6;      // contestar el precio ayuda
   if (pieza.texto.length > 120) voto += 4;                     // una pieza con qué decir rinde más
@@ -71,8 +72,9 @@ function reaccionDe(perfil: { edad: number; interes: string; sensibilidad: strin
   if (perfil.estilo === 'comparador') voto -= 5;
   if (perfil.estilo === 'experto') voto -= 3;
   if (perfil.estilo === 'impulsivo') voto += 7;
-  if (pieza.formato === 'video') voto += 5;                    // el video se ve más
-  if (perfil.edad < 30 && pieza.formato === 'historia') voto += 4;
+  if (clase === 'video') voto += 5;                            // el video se ve más
+  if (clase === 'reel_texto') voto -= 2;                       // el texto se lee menos que el video
+  if (clase === 'imagen') voto -= 1;                           // una imagen sola dice menos que un video
   voto = Math.max(0, Math.min(100, Math.round(voto)));
 
   const reaccion = voto >= 75 ? 'compra' : voto >= 60 ? 'guarda' : voto >= 45 ? 'indiferente' : 'pasa';
@@ -87,7 +89,11 @@ function reaccionDe(perfil: { edad: number; interes: string; sensibilidad: strin
 }
 
 /** Evalúa una pieza: 5 jueces, 500 del público y la predicción con su desvío. */
-export async function evaluar(db: Pool, businessId: string, pieza: { id?: string; titulo: string; texto: string; formato: string }) {
+export async function evaluar(db: Pool, businessId: string, pieza: {
+  id?: string; titulo: string; texto: string; formato: string;
+  /** Lo que la pieza trae armado de su formato (tarjetas, texto sobre la imagen): con eso se juzga de verdad. */
+  generacion?: Record<string, unknown>;
+}) {
   const az = azar(semillaDe(`${businessId}:${pieza.titulo}:${pieza.texto}`));
   const desvio = await desvioActual(db, businessId);
 
@@ -98,15 +104,29 @@ export async function evaluar(db: Pool, businessId: string, pieza: { id?: string
   );
   const evaluacionId = evaluacion.rows[0].id;
 
-  // 1 · Los cinco jueces
+  // 1 · Los cinco jueces DE ESTE FORMATO. Los criterios salen del formato de la pieza: una imagen no se
+  // juzga por su gancho hablado (no habla) y un reel de texto no se juzga por su voz (no tiene). Antes los
+  // jueces eran los mismos para todo, y con eso una imagen podía sacar nota por cosas que no existen.
+  const clase = claseDeFormato(pieza.formato);
+  const spec = ESPECIFICACION[clase];
+  const gen = (pieza.generacion ?? {}) as Record<string, any>;
+  const tarjetas = (gen.tarjetas ?? []) as { texto: string; segundos: number }[];
+  const textoSobreLaImagen = String(gen.texto_sobre_la_imagen || '');
+  const palabrasDe = (t: string) => String(t || '').trim().split(/\s+/).filter(Boolean).length;
+  const tarjetaMasLarga = tarjetas.reduce((m, t) => Math.max(m, palabrasDe(t.texto)), 0);
   const votos: { juez: string; criterio: string; voto: number; opinion: string }[] = [];
-  for (const j of JUECES) {
+  for (const j of spec.criterios) {
     let v = 55 + az() * 40;
     if (j.id === 'gancho' && pieza.texto.length < 60) v -= 10;
     if (j.id === 'claridad' && /precio|\$/i.test(pieza.texto)) v += 6;
-    if (j.id === 'deseo' && pieza.formato === 'video') v += 5;
+    if (j.id === 'deseo' && clase === 'video') v += 5;
     if (j.id === 'prueba' && /reseña|cliente|testimonio/i.test(pieza.texto)) v += 8;
     if (j.id === 'llamada' && /(pida|pide|escriba|escríbanos|whatsapp|compre|link)/i.test(pieza.texto)) v += 7;
+    // --- lo que sólo se puede juzgar mirando el formato ---
+    if (j.id === 'sin_audio') v += textoSobreLaImagen && palabrasDe(textoSobreLaImagen) <= 8 ? 10 : (textoSobreLaImagen ? -8 : -4);
+    if (j.id === 'texto') v += palabrasDe(textoSobreLaImagen) >= 3 && palabrasDe(textoSobreLaImagen) <= 8 ? 9 : -6;
+    if (j.id === 'primer_cuadro') v += tarjetas.length && palabrasDe(tarjetas[0]?.texto || '') <= 7 ? 9 : (tarjetas.length ? -6 : -10);
+    if (j.id === 'se_lee') v += tarjetas.length && tarjetaMasLarga <= 7 ? 10 : (tarjetas.length ? -12 : -8);
     const voto = Math.max(0, Math.min(100, Math.round(v)));
     const opinion = voto >= 80 ? `${j.criterio}: sí, sin reparos.`
       : voto >= 65 ? `${j.criterio}: sí, con un ajuste menor.`
@@ -127,7 +147,7 @@ export async function evaluar(db: Pool, businessId: string, pieza: { id?: string
   let sumaPublico = 0;
   const muestra: { agente: number; comentario: string; voto: number }[] = [];
   for (const a of agentes.rows) {
-    const r = reaccionDe(a, pieza, az);
+    const r = reaccionDe(a, pieza, az, clase);
     reacciones[r.reaccion] = (reacciones[r.reaccion] || 0) + 1;
     sumaPublico += r.voto;
     await db.query(
@@ -148,6 +168,10 @@ export async function evaluar(db: Pool, businessId: string, pieza: { id?: string
   const desvioPct = predicho > 0 ? Math.round(((observado - predicho) / predicho) * 1000) / 10 : 0;
 
   const resumen = {
+    clase,
+    formato: pieza.formato,
+    como_se_juzgo: `se juzgó como ${spec.nombre}: ${spec.criterios.map(c => c.nombre).join(' · ')}`,
+    criterios: spec.criterios.map(c => ({ nombre: c.nombre, criterio: c.criterio })),
     jueces: votos, reacciones, puntaje,
     publico: { total: agentes.rows.length, promedio: Math.round(promedioPublico * 10) / 10, muestra },
     prediccion: { predicho, observado, desvio_pct: desvioPct, desvio_anterior: desvio },
