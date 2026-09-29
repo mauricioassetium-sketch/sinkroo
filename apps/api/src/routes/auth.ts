@@ -4,7 +4,7 @@ import { abrirSesion, claveCorrecta, correoNormal, exigirSesion, huellaDeClave }
 import { estadoDePin } from '../lib/pin.js';
 import { responderEnlace } from '../lib/paginas.js';
 import { exigirCuerpo, pasarElFreno } from '../lib/seguridad.js';
-import { bienvenida, enlaceDe, enviar, estadoCorreo, faltaCorreo, verificarCorreo as cartaDeVerificacion } from '../services/correo.js';
+import { bienvenida, enlaceDe, enviar, estadoCorreo, faltaCorreo, nombreDelNegocio, recuperarClave, verificarCorreo as cartaDeVerificacion } from '../services/correo.js';
 import { crearVerificacion, negocioYCorreo, usarCodigo, usarVerificacion } from '../services/verificaciones.js';
 
 // =============================================================================================
@@ -273,5 +273,126 @@ export async function authRoutes(app: FastifyInstance) {
       await execute('DELETE FROM sessions WHERE token = $1', [cabecera.slice(7).trim()]);
     }
     return { ok: true };
+  });
+
+  // =============================================================================================
+  // LA CONTRASEÑA — cambiarla, y recuperarla cuando se olvidó.
+  //
+  // La recuperación tiene dos caminos, los mismos que la confirmación del correo: el ENLACE que llega al
+  // correo (un solo uso, vence en 24 horas) y el CÓDIGO de 6 dígitos que se escribe en el panel sin salir
+  // de él. Los dos gastan la misma fila: usar uno cancela el otro.
+  // =============================================================================================
+
+  /**
+   * OLVIDÉ MI CONTRASEÑA — paso 1: pedir el código.
+   * Responda lo que responda, la respuesta es la misma exista o no la cuenta: contestar «ese correo no
+   * está» convierte esta puerta en un buscador de cuentas ajenas. Lo que sí se dice, sin adornos, es si
+   * el correo salió o no.
+   */
+  app.post('/api/auth/clave/olvide', async (req, reply) => {
+    // El freno por IP: sin esto, esta puerta sirve para adivinar códigos de 6 dígitos a fuerza de intentos.
+    const freno = pasarElFreno(`recuperar:${req.ip || 'sin-ip'}`, 5, 15 * 60_000);
+    if (!freno.pasa) {
+      return reply.status(429).send({
+        error: 'demasiados intentos desde esta conexión: espere unos minutos y vuelva a pedirlo',
+        codigo: 'frenado',
+      });
+    }
+    const email = correoNormal(String((req.body as { email?: string })?.email || ''));
+    if (!email || !email.includes('@')) return reply.status(400).send({ error: 'el correo no es válido' });
+    const generico = 'si ese correo tiene cuenta, le llega el código para elegir una contraseña nueva';
+    const filas = await query<{ id: string; business_id: string | null }>(
+      'SELECT id, business_id FROM users WHERE email = $1', [email]);
+    const u = filas[0];
+    if (!u?.business_id) return reply.status(200).send({ ok: true, enviado: false, para: email, detalle: generico });
+
+    const verificacion = await crearVerificacion(u.business_id, 'clave');
+    const carta = recuperarClave({
+      negocio: await nombreDelNegocio(u.business_id),
+      enlace: enlaceDe('/api/auth/clave/restablecer', verificacion.token),
+      codigo: verificacion.codigo,
+    });
+    const salio = await enviar({
+      businessId: u.business_id, para: email, asunto: carta.asunto, texto: carta.texto, html: carta.html,
+      plantilla: 'recuperarClave',
+    });
+    const falta = salio.ok ? [] : faltaCorreo();
+    return reply.status(salio.ok ? 201 : 202).send({
+      ok: true, enviado: salio.ok, para: email, motivo: salio.motivo ?? null, falta,
+      detalle: salio.ok
+        ? `le mandamos el código a ${email} (vence en 24 horas)`
+        : falta.length
+          ? 'el código quedó creado, pero el correo no salió: el envío de correo todavía no está configurado en el servidor'
+          : `el código quedó creado, pero el correo no salió (${salio.motivo})`,
+    });
+  });
+
+  /**
+   * OLVIDÉ MI CONTRASEÑA — paso 2: elegir la nueva, con el enlace o con el código.
+   * Al cambiarla se CIERRAN las sesiones abiertas: si alguien más estaba adentro con la contraseña vieja,
+   * queda afuera. Y se abre una sesión nueva, para que el dueño entre directo.
+   */
+  app.post('/api/auth/clave/restablecer', async (req, reply) => {
+    // El freno por IP: sin esto, esta puerta sirve para adivinar códigos de 6 dígitos a fuerza de intentos.
+    const freno = pasarElFreno(`recuperar:${req.ip || 'sin-ip'}`, 5, 15 * 60_000);
+    if (!freno.pasa) {
+      return reply.status(429).send({
+        error: 'demasiados intentos desde esta conexión: espere unos minutos y vuelva a pedirlo',
+        codigo: 'frenado',
+      });
+    }
+    const b = (req.body || {}) as { email?: string; codigo?: string; token?: string; clave?: string };
+    const clave = String(b.clave || '');
+    if (clave.length < 6) return reply.status(400).send({ error: 'la contraseña necesita al menos 6 caracteres' });
+
+    let businessId = '';
+    if (b.token) {
+      const r = await usarVerificacion(String(b.token), 'clave');
+      if (!r.ok || !r.business_id) return reply.status(410).send({ error: r.motivo || 'el enlace no sirve', codigo: r.codigo });
+      businessId = r.business_id;
+    } else {
+      const email = correoNormal(String(b.email || ''));
+      const filas = await query<{ business_id: string }>('SELECT business_id FROM users WHERE email = $1', [email]);
+      if (!filas[0]?.business_id) {
+        return reply.status(404).send({ error: 'ese código no sirve para ninguna cuenta', codigo: 'sin_cuenta' });
+      }
+      const r = await usarCodigo(filas[0].business_id, 'clave', String(b.codigo || ''));
+      if (!r.ok) {
+        // El servicio de verificaciones le dice «pin» —es su otro uso—: acá se le dice «código», que es lo
+        // que la persona tiene en la mano.
+        const motivo = String(r.motivo || 'ese código no sirve').replace(/pin/gi, 'código');
+        return reply.status(410).send({ error: motivo, codigo: r.codigo });
+      }
+      businessId = filas[0].business_id;
+    }
+
+    const usuarios = await query<{ id: string }>('SELECT id FROM users WHERE business_id = $1', [businessId]);
+    if (!usuarios.length) return reply.status(404).send({ error: 'esa cuenta ya no existe', codigo: 'sin_cuenta' });
+    for (const u of usuarios) {
+      await execute('UPDATE users SET clave_hash = $2 WHERE id = $1', [u.id, huellaDeClave(clave)]);
+    }
+    await execute('DELETE FROM sessions WHERE user_id = ANY($1::uuid[])', [usuarios.map(u => u.id)]);
+    const token = await abrirSesion(usuarios[0].id);
+    return reply.status(200).send({ ok: true, token, detalle: 'contraseña cambiada: ya puede entrar con la nueva' });
+  });
+
+  /**
+   * CAMBIAR LA CONTRASEÑA desde adentro (con la sesión abierta): pide la actual, porque tener la sesión
+   * abierta no es prueba de que sea usted —el portátil puede estar abierto en la oficina—.
+   */
+  app.post('/api/auth/clave/cambiar', async (req, reply) => {
+    const u = await exigirSesion(req, reply); if (!u) return;
+    const b = (req.body || {}) as { actual?: string; clave?: string };
+    const clave = String(b.clave || '');
+    if (clave.length < 6) return reply.status(400).send({ error: 'la contraseña necesita al menos 6 caracteres' });
+    const filas = await query<{ clave_hash: string | null }>('SELECT clave_hash FROM users WHERE id = $1', [u.id]);
+    if (!claveCorrecta(String(b.actual || ''), filas[0]?.clave_hash)) {
+      return reply.status(401).send({ error: 'la contraseña actual no es la correcta', codigo: 'clave_mala' });
+    }
+    await execute('UPDATE users SET clave_hash = $2 WHERE id = $1', [u.id, huellaDeClave(clave)]);
+    const tokenActual = String(req.headers.authorization || '').slice(7).trim();
+    // Las OTRAS sesiones se cierran; esta sigue viva, para no sacarlo a usted de su propio panel.
+    await execute('DELETE FROM sessions WHERE user_id = $1 AND token <> $2', [u.id, tokenActual]);
+    return { ok: true, detalle: 'contraseña cambiada: las otras sesiones quedaron cerradas' };
   });
 }

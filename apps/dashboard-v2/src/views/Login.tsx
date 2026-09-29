@@ -4,7 +4,8 @@ import {
   SinkrooMark, I_Mail, I_Lock, I_Check, I_ArrowRight, I_User, I_Shield, I_Sparkle, I_Clock, I_Eye,
 } from '../components/icons';
 import {
-  baseApi, crearCuenta, entrar as entrarApi, hayApi, leerSeguridad, guardarToken, token,
+  baseApi, cambiarClaveConCodigo, crearCuenta, entrar as entrarApi, hayApi, leerSeguridad, guardarToken,
+  pedirCodigoDeClave, quienSoy, token,
   correoConfigurado, faltaDeCorreo, faltaEnlaces,
   type AvisoDeCorreo, type ErrorApi, type EstadoSeguridad,
   quiereCrearCuenta,
@@ -74,6 +75,14 @@ export function PantallaLogin({ onEntrar, vuelta, sesionAbierta }: {
   const [clave, setClave] = useState('');
   const [entrando, setEntrando] = useState<'' | 'email' | 'google' | 'nueva' | 'demo'>('');
   const [recuperar, setRecuperar] = useState('');
+  // El trámite de la contraseña olvidada, paso por paso: pedir el código y después escribir la nueva.
+  const [pasoClave, setPasoClave] = useState<'pedir' | 'codigo'>('pedir');
+  const [codigoClave, setCodigoClave] = useState('');
+  const [claveNueva, setClaveNueva] = useState('');
+  const [claveRepetida, setClaveRepetida] = useState('');
+  const [avisoClave, setAvisoClave] = useState('');
+  const [errorClave, setErrorClave] = useState('');
+  const [yendoClave, setYendoClave] = useState(false);
   const [error, setError] = useState('');
   // LA ENTRADA CON EL BACK ENCENDIDO TIENE DOS PASOS: los datos y, después, el correo. Nada de esto
   // existe sin back: en la demostración el formulario es el de siempre, tal cual estaba.
@@ -169,6 +178,38 @@ export function PantallaLogin({ onEntrar, vuelta, sesionAbierta }: {
     } finally {
       setEntrando('');
     }
+  };
+
+  /** Paso 1: pedir el código. Se dice siempre lo mismo sobre la cuenta, y la verdad sobre el correo. */
+  const pedirElCodigo = async () => {
+    if (!email.trim() || !email.includes('@')) { setErrorClave('Escriba su correo completo: ahí le llega el código.'); return; }
+    setYendoClave(true); setErrorClave(''); setAvisoClave('');
+    try {
+      const r = await pedirCodigoDeClave(email.trim());
+      setPasoClave('codigo');
+      setAvisoClave(r.enviado
+        ? `Le mandamos un código de 6 dígitos a ${r.para}. Mírelo en su correo y escríbalo acá abajo (vence en 24 horas).`
+        : `${r.detalle || 'No se pudo mandar el correo.'}${r.motivo ? ' · ' + r.motivo : ''}`);
+    } catch (e) {
+      setErrorClave(`No se pudo conectar con el servidor (${(e as Error)?.message}).`);
+    } finally { setYendoClave(false); }
+  };
+
+  /** Paso 2: la contraseña nueva con ese código. Si sale bien, entra directo al panel. */
+  const cambiarConElCodigo = async () => {
+    if (claveNueva.trim().length < 6) { setErrorClave('La contraseña necesita al menos 6 caracteres.'); return; }
+    if (claveNueva !== claveRepetida) { setErrorClave('Las dos contraseñas tienen que ser iguales.'); return; }
+    setYendoClave(true); setErrorClave('');
+    try {
+      await cambiarClaveConCodigo({ email: email.trim(), codigo: codigoClave.trim(), clave: claveNueva });
+      const u = await quienSoy();
+      if (u) { onEntrar({ nombre: u.nombre || '', email: u.email, via: 'email' }); return; }
+      setAvisoClave('Contraseña cambiada. Ya puede entrar con la nueva.');
+      setRecuperar(''); setClave(claveNueva);
+    } catch (e) {
+      const err = e as ErrorApi;
+      setErrorClave(err?.message || 'No se pudo cambiar la contraseña.');
+    } finally { setYendoClave(false); }
   };
 
   const entrar = () => {
@@ -416,13 +457,59 @@ export function PantallaLogin({ onEntrar, vuelta, sesionAbierta }: {
           {error && <div className="login-error">{error}</div>}
           {recuperar && (
             conBack ? (
-              /* CON EL BACK ENCENDIDO NO HAY RUTA DE «OLVIDÉ MI CONTRASEÑA»: el servidor tiene el
-                 restablecimiento del PIN, no el de la contraseña de la cuenta. Antes aquí se decía «le
-                 enviamos el enlace» sin que saliera ningún correo; ahora se dice lo que pasa. */
-              <div className="login-error">
-                <b>Cambiar la contraseña todavía no se puede hacer desde el panel.</b> El servidor no tiene esa
-                ruta, así que no se envió ningún correo y su contraseña sigue siendo la misma. Anote la que use
-                para entrar: su correo <b>{email}</b> ya tiene el negocio adentro, no hace falta crear otra cuenta.
+              /* CON EL BACK ENCENDIDO SÍ HAY RUTA: /api/auth/clave/olvide manda el código al correo y
+                 /api/auth/clave/restablecer elige la nueva. Dos pasos, porque el permiso viaja por su correo
+                 —que es lo único que un atacante no tiene— y no por tener el panel abierto. */
+              <div className="login-campo">
+                {pasoClave === 'pedir' ? (
+                  <>
+                    <label className="label">Olvidé mi contraseña</label>
+                    <span className="tiny muted" style={{ display: 'block', marginBottom: 6 }}>
+                      Le mandamos un código de 6 dígitos al correo de la cuenta y con él elige una nueva.
+                    </span>
+                    <Button className="login-btn" title="Manda un código de 6 dígitos al correo de la cuenta: sirve una sola vez y vence en 24 horas."
+                      disabled={yendoClave} onClick={() => void pedirElCodigo()}>
+                      {yendoClave ? 'Mandando el código…' : 'Mándeme el código'}
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    {avisoClave && <div className="login-ok"><I_Check size={13} /> {avisoClave}</div>}
+                    <div className="login-campo">
+                      <label className="label">Código de 6 dígitos</label>
+                      <span className="login-inp">
+                        <I_Shield size={15} />
+                        <input className="input" inputMode="numeric" value={codigoClave} placeholder="000000"
+                          onChange={e => setCodigoClave(e.target.value.replace(/\D/g, '').slice(0, 6))} />
+                      </span>
+                    </div>
+                    <div className="login-campo">
+                      <label className="label">Contraseña nueva</label>
+                      <span className="login-inp">
+                        <I_Lock size={15} />
+                        <input className="input" type="password" value={claveNueva} placeholder="••••••••"
+                          onChange={e => setClaveNueva(e.target.value)} />
+                      </span>
+                    </div>
+                    <div className="login-campo">
+                      <label className="label">Repita la contraseña nueva</label>
+                      <span className="login-inp">
+                        <I_Lock size={15} />
+                        <input className="input" type="password" value={claveRepetida} placeholder="••••••••"
+                          onChange={e => setClaveRepetida(e.target.value)} />
+                      </span>
+                    </div>
+                    <Button className="login-btn" title="Cambia la contraseña y cierra las sesiones que quedaron abiertas con la anterior. Entra directo al panel."
+                      disabled={yendoClave} onClick={() => void cambiarConElCodigo()}>
+                      {yendoClave ? 'Cambiando la contraseña…' : 'Cambiar la contraseña y entrar'}
+                    </Button>
+                    <button type="button" className="login-link" title="Vuelve a pedir el código: el anterior deja de servir."
+                      onClick={() => { setPasoClave('pedir'); setCodigoClave(''); setAvisoClave(''); setErrorClave(''); }}>
+                      Pedir otro código
+                    </button>
+                  </>
+                )}
+                {errorClave && <div className="login-error">{errorClave}</div>}
               </div>
             ) : (
               <div className="login-ok">
@@ -478,7 +565,7 @@ export function PantallaLogin({ onEntrar, vuelta, sesionAbierta }: {
           <div className="login-pie">
             <button className="login-link"
               title={conBack
-                ? 'Cambiar la contraseña todavía no se puede hacer desde el panel: al tocarlo no se envía ningún correo'
+                ? 'Le manda un código de 6 dígitos a su correo para elegir una contraseña nueva'
                 : 'Le envía el enlace para cambiar la contraseña al correo que escribió'}
               onClick={() => { setRecuperar(email); setError(''); }}>Olvidé mi contraseña</button>
           </div>

@@ -246,6 +246,35 @@ export function restablecerPin(d: { negocio: string; enlace: string }): Carta {
   return { asunto, texto, html };
 }
 
+/**
+ * La carta de recuperación de la contraseña. Lleva el enlace Y el código de 6 dígitos, por lo mismo que la
+ * bienvenida: el enlace sirve desde el correo y el código se escribe en el panel sin salir de él.
+ */
+export function recuperarClave(d: { negocio: string; enlace: string; codigo: string }): Carta {
+  const asunto = `Elija una contraseña nueva para ${d.negocio}`;
+  const texto = [
+    `Hola, ${d.negocio}:`,
+    '',
+    'Pedimos una contraseña nueva desde el panel. Abra este enlace y elíjala:',
+    d.enlace,
+    '',
+    `O escriba este código en el panel: ${d.codigo}`,
+    '',
+    'El enlace y el código vencen en 24 horas y sirven una sola vez.',
+    'Si no fue usted, ignore este mensaje: su contraseña actual sigue funcionando y sin el código no se cambia nada.',
+    '',
+    'Sinkroo · pre-validación de anuncios con agentes',
+  ].join('\n');
+  const html = conMarco('Elija una contraseña nueva', [
+    'Pedimos una contraseña nueva desde el panel.',
+    boton('Elegir una contraseña nueva', d.enlace),
+    `O escriba este código en el panel: <b>${d.codigo}</b>`,
+    'El enlace y el código vencen en 24 horas y sirven una sola vez.',
+    'Si no fue usted, ignore este mensaje: su contraseña actual sigue funcionando y sin el código no se cambia nada.',
+  ]);
+  return { asunto, texto, html };
+}
+
 /** 6 · El resumen de la semana: lo que quedó registrado, sin estimaciones de adorno. */
 export function resumenSemanal(d: {
   negocio: string; desde: string; hasta: string;

@@ -109,6 +109,31 @@ export async function entrar(email: string, clave: string) {
   return r.usuario;
 }
 
+/**
+ * OLVIDÉ MI CONTRASEÑA — paso 1: pedir el código al correo.
+ * La respuesta es la misma exista o no la cuenta (el back lo hace así a propósito); lo que cambia es si el
+ * correo salió: eso se dice tal cual, con el motivo cuando no salió.
+ */
+export async function pedirCodigoDeClave(email: string) {
+  return pedir<{ ok: boolean; enviado: boolean; para: string; detalle?: string; motivo?: string | null; falta?: string[] }>(
+    '/api/auth/clave/olvide', { metodo: 'POST', cuerpo: { email } },
+  );
+}
+
+/** OLVIDÉ MI CONTRASEÑA — paso 2: elegir la nueva con el código que llegó al correo. Deja la sesión abierta. */
+export async function cambiarClaveConCodigo(d: { email: string; codigo: string; clave: string }) {
+  const r = await pedir<{ ok: boolean; token: string; detalle?: string }>(
+    '/api/auth/clave/restablecer', { metodo: 'POST', cuerpo: d },
+  );
+  guardarToken(r.token);
+  return r;
+}
+
+/** CAMBIAR LA CONTRASEÑA desde adentro: pide la actual, porque la sesión abierta no prueba que sea usted. */
+export async function cambiarClaveConLaActual(d: { actual: string; clave: string }) {
+  return pedir<{ ok: boolean; detalle?: string }>('/api/auth/clave/cambiar', { metodo: 'POST', cuerpo: d });
+}
+
 /** Quién soy: se llama al abrir el panel para ver si la sesión sigue viva. */
 export async function quienSoy(): Promise<Usuario | null> {
   if (!hayApi() || !token()) return null;

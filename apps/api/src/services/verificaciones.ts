@@ -25,7 +25,7 @@ import { execute, query } from '../lib/db.js';
 //     el dueño de la cuenta, no un atacante: el token ya lo tenía en la mano.
 // =============================================================================================
 
-export type TipoVerificacion = 'correo' | 'pin';
+export type TipoVerificacion = 'correo' | 'pin' | 'clave';
 
 export const HORAS_VENCIMIENTO = 24;
 
