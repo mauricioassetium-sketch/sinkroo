@@ -29,6 +29,60 @@ export type PiezaArmada = {
   detalle: Record<string, unknown>;
 };
 
+/**
+ * LA PIEZA, REHECHA CON EL COPY ESCRITO. Cuando el modelo escribe (services/escritor.ts), el texto, el título,
+ * las tarjetas del reel, el guion del video y el texto sobre la imagen salen de SUS líneas —no de las frases
+ * recortadas del material—, y la pieza declara de dónde salió el copy. Si el modelo no responde, la pieza se
+ * queda con lo armado y también lo dice: las dos cosas son datos, no una la ausencia de la otra.
+ */
+export function conElTextoEscrito(
+  base: PiezaArmada,
+  copy: { titulo: string; gancho: string; lineas: string[]; cierre: string; por_que: string; falta_material: string[] },
+  d: { imagenesPropias?: { url: string; para?: string }[] } = {},
+): PiezaArmada {
+  const lineas = copy.lineas.map(l => String(l || '').trim()).filter(Boolean);
+  if (!lineas.length) return base;
+  const titulo = (copy.titulo || copy.gancho).trim();
+  // El texto de la pieza: el gancho, lo que se dice y el cierre — cada cosa UNA vez, aunque el modelo repita.
+  const dichas: string[] = [];
+  for (const l of [copy.gancho, ...lineas, copy.cierre]) {
+    const v = String(l || '').trim();
+    if (v && !dichas.some(x => x.toLowerCase() === v.toLowerCase())) dichas.push(v);
+  }
+  const texto = dichas.join('\n\n');
+  const clase = claseDeFormato(base.formato);
+  const imgs = (d.imagenesPropias ?? []).filter(i => !/logo|icon|favicon/i.test(`${i.para || ''} ${i.url}`));
+  const fondoDe = (i: number) => imgs.length
+    ? `su imagen ${imgs[i % imgs.length].url}`
+    : 'una imagen suya (o una foto del trabajo, si no hay ninguna cargada)';
+  const tarjetas = clase === 'reel_texto'
+    ? tarjetasDeTexto(lineas.length ? lineas : [copy.gancho]).map((t, i) => ({ n: i + 1, texto: t, segundos: segundosDeLectura(t), fondo: fondoDe(i) }))
+    : [];
+  const porEscena = Math.max(3, Math.round(30 / Math.max(1, lineas.length)));
+  const guion = clase === 'video'
+    ? lineas.map((l, i) => `${i * porEscena}-${(i + 1) * porEscena} s · DICE: ${l}`).join('\n')
+    : clase === 'reel_texto'
+      ? tarjetas.map(t => `TARJETA ${t.n} (${t.segundos} s en pantalla) · TEXTO: «${t.texto}» · FONDO: ${t.fondo}`).join('\n')
+      : '';
+  const textoSobreLaImagen = clase === 'imagen'
+    ? (copy.gancho.length > 60 ? `${copy.gancho.slice(0, 57)}…` : copy.gancho)
+    : '';
+  return {
+    ...base,
+    titulo,
+    texto,
+    guion,
+    detalle: {
+      ...base.detalle,
+      texto_sobre_la_imagen: textoSobreLaImagen,
+      tarjetas,
+      fuente_del_texto: 'escrito con un modelo (DeepSeek): las reglas del producto van en el encargo',
+      por_que_este_texto: copy.por_que,
+      lo_que_falta_para_escribir_mejor: copy.falta_material,
+    },
+  };
+}
+
 /** Parte el material del negocio en frases: es de ahí —y solo de ahí— de donde sale el texto. */
 const enFrases = (texto: string): string[] =>
   sinSueltos(String(texto || ''))

@@ -4,7 +4,7 @@ import { buscarSimilares, categoriaPertinente, deducirNegocio, leerArchivos, lee
 import { detectarLengua, lenguaDePais, nombreDeLengua, terminoEnOtrasLenguas, VOCABULARIO_POR_LENGUA } from './lenguas.js';
 import { leerIdentidadDeLaPagina } from './identidad.js';
 import { armarInformeDelMercadoLeido, type InformeDelMercado } from './mercado.js';
-import { armarLaPieza } from './pieza.js';
+import { armarLaPieza, conElTextoEscrito, type PiezaArmada } from './pieza.js';
 import { vocabularioDe } from './corrector.js';
 import { crearPublico, evaluar as evaluarConMiroFish } from './mirofish.js';
 import { TARIFA, saldoDe, cobrarCreacion } from './creditos.js';
@@ -12,6 +12,7 @@ import { capaDeOficio } from './oficio.js';
 import { planosDelGuion } from './planos.js';
 import { generarImagen, promptVisual, motivoDelUltimoFalloDeImagen } from './imagenes.js';
 import { generarVideo, motivoDelUltimoFallo } from './video.js';
+import { escribirLaPieza } from './escritor.js';
 import { aJson } from '../lib/json-seguro.js';
 
 // =============================================================================================
@@ -83,6 +84,53 @@ export type Contexto = { businessId: string; nombre: string; descripcion: string
  * alargar —y cada una cuesta tiempo de generación— sin que el guion lo pida.
  */
 const MAX_ESCENAS = 6;
+
+/**
+ * LA PIEZA, ESCRITA — no recortada. El texto se lo pide a un modelo (services/escritor.ts) con el ÁNGULO de
+ * esta pieza y las reglas del producto en el encargo: frases cortas con punto, una idea por línea, nada que no
+ * esté en el material. Si el modelo no responde, queda el texto armado de siempre y la pieza lo dice.
+ *
+ * Es lo que hace que dos piezas de la misma ronda digan cosas distintas: cada una va con su ángulo.
+ */
+async function escribirLaPiezaDeVerdad(
+  base: PiezaArmada,
+  d: Parameters<typeof armarLaPieza>[0] & { variante?: { angulo?: string; apertura?: string; formato?: string } },
+  ctx: Contexto,
+  tono: string,
+  terminos: string[],
+): Promise<PiezaArmada> {
+  try {
+    const formato = String(d.variante?.formato || d.formato || '');
+    const hueco = d.hueco && typeof d.hueco === 'object'
+      ? String((d.hueco as { que_falta?: string; dice?: string; hueco?: string }).que_falta
+        || (d.hueco as { dice?: string }).dice || '')
+      : String(d.hueco || '');
+    const copy = await escribirLaPieza({
+      negocio: {
+        nombre: d.negocio.nombre, queHace: d.negocio.queHace,
+        ofrece: (d.negocio.ofrece ?? []).map(String), zona: ctx.zona,
+      },
+      angulo: String(d.variante?.angulo || (d.variante?.apertura ? d.variante.apertura : '')),
+      huecoDelMercado: hueco,
+      formato,
+      esVideo: /video/i.test(formato) && !/texto/i.test(formato),
+      aQuien: d.negocio.aQuien || 'su cliente',
+      objetivo: d.objetivo || 'Que lo conozcan',
+      boton: d.boton || 'Escriba por WhatsApp',
+      tono,
+      idioma: d.lengua || 'español',
+      terminosDelMercado: terminos,
+      referencia: (d.comparables ?? [])[0]?.copy ? String((d.comparables ?? [])[0].copy).slice(0, 160) : '',
+      material: [d.negocio.descripcion, d.negocio.queHace].filter(Boolean).join(' · '),
+    });
+    if (!copy) return base;
+    console.log('[escritor] copy escrito:', copy.titulo.slice(0, 50), '· líneas:', copy.lineas.length);
+    return conElTextoEscrito(base, copy, { imagenesPropias: d.identidad?.imagenes ?? [] });
+  } catch (e) {
+    console.error('[escritor] no escribió:', (e as Error)?.message);
+    return base;
+  }
+}
 
 /** El texto con el que el negocio dice a qué se dedica: rubro, nombre y descripción, en minúsculas. */
 const queHace = (ctx: Contexto) => `${ctx.rubro} ${ctx.nombre} ${ctx.descripcion}`.toLowerCase();
@@ -1438,7 +1486,11 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
       mercado?.palabras, mercado?.terminos, armadoDelInforme?.saturacion,
     ]),
   };
-  const piezaEscrita = armarLaPieza(datosDeLaPieza);
+  const piezaEscrita = await escribirLaPiezaDeVerdad(
+    armarLaPieza(datosDeLaPieza), datosDeLaPieza, ctx,
+    Array.isArray(decisiones.tono) ? decisiones.tono.join(' y ') : '',
+    mercado?.terminos ?? [],
+  );
 
   // LAS CINCO VARIANTES DE UNA RONDA. No son la misma pieza cinco veces: cada una entra por donde el
   // material del negocio tiene algo que decir, en un formato distinto, y todas se votan por separado.
@@ -1574,7 +1626,12 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
       ? Number((await db.query('SELECT COALESCE(MAX(ronda), 0) + 1 AS n FROM piezas WHERE business_id = $1', [ctx.businessId])).rows[0].n)
       : 0;
     const aEscribir = ronda
-      ? VARIANTES.map(v => armarLaPieza({ ...datosDeLaPieza, formato: v.formato, variante: v }))
+      ? await Promise.all(VARIANTES.map(async v => escribirLaPiezaDeVerdad(
+          armarLaPieza({ ...datosDeLaPieza, formato: v.formato, variante: v }),
+          { ...datosDeLaPieza, formato: v.formato, variante: v }, ctx,
+          Array.isArray(decisiones.tono) ? decisiones.tono.join(' y ') : '',
+          mercado?.terminos ?? [],
+        )))
       : [piezaEscrita];
     let escritasAhora = 0;
     for (const pz of aEscribir) {
