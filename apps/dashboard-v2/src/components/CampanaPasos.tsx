@@ -208,13 +208,16 @@ export function Galeria({ setToast, ir }: { modo: Modo; setToast: (t: string) =>
     // El prompt que le corresponde: el que nombra esta pieza; si el motor dejó uno solo, ese (y la ficha
     // dice a qué pieza lo escribió, para no dar por hecho que es de esta).
     const prompts = d.prompts ?? [];
-    const porNombre = prompts.find(pr => String(pr.pieza || '').trim().slice(0, 24) === p.titulo.trim().slice(0, 24));
+    // El prompt de ESTA pieza, por su título: el prompt de otra pieza no se muestra acá (una imagen no lleva
+    // un prompt de video). Si esta pieza todavía no tiene el suyo, la ficha lo dice.
+    const porNombre = prompts.find(pr => String(pr.pieza || '').trim() === p.titulo.trim())
+      ?? prompts.find(pr => String(pr.pieza || '').trim().slice(0, 24) === p.titulo.trim().slice(0, 24));
     return {
       id: p.id, titulo: p.titulo, puntaje: punto == null ? null : Number(punto),
       formato: p.formato || 'sin formato', estado: p.estado || 'sin estado',
       fecha: p.created_at ? creada(p.created_at) : '',
       texto: String(p.texto || ''), guion: String(p.guion || ''),
-      prompt: porNombre ?? (prompts.length ? prompts[0] : null),
+      prompt: porNombre ?? null,
     };
   });
 

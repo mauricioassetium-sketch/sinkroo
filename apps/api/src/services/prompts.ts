@@ -532,8 +532,13 @@ export function promptDelNegocio(datos: {
   enlace?: string;
   /** Las palabras con las que el mercado nombra esto: lo que se queda sin traducir. */
   terminosDelMercado?: string[];
+  /** El formato REAL de esta pieza («video vertical 9:16», «imagen cuadrada 1:1 con texto»): una imagen no
+   *  lleva planos, ni voz, ni segundos, y su prompt no puede pedir un video. */
+  formato?: string;
+  /** El título de la pieza: es la clave con la que se guarda su prompt, para que sea SIEMPRE el suyo. */
+  piezaTitulo?: string;
 }): { pieza: string; prompts: PromptGeneracion[] } {
-  const pieza = datos.queSePublica || `Primera pieza de ${datos.negocio}`;
+  const pieza = datos.piezaTitulo || datos.queSePublica || `Primera pieza de ${datos.negocio}`;
   const palabras = datos.palabrasDeLaPieza.length
     ? datos.palabrasDeLaPieza.slice(0, 6).join(', ')
     : 'sin palabras de la categoría todavía';
@@ -602,52 +607,74 @@ export function promptDelNegocio(datos: {
     'una prueba real de un cliente, si existe',
   ].filter(Boolean);
 
-  const prompt = [
-    // 1. EL ENTREGABLE Y SU FORMATO DE SALIDA
-    'DELIVERABLE — produce a complete production package, in this order:',
-    `1) SHOT LIST: one row per shot — shot number, shot type and camera, duration in seconds, what is seen, on-screen text, brand asset used, audio. ${partes.length} shots, ${totalS} seconds in total.`,
-    '2) LITERAL SCRIPT: the exact words spoken and shown, shot by shot. Nothing outside these lines is spoken or written on screen: do not improvise claims.',
-    `3) GENERATION PROMPTS: one prompt per shot, ready to paste into a video generator (Veo 3, Sora, Runway Gen-3, Kling), plus one still-image prompt (Midjourney, DALL·E, Flux) for the end card. Vertical 9:16, 1080x1920, 30 fps, ${totalS} seconds. Keep every spoken line under 15 words and prefer one short on-camera line per shot with voice-over for the rest: long delivered lines are where generated video shows.`,
-    // 2. LA PIEZA
-    `PRODUCT: a ${totalS}-second vertical video ad for ${datos.negocio} (${datos.rubro}${enlace ? `, ${enlace}` : ''}), in ${datos.idioma.nombre === 'inglés' ? 'English' : datos.idioma.nombre}. Audience: ${datos.aQuien}. Goal: ${datos.objetivo || 'que lo conozcan'}. Tone: ${tono}.`,
-    `CONCEPT: a real person from the business —or a real client— talks to camera about discovering that this exists and how it works: ${queHace || 'what the business sells'}. Discovery story, not a product pitch.`,
-    // LA RUTA DE PRODUCCIÓN, DICHA. Un generador de video NO puede entregar una persona real: cada persona
-    // que produce es sintética y la lectura de un guion largo se nota. Pedirle «sin actor, sin leer guion» era
-    // pedirle algo imposible; lo que sí se le puede pedir es el ASPECTO y el RITMO de una grabación de celular.
+  // ---------------------------------------------------------------------------------------------
+  // ¿VIDEO O IMAGEN? Una pieza de IMAGEN no lleva planos, ni voz, ni segundos: su prompt pide UNA imagen
+  // fija con su texto encima. Antes se guardaba el prompt de video para todas, así que la pieza cuadrada
+  // salía pidiendo un video de 30 segundos.
+  // ---------------------------------------------------------------------------------------------
+  const formatoPieza = String(datos.formato || 'video vertical 9:16');
+  // OJO: «reel con texto SOBRE IMAGEN» es un video, no una imagen: se decide por lo que ES (video, reel,
+  // historia, clip) y no por las palabras sueltas del formato.
+  const esVideo = /\b(video|reel|reels|historia|story|tiktok|clip)\b/i.test(formatoPieza);
+  const proporcion = /9:16|vertical|reel/i.test(formatoPieza) ? '9:16' : /1:1|cuadrad/i.test(formatoPieza) ? '1:1' : '9:16';
+  const resolucion = proporcion === '9:16' ? '1080x1920' : '1080x1080';
+
+  // LA RUTA DE PRODUCCIÓN, DICHA. Un generador de video NO puede entregar una persona real: cada persona que
+  // produce es sintética y la lectura de un guion largo se nota. Pedirle «sin actor, sin leer guion» era pedirle
+  // algo imposible; lo que sí se le puede pedir es el ASPECTO y el RITMO de una grabación de celular.
+  const rutaDeProduccion = [
     'PRODUCTION ROUTE — pick ONE and follow its rules:',
     '(A) FILM IT with a phone: a real person from the business (or a real client) records it in their actual workplace. Here "not an actor, no script reading" applies and IS achievable — that is exactly what filming gives you.',
     '(B) GENERATE IT: the performer is synthetic and no instruction makes them real. Do not attempt "a real person": deliver instead the LOOK and the PACE of a phone recording — hand-held, eye level, window light, ordinary clutter in frame, no colour grading, no smooth camera moves — and make the performance NOT look performed: conversational micro-pauses, natural blink rate, small asymmetries, no theatrical gestures, no advertising smile, no perfect skin.',
     'IF THE AD NEEDS A REAL FACE (a client testimonial, a proof with a name), film it with a phone: never generate it.',
-    'LINE LENGTH: every spoken line must be 15 words or fewer so it can sound conversational; if a line is longer, split it into two shots or move it to voice-over. No monologues.',
-    'SUBJECT: someone from the business (or a client) in their actual workplace, on a phone. In route (B) they are a generated performer: keep them ordinary — everyday clothes, real workspace, no model looks, no stock-photo smile.',
-    // 3. PLANO POR PLANO, CON SUS SEGUNDOS Y SU VOZ LITERAL
+    esVideo ? 'LINE LENGTH: every spoken line must be 15 words or fewer so it can sound conversational; if a line is longer, split it into two shots or move it to voice-over. No monologues.' : 'ONE FRAME: this piece is a single image — no lines to speak, all the message goes in the on-image text.',
+    `SUBJECT: someone from the business${esVideo ? ' (or a client)' : ''} in their actual workplace, on a phone. In route (B) they are a generated performer: keep them ordinary — everyday clothes, real workspace, no model looks, no stock-photo smile.`,
+  ].join('\n');
+
+  const bloqueVideo = [
+    'DELIVERABLE — produce a complete production package, in this order:',
+    `1) SHOT LIST: one row per shot — shot number, shot type and camera, duration in seconds, what is seen, on-screen text, brand asset used, audio. ${partes.length} shots, ${totalS} seconds in total.`,
+    '2) LITERAL SCRIPT: the exact words spoken and shown, shot by shot. Nothing outside these lines is spoken or written on screen: do not improvise claims.',
+    `3) GENERATION PROMPTS: one prompt per shot, ready to paste into a video generator (Veo 3, Sora, Runway Gen-3, Kling). ${proporcion === '1:1' ? 'Square 1:1' : 'Vertical 9:16'}, ${resolucion}, 30 fps, ${totalS} seconds. Keep every spoken line under 15 words and prefer one short on-camera line per shot with voice-over for the rest: long delivered lines are where generated video shows.`,
     `SHOT BY SHOT: ${partes.map(p => `shot ${p.n} ${p.desde}-${p.hasta} s — ${p.plano}; ${p.que_se_ve}; VO: ${p.vo ? `"${p.vo}"` : '[FILL: line missing — the client must write it]'}; ON-SCREEN: ${p.en_pantalla ? `"${p.en_pantalla}"` : 'none'}${p.recurso ? `; asset: ${p.recurso}` : ''}; audio: ${p.audio}`).join(' | ')}.`,
-    // 4. LA LENGUA, CON SUS TÉRMINOS
-    `LANGUAGE: spoken and on-screen text in ${datos.idioma.nombre === 'inglés' ? 'English' : datos.idioma.nombre}. The lines above are the client's own wording — translate them faithfully, do not add claims.${terminos.length ? ` These terms are used as-is by this market and stay untranslated: ${terminos.join(', ')}.` : ''}`,
-    // 5. EL CIERRE
-    `ENDING AND CTA: shot ${partes.length} ends with the on-screen call to action "${cierreConDestino}"${datos.canal ? ` and the ${datos.canal} button` : ''}${id?.imagenes?.length ? `; end card with their own logo` : ''}. No animated logo.`,
-    // 6. CÁMARA Y RITMO
-    'CAMERA AND RHYTHM: vertical 9:16 in every shot, hand-held phone at eye level, natural window light, no tripod, no gimbal, no drone, no stock footage, no transitions between shots, no speed ramps. Sound: live voice synced to picture; ambient room sound underneath; no voice-over, no music unless the business already has licensed music.',
-    // 7. LA PALETA, CON ROLES Y CONTRASTE CALCULADO
+    `CAMERA AND RHYTHM: ${proporcion === '1:1' ? 'square 1:1' : 'vertical 9:16'} in every shot, hand-held phone at eye level, natural window light, no tripod, no gimbal, no drone, no stock footage, no transitions between shots, no speed ramps. Sound: live voice synced to picture; ambient room sound underneath; no voice-over, no music unless the business already has licensed music.`,
+  ];
+
+  const bloqueImagen = [
+    'DELIVERABLE — produce a complete plan for ONE still image ad (there is no video in this piece: no shots, no motion, no voice, no duration):',
+    `1) THE PROMPT for the image, ready to paste into Midjourney, DALL·E or Flux. ${proporcion === '1:1' ? 'Square 1:1' : 'Vertical 9:16'}, ${resolucion}.`,
+    '2) THE ON-IMAGE TEXT, exactly as it must appear (it is the whole message of this piece: there is no voice to carry it).',
+    '3) THE FRAME: what is inside the image, where the subject sits and where the text goes.',
+    esServicio
+      ? 'WHAT THE IMAGE SHOWS: the real work — the workplace, the material, the result — with a person only if their face is needed; never a posed model. The image has to be understandable with the sound off, because there is no sound.'
+      : 'WHAT THE IMAGE SHOWS: the system or the result at work, in a real environment, readable with the sound off.',
+    'COMPOSITION: subject in the lower two thirds, negative space at the top for the text, high contrast so it reads on a phone in daylight. One single frame: no sequence, no before/after split unless the on-image text asks for it.',
+    'STILL IMAGE ONLY: a photograph or a photorealistic render. Do not describe motion, camera moves, time passing or sound.',
+  ];
+
+  const bloqueComun = [
+    `PRODUCT: a piece for ${datos.negocio} (${datos.rubro}${enlace ? `, ${enlace}` : ''}), on-image text in ${datos.idioma.nombre === 'inglés' ? 'English' : datos.idioma.nombre}. Audience: ${datos.aQuien}. Goal: ${datos.objetivo || 'que lo conozcan'}. Tone: ${tono}.`,
+    `CONCEPT: the discovery —that this exists and how it works— shown with the real work: ${queHace || 'what the business sells'}. It is a discovery story, not a product pitch.`,
+    rutaDeProduccion,
+    `LANGUAGE: on-image text in ${datos.idioma.nombre === 'inglés' ? 'English' : datos.idioma.nombre}. The lines above are the client's own wording — translate them faithfully, do not add claims.${terminos.length ? ` These terms are used as-is by this market and stay untranslated: ${terminos.join(', ')}.` : ''}`,
+    `ENDING AND CTA: the call to action "${cierreConDestino}"${datos.canal ? ` with the ${datos.canal} button` : ''}${id?.imagenes?.length ? `; end card with their own logo` : ''}. No animated logo.`,
     roles.length
       ? `PALETTE (measured on the client's own website — use these exact values, nothing else): ${roles.map(r => `${r.rol} ${r.hex} (used ${r.usos}x in their CSS)`).join('; ')}.${elTexto && elFondo ? ` Text on background contrast: ${elTexto.contraste_con_fondo}:1 — ${(elTexto.contraste_con_fondo ?? 0) >= 4.5 ? 'passes WCAG AA' : 'DOES NOT reach WCAG AA 4.5:1: raise the text colour or darken the background'}.` : ''}`
       : 'PALETTE: none was measured on their own site. Use the colours already in their assets; do not invent a brand palette.',
     (id?.tipografias ?? []).length
-      ? `TYPOGRAPHY: their own website declares ${(id?.tipografias ?? []).map(t => `${t.familia} (${t.usos}x)`).join(', ')}${tipo?.tamano ? `, body around ${tipo.tamano}` : ''}. Use the most declared first. On-screen text: maximum 7 words per shot, maximum 2 lines, no blinking, no animated type.`
-      : 'TYPOGRAPHY: no font was measured; use a neutral sans-serif. Maximum 7 words per shot, maximum 2 lines.',
-    // 8. LOS RECURSOS DE SU MARCA, Y DÓNDE VA CADA UNO
+      ? `TYPOGRAPHY: their own website declares ${(id?.tipografias ?? []).map(t => `${t.familia} (${t.usos}x)`).join(', ')}${tipo?.tamano ? `, body around ${tipo.tamano}` : ''}. Use the most declared first. On-screen text: maximum 7 words${esVideo ? ' per shot' : ''}, maximum 2 lines, no blinking, no animated type.`
+      : 'TYPOGRAPHY: no font was measured; use a neutral sans-serif. Maximum 7 words, maximum 2 lines.',
     imagenes.length
-      ? `BRAND ASSETS (real, read from their own site — where each one goes): ${imagenes.slice(0, 5).map((i, k) => `${i.url} (${i.para})${/logo|icon|favicon/i.test(`${i.para} ${i.url}`) ? ' → end card only, bottom centre, about 12% of the width' : ` → as B-roll in shot ${Math.min(2, partes.length)}${k % 2 ? ', full frame' : ', inset lower third'}`}`).join('; ')}. Do not invent a logo or any imagery that is not in this list.`
+      ? `BRAND ASSETS (real, read from their own site — where each one goes): ${imagenes.slice(0, 5).map((i, k) => `${i.url} (${i.para})${/logo|icon|favicon/i.test(`${i.para} ${i.url}`) ? ' → end card only, bottom centre, about 12% of the width' : `${esVideo ? ` → as B-roll in shot ${Math.min(2, partes.length)}` : ' → its own image, as the frame or as an inset'}` }`).join('; ')}. Do not invent a logo or any imagery that is not in this list.`
       : 'BRAND ASSETS: none were read from their site. Do not invent a logo or imagery.',
-    // 9. LO PROHIBIDO
-    'NEGATIVE — must not appear: stock actors or actresses, fake accents, epic or trailer music, template transitions, flashing or animated text, more than 7 words on screen at once, more than 2 lines of on-screen text, distorted hands, invented or third-party logos, watermarks, oversaturated colours, plastic skin, any text error, any number, price or return the client did not say.',
-    // 10. EL SECTOR REGULADO
+    `NEGATIVE — must not appear: stock actors or actresses, fake accents, template transitions, flashing or animated text, more than 7 words on screen at once, more than 2 lines of on-screen text, distorted hands, invented or third-party logos, watermarks, oversaturated colours, plastic skin, any text error, any number, price or return the client did not say${esVideo ? ', epic or trailer music, motion blur' : ', any motion or video look'}.`,
     sector
       ? `COMPLIANCE (regulated ground — this client works with digital assets, RWA and security tokens): no implicit financial advice, no mention of any regulator or licence, no yield, return or performance figure, no "guaranteed", no "risk-free", no comparison against financial products. Every claim must come from the client's own material. If a disclaimer is used, it is exactly "Not financial advice" and only if the client asks for it.`
       : 'COMPLIANCE: no claim that the client did not make; no regulator, no guarantees, no invented figures.',
-    // 11. LO QUE FALTA, DICHO
     `FILL BEFORE SHOOTING — the system will not invent these: ${faltaEnElPrompt.join('; ')}.`,
-  ].filter(Boolean).join('\n');
+  ];
+
+  const prompt = [...(esVideo ? bloqueVideo : bloqueImagen), ...bloqueComun].filter(Boolean).join('\n');
 
   const hojaDeRodaje = partes.map(p => ({
     plano_n: p.n, desde_s: p.desde, hasta_s: p.hasta, segundos: p.hasta - p.desde,
@@ -666,11 +693,13 @@ export function promptDelNegocio(datos: {
       clave: `${pieza} · video vertical`,
       pieza,
       plaza: datos.canal ? `video vertical 9:16 · ${datos.canal}` : 'video vertical 9:16',
-      tipo: 'video',
-      estilo: 'UGC: alguien real del negocio contando el descubrimiento a cámara',
+      tipo: esVideo ? 'video' : 'imagen',
+      estilo: esVideo
+        ? 'UGC: alguien real del negocio contando el descubrimiento a cámara'
+        : 'imagen fija con el texto encima: el trabajo real, sin persona que hable',
       estilo_explicado: 'sin formatos medidos del rubro todavía: se rueda con el celular, con alguien real del negocio en su lugar de trabajo, y la pieza cuenta el descubrimiento en vez de copiar un molde ajeno',
-      proporcion: '9:16',
-      duracion_s: 25,
+      proporcion,
+      duracion_s: esVideo ? totalS : null,
       concepto,
       referencia: { anunciante: '', dias: 0, que_se_toma: 'nada: no hay mercado medido todavía, así que no se copia ningún molde ajeno' },
       sujeto: {
@@ -710,11 +739,9 @@ export function promptDelNegocio(datos: {
       prompt,
       prompt_negativo: 'studio lighting, 3d render, stock footage, fake smiling models, tiny unreadable text, third-party logos, invented numbers, watermarks, distorted hands',
       parametros: {
-        aspect_ratio: '9:16',
-        resolucion: '1080x1920',
-        duracion_s: totalS,
-        escenas: partes.length,
-        fps: 30,
+        aspect_ratio: proporcion,
+        resolucion,
+        ...(esVideo ? { duracion_s: totalS, escenas: partes.length, fps: 30 } : {}),
         idioma_del_texto: datos.idioma.nombre,
         cta_boton: datos.boton,
       },
@@ -763,19 +790,31 @@ export function promptDelNegocio(datos: {
         sector ? 'Lleva las reglas de su sector: sin asesoramiento financiero implícito, sin reguladores, sin cifras de rendimiento.' : 'Lleva la regla general: ninguna afirmación que el negocio no haya hecho.',
         imagenes.length ? `Dice dónde entra cada recurso suyo: el logo al cierre, ${imagenes.length - 1} imágenes de respaldo en el medio.` : 'No se leyó ningún recurso suyo: el prompt prohíbe inventar logo o imágenes.',
       ],
-      entregable: {
-        que: `un paquete de producción completo para un video vertical de ${totalS} s: guion literal, hoja de rodaje plano por plano y un prompt por plano para el generador`,
-        partes: [
-          `hoja de rodaje: ${partes.length} planos y ${totalS} s en total, con lo que se ve, lo que se dice, el recurso y el audio de cada uno`,
-          'guion literal: las palabras exactas que se dicen y se escriben, escena por escena',
-          'prompts del generador: uno por plano (video: Veo 3, Sora, Runway Gen-3, Kling) y uno de imagen fija (Midjourney, DALL·E, Flux) para el cierre',
-        ],
-        formato_de_salida: 'tabla de escena / plano / segundos / qué se ve / voz / texto en pantalla / recurso / audio, y después cada prompt por separado, listo para pegar',
-        duracion_total_s: totalS,
-        planos: partes.length,
-      },
-      hoja_de_rodaje: hojaDeRodaje,
-      guion_literal: guionLiteral,
+      entregable: esVideo
+        ? {
+          que: `un paquete de producción completo para un video vertical de ${totalS} s: guion literal, hoja de rodaje plano por plano y un prompt por plano para el generador`,
+          partes: [
+            `hoja de rodaje: ${partes.length} planos y ${totalS} s en total, con lo que se ve, lo que se dice, el recurso y el audio de cada uno`,
+            'guion literal: las palabras exactas que se dicen y se escriben, escena por escena',
+            'prompts del generador: uno por plano (video: Veo 3, Sora, Runway Gen-3, Kling)',
+          ],
+          formato_de_salida: 'tabla de escena / plano / segundos / qué se ve / voz / texto en pantalla / recurso / audio, y después cada prompt por separado, listo para pegar',
+          duracion_total_s: totalS,
+          planos: partes.length,
+        }
+        : {
+          que: `un plan completo para UNA imagen ${proporcion} (${resolucion}): su prompt, su texto encima y su encuadre`,
+          partes: [
+            `el prompt de la imagen, para pegar en Midjourney, DALL·E o Flux (${proporcion}, ${resolucion})`,
+            'el texto que va sobre la imagen, exacto: en una imagen fija el mensaje no lo lleva la voz',
+            'el encuadre: qué entra en el cuadro, dónde va el sujeto y dónde el texto',
+          ],
+          formato_de_salida: 'el prompt de la imagen, el texto exacto sobre la imagen y el encuadre, en ese orden',
+          duracion_total_s: 0,
+          planos: 1,
+        },
+      hoja_de_rodaje: esVideo ? hojaDeRodaje : [],
+      guion_literal: esVideo ? guionLiteral : [],
       roles_de_paleta: roles,
       recursos_y_donde: imagenes.slice(0, 6).map((im, k) => ({
         url: im.url, que_es: im.para || 'imagen suya',

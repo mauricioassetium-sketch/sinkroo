@@ -1455,7 +1455,10 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
     .slice(0, 5)
     .map((v, i) => ({ ...v, n: i + 1 }));
   const paqueteDelMercado = promptsDelInforme(inf ?? {}, formatosRecomendados);
-  const paquete = paqueteDelMercado ?? (piezaDelNegocio ? promptDelNegocio({
+  // LOS CAMPOS DEL PROMPT, SIN LA PIEZA. El prompt de cada pieza se arma DESPUÉS de escribirla —más abajo—
+  // porque necesita su formato y su título: una pieza de imagen no puede llevar un prompt de video, y el
+  // prompt tiene que guardarse con el título de ESA pieza para que su ficha abra el suyo y no el de otra.
+  const camposDelPrompt = {
     negocio: ctx.nombre,
     queSePublica,
     aQuien: aQuienLeHabla,
@@ -1475,94 +1478,17 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
     tono: Array.isArray(decisiones.tono) ? (decisiones.tono as string[]) : [],
     objetivo: String(decisiones.negocio_objetivo || ''),
     identidad,
-    // El guion de la pieza, línea por línea: de ahí salen los planos, los segundos y las frases literales.
-    guion: String(piezaEscrita.guion || '').split('\n').map(l => l.trim()).filter(Boolean),
     // Su enlace, para que el cierre diga a dónde escribe (no «escríbanos»).
     enlace: String(links[0] || ''),
     // Los términos con los que el mercado nombra esto: los que se quedan sin traducir.
     terminosDelMercado: mercado?.terminos ?? [],
     fuente: `${materialQueYaTiene} + la pieza que decidió Tino (todavía sin la analítica visual de su rubro)`,
-  }) : null);
+  };
+  // El del mercado medido sí se guarda acá: no depende de la pieza (trae una plaza por formato del informe).
   let promptsGuardados = 0;
-  if (paquete) {
-    try { promptsGuardados = await guardarPrompts(db, ctx.businessId, paquete, corridaId); } catch { promptsGuardados = 0; }
+  if (paqueteDelMercado) {
+    try { promptsGuardados = await guardarPrompts(db, ctx.businessId, paqueteDelMercado, corridaId); } catch { promptsGuardados = 0; }
   }
-  const tipos = paquete ? [...new Set(paquete.prompts.map((p: any) => p.tipo))].join(' y ') : '';
-  tareas.push({
-    agente: 'iris', orden: 9,
-    que: paqueteDelMercado
-      ? `Armó ${paqueteDelMercado.prompts.length} prompts de generación (${tipos}) con los colores, la tipografía, el formato y el estilo medidos en su mercado`
-      : paquete
-        ? [
-          'Armó el entregable de la pieza sin mercado medido:',
-          identidad?.leida
-            ? `con la identidad medida en su propia web (${identidad.colores.length} colores, ${identidad.tipografias.length} tipografías, ${identidad.imagenes.length} imágenes)`
-            : 'sin identidad que medir: no hay página legible y lo dice',
-          `y un concepto propio —contar el descubrimiento— en ${lenguaDeLaPieza.nombre},`,
-          `en ${String((paquete.prompts[0] as any)?.entregable?.planos || '')} planos de ${String((paquete.prompts[0] as any)?.entregable?.duracion_total_s || '')} s:`,
-          `la hoja de rodaje, el guion literal y el prompt de cada plano${(paquete.prompts[0] as any)?.lo_que_falta?.length ? `, con ${(paquete.prompts[0] as any).lo_que_falta.length} cosas marcadas como «falta» en vez de inventadas` : ''}`,
-        ].join(' ')
-        : 'No pudo armar los prompts y lo dice: falta la analítica visual del rubro',
-    resultado: paqueteDelMercado ? {
-      fuente_tipo: 'la analítica visual del informe del mercado + la pieza propuesta (el hueco que se ataca)',
-      pieza: paqueteDelMercado.pieza,
-      guardados_en: 'la tabla de prompts del negocio (el contrato que leerá el generador)',
-      guardados: promptsGuardados,
-      prompts: paqueteDelMercado.prompts.map(p => ({
-        plaza: p.plaza, tipo: p.tipo, estilo: p.estilo, proporcion: p.proporcion, duracion_s: p.duracion_s,
-        colores: p.colores.paleta,
-        tipografia: `${p.tipografia.familia} · ${p.tipografia.tratamiento} · ${p.tipografia.ubicacion}`,
-        escenas: p.escenas.length,
-        prompt: p.prompt,
-        prompt_negativo: p.prompt_negativo,
-        como_se_arma: p.como_se_arma,
-        elegido_por_nosotros: p.elegido_por_nosotros,
-        verificaciones: p.verificaciones,
-      })),
-      porque: 'Todavía no hay generador de imagen ni de video conectado: lo que sí se puede hacer hoy, y se hizo, es dejar el prompt completo y su traza. Cuando el generador exista, se genera con esto y no con una idea suelta.',
-      falta: 'conectar el servicio de generación (hoy no hay ninguno escuchando)',
-      fuente: inf?.fuente || '',
-    } : paquete ? {
-      fuente_tipo: 'el material del negocio y la pieza que decidió Tino — todavía SIN la analítica visual de su rubro',
-      pieza: paquete.pieza,
-      guardados_en: 'la tabla de prompts del negocio (el contrato que leerá el generador)',
-      guardados: promptsGuardados,
-      idioma_de_la_pieza: `${lenguaDeLaPieza.nombre} — ${lenguaDeLaPieza.por_que}`,
-      prompts: paquete.prompts.map((p: any) => ({
-        plaza: p.plaza, tipo: p.tipo, estilo: p.estilo, proporcion: p.proporcion, duracion_s: p.duracion_s,
-        colores: p.colores.paleta.length ? p.colores.paleta : 'sin paleta medida: el color lo pone la identidad que el negocio ya usa',
-        tipografia: p.tipografia.familia,
-        escenas: p.escenas.length,
-        concepto: p.concepto,
-        recursos: p.recursos,
-        prompt: p.prompt,
-        prompt_negativo: p.prompt_negativo,
-        como_se_arma: p.como_se_arma,
-        elegido_por_nosotros: p.elegido_por_nosotros,
-        verificaciones: p.verificaciones,
-      })),
-      identidad_medida_en_su_web: identidad?.leida
-        ? {
-          url: identidad.url,
-          colores: identidad.colores,
-          tipografias: identidad.tipografias,
-          imagenes: identidad.imagenes,
-          como_se_midio: identidad.como_se_midio,
-        }
-        : { leida: false, motivo: identidad?.motivo || 'el negocio no cargó ninguna página web: la identidad se arma con lo que él dijo de sí mismo' },
-      lo_que_todavia_no_se_mide: ['la identidad de su rubro (sí la suya, medida en su web)', 'el formato que el mercado sostiene', 'la duración medida en las piezas vivas', 'el molde de una pieza que aguanta: no hay ninguna comparable'],
-      porque: 'Sin mercado no se copia un molde ajeno ni se inventan colores: el prompt se arma con lo que el negocio ya tiene y los campos que nadie midió quedan vacíos y DICHOS. Cuando haya informe del mercado, ese prompt reemplaza a este.',
-      falta: [
-        'conectar el servicio de generación (hoy no hay ninguno escuchando)',
-        'la analítica visual del rubro: llega con el informe del mercado y reemplaza a este prompt',
-        'el guion escrito escena por escena (hoy el prompt lleva la regla de cada tramo)',
-      ],
-      fuente: paquete.prompts[0]?.fuente || '',
-    } : {
-      sin_fuente: 'falta la analítica visual del rubro (colores, tipografía, encuadre y plazas) y tampoco hay pieza que Tino haya decidido con el material del negocio',
-      fuente: 'sin fuente',
-    },
-  });
 
   // ---------------- REX 2 · LOS PRECIOS QUE EL MERCADO PUBLICA EN SUS ANUNCIOS ----------------
   // Los precios no se estiman: se leen de los copies de los anuncios comparables, que es donde el mercado
@@ -1654,6 +1580,56 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
           String((pz.detalle as any)?.variante?.angulo || '')],
       );
       escritasAhora++;
+    }
+    // EL PROMPT DE CADA PIEZA, EN SU FORMATO. Una pieza de imagen pide UNA imagen (sin planos, sin voz, sin
+    // segundos) y su texto sobre la imagen; una de video pide el paquete completo. Antes se guardaba un solo
+    // prompt de video para todas, así que una pieza cuadrada salía pidiendo un video de 30 segundos.
+    const formatosEscritos: string[] = [];
+    if (!paqueteDelMercado && piezaDelNegocio) {
+      for (const pz of aEscribir) {
+        try {
+          const pq = promptDelNegocio({
+            ...camposDelPrompt,
+            formato: pz.formato,
+            piezaTitulo: pz.titulo,
+            guion: String(pz.guion || '').split('\n').map(l => l.trim()).filter(Boolean),
+          });
+          promptsGuardados += await guardarPrompts(db, ctx.businessId, pq, corridaId);
+          formatosEscritos.push(`${pz.formato} → prompt de ${pq.prompts[0]?.tipo || 'sin tipo'}`);
+        } catch (e) {
+          console.error('[iris] no se pudo armar el prompt de la pieza:', (e as Error)?.message);
+        }
+      }
+    }
+    const piezaParaLosPrompts = aEscribir[0];
+    if (!paqueteDelMercado && piezaDelNegocio) {
+      tareas.push({
+        agente: 'iris', orden: 9,
+        que: [
+          `Armó el entregable de ${aEscribir.length === 1 ? 'la pieza' : `las ${aEscribir.length} piezas`}, cada una en su formato:`,
+          formatosEscritos.length ? formatosEscritos.join(' · ') : 'no se pudo armar ninguno',
+          identidad?.leida
+            ? `con la identidad medida en su propia web (${identidad.colores.length} colores, ${identidad.tipografias.length} tipografías, ${identidad.imagenes.length} imágenes)`
+            : 'sin identidad que medir: no hay página legible y lo dice',
+          `y ${String((promptDelNegocio({ ...camposDelPrompt, formato: piezaParaLosPrompts?.formato, piezaTitulo: piezaParaLosPrompts?.titulo, guion: [] }).prompts[0] as any)?.lo_que_falta?.length || 0)} cosas marcadas como «falta» en vez de inventadas`,
+        ].join(' '),
+        resultado: {
+          fuente_tipo: 'el material del negocio (lo que vende, a quién le habla, su identidad medida en su web) + la pieza escrita',
+          guardados_en: 'la tabla de prompts del negocio, uno por pieza y en su formato',
+          guardados: promptsGuardados,
+          piezas_con_prompt: aEscribir.map(pz => ({ pieza: pz.titulo.slice(0, 70), formato: pz.formato })),
+          que_lleva: 'el entregable (qué producir y en qué formato devuelve), el guion literal o el texto sobre la imagen, los colores con su papel y su contraste calculado, dónde entra cada recurso suyo, las prohibiciones, las reglas de su sector y lo que falta',
+          porque: 'un prompt que no dice qué producir no se puede ejecutar, y el de una imagen no puede pedir un video',
+          donde_lo_ve_el_dueno: 'Campañas → La galería → Ver ficha → «El prompt de generación», con «Copiar el prompt»',
+          fuente: `identidad medida en su web + material del negocio (${materialQueYaTiene})`,
+        },
+      });
+    } else if (!paqueteDelMercado) {
+      tareas.push({
+        agente: 'iris', orden: 9,
+        que: 'No pudo armar los prompts y lo dice',
+        resultado: { sin_fuente: 'no hay pieza con la que armar el prompt', fuente: 'sin fuente' },
+      });
     }
     // Lo que se creó se cobra, y queda en el libro: es lo que cuesta escribir una pieza.
     if (escritasAhora > 0) {
