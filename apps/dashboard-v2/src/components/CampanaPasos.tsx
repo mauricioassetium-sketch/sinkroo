@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Card, Badge, Button } from './ui';
+import { useEffect, useRef, useState } from 'react';
+import { Card, Badge, Button, Modal } from './ui';
 import { I_Check, I_Upload, I_Image, I_Film, I_Vote, I_Rocket, I_Play, I_Sparkle, I_ChevDn, I_ChevUp, I_Plus, I_Eye, I_X, I_Target } from './icons';
 import { CUANTAS_PASAN, PERFILES } from '../data/mirofish';
 import type { Modo } from '../data/demo';
@@ -12,7 +12,7 @@ import { baseApi, token } from '../api/cliente';
  * La imagen generada de una pieza. Una etiqueta <img> no puede mandar la sesión, así que la imagen se
  * pide con el token y se muestra desde memoria: es del dueño, no una dirección pública.
  */
-function ImagenDeLaPieza({ url }: { url: string }) {
+function ImagenDeLaPieza({ url, grande }: { url: string; grande?: boolean }) {
   const [src, setSrc] = useState<string | null>(null);
   const [fallo, setFallo] = useState(false);
   useEffect(() => {
@@ -30,7 +30,11 @@ function ImagenDeLaPieza({ url }: { url: string }) {
   }, [url]);
   if (fallo) return <span className="tiny muted">la imagen no se pudo cargar en el navegador</span>;
   if (!src) return <span className="tiny muted">cargando la imagen…</span>;
-  return <img src={src} alt="La imagen generada de esta pieza" style={{ maxWidth: 260, width: '100%', borderRadius: 10, border: '1px solid var(--line)', marginTop: 6 }} />;
+  // En la carta va chica; abierta va a lo ancho de la pantalla, que es para lo que se toca.
+  return <img src={src} alt="La imagen generada de esta pieza"
+    style={grande
+      ? { width: '100%', maxHeight: '70vh', objectFit: 'contain', borderRadius: 10, border: '1px solid var(--line)' }
+      : { maxWidth: 260, width: '100%', borderRadius: 10, border: '1px solid var(--line)', marginTop: 6 }} />;
 }
 
 /**
@@ -38,9 +42,22 @@ function ImagenDeLaPieza({ url }: { url: string }) {
  * porque una pieza sin publicar no puede quedar en una dirección adivinable. La voz la eligió el motor
  * según el tono del negocio, y eso se dice: no es una elección suelta.
  */
-function VideoDeLaPieza({ url }: { url: string }) {
+function VideoDeLaPieza({ url, grande }: { url: string; grande?: boolean }) {
   const [src, setSrc] = useState<string | null>(null);
   const [fallo, setFallo] = useState(false);
+  const ref = useRef<HTMLVideoElement | null>(null);
+  // EL SONIDO PIDE UN TOQUE, y no es un capricho nuestro: los navegadores NO dejan arrancar un video CON
+  // audio sin que la persona toque algo (probado: `NotAllowedError`). Así que arranca SIN sonido —para que
+  // algo se mueva y se vea que está— y el botón de al lado le pone la voz, con ese toque que el navegador
+  // sí acepta. Callarlo y decir «ya suena» sería mentir.
+  const [conSonido, setConSonido] = useState(false);
+  const oirlo = () => {
+    const v = ref.current;
+    if (!v) return;
+    v.muted = false; v.volume = 1;
+    setConSonido(true);
+    void v.play();
+  };
   useEffect(() => {
     let vivo = true;
     let blob: string | null = null;
@@ -56,7 +73,26 @@ function VideoDeLaPieza({ url }: { url: string }) {
   }, [url]);
   if (fallo) return <span className="tiny muted">el video no se pudo cargar en el navegador</span>;
   if (!src) return <span className="tiny muted">cargando el video…</span>;
-  return <video src={src} controls playsInline style={{ maxWidth: 300, width: '100%', borderRadius: 10, border: '1px solid var(--line)', marginTop: 6 }} />;
+  // CON SONIDO: nada de `muted` —lo que se quiere oír es la voz y los subtítulos hablados—. Si el
+  // navegador pide un toque para arrancar, los controles están ahí; el pedido se hace con el clic que
+  // abrió esta ventana, que es cuando el navegador lo permite.
+  return (
+    <>
+      <video ref={ref} src={src} controls playsInline autoPlay={grande} preload="metadata"
+        muted={Boolean(grande) && !conSonido}
+        style={grande
+          ? { width: '100%', maxHeight: '70vh', borderRadius: 10, border: '1px solid var(--line)' }
+          : { maxWidth: 300, width: '100%', borderRadius: 10, border: '1px solid var(--line)', marginTop: 6 }} />
+      {grande && !conSonido ? (
+        <div style={{ marginTop: 8 }}>
+          <Button className="btn-sm" title="Le pone la voz al video. El navegador no deja sonar el audio sin un toque suyo: este es ese toque."
+            onClick={oirlo}>
+            <I_Play size={12} /> Oírlo con la voz
+          </Button>
+        </div>
+      ) : null}
+    </>
+  );
 }
 
 // =============================================================================================
@@ -311,6 +347,9 @@ export function Galeria({ setToast, ir }: { modo: Modo; setToast: (t: string) =>
   const evaluadas = orden.filter(o => o.puntaje !== null);
   const [salen, setSalen] = useState<string[] | null>(null);
   const [abierta, setAbierta] = useState<string | null>(null);
+  // EL VISOR: la imagen o el video abiertos a pantalla completa. En la carta se ven chicos —y el video ni
+  // se veía—, así que tocar el arte (o el botón del video) los abre para mirarlos y oírlos de verdad.
+  const [verArte, setVerArte] = useState<{ tipo: 'imagen' | 'video'; url: string; titulo: string; nota?: string } | null>(null);
   // La selección arranca con las que mejor votaron, que son las que pasarían el mínimo. La decisión es
   // suya: si desmarca todas, queda sin ninguna y el botón de marcar se apaga.
   const porDefecto = orden.slice(0, CUANTAS_PASAN).filter(o => o.puntaje !== null).map(o => o.id);
@@ -396,16 +435,30 @@ export function Galeria({ setToast, ir }: { modo: Modo; setToast: (t: string) =>
                 <span className="pz-pos">{i + 1}</span>
                 <span className="pz-formato">{esVideo(o.formato) ? <><I_Film size={12} /> {o.formato.toLowerCase()}</> : <><I_Image size={12} /> {o.formato.toLowerCase()}</>}</span>
                 {o.imagen
-                  ? <div className="pz-art"><ImagenDeLaPieza url={o.imagen.url} /></div>
+                  ? (
+                    <div className="pz-art" style={{ cursor: 'zoom-in' }}
+                      title="Ábrala para verla en grande"
+                      onClick={() => setVerArte({
+                        tipo: 'imagen', url: o.imagen!.url, titulo: o.titulo,
+                        nota: `${o.imagen!.ancho}×${o.imagen!.alto} · ${Math.round(o.imagen!.peso / 1024)} KB · ${o.imagen!.fuente}`,
+                      })}>
+                      <ImagenDeLaPieza url={o.imagen.url} />
+                    </div>
+                  )
                   : <span className="pz-ico">{esVideo(o.formato) ? <I_Film size={30} /> : <I_Image size={30} />}</span>}
                 {esVideo(o.formato) && (
                   <span className={`pz-video ${o.video ? 'listo' : o.video_error ? 'fallo' : 'montando'}`}
+                    style={o.video ? { cursor: 'pointer' } : undefined}
+                    onClick={o.video ? () => setVerArte({
+                      tipo: 'video', url: o.video!.url, titulo: o.titulo,
+                      nota: `${o.video!.segundos} s · voz ${o.video!.voz} — ${o.video!.voz_porque}`,
+                    }) : undefined}
                     title={o.video
-                      ? `El video está montado: ${o.video.segundos} s, voz ${o.video.voz}. Ábralo en «Ver ficha».`
+                      ? `Toque para verlo con sonido: ${o.video.segundos} s, voz ${o.video.voz}`
                       : o.video_error
                         ? `El montaje falló: ${o.video_error.motivo}`
                         : 'El motor está montando el video: es un video de verdad, con voz y subtítulos, y tarda unos minutos en estar. Aparece acá solo.'}>
-                    {o.video ? `▶ video listo · ${o.video.segundos} s` : o.video_error ? 'el video no salió' : 'montando el video…'}
+                    {o.video ? `▶ ver el video · ${o.video.segundos} s` : o.video_error ? 'el video no salió' : 'montando el video…'}
                   </span>
                 )}
               </div>
@@ -463,6 +516,16 @@ export function Galeria({ setToast, ir }: { modo: Modo; setToast: (t: string) =>
                             {`${o.imagen.ancho}×${o.imagen.alto} · ${Math.round(o.imagen.peso / 1024)} KB · ${o.imagen.fuente}`}
                           </span>
                           <ImagenDeLaPieza url={o.imagen.url} />
+                          <div style={{ marginTop: 6 }}>
+                            <Button variant="outline" className="btn-sm"
+                              title="Abre la imagen a pantalla completa, para mirarla con calma"
+                              onClick={() => setVerArte({
+                                tipo: 'imagen', url: o.imagen!.url, titulo: o.titulo,
+                                nota: `${o.imagen!.ancho}×${o.imagen!.alto} · ${Math.round(o.imagen!.peso / 1024)} KB · ${o.imagen!.fuente}`,
+                              })}>
+                              <I_Eye size={12} /> Verla en grande
+                            </Button>
+                          </div>
                           {o.imagen.prompt_visual ? (
                             <span className="tiny muted" style={{ display: 'block', marginTop: 6 }}>{`Se le pidió: ${o.imagen.prompt_visual}`}</span>
                           ) : null}
@@ -477,6 +540,16 @@ export function Galeria({ setToast, ir }: { modo: Modo; setToast: (t: string) =>
                             {`${o.video.segundos} s · ${Math.round(o.video.peso / 1024)} KB · voz ${o.video.voz} — ${o.video.voz_porque}`}
                           </span>
                           <VideoDeLaPieza url={o.video.url} />
+                          <div style={{ marginTop: 6 }}>
+                            <Button variant="outline" className="btn-sm"
+                              title="Abre el video a pantalla completa, con su voz y sus subtítulos"
+                              onClick={() => setVerArte({
+                                tipo: 'video', url: o.video!.url, titulo: o.titulo,
+                                nota: `${o.video!.segundos} s · voz ${o.video!.voz} — ${o.video!.voz_porque}`,
+                              })}>
+                              <I_Play size={12} /> Verlo con sonido
+                            </Button>
+                          </div>
                         </span>
                       </div>
                     ) : null}
@@ -705,6 +778,23 @@ export function Galeria({ setToast, ir }: { modo: Modo; setToast: (t: string) =>
           </div>
         </Card>
       </div>
+
+      {/* EL VISOR: lo que se toca en la carta se abre acá, grande y —si es video— con su voz. */}
+      <Modal open={!!verArte} onClose={() => setVerArte(null)}
+        title={verArte ? `${verArte.tipo === 'video' ? 'El video' : 'La imagen'} · ${verArte.titulo}` : ''}>
+        {verArte?.tipo === 'imagen'
+          ? <ImagenDeLaPieza url={verArte.url} grande />
+          : verArte ? <VideoDeLaPieza url={verArte.url} grande /> : null}
+        {verArte?.nota ? (
+          <div className="tiny muted" style={{ display: 'block', marginTop: 10 }}>{verArte.nota}</div>
+        ) : null}
+        {verArte?.tipo === 'video' ? (
+          <div className="tiny muted" style={{ display: 'block', marginTop: 6 }}>
+            Si no arranca solo, dele al botón de reproducir: el navegador a veces pide un toque para dejar
+            sonar el audio.
+          </div>
+        ) : null}
+      </Modal>
     </>
   );
 }
