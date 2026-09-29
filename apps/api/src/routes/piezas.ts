@@ -97,7 +97,11 @@ export async function piezaRoutes(app: FastifyInstance, db: Pool) {
     if (!archivo) return reply.status(404).send({ error: 'esa pieza no tiene imagen generada', codigo: 'sin_imagen' });
     try {
       const bytes = await readFile(archivo);
-      return reply.header('Content-Type', 'image/jpeg').header('Cache-Control', 'private, max-age=3600').send(bytes);
+      // El tipo se saca del archivo, no se fija a mano: según con qué modelo se pintó, la imagen
+      // puede llegar en JPEG (Pollinations) o en PNG (FLUX). Decirle a un PNG que es JPEG rompe
+      // la ficha en el panel.
+      const tipo = /\.png$/i.test(archivo) ? 'image/png' : 'image/jpeg';
+      return reply.header('Content-Type', tipo).header('Cache-Control', 'private, max-age=3600').send(bytes);
     } catch {
       return reply.status(404).send({ error: 'el archivo de la imagen no está en el servidor', codigo: 'sin_archivo' });
     }
