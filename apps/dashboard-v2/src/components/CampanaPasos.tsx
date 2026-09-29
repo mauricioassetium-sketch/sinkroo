@@ -33,6 +33,32 @@ function ImagenDeLaPieza({ url }: { url: string }) {
   return <img src={src} alt="La imagen generada de esta pieza" style={{ maxWidth: 260, width: '100%', borderRadius: 10, border: '1px solid var(--line)', marginTop: 6 }} />;
 }
 
+/**
+ * El video montado de una pieza. Igual que la imagen: se pide con la sesión y se muestra desde memoria,
+ * porque una pieza sin publicar no puede quedar en una dirección adivinable. La voz la eligió el motor
+ * según el tono del negocio, y eso se dice: no es una elección suelta.
+ */
+function VideoDeLaPieza({ url }: { url: string }) {
+  const [src, setSrc] = useState<string | null>(null);
+  const [fallo, setFallo] = useState(false);
+  useEffect(() => {
+    let vivo = true;
+    let blob: string | null = null;
+    (async () => {
+      try {
+        const r = await fetch(baseApi() + url, { headers: token() ? { Authorization: 'Bearer ' + token() } : {} });
+        if (!r.ok) { if (vivo) setFallo(true); return; }
+        blob = URL.createObjectURL(await r.blob());
+        if (vivo) setSrc(blob);
+      } catch { if (vivo) setFallo(true); }
+    })();
+    return () => { vivo = false; if (blob) URL.revokeObjectURL(blob); };
+  }, [url]);
+  if (fallo) return <span className="tiny muted">el video no se pudo cargar en el navegador</span>;
+  if (!src) return <span className="tiny muted">cargando el video…</span>;
+  return <video src={src} controls playsInline style={{ maxWidth: 300, width: '100%', borderRadius: 10, border: '1px solid var(--line)', marginTop: 6 }} />;
+}
+
 // =============================================================================================
 // CAMPAÑAS POR ETAPAS — cada paso es su propia pantalla, así no hay que scrollear media hora.
 // El camino fácil es el primero: dice qué quiere y Sinkroo elige el tipo, crea todo y usted decide
@@ -224,6 +250,8 @@ type PiezaGal = {
   texto_sobre_la_imagen: string;
   /** La imagen generada de esta pieza (Pollinations): dónde está, su medida y su fuente. */
   imagen: { url: string; ancho: number; alto: number; peso: number; fuente: string; prompt_visual?: string } | null;
+  /** El video montado de esta pieza, con la voz con la que se hizo y por qué esa voz. */
+  video: { url: string; peso: number; segundos: number; voz: string; voz_porque: string; fuente: string } | null;
   /** Los planos del guion (solo las piezas de video): prompt, negativo, duración y audio de cada uno. */
   planos: { planos: { n: number; duracion_s: number; prompt: string; prompt_negativo: string; audio?: string }[]; duracion_total_s: number; motor: string; estilo_unificado: string; modelos_declarados: { video: string; audio: string } } | null;
   /** La especificación del formato: qué es, qué produce y con qué criterios se juzga. */
@@ -264,6 +292,7 @@ export function Galeria({ setToast, ir }: { modo: Modo; setToast: (t: string) =>
       formato_pide: ((g as { lo_que_el_formato_pide?: never }).lo_que_el_formato_pide ?? null),
       planos: ((g as { planos?: never }).planos ?? null),
       imagen: ((g as { imagen_generada?: never }).imagen_generada ?? null),
+      video: ((g as { video_generado?: never }).video_generado ?? null),
       prompt: porNombre ?? null,
     };
   });
@@ -419,6 +448,17 @@ export function Galeria({ setToast, ir }: { modo: Modo; setToast: (t: string) =>
                           {o.imagen.prompt_visual ? (
                             <span className="tiny muted" style={{ display: 'block', marginTop: 6 }}>{`Se le pidió: ${o.imagen.prompt_visual}`}</span>
                           ) : null}
+                        </span>
+                      </div>
+                    ) : null}
+                    {o.video ? (
+                      <div className="op-row">
+                        <span className="op-k">El video, montado</span>
+                        <span className="bs">
+                          <span className="tiny muted" style={{ display: 'block' }}>
+                            {`${o.video.segundos} s · ${Math.round(o.video.peso / 1024)} KB · voz ${o.video.voz} — ${o.video.voz_porque}`}
+                          </span>
+                          <VideoDeLaPieza url={o.video.url} />
                         </span>
                       </div>
                     ) : null}
