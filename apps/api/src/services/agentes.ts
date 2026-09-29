@@ -500,7 +500,10 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
       `SELECT count(*)::int AS fichas, count(DISTINCT pais)::int AS paises,
               count(DISTINCT anunciante)::int AS anunciantes,
               (array_agg(DISTINCT anunciante))[1:8] AS ejemplos,
-              min(fecha_inicio) AS mas_viejo
+              -- La fecha más vieja, saltando las fichas que no traen fecha: el min() de un texto con
+              -- vacíos devolvía «» y los días salían en -1. Se ordena por la fecha de verdad, no por el
+              -- alfabeto (los meses en texto no están en orden alfabético).
+              min(fecha_inicio) FILTER (WHERE fecha_inicio <> '') AS mas_viejo
          FROM anuncios_leidos WHERE business_id = $1`, [ctx.businessId]);
     const f = r.rows[0] as Record<string, unknown> | undefined;
     if (Number(f?.fichas) > 0) {
