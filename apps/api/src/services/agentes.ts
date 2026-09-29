@@ -537,6 +537,50 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
     },
   });
 
+  // ---------------- EL CEREBRO DEL MERCADO · LO COMPARABLE, EL RUIDO, Y SI LA CATEGORÍA ES NUEVA ----------------
+  // Buscar por palabra clave trae al mundo entero (Alibaba, iHerb): de todos los anuncios leídos, no todos
+  // son del mercado del negocio. Acá se cruzan con las palabras del propio negocio y se separan: lo
+  // COMPARABLE de un lado, el RUIDO del otro. Y si después de separar no queda nadie comparable, quiere
+  // decir que esa categoría todavía no existe en ese mercado: hay que entenderlo y decirlo así, porque no
+  // es falta de datos — es un negocio que va primero, y eso se ataca derecho desde el creativo.
+  let mercado: { comparables: any[]; ruido: number; total: number; categoria_nueva: boolean; palabras: string[] } | null = null;
+  try {
+    const palabras = [...new Set(`${ctx.rubro} ${ctx.descripcion} ${leido.rubro}`.toLowerCase()
+      .split(/[^a-záéíóúñ0-9]+/).filter(w => w.length >= 5))].slice(0, 12);
+    const r = await db.query(
+      `SELECT anunciante, copy, cta, pais, fecha_inicio
+         FROM anuncios_leidos WHERE business_id = $1 AND anunciante <> ''
+        ORDER BY fecha_inicio DESC LIMIT 400`, [ctx.businessId]);
+    const filas = r.rows as any[];
+    const puntua = (f: any) => palabras.filter(w => `${f.anunciante} ${f.copy}`.toLowerCase().includes(w)).length;
+    const comparables = filas.filter(f => puntua(f) > 0).sort((a, b) => puntua(b) - puntua(a));
+    const ruido = filas.length - comparables.length;
+    mercado = { comparables, ruido, total: filas.length, categoria_nueva: filas.length > 0 && comparables.length === 0, palabras };
+  } catch { mercado = null; }
+
+  tareas.push({
+    agente: 'lux', orden: 3,
+    que: mercado
+      ? (mercado.categoria_nueva
+        ? `Separó el mercado: de ${mercado.total} anuncios leídos, ninguno es de su categoría — es un negocio nuevo en ese mercado`
+        : `Separó el mercado: ${mercado.comparables.length} comparables de ${mercado.ruido} que son ruido de la palabra clave`)
+      : 'No pudo separar el mercado y lo dice',
+    resultado: mercado ? {
+      fuente_tipo: 'los anuncios leídos, cruzados con las palabras del propio negocio',
+      comparables: mercado.comparables.slice(0, 12).map((f: any) => ({
+        anunciante: f.anunciante, copy: String(f.copy || '').slice(0, 130), cta: f.cta, pais: f.pais, desde: f.fecha_inicio,
+      })),
+      cuantos_comparables: mercado.comparables.length,
+      cuantos_son_ruido: mercado.ruido,
+      categoria_nueva: mercado.categoria_nueva,
+      como_se_separo: `se quedó el anunciante o el copy que nombra alguna de las palabras del negocio: ${mercado.palabras.join(', ')}`,
+      porque: mercado.categoria_nueva
+        ? 'Nadie comparable en su mercado: la categoría todavía no existe ahí. No es falta de datos — es que este negocio va primero, y se ataca derecho desde el creativo con lo que ya identificamos.'
+        : 'De la lista completa solo una parte compite con este negocio; el resto entra por la palabra clave y no sirve para comparar.',
+      fuente: 'Biblioteca de Anuncios de Meta · lectura del trabajador',
+    } : { sin_fuente: 'no se pudieron cruzar los anuncios con las palabras del negocio', fuente: 'sin fuente' },
+  });
+
   // ---------------- REX · la demanda y el precio ----------------
   const precios = preciosDelInforme(inf);
   tareas.push({
@@ -988,6 +1032,23 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
       titulo: `Su mercado tiene ${lectura.fichas} anuncios activos${lectura.dias >= 0 ? `: el más viejo lleva ${lectura.dias} días` : ''}`,
       dato: `${lectura.fichas} anuncios en ${lectura.paises} ${lectura.paises === 1 ? 'país' : 'países'} · ${lectura.anunciantes} anunciantes distintos${lectura.ejemplos.length ? ` · ${lectura.ejemplos.slice(0, 4).join(', ')}` : ''}`,
       porque: 'Es su categoría leída en la Biblioteca de Anuncios: quién está pautando y desde cuándo. Los que llevan meses son los que rinden.',
+      fuente: 'Biblioteca de Anuncios de Meta · lectura del trabajador',
+    });
+  }
+  if (mercado?.categoria_nueva) {
+    hallazgos.push({
+      tipo: 'categoria nueva',
+      titulo: 'Su categoría todavía no existe en ese mercado: no hay con quién compararse',
+      dato: `${mercado.total} anuncios leídos y ninguno de su categoría: nadie está pautando esto en ese mercado`,
+      porque: 'No es falta de datos: es un negocio que va primero. Lo que sigue no es copiar una pieza — es crearla desde cero con lo que ya identificamos: su rubro, sus palabras clave y su material.',
+      fuente: 'Biblioteca de Anuncios de Meta · lectura del trabajador',
+    });
+  } else if (mercado && mercado.comparables.length > 0) {
+    hallazgos.push({
+      tipo: 'mercado',
+      titulo: `De todo su mercado, ${mercado.comparables.length} son comparables de verdad`,
+      dato: `Los otros ${mercado.ruido} anuncios entraron por la palabra clave y no compiten con usted`,
+      porque: 'Separar el ruido es lo que convierte una lista larga en una lista útil: contra esos sí vale compararse.',
       fuente: 'Biblioteca de Anuncios de Meta · lectura del trabajador',
     });
   }
