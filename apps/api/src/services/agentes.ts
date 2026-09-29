@@ -11,7 +11,7 @@ import { TARIFA, saldoDe, cobrarCreacion } from './creditos.js';
 import { capaDeOficio } from './oficio.js';
 import { planosDelGuion } from './planos.js';
 import { generarImagen, promptVisual } from './imagenes.js';
-import { generarVideo } from './video.js';
+import { generarVideo, motivoDelUltimoFallo } from './video.js';
 import { aJson } from '../lib/json-seguro.js';
 
 // =============================================================================================
@@ -1642,6 +1642,13 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
                 [piezaId, aJson(vid)],
               );
               console.log('[video] montado:', vid.archivo, vid.peso, 'bytes,', vid.segundos, 's,', vid.voz);
+            } else {
+              // El fallo se guarda CON SU MOTIVO: «no hay video» y «el video falló por esto» son dos cosas
+              // distintas, y sin el motivo la pantalla no puede decir cuál de las dos es.
+              await db.query(
+                `UPDATE piezas SET generacion = jsonb_set(generacion, '{video_error}', $2::jsonb) WHERE id = $1`,
+                [piezaId, aJson({ motivo: motivoDelUltimoFallo(), cuando: new Date().toISOString() })],
+              );
             }
           } catch (e) { console.error('[video] no se pudo montar:', (e as Error)?.message); }
         })();

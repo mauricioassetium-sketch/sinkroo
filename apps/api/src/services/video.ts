@@ -29,6 +29,18 @@ import { promisify } from 'node:util';
 
 const correr = promisify(execFile);
 
+/**
+ * LOS MONTAJES VAN DE A UNO. Dos a la vez se pelean los 4 corazones del servidor y los dos fallan —y no
+ * con un error claro, sino con «Command failed»—. Se ve en la prueba: los dos que corrieron juntos no
+ * salieron; los mismos dos, de a uno, salieron. La cola conserva el orden en que se pidieron.
+ */
+let cola: Promise<unknown> = Promise.resolve();
+function enFila<T>(tarea: () => Promise<T>): Promise<T> {
+  const siguiente = cola.then(tarea, tarea);
+  cola = siguiente.then(() => undefined, () => undefined);
+  return siguiente;
+}
+
 /** Dónde vive MoneyPrinterTurbo en el servidor y dónde quedan los videos montados (son datos, no código). */
 const MPT = process.env.MPT_DIR || '/root/agentes/MoneyPrinterTurbo';
 const RAIZ = process.env.VIDEOS_DIR || '/root/work/sinkroo-a/datos/videos';
@@ -39,6 +51,10 @@ const RAIZ = process.env.VIDEOS_DIR || '/root/work/sinkroo-a/datos/videos';
  * más despacio, que es la mitad del arreglo del «tono robótico».
  */
 const RITMO = '0.92';
+
+/** El motivo del último montaje que falló. Sin esto sólo queda «Command failed», que no dice nada. */
+let ultimoMotivo = '';
+export const motivoDelUltimoFallo = () => ultimoMotivo;
 
 export type VideoGenerado = {
   archivo: string;
@@ -116,9 +132,9 @@ export async function generarVideo(d: {
   ];
 
   try {
-    const { stdout } = await correr(path.join(MPT, '.venv', 'bin', 'python'), args, {
+    const { stdout } = await enFila(() => correr(path.join(MPT, '.venv', 'bin', 'python'), args, {
       cwd: MPT, timeout: segundosEspera, maxBuffer: 24 * 1024 * 1024,
-    });
+    }));
     // La última línea es el resumen en JSON; de ahí sale la ruta del video montado.
     const lineas = String(stdout).trim().split('\n').filter(Boolean);
     let resumen: { result?: { videos?: string[] } } | null = null;
@@ -143,7 +159,13 @@ export async function generarVideo(d: {
       materiales: materiales.length,
     };
   } catch (e) {
-    console.error('[video] no se pudo montar:', (e as Error)?.message?.slice(0, 200));
+    // El error de un comando fallido no está en `message` («Command failed»): el motivo real viene en la
+    // salida del proceso. Se guarda el final de la salida, que es donde está la causa.
+    const err = e as { message?: string; stdout?: string; stderr?: string; killed?: boolean };
+    const salida = String(err.stderr || err.stdout || err.message || '');
+    const final = salida.split('\n').filter(Boolean).slice(-6).join(' | ').slice(0, 400);
+    ultimoMotivo = err.killed ? 'se pasó del tiempo de espera' : (final || 'el montaje no devolvió motivo');
+    console.error('[video] no se pudo montar:', ultimoMotivo);
     return null;
   }
 }
