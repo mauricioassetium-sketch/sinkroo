@@ -368,6 +368,87 @@ export function Galeria({ setToast, ir }: { modo: Modo; setToast: (t: string) =>
                         ) : 'el motor todavía no dejó el prompt de esta pieza'}
                       </span>
                     </div>
+                    {(() => {
+                      // El entregable que el motor pidió: qué tiene que producir, cuánto dura y en qué formato
+                      // devuelve. Es lo que separa un prompt ejecutable de «una idea de video».
+                      // La fila del back trae sus columnas y, adentro de `detalle`, el prompt entero: se juntan
+                      // para poder mostrar la hoja de rodaje, los roles de la paleta y lo que falta.
+                      const pr = { ...(o.prompt ?? {}), ...(((o.prompt as any)?.detalle ?? {}) as any) } as any;
+                      const ent = pr.entregable as { que: string; partes: string[]; formato_de_salida: string; duracion_total_s: number; planos: number } | undefined;
+                      const hoja = (pr.hoja_de_rodaje ?? []) as { plano_n: number; desde_s: number; hasta_s: number; segundos: number; plano: string; que_se_ve: string; voz_literal: string; texto_en_pantalla: string; recurso: string; audio: string }[];
+                      const roles = (pr.roles_de_paleta ?? []) as { hex: string; usos: number; rol: string; contraste_con_fondo?: number }[];
+                      const cumplimiento = (pr.cumplimiento ?? []) as string[];
+                      const falta = (pr.lo_que_falta ?? []) as string[];
+                      if (!ent && !hoja.length && !roles.length && !cumplimiento.length && !falta.length) return null;
+                      return (
+                        <>
+                          {ent ? (
+                            <div className="op-row">
+                              <span className="op-k">Qué tiene que producir</span>
+                              <span className="bs">
+                                <span style={{ display: 'block' }}>{ent.que}</span>
+                                <span className="tiny muted" style={{ display: 'block', marginTop: 6 }}>
+                                  {`${ent.planos} planos · ${ent.duracion_total_s} s · devuelve: ${ent.formato_de_salida}`}
+                                </span>
+                                {(ent.partes || []).map((x, k) => (
+                                  <span className="tiny muted" style={{ display: 'block' }} key={k}>{`${k + 1}. ${x}`}</span>
+                                ))}
+                              </span>
+                            </div>
+                          ) : null}
+                          {hoja.length ? (
+                            <div className="op-row">
+                              <span className="op-k">La hoja de rodaje</span>
+                              <span className="bs">
+                                {hoja.map(h => (
+                                  <span style={{ display: 'block', marginBottom: 6 }} key={h.plano_n}>
+                                    {`Plano ${h.plano_n} · ${h.desde_s}-${h.hasta_s} s (${h.segundos} s) · ${h.plano}`}
+                                    <span className="tiny muted" style={{ display: 'block' }}>{`Se ve: ${h.que_se_ve}`}</span>
+                                    <span className="tiny muted" style={{ display: 'block' }}>{h.voz_literal ? `Dice: «${h.voz_literal}»` : 'Dice: nada escrito todavía — el motor no lo inventa'}</span>
+                                    {h.texto_en_pantalla ? <span className="tiny muted" style={{ display: 'block' }}>{`En pantalla: «${h.texto_en_pantalla}»`}</span> : null}
+                                    {h.recurso ? <span className="tiny muted" style={{ display: 'block' }}>{`Se apoya en: ${h.recurso}`}</span> : null}
+                                  </span>
+                                ))}
+                              </span>
+                            </div>
+                          ) : null}
+                          {roles.length ? (
+                            <div className="op-row">
+                              <span className="op-k">Los colores con su papel</span>
+                              <span className="bs">
+                                <span className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+                                  {roles.map(r => (
+                                    <span className="tiny" key={r.hex} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                                      <span style={{ width: 11, height: 11, borderRadius: 3, background: r.hex, border: '1px solid var(--line)' }} />
+                                      {`${r.rol} ${r.hex} (${r.usos}x)`}
+                                    </span>
+                                  ))}
+                                </span>
+                                {roles.find(r => r.contraste_con_fondo) ? (
+                                  <span className="tiny muted" style={{ display: 'block', marginTop: 6 }}>
+                                    {`Contraste texto sobre fondo: ${roles.find(r => r.contraste_con_fondo)?.contraste_con_fondo}:1 — ${(roles.find(r => r.contraste_con_fondo)?.contraste_con_fondo ?? 0) >= 4.5 ? 'pasa AA' : 'no llega a AA: el prompt pide levantarlo'}`}
+                                  </span>
+                                ) : null}
+                              </span>
+                            </div>
+                          ) : null}
+                          {cumplimiento.length ? (
+                            <div className="op-row">
+                              <span className="op-k">Lo que este sector no permite decir</span>
+                              <span className="bs">
+                                {cumplimiento.map((x, k) => <span className="tiny muted" style={{ display: 'block' }} key={k}>{`· ${x}`}</span>)}
+                              </span>
+                            </div>
+                          ) : null}
+                          {falta.length ? (
+                            <div className="acc-why" style={{ marginTop: 8 }}>
+                              <b>Lo que el prompt no puede llenar solo:</b>
+                              {falta.map((x, k) => <span style={{ display: 'block' }} key={k}>{`· ${x}`}</span>)}
+                            </div>
+                          ) : null}
+                        </>
+                      );
+                    })()}
                     <div className="row" style={{ gap: 7, flexWrap: 'wrap', marginTop: 8 }}>
                       {o.texto ? (
                         <Button variant="ghost" className="btn-sm" title="Copia el texto del anuncio de esta pieza, listo para pegarlo en su red"

@@ -67,8 +67,143 @@ export type PromptGeneracion = {
    */
   como_se_arma: { campo: string; sale_de: string; como_se_usa: string }[];
   verificaciones: string[];
+  /** El entregable técnico: qué tiene que producir el modelo, cuánto dura y en qué formato devuelve. */
+  entregable?: { que: string; partes: string[]; formato_de_salida: string; duracion_total_s: number; planos: number };
+  /** Un renglón por plano: segundos, qué se ve, qué se dice, en qué recurso se apoya y con qué audio. */
+  hoja_de_rodaje?: { plano_n: number; desde_s: number; hasta_s: number; segundos: number; plano: string; que_se_ve: string; voz_literal: string; texto_en_pantalla: string; recurso: string; audio: string }[];
+  /** El guion literal, escena por escena: la única fuente de lo que se dice y de lo que se escribe. */
+  guion_literal?: { s: string; dice: string; en_pantalla: string; nota: string }[];
+  /** Los roles de su paleta, medidos, con el contraste texto-sobre-fondo calculado. */
+  roles_de_paleta?: { hex: string; usos: number; rol: string; contraste_con_fondo?: number }[];
+  /** Los recursos de su marca y en qué escena entra cada uno. */
+  recursos_y_donde?: { url: string; que_es: string; donde_va: string }[];
+  /** Lo que no se puede decir en este sector, dicho: es terreno regulado. */
+  cumplimiento?: string[];
+  idioma_del_prompt?: { voz: string; pantalla: string; terminos_que_se_quedan: string[]; nota: string };
+  /** Lo que el prompt NO puede llenar solo y queda marcado para que lo escriba el dueño. */
+  lo_que_falta?: string[];
   fuente: string;
 };
+
+/** La luminancia relativa de un color (la fórmula de WCAG): sirve para saber si un texto se lee sobre un fondo. */
+function luminancia(hex: string): number {
+  const h = String(hex || '').replace('#', '').trim();
+  const n = h.length === 3 ? h.split('').map(c => c + c).join('') : h;
+  if (!/^[0-9a-f]{6}$/i.test(n)) return 0;
+  const canales = [0, 2, 4].map(i => {
+    const v = parseInt(n.slice(i, i + 2), 16) / 255;
+    return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+  });
+  return 0.2126 * canales[0] + 0.7152 * canales[1] + 0.0722 * canales[2];
+}
+
+/** El contraste entre dos colores, de 1:1 a 21:1. Se calcula: no se supone que un amarillo sobre negro se lee. */
+function contrasteCon(a: string, b: string): number {
+  const la = luminancia(a), lb = luminancia(b);
+  const claro = Math.max(la, lb), oscuro = Math.min(la, lb);
+  return Math.round(((claro + 0.05) / (oscuro + 0.05)) * 10) / 10;
+}
+
+/** La saturación, para saber cuál de los colores medidos es el de acento y no otro gris más. */
+function saturacion(hex: string): number {
+  const h = String(hex || '').replace('#', '');
+  const n = h.length === 3 ? h.split('').map(c => c + c).join('') : h;
+  if (!/^[0-9a-f]{6}$/i.test(n)) return 0;
+  const [r, g, b] = [0, 2, 4].map(i => parseInt(n.slice(i, i + 2), 16) / 255);
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  return max === 0 ? 0 : (max - min) / max;
+}
+
+/**
+ * LOS ROLES DE LA PALETA, medidos: el más oscuro de los que más usa hace de fondo, el más claro de texto y
+ * el más saturado de acento. Se dice que es una propuesta leída de sus propios usos, y con ella viene el
+ * contraste calculado texto-sobre-fondo: si no llega a 4,5:1 el prompt pide levantarlo, no lo da por bueno.
+ */
+function rolesDePaleta(colores: { hex: string; usos: number; rol?: string }[]) {
+  const cs = (colores ?? []).filter(c => /^#[0-9a-f]{3,6}$/i.test(String(c.hex || '')));
+  if (!cs.length) return [] as { hex: string; usos: number; rol: string; contraste_con_fondo?: number }[];
+  const porLuz = [...cs].sort((a, b) => luminancia(a.hex) - luminancia(b.hex));
+  const fondo = porLuz[0];
+  const texto = porLuz[porLuz.length - 1];
+  const candidatosAcento = cs.filter(c => c.hex !== fondo.hex && c.hex !== texto.hex);
+  const acento = [...candidatosAcento].sort((a, b) => (saturacion(b.hex) - saturacion(a.hex)) || (b.usos - a.usos))[0];
+  return cs.map(c => ({
+    hex: c.hex, usos: c.usos,
+    rol: c.hex === fondo.hex ? 'fondo' : c.hex === texto.hex ? 'texto' : c.hex === acento?.hex ? 'acento' : 'apoyo',
+    ...(c.hex === texto.hex ? { contraste_con_fondo: contrasteCon(texto.hex, fondo.hex) } : {}),
+  }));
+}
+
+/**
+ * LAS ESCENAS CON SUS SEGUNDOS REALES, sacadas del guion de la pieza: lo que el guion no dice no se
+ * inventa —la línea hablada queda vacía y el prompt la marca como «falta»—. Cada plano dice qué se ve,
+ * qué se dice y en qué se apoya (su logo al cierre, sus imágenes de respaldo en el medio).
+ */
+function repartirEscenas(guion: string[], queHace: string, imagenes: { url: string; para?: string }[]) {
+  const planos = [
+    'plano medio, celular a la altura de los ojos',
+    'plano detalle del trabajo real',
+    'plano medio, mirando a cámara',
+  ];
+  const limpiar = (t: string) => String(t || '').replace(/[ \t]+/g, ' ').trim();
+  const lineas = (guion ?? []).map(l => String(l).trim()).filter(Boolean);
+  const delGuion: { desde: number; hasta: number; ve: string; dice: string; pantalla: string }[] = [];
+  for (let i = 0; i < lineas.length; i++) {
+    const m = lineas[i].match(/^(\d+)\s*[-–]\s*(\d+)\s*s/);
+    if (!m) continue;
+    // El bloque de esta escena termina donde empieza la siguiente: así una frase no se le cuelga a la vecina.
+    const bloque: string[] = [lineas[i]];
+    for (let j = i + 1; j < lineas.length && j <= i + 3; j++) {
+      const otra = lineas[j].match(/^\d+\s*[-–]\s*\d+\s*s/);
+      if (otra) break;
+      bloque.push(lineas[j]);
+    }
+    const texto = bloque.join(' ');
+    const toma = (re: RegExp) => {
+      const r = texto.match(re);
+      return r ? String(r[1] || '').trim() : '';
+    };
+    delGuion.push({
+      desde: Number(m[1]),
+      hasta: Number(m[2]),
+      ve: limpiar(toma(/SE\s+VE\s*:\s*(.+?)(?=\s+DICE|\s+EN\s+PANTALLA|$)/i)),
+      dice: limpiar(toma(/DICE\s*:\s*(.+?)(?=\s+EN\s+PANTALLA|$)/i)),
+      pantalla: limpiar(toma(/EN\s+PANTALLA\s*:\s*(.+?)(?=\s+DICE|$)/i)),
+    });
+  }
+  const porDefecto = [
+    { desde: 0, hasta: 4, ve: 'una persona real del negocio arranca contando el descubrimiento', dice: '', pantalla: '' },
+    { desde: 4, hasta: 17, ve: `se ve cómo funciona de verdad: ${queHace || 'lo que el negocio hace'}`, dice: '', pantalla: '' },
+    { desde: 17, hasta: 25, ve: 'qué cambia para el que lo usa, y la acción concreta', dice: '', pantalla: '' },
+  ];
+  const base = delGuion.length > 0 ? delGuion : porDefecto;
+  const esMarca = (t: string) => /logo|icon|favicon/i.test(t);
+  const marca = (imagenes ?? []).find(im => esMarca(`${im.para || ''} ${im.url}`));
+  const sueltas = (imagenes ?? []).filter(im => !esMarca(`${im.para || ''} ${im.url}`));
+
+  return base.map((b, k) => {
+    const ultimo = k === base.length - 1;
+    let recurso = '';
+    if (ultimo && marca) recurso = `${marca.url} — su logo, como cierre`;
+    if (!ultimo && sueltas[k - 1]) recurso = `${sueltas[k - 1].url} — ${sueltas[k - 1].para || 'imagen suya'} de respaldo`;
+    return {
+      n: k + 1,
+      desde: b.desde,
+      hasta: b.hasta,
+      plano: planos[k] || 'plano medio',
+      que_se_ve: b.ve || 'el trabajo real, sin adornos',
+      vo: b.dice,
+      en_pantalla: b.pantalla,
+      audio: k === 1 ? 'sonido ambiente real de fondo, la voz en directo' : 'la voz en directo, sin locutor',
+      recurso,
+    };
+  });
+}
+
+/** Si el material toca terreno regulado: activos digitales, RWA, security tokens, inversión. */
+function sectorRegulado(texto: string): boolean {
+  return /\b(rwa|real world assets?|security token|tokeniz|activos? digitales?|blockchain|cripto|criptomoneda|inversi|rendimiento|financier[ao]|mercado de capitales|regulad)/i.test(String(texto || ''));
+}
 
 /** El palo de la tipografía y su tratamiento: se leen del informe, no se imaginan. */
 function tipografiaDe(av: any, conTexto: boolean) {
@@ -379,6 +514,12 @@ export function promptDelNegocio(datos: {
   objetivo?: string;
   /** La identidad medida en SU PROPIA PÁGINA: colores, tipografía e imágenes. Sin página, null. */
   identidad?: Identidad | null;
+  /** El guion de la pieza, línea por línea, con sus segundos: de ahí salen los planos y las frases exactas. */
+  guion?: string[];
+  /** El enlace del negocio: el cierre no es «escríbanos», es a dónde escribe. */
+  enlace?: string;
+  /** Las palabras con las que el mercado nombra esto: lo que se queda sin traducir. */
+  terminosDelMercado?: string[];
 }): { pieza: string; prompts: PromptGeneracion[] } {
   const pieza = datos.queSePublica || `Primera pieza de ${datos.negocio}`;
   const palabras = datos.palabrasDeLaPieza.length
@@ -415,28 +556,89 @@ export function promptDelNegocio(datos: {
     `Se dice en la lengua del que compra y con las palabras de su categoría, no con las internas del negocio.`,
   ].join(' ');
 
-  const escenas = [
-    { s: '0-4', plano: 'plano medio, celular a la altura de los ojos', accion: `una persona real del negocio arranca con el descubrimiento: que existe una forma nueva de ${queHace || 'hacer esto'} y que las empresas ya la usan`, texto_en_pantalla: '', voz: datos.gancho },
-    { s: '4-17', plano: esServicio ? 'plano detalle del trabajo real' : 'captura de pantalla del sistema + plano detalle', accion: `se ve cómo funciona de verdad: el paso a paso concreto de lo que hace ${datos.negocio}, sin jerga`, texto_en_pantalla: '', voz: datos.cuerpo },
-    { s: '17-25', plano: 'plano medio, mirando a cámara', accion: 'qué cambia para el que lo usa y la acción concreta, con el botón a la vista', texto_en_pantalla: '', voz: datos.cierre },
-  ];
+
+
+  // ---------------------------------------------------------------------------------------------
+  // EL ENTREGABLE. El prompt no es «una idea»: es un pedido ejecutable. Dice qué tiene que producir,
+  // de qué duración, plano por plano, qué se dice palabra por palabra, dónde va cada recurso de su
+  // marca, qué color hace de fondo y cuál de texto (con el contraste calculado, no supuesto), qué está
+  // prohibido, y qué no puede decidir la máquina porque no está en el material del dueño.
+  // ---------------------------------------------------------------------------------------------
+  const partes = repartirEscenas(datos.guion ?? [], queHace, imagenes);
+  // Las escenas del objeto salen del MISMO reparto que el prompt: una sola verdad, la del guion.
+  const escenas = partes.map(p => ({
+    s: `${p.desde}-${p.hasta}`, plano: p.plano, accion: p.que_se_ve,
+    texto_en_pantalla: p.en_pantalla, voz: p.vo,
+  }));
+  const totalS = partes.length ? partes[partes.length - 1].hasta : 25;
+  const roles = rolesDePaleta(id?.colores ?? []);
+  const elFondo = roles.find(r => r.rol === 'fondo');
+  const elTexto = roles.find(r => r.rol === 'texto');
+  const sector = sectorRegulado(`${datos.material} ${datos.queHace ?? ''} ${datos.queSePublica} ${palabras}`);
+  const terminos = (datos.terminosDelMercado ?? []).slice(0, 8);
+  const enlace = String(datos.enlace || '').replace(/^https?:\/\//, '').replace(/\/$/, '');
+  // El botón cerrado con su destino: «Escriba por Facebook» sin decir a dónde escribe no es un cierre.
+  const cierreConDestino = [datos.boton || 'Escriba', enlace ? `→ ${enlace}` : '', datos.canal ? `(${datos.canal})` : '']
+    .filter(Boolean).join(' ');
+  const sinGuion = partes.filter(p => !p.vo).length;
+  // Lo que el prompt NO puede llenar solo: no se inventa, se marca para que lo escriba el dueño. Es la
+  // diferencia entre un prompt vago y uno que se puede ejecutar: el hueco está dicho, no rellenado.
+  const faltaEnElPrompt = [
+    partes.some(p => !p.vo) ? `las líneas habladas que faltan (${sinGuion} de ${partes.length} escenas no tienen texto escrito por el negocio)` : '',
+    'qué cambia para el cliente, en 2 o 3 cambios concretos y comprobables (su material no lo dice)',
+    'el precio y cómo se pide (su material no lo dice)',
+    'una prueba real de un cliente, si existe',
+  ].filter(Boolean);
 
   const prompt = [
-    `Vertical 9:16 social ad, UGC style, for ${datos.negocio} (${datos.rubro}).`,
-    `Concept: a real person from the business talks to camera about discovering a system that companies already use for this: ${queHace || 'what the business sells'}. They show it working and explain what changes. It is a discovery story, not a product pitch.`,
-    `Subject: a real person from the business (or a real client), filmed on a phone in their actual workplace. Not an actor, not a model.`,
-    `Audience: ${datos.aQuien}. Language of the spoken and on-screen text: ${datos.idioma.nombre}.`,
-    `Scenes: 1) medium shot, the discovery hook ("this is how companies are doing it now"); 2) close-up or screen capture showing exactly how it works, step by step; 3) medium shot with what changes and the next step.`,
-    paleta.length
-      ? `Brand palette, measured on the client's own website: ${deLaPaleta}. Use these exact colours as the dominant palette.`
-      : `Colour direction: keep the brand's own colours (no measured palette — none is prescribed here).`,
+    // 1. EL ENTREGABLE Y SU FORMATO DE SALIDA
+    'DELIVERABLE — produce a complete production package, in this order:',
+    `1) SHOT LIST: one row per shot — shot number, shot type and camera, duration in seconds, what is seen, on-screen text, brand asset used, audio. ${partes.length} shots, ${totalS} seconds in total.`,
+    '2) LITERAL SCRIPT: the exact words spoken and shown, shot by shot. Nothing outside these lines is spoken or written on screen: do not improvise claims.',
+    `3) GENERATION PROMPTS: one prompt per shot, ready to paste into a video generator (Veo 3, Sora, Runway Gen-3, Kling), plus one still-image prompt (Midjourney, DALL·E, Flux) for the end card. Vertical 9:16, 1080x1920, 30 fps, ${totalS} seconds.`,
+    // 2. LA PIEZA
+    `PRODUCT: a ${totalS}-second vertical video ad for ${datos.negocio} (${datos.rubro}${enlace ? `, ${enlace}` : ''}), in ${datos.idioma.nombre === 'inglés' ? 'English' : datos.idioma.nombre}. Audience: ${datos.aQuien}. Goal: ${datos.objetivo || 'que lo conozcan'}. Tone: ${tono}.`,
+    `CONCEPT: a real person from the business —or a real client— talks to camera about discovering that this exists and how it works: ${queHace || 'what the business sells'}. Discovery story, not a product pitch.`,
+    'SUBJECT: a real person from the business (or a real client), filmed on a phone in their actual workplace. Not an actor, not a model, no script reading.',
+    // 3. PLANO POR PLANO, CON SUS SEGUNDOS Y SU VOZ LITERAL
+    `SHOT BY SHOT: ${partes.map(p => `shot ${p.n} ${p.desde}-${p.hasta} s — ${p.plano}; ${p.que_se_ve}; VO: ${p.vo ? `"${p.vo}"` : '[FILL: line missing — the client must write it]'}; ON-SCREEN: ${p.en_pantalla ? `"${p.en_pantalla}"` : 'none'}${p.recurso ? `; asset: ${p.recurso}` : ''}; audio: ${p.audio}`).join(' | ')}.`,
+    // 4. LA LENGUA, CON SUS TÉRMINOS
+    `LANGUAGE: spoken and on-screen text in ${datos.idioma.nombre === 'inglés' ? 'English' : datos.idioma.nombre}. The lines above are the client's own wording — translate them faithfully, do not add claims.${terminos.length ? ` These terms are used as-is by this market and stay untranslated: ${terminos.join(', ')}.` : ''}`,
+    // 5. EL CIERRE
+    `ENDING AND CTA: shot ${partes.length} ends with the on-screen call to action "${cierreConDestino}"${datos.canal ? ` and the ${datos.canal} button` : ''}${id?.imagenes?.length ? `; end card with their own logo` : ''}. No animated logo.`,
+    // 6. CÁMARA Y RITMO
+    'CAMERA AND RHYTHM: vertical 9:16 in every shot, hand-held phone at eye level, natural window light, no tripod, no gimbal, no drone, no stock footage, no transitions between shots, no speed ramps. Sound: live voice synced to picture; ambient room sound underneath; no voice-over, no music unless the business already has licensed music.',
+    // 7. LA PALETA, CON ROLES Y CONTRASTE CALCULADO
+    roles.length
+      ? `PALETTE (measured on the client's own website — use these exact values, nothing else): ${roles.map(r => `${r.rol} ${r.hex} (used ${r.usos}x in their CSS)`).join('; ')}.${elTexto && elFondo ? ` Text on background contrast: ${elTexto.contraste_con_fondo}:1 — ${(elTexto.contraste_con_fondo ?? 0) >= 4.5 ? 'passes WCAG AA' : 'DOES NOT reach WCAG AA 4.5:1: raise the text colour or darken the background'}.` : ''}`
+      : 'PALETTE: none was measured on their own site. Use the colours already in their assets; do not invent a brand palette.',
     (id?.tipografias ?? []).length
-      ? `Typography: their own website declares ${(id?.tipografias ?? []).map(t => `${t.familia} (${t.usos}x)`).join(', ')}${tipo?.tamano ? `; body size around ${tipo.tamano}` : ''} — use these families, most used first.`
-      : `Typography: use the client's own (none measured).`,
-    imagenes.length ? `Brand assets available (real, from their own site): ${imagenes.slice(0, 4).map(i => `${i.url} — ${i.para}`).join('; ')}.` : `No brand assets were read: do not invent a logo or imagery.`,
-    `On-image text: minimal, short, in ${datos.idioma.nombre}.`,
-    `No third-party logos, no invented numbers, no promises of returns.`,
-  ].join(' ');
+      ? `TYPOGRAPHY: their own website declares ${(id?.tipografias ?? []).map(t => `${t.familia} (${t.usos}x)`).join(', ')}${tipo?.tamano ? `, body around ${tipo.tamano}` : ''}. Use the most declared first. On-screen text: maximum 7 words per shot, maximum 2 lines, no blinking, no animated type.`
+      : 'TYPOGRAPHY: no font was measured; use a neutral sans-serif. Maximum 7 words per shot, maximum 2 lines.',
+    // 8. LOS RECURSOS DE SU MARCA, Y DÓNDE VA CADA UNO
+    imagenes.length
+      ? `BRAND ASSETS (real, read from their own site — where each one goes): ${imagenes.slice(0, 5).map((i, k) => `${i.url} (${i.para})${/logo|icon|favicon/i.test(`${i.para} ${i.url}`) ? ' → end card only, bottom centre, about 12% of the width' : ` → as B-roll in shot ${Math.min(2, partes.length)}${k % 2 ? ', full frame' : ', inset lower third'}`}`).join('; ')}. Do not invent a logo or any imagery that is not in this list.`
+      : 'BRAND ASSETS: none were read from their site. Do not invent a logo or imagery.',
+    // 9. LO PROHIBIDO
+    'NEGATIVE — must not appear: stock actors or actresses, fake accents, epic or trailer music, template transitions, flashing or animated text, more than 7 words on screen at once, more than 2 lines of on-screen text, distorted hands, invented or third-party logos, watermarks, oversaturated colours, plastic skin, any text error, any number, price or return the client did not say.',
+    // 10. EL SECTOR REGULADO
+    sector
+      ? `COMPLIANCE (regulated ground — this client works with digital assets, RWA and security tokens): no implicit financial advice, no mention of any regulator or licence, no yield, return or performance figure, no "guaranteed", no "risk-free", no comparison against financial products. Every claim must come from the client's own material. If a disclaimer is used, it is exactly "Not financial advice" and only if the client asks for it.`
+      : 'COMPLIANCE: no claim that the client did not make; no regulator, no guarantees, no invented figures.',
+    // 11. LO QUE FALTA, DICHO
+    `FILL BEFORE SHOOTING — the system will not invent these: ${faltaEnElPrompt.join('; ')}.`,
+  ].filter(Boolean).join('\n');
+
+  const hojaDeRodaje = partes.map(p => ({
+    plano_n: p.n, desde_s: p.desde, hasta_s: p.hasta, segundos: p.hasta - p.desde,
+    plano: p.plano, que_se_ve: p.que_se_ve,
+    voz_literal: p.vo, texto_en_pantalla: p.en_pantalla,
+    recurso: p.recurso, audio: p.audio,
+  }));
+  const guionLiteral = partes.map(p => ({
+    s: `${p.desde}-${p.hasta} s`, dice: p.vo, en_pantalla: p.en_pantalla,
+    nota: p.vo ? '' : 'sin línea escrita por el negocio: el motor no la inventa',
+  }));
 
   return {
     pieza,
@@ -490,8 +692,8 @@ export function promptDelNegocio(datos: {
       parametros: {
         aspect_ratio: '9:16',
         resolucion: '1080x1920',
-        duracion_s: 25,
-        escenas: escenas.length,
+        duracion_s: totalS,
+        escenas: partes.length,
         fps: 30,
         idioma_del_texto: datos.idioma.nombre,
         cta_boton: datos.boton,
@@ -507,7 +709,11 @@ export function promptDelNegocio(datos: {
         { campo: 'el idioma del texto y de la voz', sale_de: datos.idioma.por_que, como_se_usa: `la pieza va en ${datos.idioma.nombre}: el texto en pantalla, el copy y la voz` },
         { campo: 'las palabras de la categoría', sale_de: `el vocabulario de su rubro en el material: ${palabras}`, como_se_usa: 'son las palabras con las que su cliente lo va a buscar: entran en el copy, no como relleno' },
         { campo: 'las escenas y los segundos', sale_de: 'el gancho, el cuerpo y el cierre que decidió Tino, repartidos en tres escenas', como_se_usa: 'cada escena muestra algo que se puede filmar hoy con un celular' },
-        { campo: 'el botón y el destino', sale_de: `el canal que el negocio declaró: ${datos.canal || 'sin definir'}`, como_se_usa: 'no va dentro del prompt de imagen: va en los parámetros de la pieza' },
+        { campo: 'el botón y el destino', sale_de: `el canal que el negocio declaró: ${datos.canal || 'sin definir'}${enlace ? ` y su enlace: ${enlace}` : ' (no hay enlace cargado)'}`, como_se_usa: `el cierre no es «escríbanos»: dice a dónde escribe — ${cierreConDestino}` },
+        { campo: 'el entregable y su formato de salida', sale_de: `los ${partes.length} planos y los ${totalS} s que salen del guion de la pieza`, como_se_usa: 'el prompt pide un paquete: hoja de rodaje, guion literal y un prompt por plano, no «una idea de video»' },
+        { campo: 'los roles de la paleta y el contraste', sale_de: roles.length ? `los ${roles.length} colores medidos en su web y sus usos (${roles.map(r => `${r.hex} ${r.rol} ${r.usos}x`).join(' · ')})` : 'no se midió ninguna paleta', como_se_usa: roles.length ? (elTexto as any)?.contraste_con_fondo ? `el más oscuro queda de fondo, el más claro de texto y el más saturado de acento; el contraste texto-fondo se calculó: ${(elTexto as any).contraste_con_fondo}:1` : 'el más oscuro queda de fondo, el más claro de texto y el más saturado de acento' : 'no se prescribe ningún color' },
+        { campo: 'las prohibiciones y el terreno regulado', sale_de: sector ? `el material del negocio toca terreno regulado (activos digitales, RWA, security tokens)` : 'el material no toca terreno regulado', como_se_usa: 'van como prohibiciones explícitas, con lo que el sector no permite afirmar' },
+        { campo: 'lo que el prompt NO llena', sale_de: 'lo que no está en el material del negocio', como_se_usa: `queda marcado como «falta» en vez de inventado: ${faltaEnElPrompt.length} cosas` },
       ],
       elegido_por_nosotros: [
         'el concepto: contar el descubrimiento (no hay mercado medido que diga qué molde funciona)',
@@ -527,6 +733,56 @@ export function promptDelNegocio(datos: {
         'El texto sale de la pieza que decidió Tino, no de una idea suelta, y va en la lengua del que compra.',
         'Las escenas se pueden filmar hoy: no piden equipo ni producción.',
         'El prompt está en inglés, listo para pegar en un modelo, con los hex de su marca adentro.',
+        `Dice qué tiene que producir y en qué formato: un paquete con la hoja de rodaje (${partes.length} planos, ${totalS} s), el guion literal y un prompt por plano.`,
+        (elTexto as any)?.contraste_con_fondo
+          ? `El contraste texto sobre fondo está calculado, no supuesto: ${(elTexto as any).contraste_con_fondo}:1 (${(elTexto as any).contraste_con_fondo >= 4.5 ? 'pasa AA' : 'NO llega a AA, y el prompt pide levantarlo'}).`
+          : 'No hay paleta medida: el prompt pide usar la que el negocio ya tiene, sin inventar colores.',
+        sinGuion
+          ? `Dice lo que falta en vez de rellenarlo: ${sinGuion} de ${partes.length} escenas no tienen línea hablada escrita por el negocio.`
+          : 'Todas las escenas tienen su línea hablada: el guion no se improvisa.',
+        sector ? 'Lleva las reglas de su sector: sin asesoramiento financiero implícito, sin reguladores, sin cifras de rendimiento.' : 'Lleva la regla general: ninguna afirmación que el negocio no haya hecho.',
+        imagenes.length ? `Dice dónde entra cada recurso suyo: el logo al cierre, ${imagenes.length - 1} imágenes de respaldo en el medio.` : 'No se leyó ningún recurso suyo: el prompt prohíbe inventar logo o imágenes.',
+      ],
+      entregable: {
+        que: `un paquete de producción completo para un video vertical de ${totalS} s: guion literal, hoja de rodaje plano por plano y un prompt por plano para el generador`,
+        partes: [
+          `hoja de rodaje: ${partes.length} planos y ${totalS} s en total, con lo que se ve, lo que se dice, el recurso y el audio de cada uno`,
+          'guion literal: las palabras exactas que se dicen y se escriben, escena por escena',
+          'prompts del generador: uno por plano (video: Veo 3, Sora, Runway Gen-3, Kling) y uno de imagen fija (Midjourney, DALL·E, Flux) para el cierre',
+        ],
+        formato_de_salida: 'tabla de escena / plano / segundos / qué se ve / voz / texto en pantalla / recurso / audio, y después cada prompt por separado, listo para pegar',
+        duracion_total_s: totalS,
+        planos: partes.length,
+      },
+      hoja_de_rodaje: hojaDeRodaje,
+      guion_literal: guionLiteral,
+      roles_de_paleta: roles,
+      recursos_y_donde: imagenes.slice(0, 6).map((im, k) => ({
+        url: im.url, que_es: im.para || 'imagen suya',
+        donde_va: /logo|icon|favicon/i.test(`${im.para || ''} ${im.url}`)
+          ? 'al cierre, abajo al centro, sin animación'
+          : `de respaldo en el plano ${Math.min(2, partes.length)}${k % 2 ? ', a pantalla completa' : ', en el tercio inferior'}`,
+      })),
+      cumplimiento: sector
+        ? [
+          'nada de asesoramiento financiero, ni implícito',
+          'no se nombra ningún regulador ni licencia',
+          'ninguna cifra de rendimiento, retorno o revalorización',
+          'prohibido «garantizado», «sin riesgo» y cualquier comparación con un producto financiero',
+          'todo lo que se afirme tiene que estar en el material del negocio',
+          'si se usa un aviso, es «Not financial advice», y solo si el dueño lo pide',
+        ]
+        : ['ninguna afirmación que el negocio no haya hecho: sin cifras ni garantías inventadas'],
+      idioma_del_prompt: {
+        voz: datos.idioma.nombre, pantalla: datos.idioma.nombre,
+        terminos_que_se_quedan: terminos,
+        nota: `el guion que hay escrito está en las palabras del dueño: el prompt pide decirlo en ${datos.idioma.nombre} y traducirlo sin cambiar el sentido${terminos.length ? `, y dejar tal cual los términos que el mercado usa así (${terminos.slice(0, 5).join(', ')})` : ''}`,
+      },
+      lo_que_falta: [
+        ...(sinGuion ? [`${sinGuion} de ${partes.length} escenas no tienen línea hablada escrita: el prompt las marca como «falta» y no las inventa`] : []),
+        'los 2 o 3 cambios concretos que ve el cliente (su material no los dice)',
+        'el precio y cómo se pide (su material no lo dice)',
+        ...(imagenes.length ? [] : ['su logo y sus imágenes: no se leyó ninguna de su web']),
       ],
       fuente: datos.fuente,
     }],

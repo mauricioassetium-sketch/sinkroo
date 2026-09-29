@@ -1389,6 +1389,38 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
   const identidad = links.length
     ? await leerIdentidadDeLaPagina(String(links[0])).catch(() => null)
     : null;
+  // ---------------------------------------------------------------------------------------------
+  // LA PIEZA SE ARMA ACÁ, ANTES DE LOS PROMPTS. No es un capricho de orden: el prompt de generación
+  // necesita el GUION de la pieza —sus planos y sus frases exactas— para no ser «una idea de video».
+  // Se arma una sola vez y la corrida la guarda más abajo, con el mismo objeto.
+  // ---------------------------------------------------------------------------------------------
+    const botonDeLaPieza = canales.some(c => /whatsapp|mensaje/i.test(c))
+    ? 'Escriba por WhatsApp'
+    : (canales.length ? `Escriba por ${canales[0]}` : '');
+    const piezaEscrita = armarLaPieza({
+    negocio: {
+      nombre: ctx.nombre, queHace: leido.queHace, descripcion: ctx.descripcion,
+      ofrece: Array.isArray(leido.queVende) ? leido.queVende : [], aQuien: aQuienLeHabla,
+    },
+    canales, boton: botonDeLaPieza,
+    formato: plazaVideo ? String(plazaVideo.formato_recomendado) : 'video vertical 9:16',
+    lengua: lenguaDeLaPieza.nombre,
+    objetivo: String(decisiones.negocio_objetivo || ''),
+    hueco: armadoDelInforme?.huecos?.[0] ?? null,
+    saturado: armadoDelInforme?.saturacion ?? [],
+    comparables: mercado?.comparables ?? [],
+    identidad: identidad ?? null,
+    // El vocabulario medido: lo que el negocio dice que ofrece y vende, lo que dice de sí mismo, y los
+    // términos de su categoría y de su mercado en todas sus lenguas. Contra eso se corrigen los tipeos.
+    vocabulario: vocabularioDe([
+      // OJO: la descripción del negocio NO entra acá. Es el texto que se corrige: si entra, sus propios
+      // errores quedan «conocidos» y no se corrigen nunca (pasó con «geelos»).
+      leido.queVende, leido.queHace, leido.rubro, ctx.rubro, ctx.nombre,
+      String(decisiones.prod_1 || ''), String(decisiones.prod_2 || ''),
+      String(decisiones.negocio_que || ''),
+      mercado?.palabras, mercado?.terminos, armadoDelInforme?.saturacion,
+    ]),
+    });
   const paqueteDelMercado = promptsDelInforme(inf ?? {}, formatosRecomendados);
   const paquete = paqueteDelMercado ?? (piezaDelNegocio ? promptDelNegocio({
     negocio: ctx.nombre,
@@ -1403,12 +1435,19 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
     palabrasDeLaPieza,
     rubro: leido.rubro || ctx.rubro,
     canal: canales.join(', '),
-    boton: canales.length ? `el botón de ${canales[0]}` : 'sin definir: falta que el negocio diga dónde quiere trabajar',
+    // El mismo botón que lleva la pieza («Escriba por Facebook»): el cierre tiene que decir qué hacer.
+    boton: botonDeLaPieza || (canales.length ? `escriba por ${canales[0]}` : 'sin definir: falta que el negocio diga dónde quiere trabajar'),
     material: materialQueYaTiene,
     queHace: leido.queHace,
     tono: Array.isArray(decisiones.tono) ? (decisiones.tono as string[]) : [],
     objetivo: String(decisiones.negocio_objetivo || ''),
     identidad,
+    // El guion de la pieza, línea por línea: de ahí salen los planos, los segundos y las frases literales.
+    guion: String(piezaEscrita.guion || '').split('\n').map(l => l.trim()).filter(Boolean),
+    // Su enlace, para que el cierre diga a dónde escribe (no «escríbanos»).
+    enlace: String(links[0] || ''),
+    // Los términos con los que el mercado nombra esto: los que se quedan sin traducir.
+    terminosDelMercado: mercado?.terminos ?? [],
     fuente: `${materialQueYaTiene} + la pieza que decidió Tino (todavía sin la analítica visual de su rubro)`,
   }) : null);
   let promptsGuardados = 0;
@@ -1422,11 +1461,13 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
       ? `Armó ${paqueteDelMercado.prompts.length} prompts de generación (${tipos}) con los colores, la tipografía, el formato y el estilo medidos en su mercado`
       : paquete
         ? [
-          'Armó el prompt de la pieza sin mercado medido:',
+          'Armó el entregable de la pieza sin mercado medido:',
           identidad?.leida
             ? `con la identidad medida en su propia web (${identidad.colores.length} colores, ${identidad.tipografias.length} tipografías, ${identidad.imagenes.length} imágenes)`
             : 'sin identidad que medir: no hay página legible y lo dice',
-          `y un concepto propio —contar el descubrimiento— en ${lenguaDeLaPieza.nombre}`,
+          `y un concepto propio —contar el descubrimiento— en ${lenguaDeLaPieza.nombre},`,
+          `en ${String((paquete.prompts[0] as any)?.entregable?.planos || '')} planos de ${String((paquete.prompts[0] as any)?.entregable?.duracion_total_s || '')} s:`,
+          `la hoja de rodaje, el guion literal y el prompt de cada plano${(paquete.prompts[0] as any)?.lo_que_falta?.length ? `, con ${(paquete.prompts[0] as any).lo_que_falta.length} cosas marcadas como «falta» en vez de inventadas` : ''}`,
         ].join(' ')
         : 'No pudo armar los prompts y lo dice: falta la analítica visual del rubro',
     resultado: paqueteDelMercado ? {
@@ -1555,33 +1596,7 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
   // caso. Acá se escribe con el material del negocio, con el ángulo que ningún comparable usa, y con el
   // arte medido en su propia web. Queda guardada, y no se duplica si es la misma de la corrida anterior.
   try {
-    const botonDeLaPieza = canales.some(c => /whatsapp|mensaje/i.test(c))
-      ? 'Escriba por WhatsApp'
-      : (canales.length ? `Escriba por ${canales[0]}` : '');
-    const piezaEscrita = armarLaPieza({
-      negocio: {
-        nombre: ctx.nombre, queHace: leido.queHace, descripcion: ctx.descripcion,
-        ofrece: Array.isArray(leido.queVende) ? leido.queVende : [], aQuien: aQuienLeHabla,
-      },
-      canales, boton: botonDeLaPieza,
-      formato: plazaVideo ? String(plazaVideo.formato_recomendado) : 'video vertical 9:16',
-      lengua: lenguaDeLaPieza.nombre,
-      objetivo: String(decisiones.negocio_objetivo || ''),
-      hueco: armadoDelInforme?.huecos?.[0] ?? null,
-      saturado: armadoDelInforme?.saturacion ?? [],
-      comparables: mercado?.comparables ?? [],
-      identidad: identidad ?? null,
-      // El vocabulario medido: lo que el negocio dice que ofrece y vende, lo que dice de sí mismo, y los
-      // términos de su categoría y de su mercado en todas sus lenguas. Contra eso se corrigen los tipeos.
-      vocabulario: vocabularioDe([
-        // OJO: la descripción del negocio NO entra acá. Es el texto que se corrige: si entra, sus propios
-        // errores quedan «conocidos» y no se corrigen nunca (pasó con «geelos»).
-        leido.queVende, leido.queHace, leido.rubro, ctx.rubro, ctx.nombre,
-        String(decisiones.prod_1 || ''), String(decisiones.prod_2 || ''),
-        String(decisiones.negocio_que || ''),
-        mercado?.palabras, mercado?.terminos, armadoDelInforme?.saturacion,
-      ]),
-    });
+    // (la pieza se arma más arriba: el prompt necesita su guion)
     const yaEsta = await db.query(
       `SELECT id FROM piezas WHERE business_id = $1 AND titulo = $2 AND texto = $3 LIMIT 1`,
       [ctx.businessId, piezaEscrita.titulo, piezaEscrita.texto],
