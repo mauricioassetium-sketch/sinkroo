@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, Badge, Button } from './ui';
 import { I_Check, I_Upload, I_Image, I_Film, I_Vote, I_Rocket, I_Play, I_Sparkle, I_ChevDn, I_ChevUp, I_Plus, I_Eye, I_X, I_Target } from './icons';
 import { CUANTAS_PASAN, PERFILES } from '../data/mirofish';
@@ -6,6 +6,32 @@ import type { Modo } from '../data/demo';
 import { useDatos, type Pieza as PiezaBack, type PromptGeneracion } from '../api/datos';
 import { EstadoVacio } from './EstadoVacio';
 import { fechaCorta } from './mirofishDatos';
+import { baseApi, token } from '../api/cliente';
+
+/**
+ * La imagen generada de una pieza. Una etiqueta <img> no puede mandar la sesión, así que la imagen se
+ * pide con el token y se muestra desde memoria: es del dueño, no una dirección pública.
+ */
+function ImagenDeLaPieza({ url }: { url: string }) {
+  const [src, setSrc] = useState<string | null>(null);
+  const [fallo, setFallo] = useState(false);
+  useEffect(() => {
+    let vivo = true;
+    let blob: string | null = null;
+    (async () => {
+      try {
+        const r = await fetch(baseApi() + url, { headers: token() ? { Authorization: 'Bearer ' + token() } : {} });
+        if (!r.ok) { if (vivo) setFallo(true); return; }
+        blob = URL.createObjectURL(await r.blob());
+        if (vivo) setSrc(blob);
+      } catch { if (vivo) setFallo(true); }
+    })();
+    return () => { vivo = false; if (blob) URL.revokeObjectURL(blob); };
+  }, [url]);
+  if (fallo) return <span className="tiny muted">la imagen no se pudo cargar en el navegador</span>;
+  if (!src) return <span className="tiny muted">cargando la imagen…</span>;
+  return <img src={src} alt="La imagen generada de esta pieza" style={{ maxWidth: 260, width: '100%', borderRadius: 10, border: '1px solid var(--line)', marginTop: 6 }} />;
+}
 
 // =============================================================================================
 // CAMPAÑAS POR ETAPAS — cada paso es su propia pantalla, así no hay que scrollear media hora.
@@ -196,6 +222,8 @@ type PiezaGal = {
   tarjetas: { n: number; texto: string; segundos: number; fondo: string }[];
   /** El texto que va encima, cuando la pieza es una imagen. */
   texto_sobre_la_imagen: string;
+  /** La imagen generada de esta pieza (Pollinations): dónde está, su medida y su fuente. */
+  imagen: { url: string; ancho: number; alto: number; peso: number; fuente: string; prompt_visual?: string } | null;
   /** Los planos del guion (solo las piezas de video): prompt, negativo, duración y audio de cada uno. */
   planos: { planos: { n: number; duracion_s: number; prompt: string; prompt_negativo: string; audio?: string }[]; duracion_total_s: number; motor: string; estilo_unificado: string; modelos_declarados: { video: string; audio: string } } | null;
   /** La especificación del formato: qué es, qué produce y con qué criterios se juzga. */
@@ -235,6 +263,7 @@ export function Galeria({ setToast, ir }: { modo: Modo; setToast: (t: string) =>
       texto_sobre_la_imagen: String((g as { texto_sobre_la_imagen?: string }).texto_sobre_la_imagen || ''),
       formato_pide: ((g as { lo_que_el_formato_pide?: never }).lo_que_el_formato_pide ?? null),
       planos: ((g as { planos?: never }).planos ?? null),
+      imagen: ((g as { imagen_generada?: never }).imagen_generada ?? null),
       prompt: porNombre ?? null,
     };
   });
@@ -377,6 +406,20 @@ export function Galeria({ setToast, ir }: { modo: Modo; setToast: (t: string) =>
                       <div className="op-row">
                         <span className="op-k">El texto sobre la imagen</span>
                         <span className="bs">{o.texto_sobre_la_imagen}</span>
+                      </div>
+                    ) : null}
+                    {o.imagen ? (
+                      <div className="op-row">
+                        <span className="op-k">La imagen, generada</span>
+                        <span className="bs">
+                          <span className="tiny muted" style={{ display: 'block' }}>
+                            {`${o.imagen.ancho}×${o.imagen.alto} · ${Math.round(o.imagen.peso / 1024)} KB · ${o.imagen.fuente}`}
+                          </span>
+                          <ImagenDeLaPieza url={o.imagen.url} />
+                          {o.imagen.prompt_visual ? (
+                            <span className="tiny muted" style={{ display: 'block', marginTop: 6 }}>{`Se le pidió: ${o.imagen.prompt_visual}`}</span>
+                          ) : null}
+                        </span>
                       </div>
                     ) : null}
                     {o.planos && o.planos.planos.length ? (

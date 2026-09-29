@@ -10,6 +10,7 @@ import { crearPublico, evaluar as evaluarConMiroFish } from './mirofish.js';
 import { TARIFA, saldoDe, cobrarCreacion } from './creditos.js';
 import { capaDeOficio } from './oficio.js';
 import { planosDelGuion } from './planos.js';
+import { generarImagen, promptVisual } from './imagenes.js';
 import { aJson } from '../lib/json-seguro.js';
 
 // =============================================================================================
@@ -1575,12 +1576,32 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
         [ctx.businessId, pz.titulo, pz.texto, String((pz.detalle as any)?.variante?.angulo || '')],
       );
       if (yaEsta.rows.length) continue;
-      await db.query(
+      const insertada = await db.query(
         `INSERT INTO piezas (business_id, titulo, formato, texto, guion, estado, generacion, ronda, angulo)
-         VALUES ($1, $2, $3, $4, $5, 'lista para publicar', $6::jsonb, $7, $8)`,
+         VALUES ($1, $2, $3, $4, $5, 'lista para publicar', $6::jsonb, $7, $8) RETURNING id`,
         [ctx.businessId, pz.titulo, pz.formato, pz.texto, pz.guion, aJson(pz.detalle), numeroDeRonda,
           String((pz.detalle as any)?.variante?.angulo || '')],
       );
+      const piezaId = String(insertada.rows[0].id);
+      // LA IMAGEN DE LAS PIEZAS DE IMAGEN: se pintan gratis (Pollinations) con un prompt visual corto,
+      // armado con lo medido del negocio. Si no responde, la pieza queda con su prompt y lo dice.
+      if (/imagen/i.test(String(pz.formato || ''))) {
+        try {
+          const visual = promptVisual({
+            queHace: leido.queHace || ctx.descripcion,
+            textoSobreLaImagen: String((pz.detalle as any)?.texto_sobre_la_imagen || ''),
+            formato: pz.formato,
+            colores: (identidad?.colores ?? []).map((c: { hex: string }) => c.hex),
+          });
+          const img = await generarImagen({ businessId: ctx.businessId, piezaId, formato: pz.formato, prompt: visual });
+          if (img) {
+            await db.query(
+              `UPDATE piezas SET generacion = jsonb_set(generacion, '{imagen_generada}', $2::jsonb) WHERE id = $1`,
+              [piezaId, aJson(img)],
+            );
+          }
+        } catch (e) { console.error('[imagen] no se pudo generar:', (e as Error)?.message); }
+      }
       escritasAhora++;
       // LOS PLANOS: solo las piezas de video tienen guion que desglosar. Se guardan dentro de la pieza
       // (`generacion.planos`), en su propia fila, para que la ficha del panel los muestre junto al prompt.
