@@ -51,6 +51,16 @@ export async function authRoutes(app: FastifyInstance) {
       });
     }
 
+    // ¿Ya hay un negocio con ese nombre? Un correo distinto no es la misma cuenta, así que el alta sigue:
+    // pero se avisa, porque dos cuentas con el mismo nombre de negocio es exactamente lo que hace que el
+    // material quede en una y el panel en la otra. El aviso se muestra en el panel al terminar el registro.
+    let avisoNegocio = '';
+    const mismoNombre = await query<{ id: string }>(
+      'SELECT id FROM businesses WHERE lower(name) = lower($1) LIMIT 1', [nombre || 'Mi negocio']);
+    if (nombre && mismoNombre.length) {
+      avisoNegocio = `Ya existe un negocio llamado «${nombre}». Si es suyo y quiere trabajar en él, no cree otra cuenta: entre a la que ya tiene (o pida el código de entrada de ese negocio).`;
+    }
+
     const negocio = await query<{ id: string }>(
       `INSERT INTO businesses (name, description) VALUES ($1, $2) RETURNING id`,
       [nombre || 'Mi negocio', ''],
@@ -96,6 +106,9 @@ export async function authRoutes(app: FastifyInstance) {
     return reply.status(201).send({
       token,
       usuario: { ...user[0], business_id: negocioId, correo_verificado: false },
+      // El aviso de nombre repetido, para que el panel lo muestre al terminar el registro. Va aparte del
+      // correo: es una advertencia de negocio, no del envío.
+      aviso_negocio: avisoNegocio || null,
       correo: {
         enviado: salio.ok,
         para: email,
