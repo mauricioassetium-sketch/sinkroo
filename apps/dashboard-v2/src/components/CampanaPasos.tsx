@@ -440,6 +440,32 @@ export function Galeria({ setToast, ir }: { modo: Modo; setToast: (t: string) =>
                               </span>
                             </div>
                           ) : null}
+                          {(() => {
+                            // LO QUE EL GENERADOR NO PUEDE HACER. Pedirle «sin actor» a un generador de video es
+                            // pedirle algo imposible: cada persona que produce es sintética. Acá se dicen los dos
+                            // caminos y qué cambia en cada uno.
+                            const ruta = pr.ruta_de_produccion as { como_se_puede_hacer?: string[]; lo_que_el_generador_no_puede?: string; cuando_hace_falta_una_cara_real?: string; que_cambia_en_el_prompt?: string } | undefined;
+                            if (!ruta) return null;
+                            return (
+                              <div className="op-row">
+                                <span className="op-k">Cómo se puede hacer esta pieza</span>
+                                <span className="bs">
+                                  {(ruta.como_se_puede_hacer || []).map((x, k) => (
+                                    <span style={{ display: 'block', marginBottom: 4 }} key={k}>{`${k + 1}. ${x}`}</span>
+                                  ))}
+                                  {ruta.lo_que_el_generador_no_puede ? (
+                                    <span className="tiny muted" style={{ display: 'block', marginTop: 6 }}>{ruta.lo_que_el_generador_no_puede}</span>
+                                  ) : null}
+                                  {ruta.cuando_hace_falta_una_cara_real ? (
+                                    <span className="tiny muted" style={{ display: 'block' }}>{ruta.cuando_hace_falta_una_cara_real}</span>
+                                  ) : null}
+                                  {ruta.que_cambia_en_el_prompt ? (
+                                    <span className="tiny muted" style={{ display: 'block' }}>{ruta.que_cambia_en_el_prompt}</span>
+                                  ) : null}
+                                </span>
+                              </div>
+                            );
+                          })()}
                           {falta.length ? (
                             <div className="acc-why" style={{ marginTop: 8 }}>
                               <b>Lo que el prompt no puede llenar solo:</b>

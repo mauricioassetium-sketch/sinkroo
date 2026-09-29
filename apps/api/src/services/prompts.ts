@@ -80,6 +80,13 @@ export type PromptGeneracion = {
   /** Lo que no se puede decir en este sector, dicho: es terreno regulado. */
   cumplimiento?: string[];
   idioma_del_prompt?: { voz: string; pantalla: string; terminos_que_se_quedan: string[]; nota: string };
+  /** Los dos caminos para hacer esta pieza, y lo que un generador de video NO puede entregar. */
+  ruta_de_produccion?: {
+    como_se_puede_hacer: string[];
+    lo_que_el_generador_no_puede: string;
+    cuando_hace_falta_una_cara_real: string;
+    que_cambia_en_el_prompt: string;
+  };
   /** Lo que el prompt NO puede llenar solo y queda marcado para que lo escriba el dueño. */
   lo_que_falta?: string[];
   fuente: string;
@@ -303,6 +310,11 @@ export function promptDePieza(datos: {
     esVideo ? 'Vertical 9:16 mobile-shot video ad, 25 seconds.' : 'Square 1:1 image ad for social feed.',
     esUgc
       ? 'Style: authentic user-generated content filmed on a phone by a real customer inside a real local business: handheld, slightly imperfect framing, natural light from a window, no studio setup, no color grading.'
+      : '',
+    // LA RUTA: ese aspecto se consigue GRABANDO. Si se genera, la persona es sintética y hay que pedir otra
+    // cosa —que la actuación no parezca actuación y las líneas cortas—, no «una persona real».
+    esUgc
+      ? 'Route: this look is achieved by FILMING with a phone (a real customer, no acting). If this is GENERATED, the performer is synthetic and no instruction makes them real: do not attempt "a real person" — ask instead for a performance that does not look performed (conversational micro-pauses, no theatrical gestures) and for lines of 15 words or fewer, the rest in voice-over.'
       : 'Style: clean product shot, real location (not a studio), soft natural light, subject centred, honest and unpolished-premium look.',
     `Setting and subject: ${plaza.plaza.includes('Reels') ? 'customer at home receiving the service result' : 'the product/result alone'} — real skin tones, real hair, real environment with the brand sign visible in the background.`,
     `Colour direction: dominant palette ${paleta.join(', ')}; ${(av?.paletas?.[0]?.nota as string) || 'warm, high-contrast, no oversaturation'}.`,
@@ -595,11 +607,19 @@ export function promptDelNegocio(datos: {
     'DELIVERABLE — produce a complete production package, in this order:',
     `1) SHOT LIST: one row per shot — shot number, shot type and camera, duration in seconds, what is seen, on-screen text, brand asset used, audio. ${partes.length} shots, ${totalS} seconds in total.`,
     '2) LITERAL SCRIPT: the exact words spoken and shown, shot by shot. Nothing outside these lines is spoken or written on screen: do not improvise claims.',
-    `3) GENERATION PROMPTS: one prompt per shot, ready to paste into a video generator (Veo 3, Sora, Runway Gen-3, Kling), plus one still-image prompt (Midjourney, DALL·E, Flux) for the end card. Vertical 9:16, 1080x1920, 30 fps, ${totalS} seconds.`,
+    `3) GENERATION PROMPTS: one prompt per shot, ready to paste into a video generator (Veo 3, Sora, Runway Gen-3, Kling), plus one still-image prompt (Midjourney, DALL·E, Flux) for the end card. Vertical 9:16, 1080x1920, 30 fps, ${totalS} seconds. Keep every spoken line under 15 words and prefer one short on-camera line per shot with voice-over for the rest: long delivered lines are where generated video shows.`,
     // 2. LA PIEZA
     `PRODUCT: a ${totalS}-second vertical video ad for ${datos.negocio} (${datos.rubro}${enlace ? `, ${enlace}` : ''}), in ${datos.idioma.nombre === 'inglés' ? 'English' : datos.idioma.nombre}. Audience: ${datos.aQuien}. Goal: ${datos.objetivo || 'que lo conozcan'}. Tone: ${tono}.`,
     `CONCEPT: a real person from the business —or a real client— talks to camera about discovering that this exists and how it works: ${queHace || 'what the business sells'}. Discovery story, not a product pitch.`,
-    'SUBJECT: a real person from the business (or a real client), filmed on a phone in their actual workplace. Not an actor, not a model, no script reading.',
+    // LA RUTA DE PRODUCCIÓN, DICHA. Un generador de video NO puede entregar una persona real: cada persona
+    // que produce es sintética y la lectura de un guion largo se nota. Pedirle «sin actor, sin leer guion» era
+    // pedirle algo imposible; lo que sí se le puede pedir es el ASPECTO y el RITMO de una grabación de celular.
+    'PRODUCTION ROUTE — pick ONE and follow its rules:',
+    '(A) FILM IT with a phone: a real person from the business (or a real client) records it in their actual workplace. Here "not an actor, no script reading" applies and IS achievable — that is exactly what filming gives you.',
+    '(B) GENERATE IT: the performer is synthetic and no instruction makes them real. Do not attempt "a real person": deliver instead the LOOK and the PACE of a phone recording — hand-held, eye level, window light, ordinary clutter in frame, no colour grading, no smooth camera moves — and make the performance NOT look performed: conversational micro-pauses, natural blink rate, small asymmetries, no theatrical gestures, no advertising smile, no perfect skin.',
+    'IF THE AD NEEDS A REAL FACE (a client testimonial, a proof with a name), film it with a phone: never generate it.',
+    'LINE LENGTH: every spoken line must be 15 words or fewer so it can sound conversational; if a line is longer, split it into two shots or move it to voice-over. No monologues.',
+    'SUBJECT: someone from the business (or a client) in their actual workplace, on a phone. In route (B) they are a generated performer: keep them ordinary — everyday clothes, real workspace, no model looks, no stock-photo smile.',
     // 3. PLANO POR PLANO, CON SUS SEGUNDOS Y SU VOZ LITERAL
     `SHOT BY SHOT: ${partes.map(p => `shot ${p.n} ${p.desde}-${p.hasta} s — ${p.plano}; ${p.que_se_ve}; VO: ${p.vo ? `"${p.vo}"` : '[FILL: line missing — the client must write it]'}; ON-SCREEN: ${p.en_pantalla ? `"${p.en_pantalla}"` : 'none'}${p.recurso ? `; asset: ${p.recurso}` : ''}; audio: ${p.audio}`).join(' | ')}.`,
     // 4. LA LENGUA, CON SUS TÉRMINOS
@@ -773,6 +793,17 @@ export function promptDelNegocio(datos: {
           'si se usa un aviso, es «Not financial advice», y solo si el dueño lo pide',
         ]
         : ['ninguna afirmación que el negocio no haya hecho: sin cifras ni garantías inventadas'],
+      // Lo que el generador NO puede hacer, dicho, y cómo se arregla: pedirle una persona real es pedirle algo
+      // imposible, y de ahí salen los videos que se notan.
+      ruta_de_produccion: {
+        como_se_puede_hacer: [
+          'grabarla con el celular: alguien real del negocio —o un cliente— delante de la cámara, en su lugar de trabajo. Es la única forma en que «sin actor» y «sin leer un guion» se cumplen de verdad.',
+          'generarla: acá el que habla es un actor sintético y eso no se puede evitar. El prompt pide entonces lo que sí se puede: que no parezca actuación (líneas cortas, pausas naturales, sin sonrisa publicitaria) y el aspecto y el ritmo de una grabación de celular.',
+        ],
+        lo_que_el_generador_no_puede: 'un generador de video no puede entregar una persona real: cada persona que produce es sintética, y una línea larga se nota leída. Pedirle «sin actor, sin leer guion» fue pedirle algo imposible.',
+        cuando_hace_falta_una_cara_real: 'si la pieza necesita la cara de un cliente de verdad (una prueba, un testimonio), se graba con el celular: no se genera.',
+        que_cambia_en_el_prompt: 'las líneas habladas van cortas (15 palabras máximo, el resto a voz en off) y se pide el aspecto de una grabación, no una persona auténtica.',
+      },
       idioma_del_prompt: {
         voz: datos.idioma.nombre, pantalla: datos.idioma.nombre,
         terminos_que_se_quedan: terminos,
