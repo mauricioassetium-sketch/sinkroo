@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Card, Badge, Button } from '../components/ui';
 import { useDetalle, type Bloque } from '../components/Detalle';
 import { ViewHead, Bars } from '../components/viz';
-import { I_Globe, I_Trend, I_Zap, I_Users, I_Target } from '../components/icons';
+import { I_Globe, I_Trend, I_Zap, I_Users, I_Target, I_Megaphone, I_Dot } from '../components/icons';
 import { useDatos } from '../api/datos';
 import { baseApi, token } from '../api/cliente';
 import { EstadoVacio } from '../components/EstadoVacio';
@@ -40,6 +40,18 @@ export function ViewMercado({ setToast, setVista }: { setToast: (t: string) => v
   // a conectar la cuenta. Nunca de los dos: mezclarlos sería inventarle un mercado al negocio.
   const d = useDatos();
   const hallazgos = d.hallazgos;
+
+  /**
+   * LA DECISIÓN DE LA PIEZA Y LAS LENGUAS son dos tareas del equipo, y salen de la última corrida: Tino
+   * decide qué se publica (y con qué se decidió: el mercado medido o el material del negocio) y Lex decide
+   * en qué lengua se busca el mercado y en qué lengua va la pieza. Se muestran tal como el back las dejó.
+   * Sin corrida no hay decisión que mostrar y se dice, en vez de inventar una pieza.
+   */
+  const tareas = d.corridas[0]?.tareas ?? [];
+  const tino = tareas.find(t => t.agente === 'tino')?.resultado as any;
+  const lex = tareas.find(t => t.agente === 'lex')?.resultado as any;
+  const pieza = tino?.la_pieza ?? null;
+  const entendido = tino?.lo_que_entendimos_del_negocio ?? null;
   // El motor saliendo a investigar de verdad, disparado desde los estados vacíos.
   const [investigando, setInvestigando] = useState(false);
   // El panel de detalle que ya abre todo botón que informa: el informe no inventa una pantalla nueva.
@@ -388,6 +400,107 @@ ${p.prompt}` });
     });
   };
 
+  /**
+   * La decisión completa: la pieza con su porqué, con qué se decidió, qué elegimos nosotros y qué falta.
+   * Nada de esto es una pantalla nueva: es el mismo panel de detalle que abre todo botón que informa.
+   */
+  const abrirDecision = () => {
+    if (!tino) return;
+    const b: Bloque[] = [];
+    if (tino.por_que_sin_mercado) b.push({ tipo: 'texto', texto: tino.por_que_sin_mercado });
+    b.push({
+      tipo: 'datos', filas: [
+        { k: 'Qué se publica', v: String(pieza?.que_se_publica || '—') },
+        { k: 'A quién le habla', v: String(entendido?.a_quien || '—') },
+        { k: 'En qué lengua', v: String(pieza?.idioma || '—'), s: pieza?.por_que_ese_idioma },
+        { k: 'Dónde va', v: String(pieza?.donde_va || '—'), s: pieza?.boton },
+        { k: 'El formato', v: String(pieza?.formato || '—') },
+        { k: 'Con qué se decidió', v: String(tino.fuente_tipo || '—') },
+        { k: 'Quién decide', v: String(tino.quien_decide || '—'), tono: 'green' as const },
+      ],
+    });
+    const tramos = [
+      { t: 'Gancho', s: String(pieza?.gancho || '') },
+      { t: 'Cuerpo', s: String(pieza?.cuerpo || '') },
+      { t: 'Cierre', s: String(pieza?.cierre || '') },
+    ].filter(x => x.s);
+    if (tramos.length) {
+      b.push({ tipo: 'aviso', texto: 'La pieza, tramo por tramo: lo que dice y en qué orden. Cada tramo sale de lo que el negocio dijo de sí mismo, no de una idea suelta.' });
+      b.push({ tipo: 'filas', items: tramos });
+    }
+    if ((tino.palabras_clave_de_la_pieza ?? []).length) {
+      b.push({ tipo: 'aviso', texto: 'Las palabras con las que su cliente lo busca: entran en el copy, no como relleno.' });
+      b.push({ tipo: 'filas', items: (tino.palabras_clave_de_la_pieza as string[]).map(x => ({ t: x })) });
+    }
+    if ((pieza?.elegido_por_nosotros ?? []).length) {
+      b.push({ tipo: 'filas', items: (pieza.elegido_por_nosotros as string[]).map(x => ({ t: x, etiqueta: 'elegido por nosotros', tono: 'amber' as const })) });
+    }
+    const c = tino.cuando_cambiar ?? {};
+    if (c.regla) b.push({ tipo: 'aviso', texto: `Cuándo se cambia de rumbo: ${c.regla}`, tono: 'green' });
+    const camp = tino.propuesta_campana;
+    if (camp) {
+      b.push({ tipo: 'datos', filas: [
+        { k: 'La campaña', v: String(camp.objetivo || '—') },
+        { k: 'En', v: String(camp.red || '—') },
+        { k: 'Presupuesto diario', v: String(camp.presupuesto_diario ?? '—') },
+        { k: 'Cierre', v: String(camp.cierre || '—'), s: camp.por_que },
+      ] });
+    }
+    if ((tino.falta ?? []).length) {
+      b.push({ tipo: 'aviso', texto: `Todavía falta: ${(tino.falta as string[]).join(' · ')}`, tono: 'amber' });
+    }
+    detalle({
+      titulo: 'La decisión: qué se publica y por qué',
+      sub: tino.modo ? `Modo ${tino.modo} · ${tino.quien_decide || ''}`.trim() : undefined,
+      bloques: b,
+      fuente: String(tino.fuente || ''),
+      acciones: d.prompts.length
+        ? [{ label: `Ver los prompts de generación (${d.prompts.length})`, onClick: abrirPrompts, variante: 'outline' as const }]
+        : undefined,
+    });
+  };
+
+  /**
+   * El plan de lenguas completo, plaza por plaza: con qué palabras se buscó en cada una, en qué lengua lee
+   * el que compra ahí y en qué lengua volvieron los avisos. Es la prueba de que la búsqueda no fue a ciegas.
+   */
+  const abrirLenguas = () => {
+    if (!lex) return;
+    const b: Bloque[] = [];
+    b.push({ tipo: 'texto', texto: String(lex.porque || '') });
+    const dueño = lex.lengua_del_negocio ?? {};
+    b.push({ tipo: 'datos', filas: [
+      { k: 'La lengua de su material', v: String(dueño.lengua || '—'), s: String(dueño.como_se_leyo || ''), tono: 'green' as const },
+      { k: 'Sus páginas', v: String(lex.lengua_de_sus_paginas || '—') },
+      { k: 'Su categoría', v: String(lex.lengua_de_la_categoria || '—') },
+      { k: 'La pieza va en', v: String(lex.la_pieza_en_que_lengua?.nombre || '—'), s: String(lex.la_pieza_en_que_lengua?.por_que || ''), tono: 'green' as const },
+    ] });
+    if ((lex.lenguas_de_busqueda ?? []).length) {
+      b.push({ tipo: 'aviso', texto: 'Las lenguas en las que se busca su mercado, y para qué sirve cada una.' });
+      b.push({ tipo: 'filas', items: (lex.lenguas_de_busqueda as any[]).map(l => ({ t: l.nombre, s: l.para_que, etiqueta: l.codigo, tono: 'purple' as const })) });
+    }
+    if ((lex.plan_por_plaza ?? []).length) {
+      b.push({ tipo: 'aviso', texto: 'Plaza por plaza: con qué palabras se buscó, en qué lengua lee el que compra ahí y en qué lengua están los avisos que volvieron.', tono: 'green' });
+      b.push({ tipo: 'filas', items: (lex.plan_por_plaza as any[]).map(p => ({
+        t: `${p.plaza} · ${p.avisos_leidos} avisos leídos`,
+        s: `el idioma de esa plaza es el ${p.lengua_de_la_plaza ?? p.lengua_del_que_compra} · se buscó con: ${[].concat(p.con_que_palabras_se_busco ?? []).join(' · ')} · volvieron en ${p.en_que_lengua_estan_los_avisos}`,
+      })) });
+    }
+    const porLengua = Object.entries(lex.palabras_por_lengua ?? {});
+    if (porLengua.length) {
+      b.push({ tipo: 'aviso', texto: 'Las palabras con las que se busca la categoría, en cada lengua.' });
+      b.push({ tipo: 'filas', items: porLengua.map(([cod, palabras]) => ({ t: cod, s: [].concat(palabras as any).join(' · '), tono: 'muted' as const })) });
+    }
+    if ((lex.termino_de_la_categoria_en_la_lengua_de_la_plaza ?? []).length) {
+      b.push({ tipo: 'filas', items: (lex.termino_de_la_categoria_en_la_lengua_de_la_plaza as string[]).map(x => ({ t: x, etiqueta: 'verificado', tono: 'green' as const })) });
+    }
+    if ((lex.lo_que_se_pierde ?? []).length) {
+      b.push({ tipo: 'aviso', texto: 'Lo que se pierde si no se busca así:', tono: 'amber' });
+      b.push({ tipo: 'filas', items: (lex.lo_que_se_pierde as string[]).map(x => ({ t: x, tono: 'amber' as const })) });
+    }
+    detalle({ titulo: 'En qué lengua se busca su mercado', sub: 'La lengua del negocio, la de su categoría y la del que compra: no son la misma.', bloques: b, fuente: String(lex.fuente || '') });
+  };
+
   return (
     <div className="dash">
       <ViewHead
@@ -686,6 +799,102 @@ ${p.prompt}` });
                   : d.backtest.casos_con_metrica_real === d.backtest.casos
                     ? 'Todos tienen la métrica real de la plataforma.'
                     : `${d.backtest.casos_con_metrica_real} de ${d.backtest.casos} ${d.backtest.casos_con_metrica_real === 1 ? 'tiene' : 'tienen'} la métrica real de la plataforma; el resto se mide contra la reacción de su público.`}
+              </div>
+            </>
+          )}
+        </Card>
+      </div>
+
+      {/* ============ LA DECISIÓN DE LA PIEZA Y LAS LENGUAS DEL MERCADO ============
+          Las dos son tareas del equipo y salen de la última corrida: Tino decide qué se publica —y con qué
+          se decidió, el mercado medido o el propio material del negocio— y Lex decide en qué lengua se
+          busca el mercado y en qué lengua va la pieza. Si todavía no corrieron, se dice eso: no se inventa
+          una pieza ni una lengua. */}
+      <div className="duo" style={{ marginTop: 16 }}>
+        <Card
+          title={<span className="row" style={{ gap: 8 }}><I_Megaphone size={14} style={{ color: 'var(--purple3)' }} /> Lo que hay que publicar</span>}
+          action={<Badge tone={tino ? 'purple' : 'muted'}>{tino ? `Modo ${String(tino.modo)}` : (d.real ? 'leyendo' : 'sin corrida')}</Badge>}
+        >
+          {!tino ? (
+            <EstadoVacio
+              {...vacio('Todavía no hay una decisión de qué publicar', 'La decisión la toma Tino: con el mercado ya leído, o —si todavía no hay— con el rubro, las palabras clave y el material que el negocio ya subió. Todavía no corrió, así que acá no hay ninguna pieza que mostrarle.')}
+              {...invitar()} />
+          ) : (
+            <>
+              <div className="bs" style={{ fontWeight: 700, marginBottom: 4 }}>{String(pieza?.que_se_publica || tino.porque || '')}</div>
+              <div className="datos-row">
+                <div className="dato"><span className="dato-l">A quién le habla</span><span className="dato-v">{String(entendido?.a_quien || '—')}</span></div>
+                <div className="dato"><span className="dato-l">En qué lengua</span><span className="dato-v">{String(pieza?.idioma || '—')}</span></div>
+                <div className="dato"><span className="dato-l">Dónde va</span><span className="dato-v">{String(pieza?.donde_va || '—')}</span></div>
+                <div className="dato"><span className="dato-l">El formato</span><span className="dato-v">{String(pieza?.formato || '—')}</span></div>
+              </div>
+              <div className="guards">
+                {[{ t: 'Gancho', s: pieza?.gancho }, { t: 'Cuerpo', s: pieza?.cuerpo }, { t: 'Cierre', s: pieza?.cierre }]
+                  .filter(x => x.s)
+                  .map(x => (
+                    <div key={x.t} className="guard">
+                      <I_Dot size={14} style={{ color: 'var(--purple3)', flexShrink: 0 }} />
+                      <span className="guard-lb">{x.t}<small>{String(x.s)}</small></span>
+                    </div>
+                  ))}
+              </div>
+              <div className="acc-why">
+                <b>{tino.por_que_sin_mercado ? 'Se decidió sin el informe del mercado: ' : 'Se decidió con el mercado medido: '}</b>
+                {String(tino.por_que_sin_mercado || tino.fuente_tipo || '')}
+              </div>
+              <div className="acc-why"><b>Fuente: </b>{String(tino.fuente || 'sin fuente declarada')}</div>
+              <div className="row" style={{ gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+                <Button variant="outline" onClick={abrirDecision} title="Abre la decisión completa: la pieza con su porqué, con qué se decidió, el gancho, el cuerpo y el cierre, las palabras con las que su cliente lo busca, qué elegimos nosotros y qué falta. No cambia nada.">
+                  Ver la decisión completa
+                </Button>
+                {d.prompts.length ? (
+                  <Button variant="outline" onClick={abrirPrompts} title="Abre los prompts de generación que armó Iris para esta pieza, con la traza de cada campo. No cambia nada.">
+                    Ver los prompts de generación ({d.prompts.length})
+                  </Button>
+                ) : null}
+              </div>
+            </>
+          )}
+        </Card>
+
+        <Card
+          title={<span className="row" style={{ gap: 8 }}><I_Globe size={14} style={{ color: 'var(--purple3)' }} /> En qué lengua se busca su mercado</span>}
+          action={<Badge tone={lex ? 'purple' : 'muted'}>{lex ? `${(lex.lenguas_de_busqueda ?? []).length} lenguas` : (d.real ? 'leyendo' : 'sin corrida')}</Badge>}
+        >
+          {!lex ? (
+            <EstadoVacio
+              {...vacio('Todavía no se reconocieron las lenguas de su mercado', 'Antes de buscar, el equipo mide en qué lengua está el material del negocio, en qué lengua se escribe su categoría y en qué lengua lee el que compra en cada plaza. Todavía no corrió, así que acá no hay ninguna medición de lengua que mostrarle.')}
+              {...invitar()} />
+          ) : (
+            <>
+              <div className="datos-row">
+                <div className="dato"><span className="dato-l">La lengua de su material</span><span className="dato-v">{String(lex.lengua_del_negocio?.lengua || '—')}</span></div>
+                <div className="dato"><span className="dato-l">La pieza va en</span><span className="dato-v">{String(lex.la_pieza_en_que_lengua?.nombre || '—')}</span></div>
+                <div className="dato"><span className="dato-l">Se busca en</span><span className="dato-v">{(lex.lenguas_de_busqueda ?? []).map((l: any) => l.nombre).join(' · ') || '—'}</span></div>
+                <div className="dato"><span className="dato-l">Palabras de su categoría</span><span className="dato-v">{Object.values(lex.palabras_por_lengua ?? {}).reduce((n: number, v: any) => n + [].concat(v).length, 0)} en {Object.keys(lex.palabras_por_lengua ?? {}).length} lenguas</span></div>
+              </div>
+              <div className="guards">
+                {(lex.plan_por_plaza ?? []).map((pl: any) => (
+                  <div key={pl.plaza} className="guard">
+                    <I_Dot size={14} style={{ color: 'var(--purple3)', flexShrink: 0 }} />
+                    <span className="guard-lb">{pl.plaza}
+                      <small>{pl.avisos_leidos} avisos leídos · el idioma de esa plaza es el {pl.lengua_de_la_plaza ?? pl.lengua_del_que_compra}</small>
+                    </span>
+                    <span className="guard-val">{pl.en_que_lengua_estan_los_avisos}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="acc-why"><b>La lengua de sus páginas: </b>{String(lex.lengua_de_sus_paginas || '—')}</div>
+              <div className="acc-why"><b>Su categoría: </b>{String(lex.lengua_de_la_categoria || '—')}</div>
+              {(lex.lo_que_se_pierde ?? []).length ? (
+                <div className="acc-why" style={{ color: 'var(--amber)' }}>
+                  <b>Si no se busca así: </b>{String((lex.lo_que_se_pierde as string[])[0])}
+                </div>
+              ) : null}
+              <div className="row" style={{ gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+                <Button variant="outline" onClick={abrirLenguas} title="Abre el plan de lenguas completo: la lengua del negocio, la de sus páginas y la de su categoría, las lenguas en las que se busca con su para qué, el detalle plaza por plaza y lo que se pierde sin buscarlo así. No cambia nada.">
+                  Ver el plan de lenguas
+                </Button>
               </div>
             </>
           )}

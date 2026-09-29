@@ -512,7 +512,7 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
           for (const e of eq) hallados.push({ idioma: e.idioma, titulo: e.titulo, url: e.url });
         }
         if (hallados.length) {
-          sumarLengua(p.lengua, `en ${p.pais} el que compra lee en ${nombreDeLengua(p.lengua)}: el término de la categoría lo da la enciclopedia abierta`);
+          sumarLengua(p.lengua, `en ${p.pais} el idioma de la plaza es el ${nombreDeLengua(p.lengua)}: no se buscó ninguna palabra en esa lengua y el término de la categoría lo da la enciclopedia abierta`);
           palabrasPorLengua[p.lengua] = [...new Set([...hallados.map(h => h.titulo), ...anclas.slice(0, 2)])];
           for (const h of hallados) equivalencias.push({ pais: p.pais, lengua: p.lengua, termino: anclas[0], titulo: h.titulo, url: h.url });
         } else {
@@ -558,7 +558,9 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
         plaza: p.pais,
         avisos_leidos: p.avisos,
         con_que_palabras_se_busco: p.palabras,
-        lengua_del_que_compra: lenguaDePais(String(p.pais)) ? nombreDeLengua(lenguaDePais(String(p.pais))) : 'no se pudo determinar y no se supone',
+        // El idioma del PAÍS, no una medición de cada comprador: en Emiratos el idioma del país es el árabe
+        // y los avisos vuelven en inglés, y las dos cosas se dicen juntas para que nadie lea de más.
+        lengua_de_la_plaza: lenguaDePais(String(p.pais)) ? nombreDeLengua(lenguaDePais(String(p.pais))) : 'no se pudo determinar y no se supone',
         en_que_lengua_estan_los_avisos: Number(p.en_ingles) > Number(p.en_espanol)
           ? `inglés (${p.en_ingles} de ${p.avisos})`
           : Number(p.en_espanol) > Number(p.en_ingles)
@@ -568,7 +570,7 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
       la_pieza_en_que_lengua: lenguaDeLaPieza,
       lo_que_se_pierde: [
         plazasSinTermino.length
-          ? `en ${plazasSinTermino.map(p => p.pais).join(' y ')} el que compra lee en ${plazasSinTermino.map(p => nombreDeLengua(p.lengua)).join(' y ')} y no hay término de la categoría en esa lengua: se busca en inglés`
+          ? `en ${plazasSinTermino.map(p => p.pais).join(' y ')} el idioma de la plaza es el ${plazasSinTermino.map(p => nombreDeLengua(p.lengua)).join(' y ')} y no hay término de la categoría en esa lengua: se busca en inglés`
           : '',
         lenguasDeBusqueda.some(l => l.codigo === 'en') && !lenguasDeBusqueda.some(l => l.codigo === 'es')
           ? '' : 'la categoría del negocio, en su lengua, trae otro sentido: en la enciclopedia en español «tokenización» es el análisis léxico de un texto, no la tokenización de activos',
