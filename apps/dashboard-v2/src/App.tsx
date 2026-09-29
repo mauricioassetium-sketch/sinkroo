@@ -20,6 +20,7 @@ import { ViewCreditos } from './views/Creditos';
 import { ViewReferidos } from './views/Referidos';
 import { ViewKyc } from './views/Kyc';
 import type { Modo } from './data/demo';
+import { Guarda } from './components/Guarda';
 
 /** El nombre de una red para los avisos, sin depender del catálogo del back: `instagram` → «Instagram». */
 const redBonita = (red: string) => {
@@ -167,15 +168,19 @@ export default function App() {
     <PlanProvider>
     <DetalleProvider>
     <Layout vista={vista} setVista={setVista} theme={theme} cicloTema={cycle} toast={toast} modo={modo} onSalir={cerrarSesion}>
-      {vista === 'onboarding' && <ViewOnboarding setToast={avisar} setVista={setVista} />}
-      {vista === 'hoy' && <ViewHoy setToast={avisar} setVista={setVista} modo={modo} />}
-      {vista === 'campanas' && <ViewCampanas setToast={avisar} modo={modo} setVista={setVista} />}
-      {vista === 'conversaciones' && <ViewConversaciones setToast={avisar} modo={modo} />}
-      {vista === 'mercado' && <ViewMercado setToast={avisar} setVista={setVista} />}
-      {vista === 'cuenta' && <ViewCuenta setToast={avisar} modo={modo} setModo={setModo} />}
-      {vista === 'creditos' && <ViewCreditos setToast={avisar} />}
-      {vista === 'referidos' && <ViewReferidos setToast={avisar} />}
-      {vista === 'kyc' && <ViewKyc setToast={avisar} />}
+      {/* Cada pantalla va envuelta en su guarda: si una se rompe, no se lleva puesto el panel entero.
+          La guarda se rehace al cambiar de sección, así que la pantalla sana sola al navegar. */}
+      <Guarda que={vista}>
+        {vista === 'onboarding' && <ViewOnboarding setToast={avisar} setVista={setVista} />}
+        {vista === 'hoy' && <ViewHoy setToast={avisar} setVista={setVista} modo={modo} />}
+        {vista === 'campanas' && <ViewCampanas setToast={avisar} modo={modo} setVista={setVista} />}
+        {vista === 'conversaciones' && <ViewConversaciones setToast={avisar} modo={modo} />}
+        {vista === 'mercado' && <ViewMercado setToast={avisar} setVista={setVista} />}
+        {vista === 'cuenta' && <ViewCuenta setToast={avisar} modo={modo} setModo={setModo} />}
+        {vista === 'creditos' && <ViewCreditos setToast={avisar} />}
+        {vista === 'referidos' && <ViewReferidos setToast={avisar} />}
+        {vista === 'kyc' && <ViewKyc setToast={avisar} />}
+      </Guarda>
     </Layout>
     {/* El asistente de entrada: se abre solo la primera vez que hay sesión. */}
     <Asistente sesion={sesion} setVista={setVista} />

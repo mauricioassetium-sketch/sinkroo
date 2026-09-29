@@ -6,6 +6,7 @@ import { I_Globe, I_Trend, I_Zap, I_Users, I_Target, I_Megaphone, I_Dot } from '
 import { useDatos } from '../api/datos';
 import { baseApi, token } from '../api/cliente';
 import { EstadoVacio } from '../components/EstadoVacio';
+import { lista } from '../lib/lista';
 import type { Vista } from '../components/Layout';
 
 // =============================================================================================
@@ -208,7 +209,7 @@ export function ViewMercado({ setToast, setVista }: { setToast: (t: string) => v
       }
       if (av.paletas?.length) {
         b.push({ tipo: 'filas', items: av.paletas.map(p => ({
-          t: p.uso, s: `${(p.colores || []).join(' ')}${p.nota ? ` · ${p.nota}` : ''}`,
+          t: p.uso, s: `${lista(p.colores).join(' ')}${p.nota ? ` · ${p.nota}` : ''}`,
           etiqueta: 'paleta', tono: 'purple' as const,
         })) });
       }
@@ -216,13 +217,13 @@ export function ViewMercado({ setToast, setVista }: { setToast: (t: string) => v
         b.push({ tipo: 'aviso', texto: 'Qué pega mejor en cada plaza: formato, gancho, botón, paleta y tipografía', tono: 'green' });
         b.push({ tipo: 'filas', items: av.por_plaza.map(p => ({
           t: `${p.plaza} → ${p.formato}`,
-          s: [`gancho: ${p.gancho}`, `botón: ${p.boton}`, p.tipografia, p.paleta?.length ? `paleta: ${p.paleta.join(' ')}` : '', p.porque]
+          s: [`gancho: ${p.gancho}`, `botón: ${p.boton}`, p.tipografia, lista(p.paleta).length ? `paleta: ${lista(p.paleta).join(' ')}` : '', p.porque]
             .filter(Boolean).join(' · '),
           etiqueta: 'plaza',
         })) });
       }
-      if (av.hashtags_usados?.length) b.push({ tipo: 'texto', texto: `Hashtags que el rubro ya usa: ${av.hashtags_usados.join(' ')}` });
-      if (av.duraciones_medidas?.length) b.push({ tipo: 'texto', texto: `Duración medida en las piezas sostenidas: ${av.duraciones_medidas.join(' · ')}` });
+      if (lista(av.hashtags_usados).length) b.push({ tipo: 'texto', texto: `Hashtags que el rubro ya usa: ${lista(av.hashtags_usados).join(' ')}` });
+      if (lista(av.duraciones_medidas).length) b.push({ tipo: 'texto', texto: `Duración medida en las piezas sostenidas: ${lista(av.duraciones_medidas).join(' · ')}` });
       if (av.lo_que_no_hay_que_copiar?.length) {
         b.push({ tipo: 'aviso', texto: 'Lo que NO hay que copiar del mercado', tono: 'amber' });
         b.push({ tipo: 'filas', items: av.lo_que_no_hay_que_copiar.map(x => ({ t: x, etiqueta: 'evitar', tono: 'amber' as const })) });
@@ -287,7 +288,7 @@ export function ViewMercado({ setToast, setVista }: { setToast: (t: string) => v
           { k: 'Pieza', v: p.pieza },
           { k: 'Formato', v: `${p.proporcion}${det.escenas?.length ? ` · ${det.escenas.length} escenas` : ''}` },
           { k: 'Referencia del mercado', v: det.referencia?.anunciante ? `${det.referencia.anunciante} · ${det.referencia.dias || 0} días` : 'sin mercado medido', s: det.referencia?.que_se_toma },
-          { k: 'Colores', v: (det.colores?.paleta || []).join(' ') || '—', s: det.colores?.rol },
+          { k: 'Colores', v: lista(det.colores?.paleta).join(' ') || '—', s: det.colores?.rol },
           { k: 'Tipografía', v: det.tipografia ? `${det.tipografia.familia} · ${det.tipografia.tratamiento}` : 'sin texto sobre la imagen', s: det.tipografia?.ubicacion },
         ],
       });
@@ -455,7 +456,7 @@ ${p.prompt}` });
       ] });
     }
     if ((tino.falta ?? []).length) {
-      b.push({ tipo: 'aviso', texto: `Todavía falta: ${(tino.falta as string[]).join(' · ')}`, tono: 'amber' });
+      b.push({ tipo: 'aviso', texto: `Todavía falta: ${lista(tino.falta).join(' · ')}`, tono: 'amber' });
     }
     detalle({
       titulo: 'La decisión: qué se publica y por qué',

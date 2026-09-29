@@ -1,3 +1,4 @@
+import { lista } from '../lib/lista';
 import { useEffect, useState } from 'react';
 import { Card, Badge, Button, Dinero, NotaMoneda } from '../components/ui';
 import { ViewHead, Bars, Ring } from '../components/viz';
@@ -114,7 +115,7 @@ const campanaDeBack = (c: CampanaBack): Campana => ({
   copy: c.objetivo || '',
   cta: '—',
   color: 'var(--bg3)',
-  plataforma: (c.destinos || []).join(' + ') || 'sin destinos cargados',
+  plataforma: lista(c.destinos).join(' + ') || 'sin destinos cargados',
   publico: '—',
   fechas: `creada el ${fechaDeBack(c.created_at)}`,
   gastado: `$${Math.round(Number(c.gasto) || 0)}`,
@@ -613,7 +614,7 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
                         {([
                           { k: 'Qué publica', v: decisionTino.propuesta_publicacion?.tipo, s: decisionTino.propuesta_publicacion?.por_que, e: decisionTino.propuesta_publicacion?.referencia ? `Se apoya en ${decisionTino.propuesta_publicacion.referencia}` : '' },
                           { k: 'Qué campaña', v: decisionTino.propuesta_campana?.objetivo, s: decisionTino.propuesta_campana?.por_que, e: `Techo por día: ${decisionTino.propuesta_campana?.presupuesto_diario || 'sin definir'}` },
-                          { k: 'Contenido en sus redes', v: decisionTino.contenido?.publicacion_diaria, s: decisionTino.contenido?.cadencia, e: (decisionTino.contenido?.formato_por_red || []).join(' · ') },
+                          { k: 'Contenido en sus redes', v: decisionTino.contenido?.publicacion_diaria, s: decisionTino.contenido?.cadencia, e: lista(decisionTino.contenido?.formato_por_red).join(' · ') || String(decisionTino.contenido?.formato_por_red_nota || '') },
                           { k: 'Cuándo cambia', v: decisionTino.cuando_cambiar?.regla, s: decisionTino.cuando_cambiar?.sin_las_cuentas, e: decisionTino.cuando_cambiar?.base_medida || '' },
                         ] as { k: string; v?: string; s?: string; e?: string }[]).filter(x => x.v).map(x => (
                           <div key={x.k} className="guard">
@@ -622,7 +623,7 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
                         ))}
                       </div>
                       {((decisionTino.falta || []) as string[]).length > 0 && (
-                        <div className="acc-why"><b>Para que decida con todo:</b> {(decisionTino.falta as string[]).join(' · ')}</div>
+                        <div className="acc-why"><b>Para que decida con todo:</b> {lista(decisionTino.falta).join(' · ')}</div>
                       )}
                     </>
                   ) : (

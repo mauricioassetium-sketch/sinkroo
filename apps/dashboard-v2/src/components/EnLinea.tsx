@@ -1,3 +1,4 @@
+import { lista } from '../lib/lista';
 import { Card, Badge, Button } from './ui';
 import { BarRow } from './viz';
 import { I_Play, I_Eye, I_Trend, I_Check, I_Refresh, I_Credit, I_Megaphone, I_Film, I_Image, I_File } from './icons';
@@ -113,7 +114,7 @@ export function EnLinea({ setToast, ir }: { setToast: (t: string) => void; ir?: 
         { k: 'Lo que gastó', v: `$${gastoDe(c).toLocaleString('es-CO')}`, s: 'lo invertido en esta campaña hasta hoy' },
         { k: 'Lo que devuelve', v: roasDe(c), s: roasDe(c) === '—' ? 'la plataforma todavía no reportó su retorno' : 'por cada peso invertido', tono: roasDe(c) === '—' ? 'muted' : 'green' },
         { k: 'Forma', v: c.forma || 'sin definir', s: c.forma ? 'cómo está armada la campaña' : 'todavía no está definida' },
-        { k: 'Dónde sale', v: (c.destinos || []).join(' + ') || 'sin destinos cargados', s: 'las redes y canales de esta campaña' },
+        { k: 'Dónde sale', v: lista(c.destinos).join(' + ') || 'sin destinos cargados', s: 'las redes y canales de esta campaña' },
         { k: 'Piezas', v: c.piezas ? `${c.piezas}` : 'sin piezas todavía', s: c.piezas ? 'las que tiene cargadas' : 'todavía no tiene una pieza creada' },
         { k: 'Objetivo', v: c.objetivo || 'sin objetivo escrito', s: c.objetivo ? 'para qué se está gastando' : 'falta escribirlo' },
         { k: 'Armada el', v: creadaEl(c.created_at) || 'sin fecha' },
@@ -142,7 +143,7 @@ export function EnLinea({ setToast, ir }: { setToast: (t: string) => void; ir?: 
       ] },
       { tipo: 'filas', items: activas.map(c => ({
         t: c.nombre,
-        s: `${c.forma || 'sin forma definida'} · ${(c.destinos || []).join(' + ') || 'sin destinos'} · $${gastoDe(c).toLocaleString('es-CO')} de gasto · ${c.piezas || 0} pieza${c.piezas === 1 ? '' : 's'}`,
+        s: `${c.forma || 'sin forma definida'} · ${lista(c.destinos).join(' + ') || 'sin destinos'} · $${gastoDe(c).toLocaleString('es-CO')} de gasto · ${c.piezas || 0} pieza${c.piezas === 1 ? '' : 's'}`,
         etiqueta: roasDe(c),
         tono: roasDe(c) === '—' ? 'muted' as const : 'green' as const,
       })) },
@@ -306,13 +307,13 @@ export function EnLinea({ setToast, ir }: { setToast: (t: string) => void; ir?: 
             <div key={c.id} className="pub">
               <span className="pub-mini"
                 style={{ background: 'linear-gradient(150deg, #4A7C59, #4A7C5922 70%, var(--bg3))' }}
-                title={`${c.forma || 'campaña'} · ${(c.destinos || []).join(' + ') || 'sin destinos'}`}>
+                title={`${c.forma || 'campaña'} · ${lista(c.destinos).join(' + ') || 'sin destinos'}`}>
                 <span className="pub-mini-ico">{iconoDeForma(c.forma)}</span>
               </span>
               <span style={{ flex: 1, minWidth: 0 }}>
                 <span className="rank-t">{c.nombre}</span>
                 <span className="rank-m">
-                  {c.forma || 'sin forma definida'} · {(c.destinos || []).join(' + ') || 'sin destinos'} · {estadoLegible(c)}
+                  {c.forma || 'sin forma definida'} · {lista(c.destinos).join(' + ') || 'sin destinos'} · {estadoLegible(c)}
                 </span>
                 <span className="pub-nums">
                   <span>${gastoDe(c).toLocaleString('es-CO')} de gasto</span>

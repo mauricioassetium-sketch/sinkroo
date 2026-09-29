@@ -1098,8 +1098,14 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
   const contenidoBloque = {
     publicacion_diaria: contenido || 'sin definir: el motor propone mantener las redes activas',
     cadencia: ritmo || 'sin definir: el motor la propone según lo que su mercado sostiene',
+    // SIEMPRE una lista. Antes, sin formatos medidos, este campo venía como TEXTO y el panel hacía
+    // .join sobre un texto: eso tira abajo la pantalla entera (Campañas quedó en blanco). Lo que falta
+    // se dice aparte, en su propia nota, para que nadie tenga que leer un texto donde espera una lista.
     formato_por_red: formatosRecomendados.length
       ? formatosRecomendados.map((f: any) => `${f.plaza} → ${f.formato_recomendado}`)
+      : [],
+    formato_por_red_nota: formatosRecomendados.length
+      ? ''
       : 'todavía no hay formatos medidos de su rubro: el formato de la pieza es una elección nuestra, no una medición',
     costo: 'publicar en sus redes no gasta pauta: consume créditos del plan (producir, probar y medir)',
   };
