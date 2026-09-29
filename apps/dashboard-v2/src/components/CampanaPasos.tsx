@@ -3,7 +3,7 @@ import { Card, Badge, Button } from './ui';
 import { I_Check, I_Upload, I_Image, I_Film, I_Vote, I_Rocket, I_Play, I_Sparkle, I_ChevDn, I_ChevUp, I_Plus, I_Eye, I_X, I_Target } from './icons';
 import { CUANTAS_PASAN, PERFILES } from '../data/mirofish';
 import type { Modo } from '../data/demo';
-import { useDatos, type Pieza as PiezaBack } from '../api/datos';
+import { useDatos, type Pieza as PiezaBack, type PromptGeneracion } from '../api/datos';
 import { EstadoVacio } from './EstadoVacio';
 import { fechaCorta } from './mirofishDatos';
 
@@ -14,8 +14,8 @@ import { fechaCorta } from './mirofishDatos';
 //
 // DE DÓNDE SALEN LAS PIEZAS DE LA GALERÍA (la regla de la casa):
 //   · Son las piezas de este negocio (`/api/piezas`), con el puntaje que les dio MiroFish (el de sus
-//     evaluaciones). Lo que el back no manda —el prompt, el texto del anuncio, la medida— no se
-//     rellena con nada: no se muestra.
+//     evaluaciones), su texto, su guion y su prompt de generación (`/api/prompts`). Lo que el back no
+//     manda no se rellena con nada: no se muestra y se dice que falta.
 //   · Sin piezas no hay galería de ejemplo: va el estado vacío que dice qué hacer para tenerlas.
 //   · Lo único fijo es el catálogo del producto: los tipos de campaña, los formatos y la regla de que
 //     las tres primeras pasan. Eso no es dato de ningún negocio.
@@ -184,6 +184,12 @@ type PiezaGal = {
   formato: string;
   estado: string;
   fecha: string;
+  /** El texto final de la pieza, tal como lo dejó el motor. Vacío = todavía no lo escribió. */
+  texto: string;
+  /** El guion, escena por escena: solo en las piezas de video. */
+  guion: string;
+  /** El prompt de generación del servidor. null = el motor todavía no dejó ninguno. */
+  prompt: PromptGeneracion | null;
 };
 
 const esVideo = (f: string) => /video|reel/i.test(f);
@@ -199,12 +205,24 @@ export function Galeria({ setToast, ir }: { modo: Modo; setToast: (t: string) =>
   const piezas: PiezaGal[] = d.piezas.map((p: PiezaBack) => {
     const ev = d.evaluaciones.find(e => e.id === p.id || e.titulo.trim().toLowerCase() === p.titulo.trim().toLowerCase());
     const punto = p.puntaje ?? ev?.puntaje ?? null;
+    // El prompt que le corresponde: el que nombra esta pieza; si el motor dejó uno solo, ese (y la ficha
+    // dice a qué pieza lo escribió, para no dar por hecho que es de esta).
+    const prompts = d.prompts ?? [];
+    const porNombre = prompts.find(pr => String(pr.pieza || '').trim().slice(0, 24) === p.titulo.trim().slice(0, 24));
     return {
       id: p.id, titulo: p.titulo, puntaje: punto == null ? null : Number(punto),
       formato: p.formato || 'sin formato', estado: p.estado || 'sin estado',
       fecha: p.created_at ? creada(p.created_at) : '',
+      texto: String(p.texto || ''), guion: String(p.guion || ''),
+      prompt: porNombre ?? (prompts.length ? prompts[0] : null),
     };
   });
+
+  /** Copia al portapapeles lo que el motor dejó (el texto, el prompt): es para pegarlo y usarlo ya. */
+  const copiar = async (t: string, que: string) => {
+    try { await navigator.clipboard.writeText(t); setToast(`${que} copiado: ya lo puede pegar`); }
+    catch { setToast('el navegador no dejó copiar solo: seleccione el texto y cópielo a mano'); }
+  };
 
   // --- El orden de la galería: del puntaje más alto al más bajo. Las que no tienen puntaje van al final.
   const orden = [...piezas].sort((a, b) => (b.puntaje ?? -1) - (a.puntaje ?? -1));
@@ -324,9 +342,46 @@ export function Galeria({ setToast, ir }: { modo: Modo; setToast: (t: string) =>
                     <div className="op-row"><span className="op-k">Estado</span><span className="bs">{o.estado}</span></div>
                     {o.fecha && <div className="op-row"><span className="op-k">Fecha</span><span className="bs">{o.fecha}</span></div>}
                     <div className="op-row"><span className="op-k">Puntaje de MiroFish</span><span className="bs">{sinPunto ? '— todavía no la evaluaron' : `${o.puntaje} de 100`}</span></div>
+                    <div className="op-row">
+                      <span className="op-k">El texto del anuncio</span>
+                      <span className="bs" style={{ whiteSpace: 'pre-wrap' }}>{o.texto || 'el motor todavía no escribió el texto de esta pieza'}</span>
+                    </div>
+                    {o.guion ? (
+                      <div className="op-row">
+                        <span className="op-k">El guion, escena por escena</span>
+                        <span className="bs" style={{ whiteSpace: 'pre-wrap' }}>{o.guion}</span>
+                      </div>
+                    ) : null}
+                    <div className="op-row">
+                      <span className="op-k">El prompt de generación</span>
+                      <span className="bs">
+                        {o.prompt ? (
+                          <>
+                            <span className="tiny muted" style={{ display: 'block' }}>
+                              {`Escrito para ${o.prompt.pieza || 'su pieza'}${o.prompt.tipo ? ` · ${o.prompt.tipo}` : ''}${o.prompt.estilo ? ` · ${o.prompt.estilo}` : ''}${o.prompt.proporcion ? ` · ${o.prompt.proporcion}` : ''}`}
+                            </span>
+                            <span style={{ display: 'block', whiteSpace: 'pre-wrap', marginTop: 6 }}>{o.prompt.prompt}</span>
+                            {o.prompt.prompt_negativo ? (
+                              <span className="tiny muted" style={{ display: 'block', marginTop: 6 }}>Lo que NO debe aparecer: {o.prompt.prompt_negativo}</span>
+                            ) : null}
+                          </>
+                        ) : 'el motor todavía no dejó el prompt de esta pieza'}
+                      </span>
+                    </div>
+                    <div className="row" style={{ gap: 7, flexWrap: 'wrap', marginTop: 8 }}>
+                      {o.texto ? (
+                        <Button variant="ghost" className="btn-sm" title="Copia el texto del anuncio de esta pieza, listo para pegarlo en su red"
+                          onClick={() => copiar(o.texto, 'el texto del anuncio')}>Copiar el texto</Button>
+                      ) : null}
+                      {o.prompt?.prompt ? (
+                        <Button variant="ghost" className="btn-sm" title="Copia el prompt de generación, listo para pegarlo en el generador de imagen o video que use"
+                          onClick={() => copiar(o.prompt!.prompt, 'el prompt')}>Copiar el prompt</Button>
+                      ) : null}
+                    </div>
                     <div className="tiny muted" style={{ marginTop: 8 }}>
-                      Esto es lo que el servidor manda de la pieza. El prompt, el texto del anuncio y la
-                      medida todavía no llegan: por eso no se muestran.
+                      Esto es todo lo que el servidor tiene de la pieza: su formato, su estado, su puntaje, su
+                      texto y su prompt. Lo que todavía no llega es la creatividad final (la imagen o el video ya
+                      generados): el generador no está conectado.
                     </div>
                   </div>
                 )}
