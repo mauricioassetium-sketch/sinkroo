@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Badge, Button } from '../components/ui';
+import { useEffect, useState } from 'react';
+import { Badge, Button, Progress } from '../components/ui';
 import { EstadoVacio } from '../components/EstadoVacio';
 import {
   I_Check, I_Upload, I_Image, I_Film, I_File, I_Shield, I_ArrowRight, I_X, I_Link, I_Plus, I_Play, I_Zap, I_Lock,
@@ -565,6 +565,29 @@ export function BloqueCodigoDeEntrada() {
 export function BloqueArranque({ enAsistente, alCerrar }: { enAsistente?: boolean; alCerrar?: () => void }) {
   const onb = useOnboarding();
   const { plan } = usePlan();
+  // EL AVANCE DEL ARRANQUE: el negocio ve por dónde va el motor y cuánto falta, en vez de mirar un botón
+  // que dice «Arrancando…» sin decir nada más. El número marca las etapas DECLARADAS del arranque —las
+  // mismas que están listadas abajo— y llega a 100 cuando el servidor responde: no lo inventa la pantalla.
+  const [avance, setAvance] = useState(0);
+  const [etapa, setEtapa] = useState('');
+  useEffect(() => {
+    if (!onb.arrancando) {
+      setAvance(onb.arrancado ? 100 : 0);
+      setEtapa(onb.arrancado ? 'Listo: su panel quedó con el trabajo hecho' : '');
+      return;
+    }
+    const etapas: [number, string][] = [
+      [18, 'Lux sale a leer los anuncios de su mercado'],
+      [42, 'Nia escribe las piezas con su material y su tono'],
+      [68, 'El panel las prueba: los 5 jueces y los 500 del público'],
+      [88, 'Kai deja las mejores listas y mide el costo por resultado'],
+    ];
+    let i = 0;
+    const reloj = setInterval(() => {
+      if (i < etapas.length) { const [p, t] = etapas[i++]; setAvance(p); setEtapa(t); }
+    }, 1400);
+    return () => clearInterval(reloj);
+  }, [onb.arrancando, onb.arrancado]);
   if (onb.arrancado) {
     return (
       <>
@@ -624,6 +647,20 @@ export function BloqueArranque({ enAsistente, alCerrar }: { enAsistente?: boolea
           onClick={() => void onb.arrancar()}>
           <I_Play size={13} /> {onb.arrancando ? 'Arrancando…' : 'Arrancar el motor'}
         </Button>
+        {/* MIENTRAS ARRANCA: la barra con la etapa y el porcentaje. La angustia de la espera se va cuando
+            el negocio ve que el motor va en algo concreto y cuánto le falta. */}
+        {onb.arrancando && (
+          <div style={{ marginTop: 14 }}>
+            <div className="row spread" style={{ gap: 10, alignItems: 'baseline', marginBottom: 7 }}>
+              <span style={{ fontWeight: 700, fontSize: 13 }}>{etapa || 'Arrancando…'}</span>
+              <b style={{ color: 'var(--purple3)' }}>{avance}%</b>
+            </div>
+            <Progress pct={avance} />
+            <div className="bs" style={{ marginTop: 7 }}>
+              El porcentaje marca las etapas del arranque y llega a 100 cuando el servidor responde.
+            </div>
+          </div>
+        )}
         {!enAsistente && (
           <Button variant="ghost" className="btn-sm" title="Guarda lo que puso y le deja seguir después desde Hoy"
             onClick={() => { onb.desmarcar(5); onb.avisar('Guardado: sigue cuando quiera desde Hoy'); }}>
