@@ -2147,3 +2147,26 @@ html.marca-cliente .pers-flotante { color: var(--sobre-grad); }
 .vacio-ic { font-size: 22px; color: var(--purple3); opacity: .85; }
 .vacio-t { font-size: 14.5px; font-weight: 800; color: var(--txt); }
 .vacio-s { font-size: 12.5px; line-height: 1.6; color: var(--muted); max-width: 46ch; }
+
+
+/* =============================================================================================
+   EL PRIMER PASO SIN HACER: SE AVISA CON ALARMA
+   Sin nada cargado, el motor no puede trabajar y el negocio no sabe por dónde empezar. El borde del
+   proceso late en rojo y una flecha señala el primer paso. Late SOLO, y se queda quieto para quien
+   pidió menos movimiento en su sistema (la misma cortesía que el resto del panel).
+   ============================================================================================= */
+@keyframes onbAlarma {
+  0%, 100% { border-color: rgba(239,68,68,.9); box-shadow: 0 0 0 0 rgba(239,68,68,.28); }
+  50%      { border-color: rgba(239,68,68,.35); box-shadow: 0 0 0 10px rgba(239,68,68,0); }
+}
+@keyframes onbFlecha {
+  0%, 100% { transform: translateY(0);   opacity: 1; }
+  50%      { transform: translateY(7px); opacity: .7; }
+}
+.onb-alarma { border: 2px solid rgba(239,68,68,.9); border-radius: 16px; animation: onbAlarma 1.9s ease-in-out infinite; }
+.onb-flecha {
+  display: flex; align-items: center; gap: 8px; margin: 12px 0 4px;
+  color: #fca5a5; font-size: 13px; font-weight: 700;
+  animation: onbFlecha 1.6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) { .onb-alarma, .onb-flecha { animation: none; } }

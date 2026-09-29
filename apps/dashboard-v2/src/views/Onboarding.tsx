@@ -70,8 +70,16 @@ export function ViewOnboarding({ setToast, setVista }: { setToast: (t: string) =
         ]}
       />
 
-      {/* El stepper: el mismo de Campañas, para que las dos etapas del producto se lean igual. */}
-      <div className="pasos">
+      {/* El stepper: el mismo de Campañas, para que las dos etapas del producto se lean igual.
+          Con NADA cargado, el proceso entero late en rojo y una flecha dice por dónde empezar: el
+          negocio no tiene que adivinar dónde está la puerta. */}
+      <div className={'pasos' + (listos.length === 0 ? ' onb-alarma' : '')}>
+        {listos.length === 0 && (
+          <div className="onb-flecha" title="Complete el primer paso y el motor ya puede empezar a trabajar con su negocio. Nada de lo que ponga se pierde.">
+            <I_ArrowRight size={15} style={{ transform: 'rotate(90deg)', flexShrink: 0 }} />
+            Complete el primer paso para comenzar
+          </div>
+        )}
         {onb.pasos.map(p => (
           <button key={p.n} className={`paso ${onb.paso === p.n ? 'on' : ''} ${listos.includes(p.n) ? 'done' : ''}`}
             title={`${p.t}: ${p.d}. ${listos.includes(p.n) ? 'Ya está hecho: puede volver a cambiarlo.' : 'Falta.'}`}
