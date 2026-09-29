@@ -99,9 +99,17 @@ export function armarLaPieza(d: {
   // avisa: rellenarlo con una palabra genérica es peor que decir que falta.
   const GENERICO = /^(servicios?|productos?|soluciones?|consultor[ií]a|asesor[ií]a|otros?|varios|general)$/i;
   const ofrece = d.negocio.ofrece.map(o => sinSueltos(String(o)).trim()).filter(o => o && !GENERICO.test(o));
+  // SIN REPETIR LO QUE EL GANCHO YA DIJO. Cuando no hay material, el cuerpo se armaba con la lista de lo que
+  // el negocio ofrece —y el gancho ya trae esa misma frase—, así que la pieza decía lo mismo dos veces y el
+  // video lo leía dos veces. Se salta lo que el gancho ya nombra.
+  const yaDicho = gancho.toLowerCase();
+  const ofreceNuevo = ofrece.filter(o => {
+    const recorte = String(o).toLowerCase().slice(0, 30).trim();
+    return recorte.length < 8 || !yaDicho.includes(recorte);
+  });
   const cuerpo = resto.length
     ? resto.join('\n')
-    : ofrece.slice(0, 3).map(o => `· ${o}`).join('\n');
+    : ofreceNuevo.slice(0, 3).map(o => `· ${o}`).join('\n');
   const cuerpoDebil = !resto.length
     ? (ofrece.length
         ? 'el cuerpo se armó con lo que el negocio dice que ofrece, no con lo que cambia para el cliente: falta material'

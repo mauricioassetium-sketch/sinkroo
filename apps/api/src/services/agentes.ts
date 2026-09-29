@@ -77,6 +77,13 @@ export function azar(semilla: number) {
 
 export type Contexto = { businessId: string; nombre: string; descripcion: string; rubro: string; zona: string };
 
+/**
+ * CUÁNTAS ESCENAS LLEVA UN VIDEO COMO MÁXIMO. Cada escena es una imagen propia y unos 5 segundos de montaje:
+ * seis dan un video de ~30 segundos, que es el techo de estos formatos. Más imágenes sería alargar por
+ * alargar —y cada una cuesta tiempo de generación— sin que el guion lo pida.
+ */
+const MAX_ESCENAS = 6;
+
 /** El texto con el que el negocio dice a qué se dedica: rubro, nombre y descripción, en minúsculas. */
 const queHace = (ctx: Contexto) => `${ctx.rubro} ${ctx.nombre} ${ctx.descripcion}`.toLowerCase();
 
@@ -1585,29 +1592,55 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
           String((pz.detalle as any)?.variante?.angulo || '')],
       );
       const piezaId = String(insertada.rows[0].id);
-      // LA IMAGEN DE LA PIEZA (y el material del video). Una pieza de imagen se pinta con un prompt visual
-      // armado con lo medido del negocio; una de VIDEO también necesita material, porque el montaje se
-      // arma con NUESTRAS imágenes —no hace falta banco de imágenes ni llave de Pexels—. Si algo no
-      // responde, la pieza queda con su prompt y lo dice: pintar es un extra, no un requisito.
+      // ---- LOS PLANOS PRIMERO, Y UNA IMAGEN POR PLANO ----
+      // El dueño lo señaló con todas las letras: «todos los videos son iguales, se repite el texto». La causa
+      // era esta línea: se pintaban DOS imágenes genéricas por pieza —la misma escena y un «detalle cercano»—
+      // así que todos los videos mostraban lo mismo. Ahora el guion se desglosa en PLANOS antes de pintar, y
+      // cada plano lleva SU imagen, hecha con lo que ese plano dice. El video muestra lo que se está diciendo,
+      // y dos piezas con guiones distintos no pueden salir iguales.
       const esPiezaDeImagen = /imagen/i.test(String(pz.formato || ''));
       const esPiezaDeVideo = /video/i.test(String(pz.formato || '')) && !/texto/i.test(String(pz.formato || ''));
+      const tonoDeLaPieza = Array.isArray(decisiones.tono) ? decisiones.tono.join(' y ') : '';
+      const coloresMarca = (identidad?.colores ?? []).map((c: { hex: string }) => c.hex);
       const materiales: string[] = [];
+
+      // 1) EL DESGLOSE: qué se ve y qué se dice en cada plano (PenShot, sobre el guion).
+      let escenas: { que: string; dice: string }[] = [];
+      if (esPiezaDeVideo && String(pz.guion || '').trim().length >= 40) {
+        try {
+          const planos = await planosDelGuion(String(pz.guion));
+          if (planos) {
+            await db.query(
+              `UPDATE piezas SET generacion = jsonb_set(generacion, '{planos}', $2::jsonb) WHERE id = $1`,
+              [piezaId, aJson(planos)],
+            );
+            escenas = (planos.planos ?? []).slice(0, MAX_ESCENAS)
+              .map(pl => ({ que: String(pl.prompt || ''), dice: String(pl.audio || '') }));
+          }
+        } catch (e) { console.error('[planos] no se pudo desglosar el guion:', (e as Error)?.message); }
+      }
+      // Sin planos —o si la pieza no es de video—, una sola escena: lo que el negocio hace.
+      if (!escenas.length) {
+        escenas = [{ que: leido.queHace || ctx.descripcion, dice: String((pz.detalle as any)?.texto_sobre_la_imagen || '') }];
+      }
+
+      // 2) LA IMAGEN DE CADA ESCENA: una por plano en los videos, una sola en las piezas de imagen.
       if (esPiezaDeImagen || esPiezaDeVideo) {
         try {
-          const visual = promptVisual({
-            queHace: leido.queHace || ctx.descripcion,
-            textoSobreLaImagen: String((pz.detalle as any)?.texto_sobre_la_imagen || ''),
-            formato: pz.formato,
-            colores: (identidad?.colores ?? []).map((c: { hex: string }) => c.hex),
-            lugar: ctx.zona,
-            tono: Array.isArray(decisiones.tono) ? decisiones.tono.join(' y ') : '',
-          });
           const imagenes: unknown[] = [];
-          // Un video necesita más de un cuadro para no quedarse en una foto quieta.
-          const cuantas = esPiezaDeVideo ? 2 : 1;
+          const cuantas = esPiezaDeVideo ? escenas.length : 1;
           for (let n = 0; n < cuantas; n++) {
-            const prompt = n === 0 ? visual : `${visual}, same scene from a closer detail, different angle`;
-            const img = await generarImagen({ businessId: ctx.businessId, piezaId, formato: pz.formato, prompt });
+            const e = escenas[n];
+            const visual = promptVisual({
+              queHace: e.dice ? `${e.que}. En ese momento se dice: ${e.dice}` : e.que,
+              textoSobreLaImagen: String((pz.detalle as any)?.texto_sobre_la_imagen || ''),
+              formato: pz.formato, colores: coloresMarca, lugar: ctx.zona, tono: tonoDeLaPieza,
+            });
+            // Cada imagen con su propio nombre (`-p2`, `-p3`…): antes la segunda pisaba a la primera.
+            const img = await generarImagen({
+              businessId: ctx.businessId, piezaId, formato: pz.formato, prompt: visual,
+              sufijo: n ? `p${n + 1}` : '',
+            });
             if (!img) continue;
             imagenes.push(img);
             materiales.push(img.archivo);
@@ -1663,21 +1696,7 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
         })();
       }
       escritasAhora++;
-      // LOS PLANOS: solo las piezas de video tienen guion que desglosar. Se guardan dentro de la pieza
-      // (`generacion.planos`), en su propia fila, para que la ficha del panel los muestre junto al prompt.
-      // Solo VIDEO: un reel de texto lleva tarjetas, no planos filmados; una imagen no tiene planos.
-      if (/^video/i.test(String(pz.formato || '').trim()) && String(pz.guion || '').trim().length >= 40) {
-        try {
-          const planos = await planosDelGuion(String(pz.guion));
-          if (planos) {
-            await db.query(
-              `UPDATE piezas SET generacion = jsonb_set(generacion, '{planos}', $2::jsonb)
-                WHERE business_id = $1 AND titulo = $3 AND texto = $4`,
-              [ctx.businessId, aJson(planos), pz.titulo, pz.texto],
-            );
-          }
-        } catch (e) { console.error('[planos] no se pudo desglosar el guion:', (e as Error)?.message); }
-      }
+      // (Los planos se desglosan más arriba, ANTES de pintar: cada plano lleva su imagen.)
     }
     // EL PROMPT DE CADA PIEZA, EN SU FORMATO. Una pieza de imagen pide UNA imagen (sin planos, sin voz, sin
     // segundos) y su texto sobre la imagen; una de video pide el paquete completo. Antes se guardaba un solo

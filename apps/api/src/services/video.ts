@@ -68,6 +68,63 @@ export type VideoGenerado = {
 };
 
 /**
+ * EL GUION QUE SE DICE EN VOZ ALTA. El dueño lo señaló: «todos hablando lo mismo, se repite el texto».
+ * Venían dos cosas mezcladas: el TÍTULO de la pieza pegado adelante del copy (y el título repite el gancho)
+ * y frases que el copy trae dos veces. Acá se limpia: se quita el título si abre el texto y se dejan las
+ * frases una sola vez, en su orden. Lo que NO se toca es el contenido: no se inventa ni se reescribe nada.
+ */
+export function guionParaLaVoz(texto: string, titulo?: string): string {
+  const normal = (s: string) => s.replace(/\s+/g, ' ').trim();
+  let t = normal(String(texto || ''));
+
+  // 1) EL TÍTULO PEGADO ADELANTE: el título de la pieza ya repite el gancho, y leer los dos es decir lo
+  //    mismo dos veces. Si el texto arranca con él (con o sin dos puntos), se saca.
+  const tit = normal(String(titulo || ''));
+  if (tit.length > 8) {
+    for (const p of [tit, tit.split(':')[0]]) {
+      const pp = normal(p);
+      if (pp.length > 8 && t.toLowerCase().startsWith(pp.toLowerCase())) {
+        t = normal(t.slice(pp.length).replace(/^[\s:·—–-]+/, ''));
+        break;
+      }
+    }
+  }
+
+  // 2) BLOQUES REPETIDOS: el copy de estas piezas trae el mismo renglón dos veces (el gancho y el cuerpo
+  //    dicen lo mismo). Se busca el trozo largo que aparece dos veces y se deja uno: es lo que hacía que el
+  //    video «se repitiera solo». Se mide por texto, no por frases, porque viene sin puntos.
+  let cortado = true;
+  let vueltas = 0;
+  while (cortado && vueltas < 8) {
+    cortado = false;
+    vueltas++;
+    for (let largo = Math.min(180, Math.floor(t.length / 2)); largo >= 40 && !cortado; largo -= 5) {
+      for (let i = 0; i + largo <= t.length; i++) {
+        const trozo = t.slice(i, i + largo);
+        const j = t.indexOf(trozo, i + largo);
+        if (j > -1) {
+          t = normal(t.slice(0, j) + ' ' + t.slice(j + largo));
+          cortado = true;
+          break;
+        }
+      }
+    }
+  }
+
+  // 3) Y por si queda alguna frase corta suelta repetida, se quita la segunda.
+  const frases = t.split(/(?<=[.!?])\s+|\s*[;,]\s*/).map(f => f.trim()).filter(Boolean);
+  const vistas = new Set<string>();
+  const limpias: string[] = [];
+  for (const f of frases) {
+    const clave = f.toLowerCase().replace(/[^a-záéíóúñ0-9 ]/g, '');
+    if (clave.length > 20 && vistas.has(clave)) continue;
+    if (clave.length > 20) vistas.add(clave);
+    limpias.push(f);
+  }
+  return normal(limpias.join(' ')) || t;
+}
+
+/**
  * La voz según el caso. Se lee el tono que el negocio declaró y se elige de ahí — no al azar.
  * Todas son voces colombianas de Edge TTS (gratis, sin llave) y el ritmo baja al 92%: hablar más
  * despacio es la mitad del arreglo del «tono robótico».
@@ -120,7 +177,8 @@ export async function generarVideo(d: {
   const args = [
     'cli.py',
     '--video-subject', String(d.titulo || 'la pieza').slice(0, 180),
-    '--video-script', String(d.copy || '').slice(0, 2400),
+    // Lo que se dice: el copy limpio (sin el título pegado y sin frases repetidas), no el texto crudo.
+    '--video-script', guionParaLaVoz(String(d.copy || ''), String(d.titulo || '')).slice(0, 2400),
     '--video-language', 'es',
     '--video-source', 'local',
     '--video-materials', materiales.join(','),

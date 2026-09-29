@@ -38,6 +38,8 @@ export const motivoDelUltimoFalloDeImagen = () => ultimoMotivo;
 
 export type ImagenGenerada = {
   archivo: string;
+  /** A qué plano del guion pertenece, cuando la pieza lleva varias imágenes. */
+  plano?: string;
   url: string;
   ancho: number;
   alto: number;
@@ -127,7 +129,7 @@ export function promptVisual(d: {
     vertical
       ? 'Editorial commercial photograph, vertical 9:16 framing, subject slightly off-centre'
       : 'Editorial commercial photograph, square framing, subject slightly off-centre',
-    d.queHace ? `showing ${d.queHace.slice(0, 140)}` : '',
+    d.queHace ? `showing ${d.queHace.slice(0, 300)}` : '',
     d.lugar ? `in a real ${d.lugar.slice(0, 60)}, in use, with everyday objects around` : 'in a real workplace, in use, with everyday objects around',
     // la luz es lo que más separa una foto buena de una mala
     calido
@@ -200,6 +202,8 @@ async function conPollinations(prompt: string, medida: { ancho: number; alto: nu
 /** Genera la imagen de una pieza. Devuelve null si no se pudo (y nunca lanza). */
 export async function generarImagen(d: {
   businessId: string; piezaId: string; formato: string; prompt: string; semilla?: number; timeoutMs?: number;
+  /** Para las piezas que llevan varias imágenes (una por plano): así no se pisan entre ellas. */
+  sufijo?: string;
 }): Promise<ImagenGenerada | null> {
   const medida = medidaDe(d.formato);
   const semilla = d.semilla ?? Math.floor(Math.random() * 1_000_000);
@@ -220,10 +224,12 @@ export async function generarImagen(d: {
 
   const carpeta = path.join(RAIZ, d.businessId);
   await mkdir(carpeta, { recursive: true });
-  const archivo = path.join(carpeta, `${d.piezaId}.${tipo.ext}`);
+  const nombre = d.sufijo ? `${d.piezaId}-${d.sufijo}.${tipo.ext}` : `${d.piezaId}.${tipo.ext}`;
+  const archivo = path.join(carpeta, nombre);
   await writeFile(archivo, bytes);
   return {
     archivo, url: `/api/piezas/${d.piezaId}/imagen`, ancho: medidaLlegada.ancho, alto: medidaLlegada.alto,
+    plano: d.sufijo || undefined,
     peso: bytes.length, prompt_visual: d.prompt, fuente, semilla,
   };
 }
