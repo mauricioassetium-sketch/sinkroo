@@ -10,7 +10,7 @@ import { crearPublico, evaluar as evaluarConMiroFish } from './mirofish.js';
 import { TARIFA, saldoDe, cobrarCreacion } from './creditos.js';
 import { capaDeOficio } from './oficio.js';
 import { planosDelGuion } from './planos.js';
-import { generarImagen, promptVisual } from './imagenes.js';
+import { generarImagen, promptVisual, motivoDelUltimoFalloDeImagen } from './imagenes.js';
 import { generarVideo, motivoDelUltimoFallo } from './video.js';
 import { aJson } from '../lib/json-seguro.js';
 
@@ -1618,6 +1618,15 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
                                                          '{imagenes_generadas}', $3::jsonb) WHERE id = $1`,
               [piezaId, aJson(imagenes[0]), aJson(imagenes)],
             );
+          } else {
+            // Pintar es un extra, no un requisito — pero el motivo se guarda: «sin imagen» a secas no dice
+            // si fue la cuota, un corte o un rechazo, y sin eso no se puede decidir nada.
+            const motivo = motivoDelUltimoFalloDeImagen() || 'los dos proveedores fallaron sin decir por qué';
+            await db.query(
+              `UPDATE piezas SET generacion = jsonb_set(generacion, '{imagen_error}', $2::jsonb) WHERE id = $1`,
+              [piezaId, aJson({ motivo, cuando: new Date().toISOString() })],
+            );
+            console.error('[imagen] sin imagen:', motivo);
           }
         } catch (e) { console.error('[imagen] no se pudo generar:', (e as Error)?.message); }
       }

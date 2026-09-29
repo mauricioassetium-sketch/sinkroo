@@ -120,9 +120,11 @@ piezas, sin_terminar = esperar_lo_que_falta(piezas, ESPERA_MAX_S)
 print(f'== 7. inventario (lo que quedó terminado: {len(piezas)} piezas) ==', flush=True)
 for p in piezas:
     g = p.get('generacion') or {}
-    img, vid, planos, fallo = g.get('imagen_generada') or {}, g.get('video_generado') or {}, g.get('planos') or {}, g.get('video_error') or {}
+    img, vid, planos = g.get('imagen_generada') or {}, g.get('video_generado') or {}, g.get('planos') or {}
+    fallo, falloImg = g.get('video_error') or {}, g.get('imagen_error') or {}
     print(f"   · {p.get('formato','?'):<34} "
-          f"imagen={'sí' if img else 'NO'} ({img.get('fuente','')[:30]}, {img.get('peso','')} b, {img.get('ancho','')}x{img.get('alto','')})  "
+          f"imagen={'sí' if img else ('SIN IMAGEN: ' + str(falloImg.get('motivo','?'))[:70] if falloImg else 'NO')} "
+          f"({img.get('fuente','')[:30]}, {img.get('peso','')} b, {img.get('ancho','')}x{img.get('alto','')})  "
           f"video={'sí' if vid else ('FALLÓ: ' + str(fallo.get('motivo','?'))[:60] if fallo else ('NO' if es_pieza_de_video(p.get('formato','')) else '—'))} "
           f"({vid.get('segundos','')} s, {vid.get('peso','')} b, {vid.get('voz','')})  "
           f"planos={'sí' if planos else '—'}", flush=True)

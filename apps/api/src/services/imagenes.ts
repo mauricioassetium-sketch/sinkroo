@@ -32,6 +32,10 @@ const ARCHIVO_LLAVES = process.env.LLAVES_GENERACION || '/etc/sinkroo/claves-gen
 /** Dónde quedan las imágenes generadas. Fuera del repo de la landing: son datos, no código. */
 const RAIZ = process.env.IMAGENES_DIR || '/root/work/sinkroo-a/datos/imagenes';
 
+/** Por qué falló la última imagen (el proveedor y lo que contestó). Sin esto, un fallo no deja rastro. */
+let ultimoMotivo = '';
+export const motivoDelUltimoFalloDeImagen = () => ultimoMotivo;
+
 export type ImagenGenerada = {
   archivo: string;
   url: string;
@@ -154,7 +158,7 @@ async function conFlux(prompt: string, medida: { ancho: number; alto: number }, 
       }),
       signal: AbortSignal.timeout(timeoutMs),
     });
-    if (!r.ok) return null;
+    if (!r.ok) { ultimoMotivo = `FLUX contestó ${r.status}: ${(await r.text()).slice(0, 140)}`; return null; }
     const j = (await r.json()) as { data?: Array<{ b64_json?: string; url?: string }> };
     const dato = j.data?.[0];
     if (dato?.b64_json) {
@@ -167,8 +171,12 @@ async function conFlux(prompt: string, medida: { ancho: number; alto: number }, 
       const bytes = Buffer.from(await img.arrayBuffer());
       return bytes.length > 5_000 ? bytes : null;
     }
+    ultimoMotivo = 'FLUX respondió sin imagen';
     return null;
-  } catch { return null; }
+  } catch (e) {
+    ultimoMotivo = `FLUX no respondió: ${String((e as Error)?.message || e).slice(0, 120)}`;
+    return null;
+  }
 }
 
 /** Pollinations: el respaldo gratis, sin llave. Peor imagen, pero nunca deja la pieza vacía. */
@@ -176,10 +184,17 @@ async function conPollinations(prompt: string, medida: { ancho: number; alto: nu
   const url = `${POLLINATIONS}/${encodeURIComponent(prompt)}?width=${medida.ancho}&height=${medida.alto}&nologo=true&seed=${semilla}`;
   try {
     const r = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
-    if (!r.ok) return null;
+    if (!r.ok) {
+      ultimoMotivo = `${ultimoMotivo ? ultimoMotivo + ' · ' : ''}Pollinations contestó ${r.status}${r.status === 402 ? ' (pide pago: la cuota gratis anónima está agotada)' : ''}`;
+      return null;
+    }
     const bytes = Buffer.from(await r.arrayBuffer());
-    return bytes.length > 5_000 ? bytes : null;
-  } catch { return null; }
+    if (bytes.length <= 5_000) { ultimoMotivo = `${ultimoMotivo ? ultimoMotivo + ' · ' : ''}Pollinations devolvió algo que no es imagen`; return null; }
+    return bytes;
+  } catch (e) {
+    ultimoMotivo = `${ultimoMotivo ? ultimoMotivo + ' · ' : ''}Pollinations no respondió: ${String((e as Error)?.message || e).slice(0, 100)}`;
+    return null;
+  }
 }
 
 /** Genera la imagen de una pieza. Devuelve null si no se pudo (y nunca lanza). */
@@ -190,6 +205,7 @@ export async function generarImagen(d: {
   const semilla = d.semilla ?? Math.floor(Math.random() * 1_000_000);
   const tiempo = d.timeoutMs ?? 120_000;
 
+  ultimoMotivo = '';
   let bytes = await conFlux(d.prompt, medida, tiempo);
   let fuente = `FLUX.1-schnell (Hugging Face · ${MODELO_FLUX})`;
   if (!bytes) {
