@@ -3,6 +3,7 @@ import type { Pool } from 'pg';
 import { exigirSesion } from '../lib/auth.js';
 import { exigirCuerpo, limpiar, limpiarLista } from '../lib/seguridad.js';
 import { conAvisoDePin, exigirPin } from '../lib/pin.js';
+import { TARIFA, saldoDe, costoDeRonda } from '../services/creditos.js';
 import { correrInvestigacion, desvioActual } from '../services/agentes.js';
 import { lanzarLecturaDeAnuncios, loQueDedujoVera, paisesDeclarados } from '../services/programador.js';
 import { crearPublico, evaluar } from '../services/mirofish.js';
@@ -60,7 +61,10 @@ export async function motorRoutes(app: FastifyInstance, db: Pool) {
         detalle: 'suba un archivo suyo (un PDF, un catálogo), pegue el enlace de su página o escriba qué hace, en Primeros pasos. Con cualquiera de los tres, el equipo sale a investigar',
       });
     }
-    const r = await correrInvestigacion(db, ctx);
+    // UNA RONDA: con `ronda: true` el motor escribe cinco piezas distintas —cada una con su ángulo y su
+    // formato— y las prueba todas, en vez de una sola. Es lo que el dueño pide desde el panel cuando quiere
+    // opciones que competir entre sí.
+    const r = await correrInvestigacion(db, ctx, 'investigacion', (req.body as { ronda?: boolean } | undefined)?.ronda === true);
     // Y sale a leer la Biblioteca de Anuncios con las palabras y los países del negocio: sin esto, la
     // corrida cuenta el mercado solo con lo que ya estaba guardado. No se espera: si tarda, no frena.
     lanzarLecturaDeAnuncios(
@@ -127,6 +131,34 @@ export async function motorRoutes(app: FastifyInstance, db: Pool) {
   // ---------------- MiroFish ----------------
 
   /** Evalúa una pieza: 5 jueces, 500 del público y la predicción con su desvío. Cuesta 48 créditos. */
+  /**
+   * LAS RONDAS DEL NEGOCIO: cada una con sus candidatas, su puntaje y la que ganó. Es lo que el panel lee
+   * para mostrar las opciones que compitieron, sin inventar ninguna: si no hay rondas, la lista va vacía.
+   */
+  app.get('/api/rondas', async (req, reply) => {
+    const u = await exigirSesion(req, reply); if (!u || !u.business_id) return;
+    const rondas = (await db.query(
+      `SELECT id, numero, piezas, evaluadas, ganadora_id, ganadora_puntaje, creditos, detalle, created_at
+         FROM rondas WHERE business_id = $1 ORDER BY numero DESC LIMIT 20`, [u.business_id])).rows;
+    const candidatas = (await db.query(
+      `SELECT p.id, p.ronda, p.angulo, p.formato, p.titulo, p.texto, p.created_at,
+              e.puntaje, e.orden, e.id AS evaluacion_id
+         FROM piezas p
+         LEFT JOIN evaluaciones e ON e.pieza_id = p.id
+        WHERE p.business_id = $1 AND p.ronda > 0
+        ORDER BY p.ronda DESC, e.puntaje DESC NULLS LAST, p.created_at DESC`, [u.business_id])).rows;
+    return {
+      rondas: rondas.map(r => ({
+        ...r,
+        candidatas: candidatas.filter((c: any) => Number(c.ronda) === Number(r.numero)),
+      })),
+      // Lo que cuesta una ronda, con el número del back (el mismo que se cobra en el libro).
+      tarifa: { ...TARIFA, costo_ronda: costoDeRonda(5) },
+      creditos: await saldoDe(db, u.business_id),
+      cuantas_piezas: 5,
+    };
+  });
+
   app.post('/api/mirofish/evaluar', async (req, reply) => {
     const u = await exigirSesion(req, reply); if (!u || !u.business_id) return;
     const c = exigirCuerpo<{ titulo?: string; texto?: string; formato?: string; pieza_id?: string; pin?: string }>(req.body, [], reply);

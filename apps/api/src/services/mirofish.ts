@@ -1,4 +1,5 @@
 import type { Pool } from 'pg';
+import { TARIFA } from './creditos.js';
 import { azar, desvioActual, semillaDe } from './agentes.js';
 
 // =============================================================================================
@@ -92,8 +93,8 @@ export async function evaluar(db: Pool, businessId: string, pieza: { id?: string
 
   const evaluacion = await db.query(
     `INSERT INTO evaluaciones (business_id, pieza_id, titulo, total_publico, creditos)
-     VALUES ($1, $2, $3, 500, 48) RETURNING id`,
-    [businessId, pieza.id ?? null, pieza.titulo],
+     VALUES ($1, $2, $3, 500, $4) RETURNING id`,
+    [businessId, pieza.id ?? null, pieza.titulo, TARIFA.evaluarPieza],
   );
   const evaluacionId = evaluacion.rows[0].id;
 
@@ -169,12 +170,12 @@ export async function evaluar(db: Pool, businessId: string, pieza: { id?: string
   );
   await db.query('UPDATE evaluaciones SET orden = $2 WHERE id = $1', [evaluacionId, orden.rows[0].n + 1]);
 
-  // 5 · Los créditos: evaluar cuesta 48 y queda escrito en el libro.
+  // 5 · Los créditos: lo que cuesta una evaluación, que es el precio publicado (8), y queda en el libro.
   await db.query(
     `INSERT INTO movimientos_creditos (business_id, delta, motivo, detalle, saldo)
-     VALUES ($1, -48, 'evaluacion', $2, COALESCE((SELECT saldo FROM movimientos_creditos WHERE business_id = $1 ORDER BY created_at DESC LIMIT 1), 0) - 48)`,
-    [businessId, `MiroFish: ${pieza.titulo}`],
+     VALUES ($1, $2, 'evaluacion', $3, COALESCE((SELECT saldo FROM movimientos_creditos WHERE business_id = $1 ORDER BY created_at DESC LIMIT 1), 0) + $2)`,
+    [businessId, -TARIFA.evaluarPieza, `MiroFish: ${pieza.titulo}`],
   );
 
-  return { evaluacion_id: evaluacionId, orden: orden.rows[0].n + 1, ...resumen, creditos: 48 };
+  return { evaluacion_id: evaluacionId, orden: orden.rows[0].n + 1, ...resumen, creditos: TARIFA.evaluarPieza };
 }

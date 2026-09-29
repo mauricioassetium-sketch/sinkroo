@@ -51,6 +51,8 @@ export function armarLaPieza(d: {
   saturado: string[];
   /** Los anuncios comparables, para citar al que más aguanta como referencia de la categoría. */
   comparables: { anunciante: string; copy: string; fecha_inicio: string; paises?: string[] }[];
+  /** La variante de una ronda: con esto una ronda produce 5 piezas distintas, no 5 copias. */
+  variante?: { n: number; nombre: string; angulo: string; formato: string; apertura?: string } | null;
   /** Las palabras que el motor ya midió (lo que el negocio ofrece, su categoría, su mercado): contra eso
    *  se corrigen los errores de tipeo del material, para no publicar «geelos» donde dice «gemelos». */
   vocabulario: string[];
@@ -64,7 +66,30 @@ export function armarLaPieza(d: {
   const avisoDeMaterial = frases.length === 0 || (palabrasSueltas && !tieneProblema)
     ? 'su material es una lista de palabras clave, no una frase dirigida a un cliente: la pieza sale armada con esas palabras y se lee como una ficha. Escriba en Primeros pasos una frase con la que le hablaría a un cliente —el problema que le resuelve— y la pieza se arma con esa frase'
     : '';
-  const gancho = frases.find(f => ES_PROBLEMA.test(f)) || frases[0] || d.negocio.queHace || `Lo que hace ${d.negocio.nombre}`;
+  // EL ÁNGULO DE CADA VARIANTE. Una ronda produce 5 piezas distintas, no cinco copias de la misma: cada
+  // una entra por donde el material del negocio tiene algo que decir —el problema, cómo funciona, la
+  // confianza y la seguridad, una prueba con números— y lo que cambia es qué frase va primero y qué
+  // formato lleva. Si el material no tiene una frase para ese ángulo, se dice: no se finge.
+  const ES_SEGURIDAD = /segur|confianza|verific|compliance|regulad|custodia|auditor|respaldo|leg[aá]l|trazab/i;
+  const ES_COMO = /c[oó]mo|proceso|paso a paso|funciona|se verifica|se audita|m[eé]todo|consiste/i;
+  const ES_PRUEBA = /\d|caso|resultado|ya lo usan|empresas que|cliente que/i;
+  const elAngulo = d.variante?.n ?? 0;
+  const fraseDelAngulo = !d.variante
+    ? (frases.find(f => ES_PROBLEMA.test(f)) || frases[0] || '')
+    : elAngulo === 2 ? (frases.find(f => ES_COMO.test(f)) || '')
+      : elAngulo === 3 ? (frases.find(f => ES_SEGURIDAD.test(f)) || '')
+        : elAngulo === 4 ? (frases.find(f => ES_PRUEBA.test(f)) || '')
+          : (frases.find(f => ES_PROBLEMA.test(f)) || frases[0] || '');
+  // La apertura según el ángulo de esta variante. Si el material no trae una frase para ese ángulo, la pieza
+  // NO finge tenerla: abre con la pregunta que frena la decisión —eso es una elección nuestra, y va dicha— y
+  // contesta con lo que el negocio sí dijo.
+  const abre = d.variante?.apertura || '';
+  const gancho = d.variante
+    ? [abre, fraseDelAngulo || (d.negocio.ofrece || []).slice(0, 2).join(' · ')].filter(Boolean).join(': ')
+    : (fraseDelAngulo || d.negocio.queHace || `Lo que hace ${d.negocio.nombre}`);
+  const anguloSinFrase = !!d.variante && !fraseDelAngulo;
+  // El formato de esta variante (video vertical, cuadrado, imagen con texto): lo elige la ronda, y va dicho.
+  const formato = d.variante?.formato || d.formato;
   // El cuerpo: lo que cambia para el cliente, dicho por el negocio. Sin material, se arma con lo que
   // ofrece (sus propias palabras del material), y si tampoco hay, se dice que falta.
   const resto = frases.filter(f => f !== gancho).slice(0, 3);
@@ -101,7 +126,7 @@ export function armarLaPieza(d: {
   };
 
   // El guion, solo si la pieza es de video: qué se ve y qué se dice, escena por escena.
-  const esVideo = /video|reel|vertical|tiktok/i.test(d.formato);
+  const esVideo = /video|reel|vertical|tiktok/i.test(formato);
   const guion = esVideo
     ? corregirConVocabulario([
         `0-3 s · SE VE: ${gancho.length > 90 ? `${gancho.slice(0, 90)}…` : gancho}`,
@@ -122,7 +147,7 @@ export function armarLaPieza(d: {
 
   return {
     titulo: tituloArreglado.texto.length > 90 ? `${tituloArreglado.texto.slice(0, 87)}…` : tituloArreglado.texto,
-    formato: d.formato,
+    formato,
     texto,
     guion,
     detalle: {
@@ -133,6 +158,16 @@ export function armarLaPieza(d: {
         { k: 'Cómo cierra', v: `${cierre} → ${boton}` },
       ],
       aviso_de_material: avisoDeMaterial,
+      // De dónde sale el ángulo de esta variante, y si el material no tenía frase para él.
+      variante: d.variante
+        ? {
+          n: d.variante.n, nombre: d.variante.nombre, angulo: d.variante.angulo, formato,
+          de_donde_sale: anguloSinFrase
+            ? `su material no tiene una frase para este ángulo: la pieza abre con la pregunta que frena la decisión («${abre}») —elegida por nosotros, dicha como nuestra— y contesta con lo que el negocio sí dijo`
+            : `una frase de su propio material, elegida por el ángulo «${d.variante.nombre}»`,
+          sin_frase_para_el_angulo: anguloSinFrase,
+        }
+        : null,
       aviso_del_cuerpo: cuerpoDebil,
       // Los errores de tipeo que se corrigieron, para que el dueño lo sepa: se corrigen contra lo que el
       // motor ya midió, no contra un diccionario cualquiera.

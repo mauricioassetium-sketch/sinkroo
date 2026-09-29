@@ -35,7 +35,7 @@ const PAQUETES = [
 // no texto para mostrar.
 const MOTIVOS: Record<string, { nombre: string; origen: string }> = {
   plan: { nombre: 'plan del mes', origen: 'la carga de su plan del mes: entra completa y el motor la descuenta a medida que trabaja' },
-  evaluacion: { nombre: 'evaluación', origen: 'cada pieza que pasa por los 5 jueces y los 500 del público cuesta 48 créditos' },
+  evaluacion: { nombre: 'evaluación', origen: 'cada pieza que pasa por los 5 jueces y los 500 del público cuesta 8 créditos' },
   campana: { nombre: 'campaña', origen: 'los días que estuvieron publicando sus campañas' },
   recarga: { nombre: 'recarga', origen: 'una recarga de créditos que se cargó desde esta pantalla' },
   referido: { nombre: 'referido', origen: 'el premio por un referido que pagó su primer mes' },

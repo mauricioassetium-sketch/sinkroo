@@ -7,6 +7,7 @@ import { armarInformeDelMercadoLeido, type InformeDelMercado } from './mercado.j
 import { armarLaPieza } from './pieza.js';
 import { vocabularioDe } from './corrector.js';
 import { crearPublico, evaluar as evaluarConMiroFish } from './mirofish.js';
+import { TARIFA, saldoDe, cobrarCreacion } from './creditos.js';
 import { aJson } from '../lib/json-seguro.js';
 
 // =============================================================================================
@@ -319,7 +320,11 @@ function piezasVivas(inf: Informe): any[] {
 }
 
 /** Corre la investigación completa: cada agente trabaja con su fuente real y devuelve lo que midió. */
-export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'investigacion') {
+/**
+ * Una corrida del motor. Con `ronda` en true escribe una RONDA: cinco piezas distintas —cada una con su
+ * ángulo y su formato— y las prueba todas, en vez de una sola pieza.
+ */
+export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'investigacion', ronda = false) {
   const mapa = await leerMapaReal(ctx.rubro, ctx.zona);
   const inf = await informeDe(db, ctx);
   const piezas = piezasVivas(inf);
@@ -1397,7 +1402,7 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
     const botonDeLaPieza = canales.some(c => /whatsapp|mensaje/i.test(c))
     ? 'Escriba por WhatsApp'
     : (canales.length ? `Escriba por ${canales[0]}` : '');
-    const piezaEscrita = armarLaPieza({
+    const datosDeLaPieza = {
     negocio: {
       nombre: ctx.nombre, queHace: leido.queHace, descripcion: ctx.descripcion,
       ofrece: Array.isArray(leido.queVende) ? leido.queVende : [], aQuien: aQuienLeHabla,
@@ -1420,7 +1425,35 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
       String(decisiones.negocio_que || ''),
       mercado?.palabras, mercado?.terminos, armadoDelInforme?.saturacion,
     ]),
-    });
+  };
+  const piezaEscrita = armarLaPieza(datosDeLaPieza);
+
+  // LAS CINCO VARIANTES DE UNA RONDA. No son la misma pieza cinco veces: cada una entra por donde el
+  // material del negocio tiene algo que decir, en un formato distinto, y todas se votan por separado.
+  // Y una ronda no repite lo que ya se probó: se mira qué ángulos usó este negocio y se eligen los que
+  // todavía no, que es lo que hace un creador cuando le piden opciones nuevas. Con 10 ángulos y 5
+  // formatos, las rondas se diferencian entre sí muchas veces antes de volver a un combo.
+  const ANGULOS = [
+    { nombre: 'el problema', angulo: 'el problema concreto del cliente', formato: 'video vertical 9:16', apertura: '' },
+    { nombre: 'cómo funciona', angulo: 'cómo funciona, paso a paso', formato: 'reel con texto sobre imagen, 9:16', apertura: 'Así funciona, paso a paso' },
+    { nombre: 'la confianza', angulo: 'la seguridad y la verificación, que es lo que frena la decisión', formato: 'video cuadrado 1:1', apertura: '¿Es seguro? Así se verifica' },
+    { nombre: 'la prueba', angulo: 'una prueba de que funciona, con números si el negocio los tiene', formato: 'imagen cuadrada 1:1 con texto', apertura: '¿Cómo sabe que funciona?' },
+    { nombre: 'la objeción', angulo: 'la objeción de quien todavía no compra', formato: 'imagen vertical 9:16 con texto', apertura: '¿Y por qué nadie más lo ofrece?' },
+    { nombre: 'el costo de no hacerlo', angulo: 'lo que le cuesta seguir como está', formato: 'video vertical 9:16', apertura: '¿Cuánto le cuesta dejarlo así?' },
+    { nombre: 'el paso corto', angulo: 'empezar por lo más chico, sin comprometerse', formato: 'reel con texto sobre imagen, 9:16', apertura: 'Empezar es más simple de lo que parece' },
+    { nombre: 'el que ya lo usa', angulo: 'quién lo usa hoy y para qué', formato: 'video cuadrado 1:1', apertura: '¿Quiénes ya lo están haciendo?' },
+    { nombre: 'la pregunta frecuente', angulo: 'la pregunta que le hacen siempre', formato: 'imagen cuadrada 1:1 con texto', apertura: 'La pregunta que nos hacen siempre' },
+    { nombre: 'el antes y el después', angulo: 'cómo se hacía antes y cómo se hace ahora', formato: 'imagen vertical 9:16 con texto', apertura: 'Antes y después' },
+  ];
+  const usosDelAngulo = new Map<string, number>(
+    ((await db.query(
+      `SELECT coalesce(angulo, '') AS a, count(*)::int AS n FROM piezas
+        WHERE business_id = $1 AND ronda > 0 GROUP BY 1`, [ctx.businessId])).rows as { a: string; n: number }[])
+      .map(x => [x.a, Number(x.n)] as [string, number]));
+  const VARIANTES = [...ANGULOS]
+    .sort((a, b) => (usosDelAngulo.get(a.angulo) ?? 0) - (usosDelAngulo.get(b.angulo) ?? 0))
+    .slice(0, 5)
+    .map((v, i) => ({ ...v, n: i + 1 }));
   const paqueteDelMercado = promptsDelInforme(inf ?? {}, formatosRecomendados);
   const paquete = paqueteDelMercado ?? (piezaDelNegocio ? promptDelNegocio({
     negocio: ctx.nombre,
@@ -1596,31 +1629,55 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
   // caso. Acá se escribe con el material del negocio, con el ángulo que ningún comparable usa, y con el
   // arte medido en su propia web. Queda guardada, y no se duplica si es la misma de la corrida anterior.
   try {
-    // (la pieza se arma más arriba: el prompt necesita su guion)
-    const yaEsta = await db.query(
-      `SELECT id FROM piezas WHERE business_id = $1 AND titulo = $2 AND texto = $3 LIMIT 1`,
-      [ctx.businessId, piezaEscrita.titulo, piezaEscrita.texto],
-    );
-    if (!yaEsta.rows.length) {
-      await db.query(
-        `INSERT INTO piezas (business_id, titulo, formato, texto, guion, estado, generacion)
-         VALUES ($1, $2, $3, $4, $5, 'lista para publicar', $6::jsonb)`,
-        [ctx.businessId, piezaEscrita.titulo, piezaEscrita.formato, piezaEscrita.texto, piezaEscrita.guion, aJson(piezaEscrita.detalle)],
+    // LAS PIEZAS DE ESTA CORRIDA. En una corrida normal es una; en una RONDA son cinco, cada una con su
+    // ángulo y su formato: la misma pieza cinco veces no da nada que votar. Se guardan todas, se dice de
+    // qué ronda salió cada una y con qué ángulo entró.
+    const numeroDeRonda = ronda
+      ? Number((await db.query('SELECT COALESCE(MAX(ronda), 0) + 1 AS n FROM piezas WHERE business_id = $1', [ctx.businessId])).rows[0].n)
+      : 0;
+    const aEscribir = ronda
+      ? VARIANTES.map(v => armarLaPieza({ ...datosDeLaPieza, formato: v.formato, variante: v }))
+      : [piezaEscrita];
+    let escritasAhora = 0;
+    for (const pz of aEscribir) {
+      // Se evita el duplicado exacto: misma pieza, mismo texto Y MISMO ÁNGULO. Dos variantes de una ronda
+      // son distintas por definición, así que el ángulo entra en la comparación.
+      const yaEsta = await db.query(
+        `SELECT id FROM piezas WHERE business_id = $1 AND titulo = $2 AND texto = $3 AND coalesce(angulo, '') = $4 LIMIT 1`,
+        [ctx.businessId, pz.titulo, pz.texto, String((pz.detalle as any)?.variante?.angulo || '')],
       );
+      if (yaEsta.rows.length) continue;
+      await db.query(
+        `INSERT INTO piezas (business_id, titulo, formato, texto, guion, estado, generacion, ronda, angulo)
+         VALUES ($1, $2, $3, $4, $5, 'lista para publicar', $6::jsonb, $7, $8)`,
+        [ctx.businessId, pz.titulo, pz.formato, pz.texto, pz.guion, aJson(pz.detalle), numeroDeRonda,
+          String((pz.detalle as any)?.variante?.angulo || '')],
+      );
+      escritasAhora++;
     }
+    // Lo que se creó se cobra, y queda en el libro: es lo que cuesta escribir una pieza.
+    if (escritasAhora > 0) {
+      await cobrarCreacion(db, ctx.businessId, escritasAhora,
+        ronda ? `ronda ${numeroDeRonda}: ${escritasAhora} piezas` : `pieza: ${piezaEscrita.titulo.slice(0, 60)}`);
+    }
+    const yaEsta = { rows: escritasAhora ? [] : [{}] } as { rows: unknown[] };
     const angulo = armadoDelInforme?.huecos?.[0];
     tareas.push({
       agente: 'nia', orden: 11,
       que: [
-        yaEsta.rows.length
-          ? 'La pieza escrita es la misma que la de la corrida anterior: no se duplicó'
-          : 'Dejó la pieza escrita y lista para publicar',
+        ronda
+          ? `Dejó ${aEscribir.length} piezas distintas —una por ángulo— en la ronda ${numeroDeRonda}`
+          : (yaEsta.rows.length
+            ? 'La pieza escrita es la misma que la de la corrida anterior: no se duplicó'
+            : 'Dejó la pieza escrita y lista para publicar'),
         `${piezaEscrita.texto.split('\n').filter(Boolean).length} líneas, escritas en ${String((piezaEscrita.detalle as any).lengua_del_texto || '')}`,
         angulo ? `con el ángulo que ningún comparable usa (${angulo.que.replace(/^de /, '')})` : 'sin ángulo medido: falta la lectura del mercado',
       ].join(' · '),
       resultado: {
         fuente_tipo: 'el material del propio negocio, ordenado como un anuncio, y el hueco medido en su mercado',
         es_la_misma_que_antes: yaEsta.rows.length > 0,
+        ronda: ronda ? numeroDeRonda : 0,
+        piezas_de_la_ronda: ronda ? aEscribir.map(pz => ({ formato: pz.formato, angulo: String((pz.detalle as any)?.variante?.angulo || ''), de_donde_sale: String((pz.detalle as any)?.variante?.de_donde_sale || '') })) : undefined,
         titulo: piezaEscrita.titulo,
         como_empieza: piezaEscrita.texto.split('\n')[0],
         lineas: piezaEscrita.texto.split('\n').filter(Boolean).length,
@@ -1645,57 +1702,53 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
     });
   }
 
-  // ---------------- MIROFISH · LA PIEZA PROBADA, CON SU NÚMERO ----------------
-  // El número es lo que faltaba: la pieza pasa por los 5 jueces y los 500 del público ANTES de que gaste un
-  // peso, y de ahí sale su puntaje, su puesto en el lote y lo que el modelo predijo contra lo que el público
-  // hizo. En Automático el motor la prueba él (es «probar», lo que promete el modo); en Compartido y en
-  // Manual se frena y espera el OK del dueño, porque cuesta 48 créditos. Nunca se prueba dos veces la misma
-  // pieza: cobrar dos veces por el mismo número sería quitarlo dos veces.
+  // ---------------- MIROFISH · LAS PIEZAS PROBADAS, CON SU NÚMERO ----------------
+  // El número es lo que faltaba: cada pieza pasa por los 5 jueces y los 500 del público ANTES de que gaste un
+  // peso. En una corrida normal se prueba la pieza nueva; en una RONDA se prueban las cinco, cada una con su
+  // propia votación, y gana la que saca el puntaje más alto — no la elige nadie a mano. En Automático el motor
+  // prueba él («probar» es lo que promete el modo); en Compartido y en Manual se frena y espera el OK del
+  // dueño, porque cada prueba cuesta créditos. Nunca se prueba dos veces la misma pieza: cobrar dos veces por
+  // el mismo número sería quitarlo dos veces.
   try {
-    const ultima = await db.query(
-      `SELECT id, titulo, texto, formato FROM piezas WHERE business_id = $1 ORDER BY created_at DESC LIMIT 1`,
-      [ctx.businessId]);
-    const laPieza = ultima.rows[0];
-    const saldo = Number((await db.query(
-      `SELECT COALESCE((SELECT saldo FROM movimientos_creditos WHERE business_id = $1 ORDER BY created_at DESC LIMIT 1), 0) AS s`,
-      [ctx.businessId])).rows[0].s);
-    const yaProbada = laPieza
-      ? (await db.query('SELECT id FROM evaluaciones WHERE business_id = $1 AND pieza_id = $2 LIMIT 1', [ctx.businessId, laPieza.id])).rows.length > 0
-      : false;
+    const aProbar = (await db.query(
+      `SELECT p.id, p.titulo, p.texto, p.formato, p.ronda, p.angulo
+         FROM piezas p
+        WHERE p.business_id = $1
+          AND NOT EXISTS (SELECT 1 FROM evaluaciones e WHERE e.pieza_id = p.id)
+        ORDER BY p.created_at DESC LIMIT $2`,
+      [ctx.businessId, ronda ? VARIANTES.length : 1])).rows as
+      { id: string; titulo: string; texto: string; formato: string; ronda: number; angulo: string }[];
+    const saldo = await saldoDe(db, ctx.businessId);
+    const cuesta = aProbar.length * TARIFA.evaluarPieza;
 
-    if (!laPieza) {
+    if (!aProbar.length) {
       tareas.push({
-        agente: 'sol', orden: 13, que: 'No hay ninguna pieza que probar todavía y lo dice',
-        resultado: { sin_fuente: 'todavía no hay una pieza escrita: MiroFish prueba piezas, no intenciones', fuente: 'sin fuente: no hay pieza' },
-      });
-    } else if (yaProbada) {
-      tareas.push({
-        agente: 'sol', orden: 13, que: 'La pieza ya tenía su número: no se volvió a probar (no se cobra dos veces la misma)',
+        agente: 'sol', orden: 13, que: 'No hay ninguna pieza sin probar y lo dice',
         resultado: {
-          fuente_tipo: 'la evaluación que ya está guardada de esta pieza',
-          pieza: laPieza.titulo,
-          porque: 'Probar la misma pieza dos veces costaría 48 créditos por un número que ya se tiene.',
-          fuente: 'MiroFish · evaluación guardada',
+          sin_fuente: 'todas las piezas escritas ya tienen su evaluación guardada: no se vuelve a cobrar lo mismo',
+          fuente: 'sin fuente: no hay pieza sin probar',
         },
       });
     } else if (modo !== 'Automático') {
       tareas.push({
-        agente: 'sol', orden: 13, que: 'La pieza quedó lista y espera su OK para pasar por MiroFish (cuesta 48 créditos)',
+        agente: 'sol', orden: 13,
+        que: `Quedaron ${aProbar.length} ${aProbar.length === 1 ? 'pieza' : 'piezas'} listas, esperando su OK para pasar por MiroFish (cuestan ${cuesta} créditos)`,
         resultado: {
           fuente_tipo: 'el modo en el que el negocio pidió trabajar',
-          pieza: laPieza.titulo,
-          en_espera: `está en modo ${modo}: el motor no gasta créditos sin su OK, y probar la pieza cuesta 48`,
+          piezas_en_espera: aProbar.map(p => ({ pieza: p.titulo, angulo: p.angulo || 'sin ángulo declarado' })),
+          en_espera: `está en modo ${modo}: el motor no gasta créditos sin su OK, y probar cada pieza cuesta ${TARIFA.evaluarPieza}`,
           como_se_prueba: 'desde la tarjeta de la pieza, en Campañas: «Pasar por MiroFish»',
           fuente: 'MiroFish',
         },
       });
-    } else if (saldo < 48) {
+    } else if (saldo < cuesta) {
       tareas.push({
-        agente: 'sol', orden: 13, que: `No alcanzan los créditos para probar la pieza: quedan ${saldo} y la prueba cuesta 48`,
+        agente: 'sol', orden: 13,
+        que: `No alcanzan los créditos para probar ${aProbar.length === 1 ? 'la pieza' : `las ${aProbar.length} piezas`}: quedan ${saldo} y cuestan ${cuesta}`,
         resultado: {
-          sin_fuente: 'sin créditos: la prueba no se hizo y la pieza queda escrita igual',
-          saldo, cuesta: 48,
-          que_hacer: 'cargar créditos o cambiarse de plan: la pieza está lista y se prueba en cuanto haya saldo',
+          sin_fuente: 'sin créditos: la prueba no se hizo y las piezas quedan escritas igual',
+          saldo, cuesta, piezas: aProbar.length,
+          que_hacer: 'cargar créditos o cambiarse de plan: las piezas están listas y se prueban en cuanto haya saldo',
           fuente: 'MiroFish',
         },
       });
@@ -1703,24 +1756,70 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
       // El público tiene que existir para que la prueba sea de 500 y no de menos.
       const cuantos = await db.query('SELECT count(*)::int AS n FROM publico_agentes WHERE business_id = $1', [ctx.businessId]);
       if (cuantos.rows[0].n < 500) await crearPublico(db, ctx.businessId, ctx.zona);
-      const r = await evaluarConMiroFish(db, ctx.businessId, {
-        id: laPieza.id, titulo: laPieza.titulo, texto: laPieza.texto, formato: laPieza.formato,
-      }) as any;
-      const jueces = (r.jueces ?? []) as { juez: string; criterio: string; voto: number; opinion: string }[];
-      const reacciones = (r.reacciones ?? {}) as Record<string, number>;
+
+      const probadas: {
+        id: string; titulo: string; formato: string; angulo: string; puntaje: number; puesto: number;
+        jueces: { juez: string; criterio: string; voto: number; opinion: string }[];
+        reacciones: Record<string, number>; publico: unknown; prediccion: unknown;
+      }[] = [];
+      for (const pz of aProbar) {
+        const r = await evaluarConMiroFish(db, ctx.businessId, { id: pz.id, titulo: pz.titulo, texto: pz.texto, formato: pz.formato }) as any;
+        probadas.push({
+          id: pz.id, titulo: pz.titulo, formato: pz.formato, angulo: pz.angulo,
+          puntaje: Number(r.puntaje), puesto: Number(r.orden),
+          jueces: (r.jueces ?? []) as { juez: string; criterio: string; voto: number; opinion: string }[],
+          reacciones: (r.reacciones ?? {}) as Record<string, number>,
+          publico: r.publico, prediccion: r.prediccion,
+        });
+      }
+      // LA GANADORA: la del puntaje más alto. La eligen los votos, no una mano.
+      const ranking = [...probadas].sort((a, b) => b.puntaje - a.puntaje);
+      const gana = ranking[0];
+
+      if (ronda) {
+        const numero = Number((await db.query(
+          'SELECT COALESCE(MAX(numero), 0) + 1 AS n FROM rondas WHERE business_id = $1', [ctx.businessId])).rows[0].n);
+        await db.query(
+          `INSERT INTO rondas (business_id, corrida_id, numero, piezas, evaluadas, ganadora_id, ganadora_puntaje, creditos, detalle)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb)`,
+          [ctx.businessId, corridaId, numero, VARIANTES.length, probadas.length, gana.id, gana.puntaje,
+            VARIANTES.length * TARIFA.crearPieza + cuesta,
+            aJson({
+              candidatas: ranking.map((pz, i) => ({
+                puesto: i + 1, pieza: pz.titulo, angulo: pz.angulo, formato: pz.formato, puntaje: pz.puntaje,
+              })),
+            })],
+        );
+      }
+
       tareas.push({
         agente: 'sol', orden: 13,
-        que: `Probó la pieza con los 5 jueces y los 500 del público: ${r.puntaje} de 100, puesto ${r.orden} de su lote (costó 48 créditos)`,
+        que: ronda
+          ? `Votó la ronda: ${probadas.length} piezas distintas, cada una con su votación. Ganó «${gana.titulo.slice(0, 60)}» con ${gana.puntaje} de 100 (la ronda costó ${VARIANTES.length * TARIFA.crearPieza + cuesta} créditos)`
+          : `Probó la pieza con los 5 jueces y los 500 del público: ${gana.puntaje} de 100, puesto ${gana.puesto} de su lote (costó ${cuesta} créditos)`,
         resultado: {
-          fuente_tipo: 'los 5 jueces y los 500 agentes del público de este negocio, votando la pieza escrita',
-          pieza: laPieza.titulo,
-          puntaje: r.puntaje,
-          puesto: r.orden,
-          los_cinco_jueces: jueces.map(j => ({ juez: j.juez, criterio: j.criterio, voto: j.voto, opinion: j.opinion })),
-          lo_que_hizo_el_publico: reacciones,
-          publico: r.publico,
-          prediccion: r.prediccion,
-          creditos_gastados: r.creditos,
+          fuente_tipo: 'los 5 jueces y los 500 agentes del público de este negocio, votando las piezas escritas',
+          ...(ronda
+            ? {
+              es_una_ronda: true,
+              candidatas: ranking.map((pz, i) => ({
+                puesto: i + 1, pieza: pz.titulo, angulo: pz.angulo || 'sin ángulo declarado', formato: pz.formato,
+                puntaje: pz.puntaje, puesto_en_el_lote: pz.puesto,
+                lo_que_hizo_el_publico: pz.reacciones,
+                los_cinco_jueces: pz.jueces.map(j => ({ juez: j.juez, criterio: j.criterio, voto: j.voto, opinion: j.opinion })),
+                es_la_que_gana: pz.id === gana.id,
+              })),
+              gana: {
+                pieza: gana.titulo, puntaje: gana.puntaje,
+                porque: 'sacó el puntaje más alto de la ronda: la mezcla de los jueces (60%) y de lo que haría el público (40%)',
+              },
+            }
+            : {
+              pieza: gana.titulo, puntaje: gana.puntaje, puesto: gana.puesto,
+              los_cinco_jueces: gana.jueces.map(j => ({ juez: j.juez, criterio: j.criterio, voto: j.voto, opinion: j.opinion })),
+              lo_que_hizo_el_publico: gana.reacciones, publico: gana.publico, prediccion: gana.prediccion,
+            }),
+          creditos_gastados: cuesta,
           que_significa: 'El puntaje es la mezcla de los jueces (60%) y de lo que haría el público (40%). El puesto es su lugar entre las piezas ya probadas de este negocio.',
           donde_lo_ve_el_dueno: 'Campañas → la tarjeta de la pieza: el puntaje, los cinco jueces, lo que hizo el público y el desvío de la predicción',
           fuente: 'MiroFish · 5 jueces + 500 agentes del público',

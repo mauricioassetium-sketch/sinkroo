@@ -175,7 +175,7 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
   // El veredicto de la pieza escrita, tal como está en el back (los 5 jueces, el público y la predicción).
   const veredictoPieza = useEvaluacion(piezaLista?.evaluacion_id ?? null);
   const [probando, setProbando] = useState(false);
-  /** Pasa la pieza escrita por MiroFish: 5 jueces y 500 del público. Cuesta 48 créditos (lo dice el back). */
+  /** Pasa la pieza escrita por MiroFish: 5 jueces y 500 del público. Cuesta 8 créditos (lo que cobra el back). */
   const pasarPorMiroFish = async () => {
     if (!piezaLista || probando) return;
     setProbando(true);
@@ -894,11 +894,11 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
                       action={<Badge tone="amber">sin probar</Badge>}
                     >
                       <div className="bs" style={{ marginBottom: 10 }}>
-                        Esta pieza todavía no pasó por MiroFish. Probarla cuesta 48 créditos: la ven los 5 jueces y los 500 del público de su negocio, y de ahí sale su puntaje, su puesto y lo que el modelo espera que pase. Se prueba una sola vez.
+                        Esta pieza todavía no pasó por MiroFish. Probarla cuesta 8 créditos: la ven los 5 jueces y los 500 del público de su negocio, y de ahí sale su puntaje, su puesto y lo que el modelo espera que pase. Se prueba una sola vez.
                       </div>
-                      <Button variant="primary" disabled={probando} title="Pasa esta pieza por los 5 jueces y los 500 del público. Cuesta 48 créditos y se prueba una sola vez."
+                      <Button variant="primary" disabled={probando} title="Pasa esta pieza por los 5 jueces y los 500 del público. Cuesta 8 créditos y se prueba una sola vez."
                         onClick={pasarPorMiroFish}>
-                        {probando ? 'Probando con los 500…' : 'Pasar por MiroFish (48 créditos)'}
+                        {probando ? 'Probando con los 500…' : 'Pasar por MiroFish (8 créditos)'}
                       </Button>
                     </Card>
                   )}

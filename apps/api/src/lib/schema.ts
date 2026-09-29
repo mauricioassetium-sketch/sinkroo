@@ -220,6 +220,25 @@ export async function migrate(db: Pool): Promise<void> {
 
     CREATE INDEX IF NOT EXISTS idx_piezas_business ON piezas(business_id, created_at DESC);
 
+    -- LA RONDA: el motor no escribe una pieza suelta, escribe un lote de opciones distintas entre sí
+    -- (otro ángulo, otro formato), cada una con su propia votación, y de ahí sale la que gana. La ronda
+    -- guarda cuál ganó y cuánto costó, para poder volver a mirarla.
+    CREATE TABLE IF NOT EXISTS rondas (
+      id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      business_id   UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+      corrida_id    UUID REFERENCES corridas(id) ON DELETE SET NULL,
+      numero        INTEGER NOT NULL DEFAULT 1,
+      piezas        INTEGER NOT NULL DEFAULT 0,
+      evaluadas     INTEGER NOT NULL DEFAULT 0,
+      ganadora_id   UUID REFERENCES piezas(id) ON DELETE SET NULL,
+      ganadora_puntaje NUMERIC(6,2),
+      creditos      INTEGER NOT NULL DEFAULT 0,
+      detalle       JSONB NOT NULL DEFAULT '{}'::jsonb,
+      created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_rondas_business ON rondas(business_id, numero DESC);
+
     -- EL PÚBLICO: 500 agentes por negocio, con su perfil. Es el panel que evalúa cada pieza.
     CREATE TABLE IF NOT EXISTS publico_agentes (
       id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -238,6 +257,11 @@ export async function migrate(db: Pool): Promise<void> {
     -- LA CALIBRACIÓN: cada agente sabe de qué segmento del público real viene y cuánto pesa. 'origen'
     -- dice de dónde salió el dato (propia = de las cuentas del negocio, inferida = del rubro,
     -- competencia = de los anuncios públicos). Sin esto, los 500 son inventados y repartidos parejo.
+    -- De qué ronda salió cada pieza, y por dónde entró (su ángulo): sin esto, las 5 opciones de una ronda
+    -- son indistinguibles entre sí y no se puede decir cuál ganó ni por qué.
+    ALTER TABLE piezas ADD COLUMN IF NOT EXISTS ronda INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE piezas ADD COLUMN IF NOT EXISTS angulo TEXT NOT NULL DEFAULT '';
+
     ALTER TABLE publico_agentes ADD COLUMN IF NOT EXISTS segmento TEXT NOT NULL DEFAULT '';
     ALTER TABLE publico_agentes ADD COLUMN IF NOT EXISTS peso NUMERIC(6,5) NOT NULL DEFAULT 0;
     ALTER TABLE publico_agentes ADD COLUMN IF NOT EXISTS origen TEXT NOT NULL DEFAULT 'inferida';

@@ -1,9 +1,10 @@
-import { useMemo } from 'react';
-import { Card, Badge } from './ui';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Card, Badge, Button } from './ui';
 import { I_Robot, I_Search, I_Sparkle, I_Vote, I_Rocket, I_Check, I_Target, I_File, I_Credit } from './icons';
 import { COSTO_RONDA } from '../data/mirofish';
 import type { Modo } from '../data/demo';
 import { useDatos } from '../api/datos';
+import { baseApi, token } from '../api/cliente';
 import { EstadoVacio } from './EstadoVacio';
 import { useEvaluacion, fechaCorta } from './mirofishDatos';
 import type { PasoCampana } from './CampanaPasos';
@@ -30,6 +31,58 @@ const colorDePuntaje = (p: number) => (p >= 80 ? 'var(--green)' : p >= 60 ? 'var
 
 function FlujoReal({ modo, ir }: { modo: Modo; ir?: (p: PasoCampana) => void }) {
   const d = useDatos();
+
+  // -----------------------------------------------------------------------------------------------
+  // LAS RONDAS. Una ronda son cinco piezas distintas —otro ángulo, otro formato— y cada una se vota por
+  // separado: queda la del puntaje más alto. Todo lo que se muestra sale de /api/rondas (el back manda
+  // también el precio real de una ronda y el saldo): acá no hay una ronda de ejemplo ni un voto inventado.
+  // -----------------------------------------------------------------------------------------------
+  const [rondas, setRondas] = useState<{
+    id: string; numero: number; piezas: number; evaluadas: number; creditos: number; ganadora_puntaje: number | null; created_at: string;
+    candidatas: { id: string; angulo: string; formato: string; puntaje: number | null; orden: number | null; titulo: string }[];
+  }[]>([]);
+  const [pidiendo, setPidiendo] = useState(false);
+  const [avisoRonda, setAvisoRonda] = useState('');
+  const [saldoRondas, setSaldoRondas] = useState<number | null>(null);
+  const [costoRonda, setCostoRonda] = useState<number>(COSTO_RONDA.total);
+  const [cuantasPiezas, setCuantasPiezas] = useState<number>(COSTO_RONDA.piezas);
+
+  const leerRondas = useCallback(async () => {
+    try {
+      const r = await fetch(baseApi() + '/api/rondas', { headers: token() ? { Authorization: 'Bearer ' + token() } : {} });
+      if (!r.ok) return;
+      const j = await r.json();
+      setRondas(Array.isArray(j?.rondas) ? j.rondas : []);
+      if (j?.tarifa?.costo_ronda?.total) setCostoRonda(Number(j.tarifa.costo_ronda.total));
+      if (j?.cuantas_piezas) setCuantasPiezas(Number(j.cuantas_piezas));
+      if (typeof j?.creditos === 'number') setSaldoRondas(j.creditos);
+    } catch { /* sin rondas: la tarjeta lo dice */ }
+  }, []);
+  useEffect(() => { void leerRondas(); }, [leerRondas]);
+
+  const pedirRonda = async () => {
+    setPidiendo(true);
+    setAvisoRonda('');
+    try {
+      const r = await fetch(baseApi() + '/api/agentes/correr', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token() ? { Authorization: 'Bearer ' + token() } : {}) },
+        body: JSON.stringify({ ronda: true }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        setAvisoRonda(String(j?.detalle || j?.error || 'el back no dejó pedir la ronda'));
+      } else {
+        const sol = (j?.tareas ?? []).filter((t: { agente?: string }) => t.agente === 'sol');
+        setAvisoRonda(String(sol[sol.length - 1]?.que || 'La ronda corrió: mirá abajo las cinco opciones con su puntaje.'));
+        await leerRondas();
+        await d.refrescar();
+      }
+    } catch {
+      setAvisoRonda('no se pudo hablar con el back');
+    }
+    setPidiendo(false);
+  };
   const evaluaciones = useMemo(() => [...d.evaluaciones]
     .sort((a, b) => (a.orden ?? 999) - (b.orden ?? 999) || (Number(b.puntaje) || 0) - (Number(a.puntaje) || 0)),
   [d.evaluaciones]);
@@ -91,6 +144,61 @@ function FlujoReal({ modo, ir }: { modo: Modo; ir?: (p: PasoCampana) => void }) 
           </span>
         </div>
       </Card>
+
+      {/* ==================== LAS RONDAS: el botón y lo que compitió ==================== */}
+      <div style={{ marginTop: 16 }}>
+      <Card
+        title={<span className="row" style={{ gap: 8 }}><I_Vote size={14} style={{ color: 'var(--purple3)' }} /> Las rondas: cinco opciones que compiten entre sí</span>}
+        action={rondas.length
+          ? <Badge tone="purple">{rondas.length} {rondas.length === 1 ? 'ronda' : 'rondas'}</Badge>
+          : <Badge tone="muted">sin rondas todavía</Badge>}
+      >
+        <div className="bs">
+          Una ronda son <b>{cuantasPiezas} piezas distintas</b> —cada una entra por otro ángulo y en otro formato— y cada
+          una se vota por separado: los 5 jueces y los 500 del público. Queda la del puntaje más alto. Cuesta{' '}
+          <b>{costoRonda} créditos</b>{saldoRondas === null ? '.' : <> y su saldo hoy es <b>{saldoRondas}</b>.</>}
+        </div>
+        <div className="row" style={{ marginTop: 10, gap: 8, flexWrap: 'wrap' }}>
+          <Button
+            variant="primary"
+            onClick={pedirRonda}
+            disabled={pidiendo}
+            title={`Pídale al motor una ronda nueva: ${cuantasPiezas} piezas distintas, cada una con su votación (${costoRonda} créditos)`}
+          >
+            {pidiendo ? 'El motor está escribiendo y votando…' : `Generar una ronda nueva (${cuantasPiezas} piezas · ${costoRonda} créditos)`}
+          </Button>
+          {avisoRonda ? <span className="tiny muted" style={{ alignSelf: 'center' }}>{avisoRonda}</span> : null}
+        </div>
+        {rondas.length === 0 ? (
+          <div className="tiny muted" style={{ marginTop: 10 }}>
+            Todavía no hay ninguna ronda guardada. Cuando la pida, acá quedan las {cuantasPiezas} opciones con su puntaje y cuál ganó.
+          </div>
+        ) : (
+          rondas.map(r => (
+            <div key={r.id} style={{ marginTop: 12 }}>
+              <div className="row" style={{ alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+                <b>Ronda {r.numero}</b>
+                <span className="tiny muted">
+                  {fechaCorta(r.created_at)} · {r.evaluadas} de {r.piezas} votadas · {r.creditos} créditos
+                  {r.ganadora_puntaje != null ? ` · ganó con ${r.ganadora_puntaje}` : ''}
+                </span>
+              </div>
+              {r.candidatas.map((c, i) => (
+                <div className="guard" key={c.id}>
+                  <span className="guard-lb">
+                    {i === 0 ? '★ ' : ''}{c.angulo || 'sin ángulo declarado'}
+                    <small>{`${c.formato} · ${c.puntaje == null ? 'todavía sin votar' : `${c.puntaje} de 100 · puesto ${c.orden ?? '—'}`}`}</small>
+                  </span>
+                  <span className="guard-val" style={{ color: c.puntaje == null ? 'var(--muted)' : colorDePuntaje(Number(c.puntaje)) }}>
+                    {c.puntaje == null ? '—' : c.puntaje}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ))
+        )}
+      </Card>
+      </div>
 
       {/* ==================== FILA 1: INVESTIGACIÓN Y CREACIÓN ==================== */}
       <div className="duo" style={{ marginTop: 16 }}>
