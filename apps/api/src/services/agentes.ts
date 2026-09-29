@@ -5,6 +5,7 @@ import { detectarLengua, lenguaDePais, nombreDeLengua, terminoEnOtrasLenguas, VO
 import { leerIdentidadDeLaPagina } from './identidad.js';
 import { armarInformeDelMercadoLeido, type InformeDelMercado } from './mercado.js';
 import { armarLaPieza } from './pieza.js';
+import { crearPublico, evaluar as evaluarConMiroFish } from './mirofish.js';
 import { aJson } from '../lib/json-seguro.js';
 
 // =============================================================================================
@@ -1615,6 +1616,96 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
     tareas.push({
       agente: 'nia', orden: 11, que: 'No pudo dejar la pieza escrita y lo dice',
       resultado: { sin_fuente: `la pieza no se pudo escribir: ${String((e as Error)?.message).slice(0, 160)}`, fuente: 'sin fuente: la escritura de la pieza falló' },
+    });
+  }
+
+  // ---------------- MIROFISH · LA PIEZA PROBADA, CON SU NÚMERO ----------------
+  // El número es lo que faltaba: la pieza pasa por los 5 jueces y los 500 del público ANTES de que gaste un
+  // peso, y de ahí sale su puntaje, su puesto en el lote y lo que el modelo predijo contra lo que el público
+  // hizo. En Automático el motor la prueba él (es «probar», lo que promete el modo); en Compartido y en
+  // Manual se frena y espera el OK del dueño, porque cuesta 48 créditos. Nunca se prueba dos veces la misma
+  // pieza: cobrar dos veces por el mismo número sería quitarlo dos veces.
+  try {
+    const ultima = await db.query(
+      `SELECT id, titulo, texto, formato FROM piezas WHERE business_id = $1 ORDER BY created_at DESC LIMIT 1`,
+      [ctx.businessId]);
+    const laPieza = ultima.rows[0];
+    const saldo = Number((await db.query(
+      `SELECT COALESCE((SELECT saldo FROM movimientos_creditos WHERE business_id = $1 ORDER BY created_at DESC LIMIT 1), 0) AS s`,
+      [ctx.businessId])).rows[0].s);
+    const yaProbada = laPieza
+      ? (await db.query('SELECT id FROM evaluaciones WHERE business_id = $1 AND pieza_id = $2 LIMIT 1', [ctx.businessId, laPieza.id])).rows.length > 0
+      : false;
+
+    if (!laPieza) {
+      tareas.push({
+        agente: 'sol', orden: 13, que: 'No hay ninguna pieza que probar todavía y lo dice',
+        resultado: { sin_fuente: 'todavía no hay una pieza escrita: MiroFish prueba piezas, no intenciones', fuente: 'sin fuente: no hay pieza' },
+      });
+    } else if (yaProbada) {
+      tareas.push({
+        agente: 'sol', orden: 13, que: 'La pieza ya tenía su número: no se volvió a probar (no se cobra dos veces la misma)',
+        resultado: {
+          fuente_tipo: 'la evaluación que ya está guardada de esta pieza',
+          pieza: laPieza.titulo,
+          porque: 'Probar la misma pieza dos veces costaría 48 créditos por un número que ya se tiene.',
+          fuente: 'MiroFish · evaluación guardada',
+        },
+      });
+    } else if (modo !== 'Automático') {
+      tareas.push({
+        agente: 'sol', orden: 13, que: 'La pieza quedó lista y espera su OK para pasar por MiroFish (cuesta 48 créditos)',
+        resultado: {
+          fuente_tipo: 'el modo en el que el negocio pidió trabajar',
+          pieza: laPieza.titulo,
+          en_espera: `está en modo ${modo}: el motor no gasta créditos sin su OK, y probar la pieza cuesta 48`,
+          como_se_prueba: 'desde la tarjeta de la pieza, en Campañas: «Pasar por MiroFish»',
+          fuente: 'MiroFish',
+        },
+      });
+    } else if (saldo < 48) {
+      tareas.push({
+        agente: 'sol', orden: 13, que: `No alcanzan los créditos para probar la pieza: quedan ${saldo} y la prueba cuesta 48`,
+        resultado: {
+          sin_fuente: 'sin créditos: la prueba no se hizo y la pieza queda escrita igual',
+          saldo, cuesta: 48,
+          que_hacer: 'cargar créditos o cambiarse de plan: la pieza está lista y se prueba en cuanto haya saldo',
+          fuente: 'MiroFish',
+        },
+      });
+    } else {
+      // El público tiene que existir para que la prueba sea de 500 y no de menos.
+      const cuantos = await db.query('SELECT count(*)::int AS n FROM publico_agentes WHERE business_id = $1', [ctx.businessId]);
+      if (cuantos.rows[0].n < 500) await crearPublico(db, ctx.businessId, ctx.zona);
+      const r = await evaluarConMiroFish(db, ctx.businessId, {
+        id: laPieza.id, titulo: laPieza.titulo, texto: laPieza.texto, formato: laPieza.formato,
+      }) as any;
+      const jueces = (r.jueces ?? []) as { juez: string; criterio: string; voto: number; opinion: string }[];
+      const reacciones = (r.reacciones ?? {}) as Record<string, number>;
+      tareas.push({
+        agente: 'sol', orden: 13,
+        que: `Probó la pieza con los 5 jueces y los 500 del público: ${r.puntaje} de 100, puesto ${r.orden} de su lote (costó 48 créditos)`,
+        resultado: {
+          fuente_tipo: 'los 5 jueces y los 500 agentes del público de este negocio, votando la pieza escrita',
+          pieza: laPieza.titulo,
+          puntaje: r.puntaje,
+          puesto: r.orden,
+          los_cinco_jueces: jueces.map(j => ({ juez: j.juez, criterio: j.criterio, voto: j.voto, opinion: j.opinion })),
+          lo_que_hizo_el_publico: reacciones,
+          publico: r.publico,
+          prediccion: r.prediccion,
+          creditos_gastados: r.creditos,
+          que_significa: 'El puntaje es la mezcla de los jueces (60%) y de lo que haría el público (40%). El puesto es su lugar entre las piezas ya probadas de este negocio.',
+          donde_lo_ve_el_dueno: 'Campañas → la tarjeta de la pieza: el puntaje, los cinco jueces, lo que hizo el público y el desvío de la predicción',
+          fuente: 'MiroFish · 5 jueces + 500 agentes del público',
+        },
+      });
+    }
+  } catch (e) {
+    console.error('[mirofish] no se pudo probar la pieza:', (e as Error)?.message);
+    tareas.push({
+      agente: 'sol', orden: 13, que: 'No pudo probar la pieza con MiroFish y lo dice',
+      resultado: { sin_fuente: `la prueba no se hizo: ${String((e as Error)?.message).slice(0, 160)}`, fuente: 'sin fuente: la prueba falló' },
     });
   }
 

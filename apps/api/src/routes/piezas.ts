@@ -39,7 +39,8 @@ export async function piezaRoutes(app: FastifyInstance, db: Pool) {
     const u = await exigirSesion(req, reply); if (!u || !u.business_id) return;
     const r = await db.query(
       `SELECT id, titulo, formato, texto, guion, estado, generacion, created_at,
-              (SELECT puntaje FROM evaluaciones e WHERE e.pieza_id = p.id ORDER BY created_at DESC LIMIT 1) AS puntaje
+              (SELECT puntaje FROM evaluaciones e WHERE e.pieza_id = p.id ORDER BY created_at DESC LIMIT 1) AS puntaje,
+              (SELECT id FROM evaluaciones e WHERE e.pieza_id = p.id ORDER BY created_at DESC LIMIT 1) AS evaluacion_id
          FROM piezas p WHERE business_id = $1 ORDER BY created_at DESC LIMIT 50`, [u.business_id]);
     return { piezas: r.rows };
   });

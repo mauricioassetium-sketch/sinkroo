@@ -18,7 +18,7 @@ import { numeroConMiles } from '../lib/perfil';
 import { useDatos, type Campana as CampanaBack } from '../api/datos';
 import { EstadoVacio } from '../components/EstadoVacio';
 import { baseApi, token } from '../api/cliente';
-import { useEvaluacion } from '../components/mirofishDatos';
+import { useEvaluacion, etiquetaReaccion, colorReaccion, fechaCorta, numONulo } from '../components/mirofishDatos';
 
 // =============================================================================================
 // DE DÓNDE SALEN LAS CAMPAÑAS DE ESTA PANTALLA
@@ -172,6 +172,31 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
   // no hay ninguna, no se muestra una de ejemplo: se dice que el motor la escribe en la próxima corrida.
   const piezaLista = (d.piezas && d.piezas[0]) ? d.piezas[0] : null;
   const piezaDet = (piezaLista?.generacion ?? {}) as any;
+  // El veredicto de la pieza escrita, tal como está en el back (los 5 jueces, el público y la predicción).
+  const veredictoPieza = useEvaluacion(piezaLista?.evaluacion_id ?? null);
+  const [probando, setProbando] = useState(false);
+  /** Pasa la pieza escrita por MiroFish: 5 jueces y 500 del público. Cuesta 48 créditos (lo dice el back). */
+  const pasarPorMiroFish = async () => {
+    if (!piezaLista || probando) return;
+    setProbando(true);
+    try {
+      const r = await fetch(baseApi() + '/api/mirofish/evaluar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token() ? { Authorization: `Bearer ${token()}` } : {}) },
+        body: JSON.stringify({ pieza_id: piezaLista.id }),
+      });
+      const j = (await r.json().catch(() => ({}))) as any;
+      if (r.ok) {
+        setToast(j?.pin_requerido ? `MiroFish probó la pieza: ${j.puntaje} de 100, puesto ${j.orden}. ${j?.aviso || ''}` : `MiroFish probó la pieza: ${j.puntaje} de 100, puesto ${j.orden}`);
+        await d.refrescar();
+      } else {
+        setToast(String(j?.detalle || j?.error || 'el back no dejó probar la pieza'));
+      }
+    } catch {
+      setToast('no se pudo hablar con el back para probar la pieza');
+    }
+    setProbando(false);
+  };
   const copiarPieza = async (texto: string, que: string) => {
     try {
       await navigator.clipboard.writeText(texto);
@@ -683,6 +708,7 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
                     Todo lo de acá sale del servidor: el texto del motor y lo que lo sostiene (el ángulo que
                     ningún comparable usa, el arte medido en su propia web). Lo que no se pudo medir se dice. */}
                 {piezaLista ? (
+                  <>
                   <div className="duo" style={{ marginTop: 16 }}>
                     <Card
                       title={<span className="row" style={{ gap: 8 }}><I_File size={14} style={{ color: 'var(--purple3)' }} /> La pieza, lista para publicar</span>}
@@ -774,6 +800,102 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
                       )}
                     </Card>
                   </div>
+
+                  {/* ==================== EL VEREDICTO SOBRE LA PIEZA ====================
+                      El número que el dueño no tenía: la pieza pasa por los 5 jueces y los 500 del público
+                      antes de que gaste un peso. Todo sale del back (la evaluación guardada de ESTA pieza):
+                      los votos, lo que hizo el público, sus comentarios y el desvío de la predicción. */}
+                  {veredictoPieza.cargando ? (
+                    <Card title={<span className="row" style={{ gap: 8 }}><I_Vote size={14} style={{ color: 'var(--purple3)' }} /> El veredicto sobre esta pieza</span>}>
+                      <div className="bs">Trayendo del servidor la prueba de esta pieza: los 5 jueces y los 500 del público…</div>
+                    </Card>
+                  ) : veredictoPieza.dato ? (
+                    (() => {
+                      const v = veredictoPieza.dato!;
+                      const puntaje = numONulo(v.evaluacion.puntaje);
+                      const total = v.reacciones.reduce((s, r) => s + r.n, 0);
+                      const mejor = [...v.votos].sort((a, b) => b.voto - a.voto)[0];
+                      const peor = [...v.votos].sort((a, b) => a.voto - b.voto)[0];
+                      return (
+                        <Card
+                          title={<span className="row" style={{ gap: 8 }}><I_Vote size={14} style={{ color: 'var(--purple3)' }} /> El veredicto sobre esta pieza</span>}
+                          action={<Badge tone={puntaje !== null && puntaje >= 70 ? 'green' : puntaje !== null && puntaje >= 55 ? 'amber' : 'muted'}>
+                            {puntaje !== null ? `${puntaje} de 100 · puesto ${v.evaluacion.orden ?? '—'}` : 'sin puntaje'}
+                          </Badge>}
+                        >
+                          <div className="bs" style={{ marginBottom: 10 }}>
+                            La probaron los 5 jueces y los {v.evaluacion.total_publico ?? 500} del público el {fechaCorta(v.evaluacion.created_at)}. El puntaje mezcla los jueces (60%) y lo que haría el público (40%): esto es lo que va a pasar antes de que gaste un peso.
+                          </div>
+
+                          <div className="duo">
+                            <div>
+                              <div className="bs" style={{ marginBottom: 8 }}><b>Los cinco jueces</b></div>
+                              <div className="guards">
+                                {v.votos.map(j => (
+                                  <div key={j.juez} className="guard">
+                                    <span className="guard-lb">{j.juez}
+                                      <small>{j.opinion}</small>
+                                    </span>
+                                    <span className="guard-val" style={{ color: j.voto >= 70 ? 'var(--green)' : j.voto >= 55 ? 'var(--amber)' : 'var(--red)', fontWeight: 800 }}>{j.voto}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                            <div>
+                              <div className="bs" style={{ marginBottom: 8 }}><b>Lo que hizo el público</b></div>
+                              <div className="guards">
+                                {v.reacciones.map(r => (
+                                  <div key={r.reaccion} className="guard">
+                                    <span className="guard-lb">
+                                      <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: 4, background: colorReaccion(r.reaccion), marginRight: 7 }} />
+                                      {etiquetaReaccion(r.reaccion)}
+                                    </span>
+                                    <span className="guard-val">{r.n}{total ? ` · ${Math.round((r.n / total) * 100)}%` : ''}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+
+                          {(v.opiniones || []).length > 0 && (
+                            <>
+                              <div className="bs" style={{ margin: '12px 0 8px' }}><b>Lo que dijeron, con sus palabras</b></div>
+                              <div className="guards">
+                                {v.opiniones.slice(0, 3).map(o => (
+                                  <div key={o.agente_numero} className="guard">
+                                    <span className="guard-lb">Del público #{o.agente_numero} — {etiquetaReaccion(o.reaccion)}
+                                      <small>«{o.comentario}»</small>
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </>
+                          )}
+
+                          <div className="tiny muted" style={{ marginTop: 10 }}>
+                            {v.prediccion
+                              ? `El modelo predijo ${v.prediccion.predicho} y el público dio ${v.prediccion.observado}: desvío de ${v.prediccion.desvio_pct ?? '—'}%. `
+                              : 'Todavía no hay predicción guardada de esta pieza. '}
+                            {mejor && peor ? `Lo que más sostiene la pieza: ${mejor.juez} (${mejor.voto}). Lo que hay que reescribir: ${peor.juez} (${peor.voto}).` : ''}
+                          </div>
+                        </Card>
+                      );
+                    })()
+                  ) : (
+                    <Card
+                      title={<span className="row" style={{ gap: 8 }}><I_Vote size={14} style={{ color: 'var(--purple3)' }} /> El veredicto sobre esta pieza</span>}
+                      action={<Badge tone="amber">sin probar</Badge>}
+                    >
+                      <div className="bs" style={{ marginBottom: 10 }}>
+                        Esta pieza todavía no pasó por MiroFish. Probarla cuesta 48 créditos: la ven los 5 jueces y los 500 del público de su negocio, y de ahí sale su puntaje, su puesto y lo que el modelo espera que pase. Se prueba una sola vez.
+                      </div>
+                      <Button variant="primary" disabled={probando} title="Pasa esta pieza por los 5 jueces y los 500 del público. Cuesta 48 créditos y se prueba una sola vez."
+                        onClick={pasarPorMiroFish}>
+                        {probando ? 'Probando con los 500…' : 'Pasar por MiroFish (48 créditos)'}
+                      </Button>
+                    </Card>
+                  )}
+                  </>
                 ) : (
                   <EstadoVacio
                     titulo="Todavía no hay una pieza escrita"

@@ -33,6 +33,8 @@ export type Pieza = {
   guion?: string;
   /** De dónde sale cada parte, el ángulo medido, el arte de su web y lo que falta. */
   generacion?: Record<string, any>;
+  /** La evaluación de MiroFish de esta pieza: con su id se abre el detalle (jueces, público, predicción). */
+  evaluacion_id?: string | null;
 };
 export type Evaluacion = { id: string; titulo: string; puntaje: number; orden: number | null; total_publico: number; created_at: string };
 export type Hallazgo = { id: string; tipo: string; titulo: string; dato: string; porque: string; fuente: string; created_at: string };
