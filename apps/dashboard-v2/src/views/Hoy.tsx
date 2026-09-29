@@ -193,6 +193,16 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
       {/* ============== PRIMEROS PASOS: lo que falta para que el motor trabaje mejor ==============
           Va arriba de todo, después del hero: es lo único que el cliente tiene que hacer. Cuando el
           motor ya arrancó y los cinco pasos están hechos, desaparece sola (no queda un cartel fijo). */}
+      {/* LA ALARMA, ARRIBA DE LA TARJETA: sin ningún paso hecho, la tarjeta late en rojo y el texto va
+          montado sobre su borde de arriba (por eso el margen de abajo negativo: queda encima de la línea,
+          no en un renglón aparte). Late solo y se apaga solo cuando el primer paso queda hecho. */}
+      {onb.listos.length === 0 && (
+        <div className="onb-flecha" style={{ marginBottom: -13, marginLeft: 16, position: 'relative', zIndex: 2 }}
+          title="Complete el primer paso y el motor ya puede empezar a trabajar con su negocio. Nada de lo que ponga se pierde.">
+          <I_ArrowRight size={15} style={{ transform: 'rotate(90deg)', flexShrink: 0 }} />
+          Complete el primer paso para comenzar
+        </div>
+      )}
       {!(onb.arrancado && onb.listos.length === 5) && (
         <Card className={onb.listos.length === 0 ? 'onb-alarma' : ''}
           title={<span className="row" style={{ gap: 8 }}><I_Rocket size={14} style={{ color: 'var(--purple3)' }} /> Primeros pasos
@@ -201,15 +211,6 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
             {onb.arrancado ? 'el motor está en marcha' : `${onb.listos.length} de 5 hechos`}
           </Badge>}
         >
-          {/* LA ALARMA: sin ningún paso hecho, la tarjeta entera late en rojo y la flecha dice por dónde
-              empezar. Late SOLO, se apaga sola cuando el primer paso queda hecho, y se queda quieta para
-              quien pidió menos movimiento en su sistema. */}
-          {onb.listos.length === 0 && (
-            <div className="onb-flecha" title="Complete el primer paso y el motor ya puede empezar a trabajar con su negocio. Nada de lo que ponga se pierde.">
-              <I_ArrowRight size={15} style={{ transform: 'rotate(90deg)', flexShrink: 0 }} />
-              Complete el primer paso para comenzar
-            </div>
-          )}
           <div className="bs">
             {onb.arrancado
               ? <>Arrancó con lo que le puso y sigue por el mercado. Puede completar los pasos que faltan cuando quiera: el motor los toma en la próxima vuelta.</>
