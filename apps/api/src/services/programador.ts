@@ -67,7 +67,17 @@ export async function loQueDedujoVera(db: Pool, businessId: string): Promise<{ p
     // `categoriaDelNegocio`), así que la lectura de anuncios sale con él y no con una palabra del copy: un
     // servicio de lujo se lee como «luxury concierge», no como «defi».
     const deLaCategoria = (res.palabras_clave ?? []).filter(p => p.de === 'la categoría del negocio').map(p => p.palabra);
-    const palabras = [...new Set([...deLaCategoria, ...delVocabulario, ...propias])].filter(p => p.length >= 3).slice(0, 4);
+    // EL ORDEN ES LA BÚSQUEDA. El lector toma las primeras cuatro: primero la categoría —que es lo que dice a
+    // qué se dedica—, después las palabras PROPIAS del material y sólo al final las genéricas del vocabulario.
+    // Con el vocabulario antes, un servicio de lujo salía a leer con «defi» y «aml» y traía 370 anuncios que
+    // no compiten (medido: 1 comparable de verdad sobre 400).
+    // LA CATEGORÍA Y SUS PALABRAS PRIMERO. El lector toma las cuatro primeras, así que el orden ES la
+    // búsqueda: «luxury concierge» y «concierge» son las que traen a los que compiten; después el vocabulario
+    // del rubro y al final las palabras del copy («exclusive», «redefine»), que son las más ruidosas. Medido
+    // con el vocabulario primero: 400 anuncios leídos y 1 comparable de verdad.
+    const deLaCategoriaSuelta = deLaCategoria.flatMap(t => String(t).split(/\s+/)).filter(w => w.length >= 4);
+    const palabras = [...new Set([...deLaCategoria, ...deLaCategoriaSuelta, ...delVocabulario, ...propias])]
+      .filter(p => p.length >= 3).slice(0, 4);
     const paises = [...new Set((res.lugares_que_nombra ?? []).map(l => PAIS_DE[String(l).toLowerCase().trim()]).filter(Boolean))].slice(0, 3);
     return { palabras, paises };
   } catch { return { palabras: [], paises: [] }; }
