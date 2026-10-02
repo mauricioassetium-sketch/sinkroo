@@ -65,3 +65,26 @@ export function codigoDePais(texto: unknown): string {
 export function comoLoEscribio(texto: unknown): string {
   return String(texto ?? '').trim().slice(0, 60);
 }
+
+/**
+ * LA ZONA A PARTIR DE LOS LUGARES QUE NOMBRA EL MATERIAL — para cuando el negocio no la declaró.
+ *
+ * El motor lee el material del negocio (su web, sus archivos) y de ahí saca los lugares que nombra. Eso ya
+ * se usaba para elegir en qué países buscar los anuncios, pero NO escribía la zona del negocio, y la zona es
+ * justo lo que el estudio del mapa geocodifica: con la web diciendo «Dubai» y la zona vacía, el negocio se
+ * quedaba sin estudio de su mercado y el programador ni lo miraba (sólo corre para negocios con zona).
+ *
+ * «Dubai» resuelve al país por su alias, y se guardan los dos («Dubai, Emiratos Árabes Unidos») porque el
+ * mapa ubica mejor el lugar con su país que el país solo. Un lugar que no se reconoce se guarda tal cual: el
+ * mapa lo intenta y, si no lo ubica, lo dice en vez de inventar.
+ */
+export function zonaDeLugares(lugares: unknown): string {
+  const lista = (Array.isArray(lugares) ? lugares : []).map(l => String(l ?? '').trim()).filter(Boolean);
+  for (const lugar of lista.slice(0, 4)) {
+    const codigo = codigoDePais(lugar);
+    if (!codigo) continue;
+    const pais = nombreDePais(codigo);
+    return sinTildes(lugar) === sinTildes(pais) ? pais : `${lugar}, ${pais}`;
+  }
+  return lista[0] ? lista[0].slice(0, 80) : '';
+}

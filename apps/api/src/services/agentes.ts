@@ -6,12 +6,21 @@ import { leerIdentidadDeLaPagina } from './identidad.js';
 import { armarInformeDelMercadoLeido, type InformeDelMercado } from './mercado.js';
 import { armarLaPieza, conElTextoEscrito, type PiezaArmada } from './pieza.js';
 import { vocabularioDe } from './corrector.js';
+import { zonaDeLugares } from '../lib/paises.js';
 import { crearPublico, evaluar as evaluarConMiroFish } from './mirofish.js';
-import { TARIFA, saldoDe, cobrarCreacion } from './creditos.js';
+import { TARIFA, saldoDe, cobrarCreacion, costoDeRonda, detalleDeTipos, precioDeTipo } from './creditos.js';
+import { claseDeFormato, formatoDe, tipoDeContenidoDe, SEGUNDOS_MAXIMOS_VIDEO, type TipoDeContenido } from './formatos.js';
+import { mezclaDeRonda, proximaRonda, usosPorTipo } from './mezcla.js';
+import { generarContenido, motivoDelUltimoFalloDeContenido } from './contenido.js';
 import { capaDeOficio } from './oficio.js';
 import { planosDelGuion } from './planos.js';
-import { generarImagen, promptVisual, motivoDelUltimoFalloDeImagen } from './imagenes.js';
-import { generarVideo, motivoDelUltimoFallo } from './video.js';
+import { generarImagen, promptVisual, motivoDelUltimoFalloDeImagen, motorDeImagenEnUso } from './imagenes.js';
+import { promptDeImagen, motorDeImagen, tarjetasDelCuadro, textoDeUnSoloCuadro, textoDeMovimiento, cineDeLaPieza, PORQUE_DE_LAS_TARJETAS } from './prompts-por-motor.js';
+import { escenaEnIngles, movimientoDeLaEscena } from './escritor.js';
+import { generarVideo, motivoDelUltimoFallo, carpetaDeVideos } from './video.js';
+import { animarFoto, armarPieza, hayMotorDeVideo, liberarElMotorDeImagen } from './video-animado.js';
+import fs from 'node:fs';
+import path from 'node:path';
 import { escribirLaPieza } from './escritor.js';
 import { aJson } from '../lib/json-seguro.js';
 
@@ -383,6 +392,20 @@ function piezasVivas(inf: Informe): any[] {
  * Una corrida del motor. Con `ronda` en true escribe una RONDA: cinco piezas distintas —cada una con su
  * ángulo y su formato— y las prueba todas, en vez de una sola pieza.
  */
+/**
+ * LOS SEIS PASOS DE UNA CORRIDA, en orden y con su nombre visible. El dueño de los nombres es acá: el panel
+ * los pide por la API y los pinta tal cual, así que no hay dos listas que se puedan desincronizar. Son los
+ * mismos que el motor usa al anotar su avance.
+ */
+export const PASOS_DE_UNA_CORRIDA = [
+  'Vera lee su negocio',
+  'El equipo escribe los contenidos',
+  'Se pintan las imágenes',
+  'Los cinco jueces debaten y votan',
+  'Los 500 del público reaccionan',
+  'El ranking y el veredicto',
+] as const;
+
 export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'investigacion', ronda = false) {
   const mapa = await leerMapaReal(ctx.rubro, ctx.zona);
   const inf = await informeDe(db, ctx);
@@ -396,13 +419,55 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
   /** EL FORMATO QUE NOVA RECOMIENDA POR PLAZA: lo que Iris usa para armar el prompt. */
   const formatosRecomendados = recomendarFormatos(piezas, av?.por_plaza ?? []);
 
+  // LA CORRIDA NACE VIVA. Antes se insertaba directo con estado 'terminada' y las tareas se escribían todas
+  // al final: mientras el motor trabajaba no había NADA que mirar — el dueño veía «sin rondas todavía» con la
+  // ronda corriendo y tenía que recargar la página a ver si había pasado algo. Ahora la fila nace
+  // 'corriendo', late en cada paso y el panel la lee cada pocos segundos.
   const corrida = await db.query(
-    `INSERT INTO corridas (business_id, motivo, estado, creditos) VALUES ($1, $2, 'terminada', 0)
+    `INSERT INTO corridas (business_id, motivo, estado, creditos, paso, detalle, paso_de, pasos, latido_at, avance)
+     VALUES ($1, $2, 'corriendo', 0, $3, 'leyendo su material para entender qué hace', 1, $4, now(), $5::jsonb)
      RETURNING id, empezada_at`,
-    [ctx.businessId, motivo],
+    [ctx.businessId, motivo, PASOS_DE_UNA_CORRIDA[0], PASOS_DE_UNA_CORRIDA.length,
+      // El PRIMER paso también entra al recorrido: si no, el panel lo mostraba con su tilde pero con la
+      // leyenda «pendiente» al lado (se veía incoherente).
+      aJson([{ paso: PASOS_DE_UNA_CORRIDA[0], detalle: 'leyendo su material para entender qué hace', cuando: new Date().toISOString() }])],
   );
   const corridaId = corrida.rows[0].id;
   const tareas: { agente: string; que: string; resultado: Record<string, unknown>; orden: number }[] = [];
+
+  /**
+   * EL PASO EN EL QUE VA LA CORRIDA: la materia prima de la línea de carga del panel. Se escribe en la MISMA
+   * fila de la corrida (no en memoria) porque quien la lee es OTRA petición HTTP — el panel preguntando.
+   * `avance` va acumulando el recorrido con su hora: así el panel puede listar lo que ya pasó, no solo el
+   * paso actual.
+   */
+  const paso = async (de: number, nombre: string, detalle = '') => {
+    try {
+      await db.query(
+        `UPDATE corridas SET paso = $2, detalle = $3, paso_de = $4, latido_at = now(),
+                avance = CASE WHEN coalesce(avance->-1->>'paso','') = $2
+                               AND coalesce(avance->-1->>'detalle','') = $3
+                              THEN coalesce(avance, '[]'::jsonb)
+                              ELSE coalesce(avance, '[]'::jsonb) || $5::jsonb END
+          WHERE id = $1`,
+        [corridaId, nombre, detalle, de, aJson([{ paso: nombre, detalle, cuando: new Date().toISOString() }])],
+      );
+    } catch { /* si no se puede escribir el avance, la corrida sigue: el panel pierde el paso, no el trabajo */ }
+  };
+
+  /**
+   * LA TAREA SE ANOTA CUANDO PASA, no al final. Es lo que el dueño pidió ver: «indicar lo que está pasando en
+   * esa ronda, cada proceso». Va sin `await` a propósito: la bitácora no puede frenar el trabajo, y si una
+   * anotación se pierde, el cierre de la corrida la recupera (abajo, con el barrido de las que falten).
+   */
+  const anotar = (t: { agente: string; que: string; resultado: Record<string, unknown>; orden: number }) => {
+    tareas.push(t);
+    void db.query(
+      `INSERT INTO tareas_corrida (corrida_id, agente, que, resultado, creditos, orden, terminada_at)
+       VALUES ($1, $2, $3, $4::jsonb, 0, $5, now())`,
+      [corridaId, t.agente, t.que, aJson(t.resultado), t.orden],
+    ).catch(() => {});
+  };
 
   // ---------------- VERA · ENTENDER EL NEGOCIO (y va primero) ----------------
   // Lee lo que el negocio entregó —su descripción, sus enlaces y sus archivos— y deduce qué es: el rubro,
@@ -461,15 +526,30 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
 
   // Y si el perfil no tenía el rubro, queda cargado: la próxima corrida ya arranca sabiéndolo.
   let perfilActualizado = false;
+  let zonaActualizada = '';
   try {
-    const actual = await db.query('SELECT rubro FROM businesses WHERE id = $1', [ctx.businessId]);
+    const actual = await db.query('SELECT rubro, zona FROM businesses WHERE id = $1', [ctx.businessId]);
     if (leido.rubro && !String(actual.rows[0]?.rubro || '').trim()) {
       await db.query('UPDATE businesses SET rubro = $2 WHERE id = $1', [ctx.businessId, leido.rubro]);
       perfilActualizado = true;
     }
+    // LA ZONA, SI EL MATERIAL LA NOMBRA Y EL NEGOCIO NO LA DECLARÓ. La zona es lo único que el estudio del
+    // mapa geocodifica, y sin ella el negocio se queda sin mercado medido: el programador ni lo mira (sólo
+    // corre para negocios con rubro y zona). El material ya la estaba diciendo —«Dubai»— y se estaba
+    // ignorando: acá se aprovecha. Si el cliente ya la declaró, no se toca.
+    if (!String(actual.rows[0]?.zona || '').trim()) {
+      const zona = zonaDeLugares(leido.lugares);
+      if (zona) {
+        await db.query('UPDATE businesses SET zona = $2 WHERE id = $1', [ctx.businessId, zona]);
+        zonaActualizada = zona;
+        // La corrida sigue con el dato nuevo: los pasos de abajo (el mapa y la lectura de anuncios) usan
+        // esta misma variable, y sin esto el estudio de hoy saldría sin ciudad aunque ya la tenga.
+        ctx.zona = zona;
+      }
+    }
   } catch { /* si no se puede escribir, la corrida sigue con lo leído */ }
 
-  tareas.push({
+  anotar({
     agente: 'vera', orden: 0,
     que: leido.rubro
       ? `Entendió el negocio: «${leido.rubro}» — ${leido.alcance === 'sin_determinar' ? 'todavía sin saber dónde vende' : `alcance ${leido.alcance}`}`
@@ -488,6 +568,9 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
       perfil_actualizado: perfilActualizado
         ? 'el rubro quedó cargado en su negocio con lo que se dedujo del material'
         : 'el negocio ya tenía su rubro cargado: no se tocó',
+      zona_actualizada: zonaActualizada
+        ? `su ciudad quedó cargada como «${zonaActualizada}», deducida del material: es lo que el estudio del mapa usa para contar el mercado`
+        : 'el negocio ya tenía su zona cargada: no se tocó',
       palabras_clave: claves,
       categoria_del_negocio: categoria?.ok
         ? { termino, titulo: categoria.titulo, resumen: categoria.resumen, fuente: `${categoria.idioma}.wikipedia.org`, url: categoria.url }
@@ -600,7 +683,7 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
     : { codigo: lenguaDelNegocio.codigo, nombre: lenguaDelNegocio.nombre, tambien: '',
       por_que: `su material y los avisos de su mercado están en ${lenguaDelNegocio.nombre}` };
 
-  tareas.push({
+  anotar({
     agente: 'lex', orden: 1,
     que: lenguasDeBusqueda.length > 1
       ? `Reconoció las lenguas de su mercado: se busca en ${lenguasDeBusqueda.map(l => l.nombre).join(', ')}`
@@ -656,7 +739,7 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
 
   // ---------------- LUX · el mercado (OpenStreetMap de verdad + el informe de piezas vivas) ----------------
   if (leido.alcance === 'global') {
-    tareas.push({
+    anotar({
       agente: 'lux', orden: 1,
       que: 'No contó locales en el mapa: su negocio no tiene una plaza fija',
       resultado: {
@@ -667,7 +750,7 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
       },
     });
   } else if (mapa.ok) {
-    tareas.push({
+    anotar({
       agente: 'lux', orden: 1,
       que: `Contó el mercado en el mapa: ${mapa.conNombre} ${mapa.oficio} con nombre en ${mapa.ciudad}`,
       resultado: {
@@ -682,7 +765,7 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
       },
     });
   } else {
-    tareas.push({
+    anotar({
       agente: 'lux', orden: 1, que: 'No pudo leer el mapa del mercado y lo dice',
       resultado: { sin_fuente: mapa.falta, fuente: 'sin fuente: el mapa no respondió' },
     });
@@ -693,7 +776,7 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
       anunciante: a, dias: Math.max(...piezas.filter(p => p.anunciante === a).map(p => Number(p.dias) || 0)),
     })).sort((a, b) => b.dias - a.dias)
     : [];
-  tareas.push({
+  anotar({
     agente: 'lux', orden: 2,
     que: piezas.length
       ? `Leyó ${piezas.length} piezas vivas de su rubro: el más sostenido lleva ${pauta[0]?.dias ?? 0} días activo`
@@ -741,7 +824,7 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
     }
   } catch { /* sin tabla o sin filas: se dice abajo, no se inventa */ }
 
-  tareas.push({
+  anotar({
     agente: 'lux', orden: 2,
     que: lectura
       ? `Leyó su mercado: ${lectura.fichas.toLocaleString('es-CO')} fichas de ${lectura.distintos.toLocaleString('es-CO')} anuncios distintos en ${lectura.paises} ${lectura.paises === 1 ? 'país' : 'países'}: el más viejo lleva ${lectura.dias} días corriendo`
@@ -855,7 +938,7 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
     mercado = { comparables, ruido, total, categoria_nueva: total > 0 && comparables.length === 0, palabras, terminos };
   } catch { mercado = null; }
 
-  tareas.push({
+  anotar({
     agente: 'lux', orden: 3,
     que: mercado
       ? (mercado.categoria_nueva
@@ -910,7 +993,7 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
       );
       armadoDelInforme = armado;
       informeDelMercado = { resumen: armado.resumen, comparables: mercado.comparables.length, huecos: armado.huecos.length };
-      tareas.push({
+      anotar({
         agente: 'lux', orden: 4,
         que: `Armó el informe de su mercado con lo que se leyó: ${mercado.comparables.length} comparables, ${armado.jugadores.length} anunciantes, ${armado.huecos.length} huecos`,
         resultado: {
@@ -933,7 +1016,7 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
       // informe y sin saber por qué.
       const err = e as any;
       console.error('[informe del mercado] no se pudo guardar:', err?.message, '·', err?.detail ?? '', '·', err?.where ?? '', '· posición', err?.position ?? '');
-      tareas.push({
+      anotar({
         agente: 'lux', orden: 4, que: 'No pudo guardar el informe de su mercado y lo dice',
         resultado: {
           sin_fuente: `el informe no se pudo guardar: ${String(err?.message).slice(0, 160)}`,
@@ -946,7 +1029,7 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
 
   // ---------------- REX · la demanda y el precio ----------------
   const precios = preciosDelInforme(inf);
-  tareas.push({
+  anotar({
     agente: 'rex', orden: 3,
     que: precios.length
       ? `Sacó los precios que el mercado publica (${precios.length} referencias escritas en el informe)`
@@ -967,7 +1050,7 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
   // ---------------- NIA · el molde de escritura con lo real del negocio ----------------
   const descripcion = (ctx.descripcion || '').trim();
   const palabrasNegocio = [...new Set(descripcion.toLowerCase().split(/[^a-záéíóúñ0-9]+/).filter(p => p.length > 4))].slice(0, 12);
-  tareas.push({
+  anotar({
     agente: 'nia', orden: 4,
     que: [av
         ? `Armó el brief creativo del rubro (${(av.por_plaza ?? []).length} plazas, con tipografía, encuadre y colores medidos)`
@@ -1024,7 +1107,7 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
         WHERE business_id = $1 GROUP BY metrica ORDER BY SUM(valor) DESC LIMIT 8`, [ctx.businessId]);
     metricas = m.rows as any[];
   } catch { /* sin métricas cargadas: se dice abajo */ }
-  tareas.push({
+  anotar({
     agente: 'kai', orden: 5,
     que: piezas.length
       ? `Contó cómo pauta el rubro: ${conBoton.length} de ${piezas.length} piezas cierran por botón`
@@ -1052,7 +1135,7 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
     const c = await db.query('SELECT count(*)::int AS n FROM predicciones WHERE business_id = $1 AND desvio_pct IS NOT NULL', [ctx.businessId]);
     casos = c.rows[0]?.n ?? 0;
   } catch { /* sin predicciones: casos queda en 0 y se dice */ }
-  tareas.push({
+  anotar({
     agente: 'sol', orden: 6,
     que: casos
       ? `Revisó el modelo con ${casos} ${casos === 1 ? 'predicción medida' : 'predicciones medidas'}`
@@ -1092,7 +1175,7 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
   }
   const frases = [...cuentaFrases.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([frase, veces]) => ({ frase, veces }));
 
-  tareas.push({
+  anotar({
     agente: 'rumi', orden: 7,
     que: nConv
       ? `Leyó ${nConv} conversaciones del negocio (${nMes} de los últimos 30 días)`
@@ -1197,7 +1280,7 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
     }
   } catch { /* si el guardado falla, la tarea igual se entrega */ }
 
-  tareas.push({
+  anotar({
     agente: 'nova', orden: 8,
     que: piezas.length || tend.temas.length
       ? `Leyó ${piezas.length} formatos del mercado y ${tend.temas.length} temas de los que se está hablando hoy`
@@ -1390,7 +1473,7 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
     fuente: `${materialQueYaTiene} + sus decisiones en Primeros pasos`,
   } : null;
 
-  tareas.push({
+  anotar({
     agente: 'tino', orden: 10,
     que: porElNegocio
       ? (categoriaNueva
@@ -1514,10 +1597,30 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
       `SELECT coalesce(angulo, '') AS a, count(*)::int AS n FROM piezas
         WHERE business_id = $1 AND ronda > 0 GROUP BY 1`, [ctx.businessId])).rows as { a: string; n: number }[])
       .map(x => [x.a, Number(x.n)] as [string, number]));
+
+  // ---------------------------------------------------------------------------------------------
+  // LA MEZCLA DE LA RONDA — la regla del dueño, aplicada acá:
+  //   · la ronda produce 5 contenidos;
+  //   · DE ESOS 5, COMO MÁXIMO 2 SON VIDEO (de 30 s como máximo);
+  //   · los otros 3 se reparten entre «imagen con texto», «reel de imágenes», «reel con animación» y
+  //     «título animado».
+  // El ÁNGULO decide el enfoque (por dónde entra el texto) y la MEZCLA decide qué ES cada contenido; el
+  // tipo manda el formato de la pieza. El precio no se decide acá: vive en `creditos.ts` y se cobra por tipo.
+  // ---------------------------------------------------------------------------------------------
+  const numeroDeRonda = ronda ? await proximaRonda(db, ctx.businessId) : 0;
+  if (ronda) await db.query('UPDATE corridas SET ronda = $2 WHERE id = $1', [corridaId, numeroDeRonda]).catch(() => {});
+  const tiposDeLaRonda: TipoDeContenido[] = ronda
+    ? mezclaDeRonda(await usosPorTipo(db, ctx.businessId), numeroDeRonda)
+    : [];
   const VARIANTES = [...ANGULOS]
     .sort((a, b) => (usosDelAngulo.get(a.angulo) ?? 0) - (usosDelAngulo.get(b.angulo) ?? 0))
     .slice(0, 5)
-    .map((v, i) => ({ ...v, n: i + 1 }));
+    .map((v, i) => {
+      const tipo = tiposDeLaRonda[i] ?? (tipoDeContenidoDe(v.formato) ?? 'video');
+      return { ...v, n: i + 1, tipo_de_contenido: tipo, formato: formatoDe(tipo, '9:16') };
+    });
+  /** Lo que cuesta crear esta ronda, sumando POR TIPO (el mismo número que se cobra en el libro). */
+  const costoDeCrearLaRonda = costoDeRonda(tiposDeLaRonda).crear;
   const paqueteDelMercado = promptsDelInforme(inf ?? {}, formatosRecomendados);
   // LOS CAMPOS DEL PROMPT, SIN LA PIEZA. El prompt de cada pieza se arma DESPUÉS de escribirla —más abajo—
   // porque necesita su formato y su título: una pieza de imagen no puede llevar un prompt de video, y el
@@ -1575,7 +1678,7 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
     }
   }
   if (mercado && mercado.comparables.length) {
-    tareas.push({
+    anotar({
       agente: 'rex', orden: 11,
       que: preciosDelMercado.length
         ? ('Saco ' + preciosDelMercado.length + (preciosDelMercado.length === 1 ? ' precio' : ' precios') + ' que su mercado publica en los anuncios')
@@ -1598,7 +1701,7 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
     if (b) botonesDelMercado.set(b, (botonesDelMercado.get(b) || 0) + 1);
   }
   if (mercado && mercado.comparables.length) {
-    tareas.push({
+    anotar({
       agente: 'kai', orden: 12,
       que: botonesDelMercado.size
         ? ('Conto como cierra su mercado: ' + Array.from(botonesDelMercado.keys()).slice(0, 3).join(', '))
@@ -1620,11 +1723,12 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
   // arte medido en su propia web. Queda guardada, y no se duplica si es la misma de la corrida anterior.
   try {
     // LAS PIEZAS DE ESTA CORRIDA. En una corrida normal es una; en una RONDA son cinco, cada una con su
-    // ángulo y su formato: la misma pieza cinco veces no da nada que votar. Se guardan todas, se dice de
-    // qué ronda salió cada una y con qué ángulo entró.
-    const numeroDeRonda = ronda
-      ? Number((await db.query('SELECT COALESCE(MAX(ronda), 0) + 1 AS n FROM piezas WHERE business_id = $1', [ctx.businessId])).rows[0].n)
-      : 0;
+    // ángulo y su tipo de contenido: la misma pieza cinco veces no da nada que votar. Se guardan todas, se
+    // dice de qué ronda salió cada una y con qué ángulo entró. El número de la ronda se calculó arriba,
+    // junto con la mezcla, para que el cálculo del precio y el de las piezas sean el mismo.
+    await paso(2, ronda ? PASOS_DE_UNA_CORRIDA[1] : 'El equipo escribe la pieza',
+      ronda ? `los ${VARIANTES.length} contenidos de la ronda ${numeroDeRonda}, cada uno con su ángulo`
+            : 'con el material del negocio y el ángulo que ninguno usa');
     const aEscribir = ronda
       ? await Promise.all(VARIANTES.map(async v => escribirLaPiezaDeVerdad(
           armarLaPieza({ ...datosDeLaPieza, formato: v.formato, variante: v }),
@@ -1634,6 +1738,8 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
         )))
       : [piezaEscrita];
     let escritasAhora = 0;
+    /** Los tipos que se crearon DE VERDAD: con esto se cobra, por tipo, lo que salió. */
+    const tiposCreados: TipoDeContenido[] = [];
     for (const pz of aEscribir) {
       // Se evita el duplicado exacto: misma pieza, mismo texto Y MISMO ÁNGULO. Dos variantes de una ronda
       // son distintas por definición, así que el ángulo entra en la comparación.
@@ -1655,24 +1761,64 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
       // así que todos los videos mostraban lo mismo. Ahora el guion se desglosa en PLANOS antes de pintar, y
       // cada plano lleva SU imagen, hecha con lo que ese plano dice. El video muestra lo que se está diciendo,
       // y dos piezas con guiones distintos no pueden salir iguales.
-      const esPiezaDeImagen = /imagen/i.test(String(pz.formato || ''));
-      const esPiezaDeVideo = /video/i.test(String(pz.formato || '')) && !/texto/i.test(String(pz.formato || ''));
+      // QUÉ ES ESTA PIEZA, por su formato (no por palabras sueltas): video filmado, imagen con texto,
+      // reel de imágenes, reel con animación o título animado. El tipo de contenido es el que le asignó la
+      // mezcla de la ronda y es el que manda el precio.
+      const formatoDeLaPieza = String(pz.formato || '');
+      const claseDeLaPieza = claseDeFormato(formatoDeLaPieza);
+      const tipoDeLaPieza = (String((pz.detalle as { tipo_de_contenido?: string })?.tipo_de_contenido || '')
+        || tipoDeContenidoDe(formatoDeLaPieza) || 'video') as TipoDeContenido;
+      const esPiezaDeVideo = claseDeLaPieza === 'video';
+      const esPiezaDeImagen = claseDeLaPieza === 'imagen';
+      const esReel = claseDeLaPieza === 'reel_imagenes' || claseDeLaPieza === 'reel_animacion';
+      const esTituloAnimado = claseDeLaPieza === 'titulo_animado';
+      // El formato de ANTES de la tabla (el «reel con texto sobre imagen» de siempre) no produce MP4: se
+      // queda con su imagen, como hasta ahora. Por eso la regla vieja sigue viva como respaldo.
+      const quiereImagen = esPiezaDeVideo || esPiezaDeImagen || esReel || esTituloAnimado
+        || /imagen/i.test(formatoDeLaPieza);
+      const tarjetasDeLaPieza = ((pz.detalle as { tarjetas?: { texto?: string }[] })?.tarjetas ?? []);
       const tonoDeLaPieza = Array.isArray(decisiones.tono) ? decisiones.tono.join(' y ') : '';
       const coloresMarca = (identidad?.colores ?? []).map((c: { hex: string }) => c.hex);
       const materiales: string[] = [];
+      // LO QUE VA ESCRITO EN PANTALLA: la imagen lleva su texto encima, el título animado su frase, y los
+      // reels el de su primera tarjeta (cada cuadro lleva el suyo). Es lo que se le pide al proveedor de
+      // imágenes como referencia de qué se está anunciando.
+      const textoEnPantalla = String((pz.detalle as { texto_sobre_la_imagen?: string })?.texto_sobre_la_imagen || '')
+        || String(tarjetasDeLaPieza[0]?.texto || '');
 
+      await paso(3, PASOS_DE_UNA_CORRIDA[2], `armando lo visual de ${pz.formato}`);
       // 1) EL DESGLOSE: qué se ve y qué se dice en cada plano (PenShot, sobre el guion).
-      let escenas: { que: string; dice: string }[] = [];
+      let escenas: { que: string; dice: string; negativo?: string; segundos?: number }[] = [];
       if (esPiezaDeVideo && String(pz.guion || '').trim().length >= 40) {
         try {
-          const planos = await planosDelGuion(String(pz.guion));
+          const planos = await planosDelGuion({
+            guion: String(pz.guion), formato: pz.formato,
+            segundos: SEGUNDOS_MAXIMOS_VIDEO, tono: tonoDeLaPieza, queHace: leido.queHace || ctx.descripcion,
+          });
           if (planos) {
             await db.query(
               `UPDATE piezas SET generacion = jsonb_set(generacion, '{planos}', $2::jsonb) WHERE id = $1`,
               [piezaId, aJson(planos)],
             );
-            escenas = (planos.planos ?? []).slice(0, MAX_ESCENAS)
-              .map(pl => ({ que: String(pl.prompt || ''), dice: String(pl.audio || '') }));
+            // LO QUE PENSHOT MANDA DE VERDAD: { n, duracion_s, prompt, prompt_negativo }. Acá se pedía
+            // `pl.audio`, que NO EXISTE en su respuesta: ese dato se perdía en todas las piezas. Y el
+            // `duracion_s` es lo que dura cada clip —o sea, cuánto tiene que durar el video de ese plano.
+            // EL REPARTO DE LOS PLANOS. El motor de planos devuelve más de los que entran en la pieza
+            // (medido: 12 a 15 planos y hasta 47 s para una pieza de 30 s) y NO obedece al número que se le
+            // pide. Quedarse con los primeros dejaba las últimas líneas del guion sin imagen; se toman
+            // repartidos a lo largo del guion, en orden y sin repetir, para que la pieza cubra todo lo que
+            // dice. Los que no entran quedan guardados con la pieza: no se esconden.
+            const todosLosPlanos = planos.planos ?? [];
+            const elegidos = todosLosPlanos.length <= MAX_ESCENAS
+              ? todosLosPlanos
+              : Array.from({ length: MAX_ESCENAS }, (_, i) => todosLosPlanos[Math.round((i * (todosLosPlanos.length - 1)) / (MAX_ESCENAS - 1))]);
+            escenas = elegidos
+              .map(pl => ({
+                que: String(pl.prompt || ''),
+                dice: String((pl as { audio?: string }).audio || ''),
+                negativo: String(pl.prompt_negativo || ''),
+                segundos: Number(pl.duracion_s) || 5,
+              }));
           }
         } catch (e) { console.error('[planos] no se pudo desglosar el guion:', (e as Error)?.message); }
       }
@@ -1681,28 +1827,93 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
         escenas = [{ que: leido.queHace || ctx.descripcion, dice: String((pz.detalle as any)?.texto_sobre_la_imagen || '') }];
       }
 
-      // 2) LA IMAGEN DE CADA ESCENA: una por plano en los videos, una sola en las piezas de imagen.
-      if (esPiezaDeImagen || esPiezaDeVideo) {
+      // CUÁNTAS IMÁGENES LLEVA: una por plano en el video, una en la imagen y en el título, y una por
+      // tarjeta en los reels (entre 2 y 4: cada cuadro dura 3 s, así el reel nunca pasa de 12 s).
+      const cuantasImagenes = esPiezaDeVideo
+        ? escenas.length
+        : esReel
+          ? Math.min(4, Math.max(2, tarjetasDeLaPieza.length || 2))
+          : 1;
+      // 2) LA IMAGEN DE CADA ESCENA: una por plano en los videos, una sola en las piezas de imagen, y una
+      // por tarjeta en los reels. Estas imágenes son el material con el que se arma el contenido en el
+      // servidor (ffmpeg), igual que son el material del video montado.
+      // LOS PLANOS QUE SE VAN A ANIMAR (imagen → video). Se anotan mientras se pintan y se animan al final,
+      // en segundo plano: cada plano tarda ~9 minutos en la GPU y la corrida no puede quedarse esperando
+      // eso. El tope es del entorno (`VIDEO_PLANOS_MAX`, 4 por defecto): animar los 6 planos de un video de
+      // 30 s cuesta casi una hora de GPU.
+      const planosParaAnimar: { ruta: string; prompt: string; negativo: string; n: number }[] = [];
+      // TODOS LOS PLANOS (decisión del dueño: «para todo»). A 5 s por plano, una pieza de 30 s tiene 6 como
+      // máximo, así que el tope por defecto no recorta nada. El entorno puede bajarlo si algún día se quiere
+      // una prueba corta sin gastar una hora de GPU.
+      const maxPlanosAnimados = Math.max(1, Number(process.env.VIDEO_PLANOS_MAX || 6));
+      const animarLosPlanos = esPiezaDeVideo && hayMotorDeVideo();
+      if (quiereImagen) {
         try {
           const imagenes: unknown[] = [];
-          const cuantas = esPiezaDeVideo ? escenas.length : 1;
+          const cuantas = cuantasImagenes;
+          // El prompt del motor, con su porqué, para guardarlo con la pieza.
+          let ultimoPromptVisual: { prompt: string; negativo: string; motor: string; porque: string } | null = null;
           for (let n = 0; n < cuantas; n++) {
-            const e = escenas[n];
-            const visual = promptVisual({
-              queHace: e.dice ? `${e.que}. En ese momento se dice: ${e.dice}` : e.que,
-              textoSobreLaImagen: String((pz.detalle as any)?.texto_sobre_la_imagen || ''),
+            // OJO: en los reels se piden 2-4 imágenes (una por tarjeta) y la escena es UNA sola —cada cuadro
+            // se distingue por SU tarjeta, no por otro plano—. Sin este respaldo, la segunda vuelta leía
+            // `escenas[1]` de un arreglo de uno y el bloque entero se caía con «reading 'dice'»: las
+            // imágenes ya pintadas se perdían y la pieza quedaba con fondo liso.
+            const e = escenas[n] ?? escenas[0];
+            // EL PROMPT LO PIDE CADA MOTOR: FLUX lo quiere en positivo y sin negativo (nombrar «texto» hace que lo
+            // dibuje); SDXL lo quiere con etiquetas y con su negativo aparte. Antes iba el mismo texto a los dos.
+            const delMotor = motorDeImagenEnUso();
+            // LA ESCENA EN INGLÉS: la acción sale del material del negocio en español y estos motores leen
+            // inglés (medido: con la acción en español no aparecía la persona). Si el modelo no responde, se
+            // usa la española y el prompt lo declara.
+            // La línea de carga va diciendo qué imagen va: es lo que más tiempo consume de una pieza.
+            void paso(3, PASOS_DE_UNA_CORRIDA[2], `imagen ${n + 1} de ${escenas.length} · ${pz.formato}`);
+            const escenaEs = e.dice ? `${e.que}. En ese momento se dice: ${e.dice}` : e.que;
+            const escenaIngles = await escenaEnIngles(escenaEs);
+            const visual = promptDeImagen(motorDeImagen(delMotor.modelo), {
+              queHace: escenaEs, queHaceEn: escenaIngles ?? undefined,
+              // En un reel cada cuadro muestra SU tarjeta; en la imagen y el título, su frase.
+              textoSobreLaImagen: esReel ? String(tarjetasDeLaPieza[n]?.texto || textoEnPantalla) : textoEnPantalla,
               formato: pz.formato, colores: coloresMarca, lugar: ctx.zona, tono: tonoDeLaPieza,
+              // Qué plano es y cuántos tiene la pieza: con eso el motor decide el cine de TODA la pieza
+              // (tamaño de plano, óptica, luz que avanza y un solo etalonaje), en vez de dejar que lo
+              // improvise el motor de planos dentro de cada plano.
+              n: n + 1, total: escenas.length,
             });
             // Cada imagen con su propio nombre (`-p2`, `-p3`…): antes la segunda pisaba a la primera.
             const img = await generarImagen({
-              businessId: ctx.businessId, piezaId, formato: pz.formato, prompt: visual,
+              businessId: ctx.businessId, piezaId, formato: pz.formato,
+              prompt: visual.prompt,
+              // El negativo del motor MÁS el que trae el propio plano (PenShot dice qué no debe salir en
+              // cada plano: manos borrosas, texto en pantalla, logos…). Antes el del plano se tiraba.
+              negativo: [visual.negativo, e.negativo].filter(Boolean).join(', '),
               sufijo: n ? `p${n + 1}` : '',
             });
+            ultimoPromptVisual = { prompt: visual.prompt, negativo: visual.negativo, motor: visual.motor, porque: visual.porque };
             if (!img) continue;
             imagenes.push(img);
             materiales.push(img.archivo);
+            // La foto queda anotada con el texto que la describe: es lo que el motor de video necesita
+            // después para animarla (el mismo texto que la pintó, que ya trae la acción y el movimiento).
+            if (animarLosPlanos) {
+              planosParaAnimar.push({
+                ruta: path.isAbsolute(img.archivo) ? img.archivo : path.join(process.cwd(), img.archivo),
+                prompt: String(escenaIngles || escenaEs), negativo: String(e.negativo || ''), n: n + 1,
+              });
+            }
+            // Se guarda AL INSTANTE, no al final: si la tarjeta 3 falla, las 2 ya pintadas quedan en la
+            // pieza en vez de irse con el bloque caído (una imagen pintada y pagada no se tira).
+            await db.query(
+              `UPDATE piezas SET generacion = jsonb_set(jsonb_set(generacion, '{imagen_generada}', $2::jsonb),
+                                                         '{imagenes_generadas}', $3::jsonb) WHERE id = $1`,
+              [piezaId, aJson(imagenes[0]), aJson(imagenes)],
+            );
           }
           if (imagenes.length) {
+            // Se guarda el PRIMER prompt con su porqué: un prompt sin su razón no se puede corregir después.
+            await db.query(
+              `UPDATE piezas SET generacion = jsonb_set(generacion, '{prompt_visual}', $2::jsonb) WHERE id = $1`,
+              [piezaId, aJson(ultimoPromptVisual)],
+            );
             await db.query(
               `UPDATE piezas SET generacion = jsonb_set(jsonb_set(generacion, '{imagen_generada}', $2::jsonb),
                                                          '{imagenes_generadas}', $3::jsonb) WHERE id = $1`,
@@ -1720,20 +1931,87 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
           }
         } catch (e) { console.error('[imagen] no se pudo generar:', (e as Error)?.message); }
       }
-      // EL VIDEO DE LA PIEZA: se monta con nuestro material, la voz que corresponde a su tono y subtítulos
+      // LA PIEZA DE VIDEO SE ARMA CON SUS PLANOS ANIMADOS. Antes salía de poner las fotos quietas con un
+      // zoom encima, y el dueño lo rechazó con esas palabras. Ahora cada plano se anima con el motor de
+      // video (imagen → video) y la pieza se arma con esos clips, la voz del motor y subtítulos. Va en
+      // segundo plano, igual que el montaje: la pieza se actualiza cuando el video está listo.
+      if (planosParaAnimar.length) {
+        const tonoParaLaVoz = Array.isArray(decisiones.tono) ? decisiones.tono.join(' y ') : '';
+        void (async () => {
+          try {
+            // LOS DOS MOTORES COMPARTEN LA GPU, Y NO ENTRAN JUNTOS: el de imágenes tiene el modelo cargado
+            // (~28 de los 40 GB) y el de video necesita otros ~28. Se libera antes de animar; sin esto el clip
+            // falla con «Got an OOM» y la pieza queda sin video.
+            await liberarElMotorDeImagen();
+            // Solo los primeros se animan; los demás entran como toma fija en su lugar.
+            const aAnimar = planosParaAnimar.slice(0, maxPlanosAnimados);
+            const segmentos: { tipo: 'clip' | 'foto'; archivo: string }[] = [];
+            for (const p of aAnimar) {
+              void paso(3, PASOS_DE_UNA_CORRIDA[2], `se anima el plano ${segmentos.filter((s) => s.tipo === 'clip').length + 1} de ${aAnimar.length} · ${pz.formato}`);
+              if (!fs.existsSync(p.ruta)) { console.error('[video] la foto del plano no está en disco:', p.ruta); continue; }
+              // El texto del VIDEO no es el de la foto: se le pide movimiento (si no, el clip sale quieto).
+              const cine = cineDeLaPieza({ tono: tonoDeLaPieza, n: p.n, total: planosParaAnimar.length });
+              // EL VECTOR DE ACCIÓN: la escena del plano describe un ESTADO («de pie, sosteniendo el registro») y
+              // con eso solo el motor deja el clip congelado — medido en la prueba real: salió una foto con zoom,
+              // que es justo lo que el dueño rechazó. Se le pide al modelo la acción física de esos cinco segundos.
+              const accion = await movimientoDeLaEscena(p.prompt, cine.movimiento);
+              const anim = await animarFoto({
+                foto: fs.readFileSync(p.ruta), nombre: `p${piezaId.slice(0, 8)}-${p.n}`,
+                // El movimiento de cámara también es la decisión del motor: el clip se pide con el mismo
+                // movimiento que se decidió para ese plano, no con el que venga escrito en el texto.
+                prompt: textoDeMovimiento(p.prompt, cine.movimiento, accion ?? undefined).prompt,
+                negativo: p.negativo, segundos: 5,
+              });
+              if (!anim.ok) { console.error('[video] el plano', p.n, 'quedó sin animar:', anim.motivo); continue; }
+              const destino = path.join(carpetaDeVideos(), ctx.businessId, `${piezaId}-p${p.n}.mp4`);
+              fs.mkdirSync(path.dirname(destino), { recursive: true });
+              fs.writeFileSync(destino, anim.clip);
+              segmentos.push({ tipo: 'clip', archivo: destino });
+            }
+            // El resto de los planos, en su orden, como toma fija (la pieza no pierde ningún plano).
+            for (const p of planosParaAnimar) {
+              if (aAnimar.includes(p)) continue;
+              if (fs.existsSync(p.ruta)) segmentos.push({ tipo: 'foto', archivo: p.ruta });
+            }
+            if (!segmentos.length) { console.error('[video] no hay material para armar la pieza'); return; }
+            const armado = armarPieza({
+              segmentos, carpeta: path.join(carpetaDeVideos(), ctx.businessId, `${piezaId}-armado`),
+              titulo: pz.titulo, copy: String(pz.texto || ''), tono: tonoParaLaVoz, pais: ctx.zona,
+              lengua: lenguaDeLaPieza?.nombre, formato: pz.formato,
+            });
+            if (!armado) { console.error('[video] el armado no devolvió archivo'); return; }
+            const vid = {
+              archivo: armado.archivo, url: `/api/piezas/${piezaId}/video`,
+              peso: fs.statSync(armado.archivo).size, segundos: armado.segundos, voz: armado.voz,
+              voz_porque: 'la voz la elige el motor por el tono del negocio y la lengua de la pieza',
+              fuente: `planos animados con Wan 2.1 I2V (imagen→video) en la GPU alquilada · ${armado.animados} de ${segmentos.length} planos animados`,
+              materiales: segmentos.length,
+            };
+            await db.query(
+              `UPDATE piezas SET generacion = jsonb_set(generacion, '{video_generado}', $2::jsonb) WHERE id = $1`,
+              [piezaId, aJson(vid)],
+            );
+            console.log('[video] animado:', vid.archivo, vid.peso, 'bytes,', vid.segundos, 's,', vid.voz, '·', armado.animados, 'planos animados de', segmentos.length);
+          } catch (e) { console.error('[video] el armado animado falló:', (e as Error)?.message); }
+        })();
+      }
+      // EL VIDEO DE LA PIEZA (el montaje viejo, con las fotos en fila): queda SOLO para cuando no hay motor
+      // de video —así una pieza de video nunca se queda sin nada— y cubre el respaldo de los planes que el
+      // motor no pudo animar. Se monta con nuestro material, la voz que corresponde a su tono y subtítulos
       // nativos (gratis, sin GPU, sin llaves nuevas). Si el montaje falla, la pieza se queda con su guion,
       // sus planos y sus imágenes, y lo dice.
       //
       // NO SE ESPERA: montar tarda minutos y la corrida no puede quedarse colgada por eso (el panel, a
       // través de nginx, corta antes). El pedido sale y la pieza se actualiza cuando el video está listo;
       // la ficha lo muestra en cuanto aparece. Es el mismo criterio que la lectura de anuncios.
-      if (esPiezaDeVideo && materiales.length) {
+      if (esPiezaDeVideo && materiales.length && !planosParaAnimar.length) {
         const tonoDeLaPieza = Array.isArray(decisiones.tono) ? decisiones.tono.join(' y ') : '';
         void (async () => {
           try {
             const vid = await generarVideo({
               businessId: ctx.businessId, piezaId, formato: pz.formato, titulo: pz.titulo,
               copy: String(pz.texto || ''), materiales, tono: tonoDeLaPieza,
+              lengua: lenguaDeLaPieza?.nombre,
             });
             if (vid) {
               await db.query(
@@ -1751,8 +2029,66 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
             }
           } catch (e) { console.error('[video] no se pudo montar:', (e as Error)?.message); }
         })();
+      } else if (esPiezaDeVideo) {
+        // SIN MATERIAL NO HAY MONTAJE, Y SE DICE. Antes esta pieza se quedaba en silencio —sin video y sin
+        // motivo— y el panel mostraba «armando el video…» para siempre: el dueño miraba un aro que giraba
+        // esperando algo que ya no iba a llegar. Ahora queda el motivo escrito, que es lo que la ficha
+        // necesita para explicarlo (y lo que hace falta para decidir si se reintenta).
+        await db.query(
+          `UPDATE piezas SET generacion = jsonb_set(generacion, '{video_error}', $2::jsonb) WHERE id = $1`,
+          [piezaId, aJson({
+            motivo: `no hay ninguna imagen para montar: ${motivoDelUltimoFalloDeImagen() || 'el proveedor de imágenes no devolvió nada y no dijo por qué'} — el montaje no arrancó`,
+            cuando: new Date().toISOString(),
+          })],
+        );
+        console.error('[video] sin material para montar:', piezaId);
+      }
+      // EL CONTENIDO QUE NO ES VIDEO: «imagen con texto», «reel de imágenes», «reel con animación» y
+      // «título animado» se arman acá, con ffmpeg EN EL SERVIDOR —sin GPU: no se manda nada a ninguna máquina
+      // alquilada— a partir de las MISMAS imágenes del proveedor que usa el video. Queda guardado en el mismo
+      // sitio y con el mismo mecanismo con el que el panel ya reproduce el video
+      // (`generacion.video_generado` + la ruta `GET /api/piezas/:id/video`), así el panel los muestra y los
+      // reproduce sin pantallas nuevas.
+      //
+      // NO SE ESPERA, por el mismo motivo que el video: armar cinco contenidos tarda, y la corrida no puede
+      // quedarse colgada por eso. La pieza ya está guardada y ya se cobró; el archivo se le pega cuando está.
+      if (esPiezaDeImagen || esReel || esTituloAnimado) {
+        void (async () => {
+          try {
+            const textos = esReel
+              ? tarjetasDeLaPieza.map(t => String(t.texto || '')).filter(Boolean)
+              : [textoEnPantalla];
+            const cont = await generarContenido({
+              businessId: ctx.businessId, piezaId, tipoDeContenido: tipoDeLaPieza,
+              formato: pz.formato, titulo: pz.titulo, textos, materiales,
+              colores: coloresMarca,
+              // Si no hay imágenes del proveedor, el contenido sale igual con fondo liso Y SE DICE POR QUÉ:
+              // un fondo liso declarado no es una imagen inventada.
+              motivoSinImagen: materiales.length ? undefined
+                : (motivoDelUltimoFalloDeImagen() || 'los dos proveedores fallaron sin decir por qué'),
+            });
+            if (cont) {
+              await db.query(
+                `UPDATE piezas SET generacion = jsonb_set(generacion, '{video_generado}', $2::jsonb) WHERE id = $1`,
+                [piezaId, aJson(cont)],
+              );
+              console.log('[contenido] armado:', cont.tipo_de_contenido, cont.archivo, cont.peso, 'bytes,',
+                cont.segundos, 's,', cont.audio);
+            } else {
+              await db.query(
+                `UPDATE piezas SET generacion = jsonb_set(generacion, '{video_error}', $2::jsonb) WHERE id = $1`,
+                [piezaId, aJson({
+                  motivo: motivoDelUltimoFalloDeContenido() || 'ffmpeg no dijo por qué',
+                  cuando: new Date().toISOString(),
+                })],
+              );
+              console.error('[contenido] no se pudo armar:', motivoDelUltimoFalloDeContenido());
+            }
+          } catch (e) { console.error('[contenido] falló:', (e as Error)?.message); }
+        })();
       }
       escritasAhora++;
+      tiposCreados.push(tipoDeLaPieza);
       // (Los planos se desglosan más arriba, ANTES de pintar: cada plano lleva su imagen.)
     }
     // EL PROMPT DE CADA PIEZA, EN SU FORMATO. Una pieza de imagen pide UNA imagen (sin planos, sin voz, sin
@@ -1781,7 +2117,7 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
     }
     const piezaParaLosPrompts = aEscribir[0];
     if (!paqueteDelMercado && piezaDelNegocio) {
-      tareas.push({
+      anotar({
         agente: 'iris', orden: 9,
         que: [
           `Armó el entregable de ${aEscribir.length === 1 ? 'la pieza' : `las ${aEscribir.length} piezas`}, cada una en su formato:`,
@@ -1803,20 +2139,25 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
         },
       });
     } else if (!paqueteDelMercado) {
-      tareas.push({
+      anotar({
         agente: 'iris', orden: 9,
         que: 'No pudo armar los prompts y lo dice',
         resultado: { sin_fuente: 'no hay pieza con la que armar el prompt', fuente: 'sin fuente' },
       });
     }
-    // Lo que se creó se cobra, y queda en el libro: es lo que cuesta escribir una pieza.
+    // LO QUE SE CREÓ SE COBRA POR TIPO, y queda en el libro: cada tipo tiene su precio (el video 48, el reel
+    // con animación 24, el reel de imágenes 20, la imagen con texto 12 y el título animado 8) y la ronda se
+    // cobra como la suma de lo que salió, no como un precio único por pieza. El precio no se escribe acá:
+    // sale de `creditos.ts`, que es el único dueño.
     if (escritasAhora > 0) {
-      await cobrarCreacion(db, ctx.businessId, escritasAhora,
-        ronda ? `ronda ${numeroDeRonda}: ${escritasAhora} piezas` : `pieza: ${piezaEscrita.titulo.slice(0, 60)}`);
+      await cobrarCreacion(db, ctx.businessId, tiposCreados,
+        ronda
+          ? `ronda ${numeroDeRonda}: ${escritasAhora} contenidos (${detalleDeTipos(tiposCreados)})`
+          : `pieza: ${piezaEscrita.titulo.slice(0, 60)} (${tiposCreados[0]}: ${precioDeTipo(tiposCreados[0])} créditos)`);
     }
     const yaEsta = { rows: escritasAhora ? [] : [{}] } as { rows: unknown[] };
     const angulo = armadoDelInforme?.huecos?.[0];
-    tareas.push({
+    anotar({
       agente: 'nia', orden: 11,
       que: [
         ronda
@@ -1850,7 +2191,7 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
     });
   } catch (e) {
     console.error('[la pieza] no se pudo escribir:', (e as Error)?.message);
-    tareas.push({
+    anotar({
       agente: 'nia', orden: 11, que: 'No pudo dejar la pieza escrita y lo dice',
       resultado: { sin_fuente: `la pieza no se pudo escribir: ${String((e as Error)?.message).slice(0, 160)}`, fuente: 'sin fuente: la escritura de la pieza falló' },
     });
@@ -1876,7 +2217,7 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
     const cuesta = aProbar.length * TARIFA.evaluarPieza;
 
     if (!aProbar.length) {
-      tareas.push({
+      anotar({
         agente: 'sol', orden: 13, que: 'No hay ninguna pieza sin probar y lo dice',
         resultado: {
           sin_fuente: 'todas las piezas escritas ya tienen su evaluación guardada: no se vuelve a cobrar lo mismo',
@@ -1884,7 +2225,7 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
         },
       });
     } else if (modo !== 'Automático') {
-      tareas.push({
+      anotar({
         agente: 'sol', orden: 13,
         que: `Quedaron ${aProbar.length} ${aProbar.length === 1 ? 'pieza' : 'piezas'} listas, esperando su OK para pasar por MiroFish (cuestan ${cuesta} créditos)`,
         resultado: {
@@ -1896,7 +2237,7 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
         },
       });
     } else if (saldo < cuesta) {
-      tareas.push({
+      anotar({
         agente: 'sol', orden: 13,
         que: `No alcanzan los créditos para probar ${aProbar.length === 1 ? 'la pieza' : `las ${aProbar.length} piezas`}: quedan ${saldo} y cuestan ${cuesta}`,
         resultado: {
@@ -1916,11 +2257,18 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
         jueces: { juez: string; criterio: string; voto: number; opinion: string }[];
         reacciones: Record<string, number>; publico: unknown; prediccion: unknown;
       }[] = [];
-      for (const pz of aProbar) {
+      for (const [i, pz] of aProbar.entries()) {
         // Se le pasa la pieza CON lo que trae armado de su formato (sus tarjetas, su texto sobre la imagen):
         // los jueces juzgan lo que la pieza es, no una idea genérica.
+        // Y MIROFISH AVISA SUS HITOS: cuando los cinco jueces terminan y cuando reacciona el público. Sin
+        // eso, la prueba —que es lo que más tarda— era un bloque opaco en la línea de carga.
+        await paso(4, PASOS_DE_UNA_CORRIDA[3],
+          `${aProbar.length === 1 ? 'la pieza' : `la opción ${i + 1} de ${aProbar.length}`} · ${pz.formato}`);
         const r = await evaluarConMiroFish(db, ctx.businessId, {
           id: pz.id, titulo: pz.titulo, texto: pz.texto, formato: pz.formato, generacion: pz.generacion,
+        }, {
+          jueces: () => { void paso(4, PASOS_DE_UNA_CORRIDA[3], `${aProbar.length === 1 ? 'la pieza' : `opción ${i + 1} de ${aProbar.length}`} · cerrando el debate`); },
+          publico: () => { void paso(5, PASOS_DE_UNA_CORRIDA[4], `${aProbar.length === 1 ? 'la pieza' : `opción ${i + 1} de ${aProbar.length}`} · 500 agentes votando`); },
         }) as any;
         probadas.push({
           id: pz.id, titulo: pz.titulo, formato: pz.formato, angulo: pz.angulo,
@@ -1933,6 +2281,9 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
       // LA GANADORA: la del puntaje más alto. La eligen los votos, no una mano.
       const ranking = [...probadas].sort((a, b) => b.puntaje - a.puntaje);
       const gana = ranking[0];
+      await paso(6, PASOS_DE_UNA_CORRIDA[5],
+        ronda ? `ordenando las ${probadas.length} opciones de la ronda y escribiendo el veredicto`
+              : 'el puntaje, la predicción y el veredicto');
 
       if (ronda) {
         const numero = Number((await db.query(
@@ -1941,7 +2292,7 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
           `INSERT INTO rondas (business_id, corrida_id, numero, piezas, evaluadas, ganadora_id, ganadora_puntaje, creditos, detalle)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb)`,
           [ctx.businessId, corridaId, numero, VARIANTES.length, probadas.length, gana.id, gana.puntaje,
-            VARIANTES.length * TARIFA.crearPieza + cuesta,
+            costoDeCrearLaRonda + cuesta,
             aJson({
               candidatas: ranking.map((pz, i) => ({
                 puesto: i + 1, pieza: pz.titulo, angulo: pz.angulo, formato: pz.formato, puntaje: pz.puntaje,
@@ -1950,10 +2301,10 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
         );
       }
 
-      tareas.push({
+      anotar({
         agente: 'sol', orden: 13,
         que: ronda
-          ? `Votó la ronda: ${probadas.length} piezas distintas, cada una con su votación. Ganó «${gana.titulo.slice(0, 60)}» con ${gana.puntaje} de 100 (la ronda costó ${VARIANTES.length * TARIFA.crearPieza + cuesta} créditos)`
+          ? `Votó la ronda: ${probadas.length} piezas distintas, cada una con su votación. Ganó «${gana.titulo.slice(0, 60)}» con ${gana.puntaje} de 100 (la ronda costó ${detalleDeTipos(tiposDeLaRonda)} = ${costoDeCrearLaRonda} al crear + ${cuesta} al evaluar, ${costoDeCrearLaRonda + cuesta} créditos)`
           : `Probó la pieza con los 5 jueces y los 500 del público: ${gana.puntaje} de 100, puesto ${gana.puesto} de su lote (costó ${cuesta} créditos)`,
         resultado: {
           fuente_tipo: 'los 5 jueces y los 500 agentes del público de este negocio, votando las piezas escritas',
@@ -1986,19 +2337,29 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
     }
   } catch (e) {
     console.error('[mirofish] no se pudo probar la pieza:', (e as Error)?.message);
-    tareas.push({
+    anotar({
       agente: 'sol', orden: 13, que: 'No pudo probar la pieza con MiroFish y lo dice',
       resultado: { sin_fuente: `la prueba no se hizo: ${String((e as Error)?.message).slice(0, 160)}`, fuente: 'sin fuente: la prueba falló' },
     });
   }
 
+  // Las tareas YA se anotaron cuando pasaron; esto es la red: lo que por lo que sea no llegó se escribe
+  // ahora, sin duplicar lo que ya está (el `orden` es único dentro de una corrida).
   for (const t of tareas) {
     await db.query(
-      `INSERT INTO tareas_corrida (corrida_id, agente, que, resultado, creditos, orden)
-       VALUES ($1, $2, $3, $4::jsonb, 0, $5)`,
+      `INSERT INTO tareas_corrida (corrida_id, agente, que, resultado, creditos, orden, terminada_at)
+       SELECT $1, $2, $3, $4::jsonb, 0, $5, now()
+        WHERE NOT EXISTS (SELECT 1 FROM tareas_corrida WHERE corrida_id = $1 AND orden = $5)`,
       [corridaId, t.agente, t.que, aJson(t.resultado), t.orden],
     );
   }
+  // Y LA CORRIDA CIERRA. Sin esto quedaría 'corriendo' para siempre y el panel mostraría una línea de carga
+  // avanzando sobre un trabajo que ya terminó.
+  await db.query(
+    `UPDATE corridas SET estado = 'terminada', terminada_at = now(), latido_at = now(),
+            paso = 'Terminada', detalle = '', paso_de = pasos WHERE id = $1`,
+    [corridaId],
+  ).catch(() => {});
 
   // ---------------- LOS HALLAZGOS: solo de lo medido, cada uno con su fuente real ----------------
   const hallazgos: { tipo: string; titulo: string; dato: string; porque: string; fuente: string }[] = [];
