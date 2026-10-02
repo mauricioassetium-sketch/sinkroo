@@ -85,7 +85,13 @@ export function azar(semilla: number) {
   return () => { s = (s * 1103515245 + 12345) % 2147483648; return s / 2147483648; };
 }
 
-export type Contexto = { businessId: string; nombre: string; descripcion: string; rubro: string; zona: string };
+export type Contexto = {
+  businessId: string; nombre: string; descripcion: string; rubro: string; zona: string;
+  /** La categoría del negocio en una palabra buscable («concierge»): la nombra el modelo en el paso de Vera
+   *  y es con la que el estudio del mapa busca los negocios parecidos. Sin ella, el mapa busca con el rubro
+   *  largo («Verificación continua de activos…») y no encuentra nada que se llame así. */
+  categoria?: string;
+};
 
 /**
  * CUÁNTAS ESCENAS LLEVA UN VIDEO COMO MÁXIMO. Cada escena es una imagen propia y unos 5 segundos de montaje:
@@ -308,7 +314,10 @@ export async function leerMapaReal(rubro: string, zona: string): Promise<MapaRea
 
   const mapa = filtrosDeRubro(rubro || '');
   const porNombre = mapa.filtros.length === 0;
-  const palabra = (String(rubro || '').split(' ')[0] || '').replace(/[^a-záéíóúñ]/gi, '').toLowerCase();
+  // La ÚLTIMA palabra es el sustantivo («luxury concierge» → «concierge»): buscar por la primera dejaba al
+  // mapa buscando «luxury» y devolvía tiendas de lujo, no los parecidos del negocio.
+  const palabras = String(rubro || '').split(' ').filter(Boolean);
+  const palabra = (palabras[palabras.length - 1] || '').replace(/[^a-záéíóúñ]/gi, '').toLowerCase();
   if (porNombre && palabra.length < 3) {
     return { ok: false, falta: 'no se sabe qué buscar en el mapa: falta el rubro del negocio y su descripción (Primeros pasos)', pais, ciudad };
   }
@@ -407,7 +416,16 @@ export const PASOS_DE_UNA_CORRIDA = [
 ] as const;
 
 export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'investigacion', ronda = false) {
-  const mapa = await leerMapaReal(ctx.rubro, ctx.zona);
+  // EL MAPA BUSCA POR NOMBRE DE COMERCIO, NO POR DESCRIPCIÓN. Se busca con la CATEGORÍA y no con el rubro: el
+  // rubro es la frase con la que el negocio se describe («We redefine luxury management…») y con eso el mapa
+  // no encuentra nada. La categoría se nombra más adelante, en el paso de Vera, así que se pide acá con lo
+  // que ya se sabe del negocio. Se usa el término EN INGLÉS porque es como se llaman los comercios del Golfo
+  // («222 Concierge»), y la última palabra de la categoría cuando es una frase: es el sustantivo.
+  if (!ctx.categoria) {
+    const dicha = await categoriaDelNegocio({ nombre: ctx.nombre, descripcion: ctx.descripcion });
+    if (dicha?.en) ctx.categoria = dicha.en;
+  }
+  const mapa = await leerMapaReal(ctx.categoria || ctx.rubro, ctx.zona);
   const inf = await informeDe(db, ctx);
   const piezas = piezasVivas(inf);
   const patron = (inf?.informe?.patron ?? []) as { k: string; v: string; s?: string }[];
@@ -554,6 +572,7 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
 
   // Lo que descubrió se usa YA en esta corrida: los demás agentes leen de ctx.
   if (!ctx.rubro.trim() && leido.rubro) ctx.rubro = leido.rubro;
+  if (termino) ctx.categoria = termino;   // el término con el que se busca el mercado (el rubro es una frase)
   if (leido.alcance !== 'sin_determinar') {
     ctx.zona = leido.alcance === 'global' ? 'negocio global (varias jurisdicciones)' : (leido.lugares[0] || ctx.zona);
   }
@@ -2508,9 +2527,15 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
   }
 
   for (const h of hallazgos) {
+    // UN HALLAZGO REPETIDO NO ES UN HALLAZGO NUEVO. Cada corrida volvía a insertar lo mismo (el mismo hueco,
+    // el mismo anuncio más viejo) y el panel acumulaba copias: medido en un negocio de Dubái, 12 filas para 5
+    // hallazgos distintos, todas con la misma fecha y la misma fuente. Se inserta sólo si no estaba ya; si el
+    // dato cambió («lleva 57 días» → «58»), es otro hallazgo y entra.
     await db.query(
       `INSERT INTO hallazgos (business_id, tipo, titulo, dato, porque, fuente, corrida_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+       SELECT $1, $2, $3, $4, $5, $6, $7
+        WHERE NOT EXISTS (
+          SELECT 1 FROM hallazgos WHERE business_id = $1 AND tipo = $2 AND titulo = $3 AND dato = $4)`,
       [ctx.businessId, h.tipo, h.titulo, h.dato, h.porque, h.fuente, corridaId],
     );
   }
