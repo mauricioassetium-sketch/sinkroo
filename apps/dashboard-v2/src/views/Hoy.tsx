@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { MotorTrabajando } from '../components/MotorTrabajando';
 import { Card, Badge, Button } from '../components/ui';
 import { EquipoInvestigando } from '../components/EquipoInvestigando';
 import { Ring, BarRow } from '../components/viz';
@@ -120,6 +121,8 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
 
   return (
     <div className="dash">
+      {/* El motor trabajando, arriba de todo: es la pantalla donde su trabajo aparece. */}
+      <MotorTrabajando />
       {/* ============================== HERO ============================== */}
       <div className="hero card">
         <div className="hero-side">
@@ -208,13 +211,13 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
           title={<span className="row" style={{ gap: 8 }}><I_Rocket size={14} style={{ color: 'var(--purple3)' }} /> Primeros pasos
             <span className="tiny muted">· lo que el motor no puede deducir solo</span></span>}
           action={<Badge tone={onb.arrancado ? 'green' : onb.listos.length > 0 ? 'purple' : 'red'}>
-            {onb.arrancado ? 'el motor está en marcha' : `${onb.listos.length} de 5 hechos`}
+            {onb.arrancado ? 'el motor está en marcha' : `${onb.listos.length} de ${onb.pasos.length} hechos`}
           </Badge>}
         >
           <div className="bs">
             {onb.arrancado
               ? <>Arrancó con lo que le puso y sigue por el mercado. Puede completar los pasos que faltan cuando quiera: el motor los toma en la próxima vuelta.</>
-              : <>Son <b>cinco pantallas cortas</b> y el motor queda trabajando. Nada es obligatorio: lo que no ponga, lo deduce de su cuenta y de sus conversaciones.</>}
+              : <>Son <b>{onb.pasos.length} pantallas cortas</b> y el motor queda trabajando. Nada es obligatorio: lo que no ponga, lo deduce de su cuenta y de sus conversaciones.</>}
           </div>
           <div className="onb-datos">
             {PASOS_ONB.map(p => (
@@ -243,7 +246,7 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
                   })) },
                   { tipo: 'aviso', texto: 'Nada de esto frena al motor: trabaja igual con dos datos y va corrigiendo con lo que aprende de sus conversaciones y de su cuenta.' },
                 ],
-                fuente: 'Primeros pasos: los cinco pasos y lo que deduce cada uno.',
+                fuente: `Primeros pasos: los ${onb.pasos.length} pasos y lo que deduce cada uno.`,
                 acciones: [{ label: 'Ir a Primeros pasos', variante: 'primary', title: 'Abra el primer paso pendiente', onClick: () => setVista('onboarding') }],
               })}>Qué hace con cada cosa</Button>
           </div>

@@ -240,6 +240,18 @@ export const leerOnboarding = () => pedir<OnboardingRemoto>('/api/onboarding');
 export const guardarOnboarding = (cuerpo: { datos?: Record<string, unknown>; hechos?: number[]; arrancado?: boolean }) =>
   pedir<OnboardingRemoto>('/api/onboarding', { metodo: 'PUT', cuerpo });
 
+/**
+ * LA UBICACIÓN QUE DA EL NAVEGADOR — lo que hay detrás del botón «Usar mi ubicación» del paso «Dónde está».
+ *
+ * El navegador sólo entrega dos números (latitud y longitud). El back los traduce a ciudad y país con
+ * OpenStreetMap —la misma fuente que usa el estudio del mapa— y devuelve el nombre del país además de su
+ * código. Las coordenadas no se guardan: lo que queda del negocio es su ciudad y su país.
+ */
+export const ubicacionPorCoordenadas = (lat: number, lon: number) =>
+  pedir<{ ok: boolean; ciudad: string; pais: string; pais_codigo: string; mostrado: string }>(
+    '/api/ubicacion', { metodo: 'POST', cuerpo: { lat, lon } },
+  );
+
 export const arrancarMotor = (pin?: string) => pedir<{ ok: boolean }>('/api/onboarding/arrancar', {
   metodo: 'POST',
   ...(pin ? { cuerpo: { pin } } : {}),

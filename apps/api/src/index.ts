@@ -5,6 +5,7 @@ import Fastify from 'fastify';
 import { Pool } from 'pg';
 import { migrate } from './lib/schema.js';
 import { healthRoutes } from './routes/health.js';
+import { recuperarMontajes } from './services/video.js';
 import { authRoutes } from './routes/auth.js';
 import { onboardingRoutes } from './routes/onboarding.js';
 import { motorRoutes } from './routes/motor.js';
@@ -23,6 +24,7 @@ import { generateRoutes } from './routes/generate.js';
 import { predictRoutes } from './routes/predict.js';
 import { webhookRoutes } from './routes/webhook.js';
 import { entradaRoutes } from './routes/entrada.js';
+import { ubicacionRoutes } from './routes/ubicacion.js';
 import { programarInvestigacionDiaria } from './services/programador.js';
 import { archivosRoutes } from './routes/archivos.js';
 
@@ -104,11 +106,53 @@ export async function buildApp() {
   webhookRoutes(app, db);
   // Los códigos de entrada: la puerta por la que el negocio entra al producto.
   entradaRoutes(app);
+  ubicacionRoutes(app);
   // Los archivos del negocio. Se espera a que termine porque adentro registra el lector de
   // multipart/form-data y las rutas tienen que quedar puestas después de eso.
   await archivosRoutes(app);
 
   try { await migrate(db); } catch (e: any) { app.log.warn(`migration pending: ${e.message}`); }
+
+  // LO QUE QUEDÓ A MEDIAS SE DECLARA CORTADO, NO SE DEJA GIRANDO.
+  // El montaje del video vive EN EL PROCESO (una promesa encadenada): si el back se reinicia, esa promesa
+  // muere y la pieza queda sin archivo y sin motivo — el panel muestra «armando el video…» para siempre,
+  // porque un aro que gira no tiene tope. Al arrancar no puede haber ningún montaje en curso (el proceso es
+  // nuevo), así que cualquier pieza de video con material, sin arte y sin motivo ES un resto: se le escribe
+  // la causa. Es el mismo criterio de todo el motor: sin artefacto tiene que quedar la razón.
+  try {
+    const restos = await db.query(
+      `UPDATE piezas SET generacion = jsonb_set(generacion, '{video_error}', $1::jsonb)
+        WHERE generacion->>'tipo_de_contenido' = 'video'
+          AND generacion ? 'imagen_generada'
+          AND NOT (generacion ? 'video_generado')
+          AND NOT (generacion ? 'video_error')
+        RETURNING id`,
+      [JSON.stringify({ motivo: 'el montaje se cortó: el servidor se reinició antes de terminarlo', cuando: new Date().toISOString() })],
+    );
+    if (restos.rowCount) app.log.warn(`montajes que quedaron cortados por un reinicio: ${restos.rowCount}`);
+  } catch (e: any) { app.log.warn(`no se pudieron declarar los montajes cortados: ${e.message}`); }
+
+  // LO MISMO CON UNA CORRIDA: la ronda que estaba trabajando cuando el back se reinició YA NO ESTÁ
+  // CORRIENDO (la promesa murió con el proceso). Si se deja en 'corriendo', el panel muestra una línea de
+  // carga que avanza para siempre. Se declara cortada con su motivo, y el panel lo dice tal cual.
+  try {
+    const corridasCortadas = await db.query(
+      `UPDATE corridas SET estado = 'cortada', terminada_at = now(),
+              detalle = 'el motor se reinició mientras esta corrida trabajaba: no terminó',
+              avance = avance || $1::jsonb
+        WHERE estado = 'corriendo' RETURNING id`,
+      [JSON.stringify([{ paso: 'Se cortó', detalle: 'el servidor se reinició antes de terminarla', cuando: new Date().toISOString() }])],
+    );
+    if (corridasCortadas.rowCount) app.log.warn(`corridas que quedaron cortadas por un reinicio: ${corridasCortadas.rowCount}`);
+  } catch (e: any) { app.log.warn(`no se pudieron declarar las corridas cortadas: ${e.message}`); }
+
+  // Y LOS MONTAJES CORTADOS SE VUELVEN A ARMAR SOLOS. Ese corte se le muestra al dueño como «el video no
+  // salió» en una pieza que tiene sus imágenes pintadas y pagadas: antes había que volver a pagar una ronda
+  // entera para verlo. No se espera (montar tarda minutos): arranca de fondo y la pieza se actualiza cuando
+  // el video está listo.
+  void recuperarMontajes(db, (m) => app.log.info(`[montajes] ${m}`))
+    .then((n) => { if (n) app.log.info(`montajes recuperados al arrancar: ${n}`); })
+    .catch((e: any) => app.log.warn(`no se pudieron recuperar los montajes: ${e.message}`));
 
   // Qué se cargó del archivo de claves del servidor: se dicen los NOMBRES, nunca los valores.
   app.log.info(`entorno: ${entorno.puestas.length} ${entorno.puestas.length === 1 ? 'variable cargada' : 'variables cargadas'} de ${entorno.archivo}`

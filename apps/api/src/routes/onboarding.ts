@@ -2,7 +2,37 @@ import type { FastifyInstance } from 'fastify';
 import type { Pool } from 'pg';
 import { execute, query } from '../lib/db.js';
 import { exigirSesion } from '../lib/auth.js';
+import { nombreDePais, codigoDePais } from '../lib/paises.js';
 import { crearPublico } from '../services/mirofish.js';
+
+/**
+ * LA ZONA DEL NEGOCIO, tal como la declaró el cliente en el asistente.
+ *
+ * Es el dato que el motor geocodifica para CONTAR EL MERCADO REAL (`leerMapaReal`, en `agentes.ts`) y lo
+ * que decide si a ese negocio se le corre el estudio del mapa. Hasta ahora la columna `zona` sólo la
+ * escribía la inferencia de Vera: el cliente declaraba su ciudad y su país en Primeros pasos, se guardaban
+ * en el JSON del asistente, y el estudio del mapa respondía «falta la ciudad o zona del negocio» — el
+ * motor trabajaba a ciegas aunque el cliente ya lo hubiera dicho.
+ *
+ * Reglas, en el orden en que se deciden:
+ *   · «Global» es una respuesta explícita: no hay ciudad que ubicar y se devuelve vacío (el mapa no corre).
+ *   · Ciudad + país → «Ciudad, País», que es lo que Nominatim ubica en un solo intento.
+ *   · Sólo ciudad → la ciudad. Sólo país → el país (el conteo sale de la caja del país).
+ *   · Sin nada declarado → vacío, y NO se pisa lo que ya hubiera (una zona deducida del material sigue
+ *     valiendo: el cliente no tiene que repetir lo que el motor ya sabía).
+ */
+export function zonaDeclarada(datos: Record<string, unknown> | undefined): string {
+  const d = datos ?? {};
+  const ciudad = String(d.ciudad ?? '').trim();
+  const paises = (Array.isArray(d.paises) ? d.paises : [String(d.paises ?? '')])
+    .map(p => codigoDePais(p)).filter(Boolean);
+  const pais = paises.length ? nombreDePais(paises[0]) : '';
+  if (String(d.alcance_comercial ?? '').trim().toLowerCase() === 'global') return '';
+  if (ciudad && pais) return `${ciudad}, ${pais}`;
+  if (ciudad) return ciudad;
+  if (pais) return pais;
+  return '';
+}
 
 // =============================================================================================
 // ONBOARDING — los cinco pasos guardados de verdad.
@@ -50,6 +80,16 @@ export async function onboardingRoutes(app: FastifyInstance, db: Pool) {
       const desc = typeof b.datos.descripcion === 'string' ? b.datos.descripcion.trim() : '';
       if (nombre) await execute('UPDATE businesses SET name = $2 WHERE id = $1', [u.business_id, nombre]);
       if (desc) await execute('UPDATE businesses SET description = $2 WHERE id = $1', [u.business_id, desc]);
+
+      // LA ZONA DEL NEGOCIO — la columna que el motor geocodifica para contar el mercado real.
+      // Se lee el JSON YA MEZCLADO y no lo que vino en esta petición: el asistente guarda campo por campo
+      // (mientras el cliente escribe) y la ciudad puede haber llegado en un guardado anterior al del país.
+      try {
+        const guardado = await query<{ datos: Record<string, unknown> }>(
+          'SELECT datos FROM onboarding WHERE business_id = $1', [u.business_id]);
+        const zona = zonaDeclarada(guardado[0]?.datos);
+        if (zona) await execute('UPDATE businesses SET zona = $2 WHERE id = $1', [u.business_id, zona]);
+      } catch { /* la zona no puede hacer fallar el guardado del paso: se reintenta en el próximo */ }
     }
 
     if (Array.isArray(b.hechos)) {

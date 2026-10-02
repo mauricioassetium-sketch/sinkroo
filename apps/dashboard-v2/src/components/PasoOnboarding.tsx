@@ -3,7 +3,10 @@ import { Badge, Button, Progress } from '../components/ui';
 import { EstadoVacio } from '../components/EstadoVacio';
 import {
   I_Check, I_Upload, I_Image, I_Film, I_File, I_Shield, I_ArrowRight, I_X, I_Link, I_Plus, I_Play, I_Zap, I_Lock,
+  I_Globe,
 } from '../components/icons';
+import { ubicacionPorCoordenadas } from '../api/cliente';
+import { nombreDePais, codigoDePais } from '../data/paises';
 import { useOnboarding } from '../lib/onboarding';
 import { usePlan } from '../lib/plan';
 import { useDatos, type IntegracionRed } from '../api/datos';
@@ -31,6 +34,10 @@ const IconoArchivo = ({ tipo }: { tipo: 'doc' | 'imagen' | 'video' | 'audio' | '
 export function CamposPaso({ paso }: { paso: PasoOnb }) {
   const onb = useOnboarding();
   const [pegado, setPegado] = useState('');
+  // El estado del botón de ubicación: pide permiso al navegador y el back traduce las coordenadas a
+  // ciudad y país. Se dice SIEMPRE en qué quedó (pidiendo, listo, o no se pudo): un botón que no dice
+  // nada deja al cliente sin saber si tiene que escribir la ciudad a mano.
+  const [ubi, setUbi] = useState<{ estado: 'quieto' | 'pidiendo' | 'listo' | 'error'; texto: string }>({ estado: 'quieto', texto: '' });
   // Lo que se está escribiendo en cada campo de enlaces, antes de agregarlo a la lista.
   const [texto, setTexto] = useState<Record<string, string>>({});
 
@@ -96,6 +103,63 @@ export function CamposPaso({ paso }: { paso: PasoOnb }) {
               <I_Check size={11} /> <b>{op}</b> — {campo.detalle?.[op]}
             </div>
           ))}
+        </div>
+      );
+    }
+
+    // LA UBICACIÓN DEL NEGOCIO — el botón que le pregunta al navegador dónde está, más los dos campos
+    // para escribirlo a mano. Los dos caminos escriben lo mismo (`ciudad` y `paises`), que es lo que el
+    // motor lee para ubicar el lugar y contar el mercado real. El país se guarda como código de dos
+    // letras cuando se reconoce (que es lo que entiende la lectura de anuncios) y como el texto escrito
+    // cuando no, porque el back sabe resolver los dos.
+    if (campo.tipo === 'ubicacion') {
+      const ciudad = String(onb.datos.ciudad || '');
+      const paises = Array.isArray(onb.datos.paises) ? (onb.datos.paises as string[]) : [];
+      const pais = paises[0] ? String(paises[0]) : '';
+
+      const pedirUbicacion = () => {
+        if (!('geolocation' in navigator)) {
+          setUbi({ estado: 'error', texto: 'Este navegador no sabe decir dónde está: escriba la ciudad y el país.' });
+          return;
+        }
+        setUbi({ estado: 'pidiendo', texto: '' });
+        navigator.geolocation.getCurrentPosition(
+          async ({ coords }) => {
+            try {
+              const r = await ubicacionPorCoordenadas(coords.latitude, coords.longitude);
+              if (r.ciudad) onb.escribir('ciudad', r.ciudad);
+              if (r.pais_codigo) onb.escribir('paises', [r.pais_codigo]);
+              setUbi({ estado: 'listo', texto: r.mostrado || [r.ciudad, r.pais].filter(Boolean).join(', ') });
+            } catch {
+              setUbi({ estado: 'error', texto: 'El navegador dijo dónde está, pero el mapa no lo pudo leer: escriba la ciudad y el país.' });
+            }
+          },
+          () => setUbi({ estado: 'error', texto: 'No nos dio permiso para usar su ubicación. Escríbala acá abajo: sirve igual.' }),
+          { timeout: 12000, maximumAge: 600000 },
+        );
+      };
+
+      return (
+        <div className="onb-ubicacion">
+          <div className="row" style={{ gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <Button variant="ghost" className="btn-sm" title="Le pide al navegador su posición y el motor la traduce a ciudad y país. No se guardan las coordenadas, sólo el lugar."
+              onClick={pedirUbicacion}>
+              <I_Globe size={13} /> {ubi.estado === 'pidiendo' ? 'Buscando…' : 'Usar mi ubicación'}
+            </Button>
+            {ubi.estado === 'listo' && <span className="tiny" style={{ color: 'var(--green)' }}><I_Check size={11} /> {ubi.texto}</span>}
+            {ubi.estado === 'error' && <span className="tiny" style={{ color: 'var(--red)' }}>{ubi.texto}</span>}
+          </div>
+          <div className="row" style={{ gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+            <input className="input" placeholder="Su ciudad (ej. Dubái)" value={ciudad}
+              onChange={e => onb.escribir('ciudad', e.target.value)} />
+            <input className="input" style={{ maxWidth: 240 }} placeholder="Su país (ej. Emiratos Árabes Unidos)"
+              value={pais ? nombreDePais(pais) : ''}
+              onChange={e => {
+                const t = e.target.value;
+                // Se guarda el código si el país se reconoce (es lo que el motor compara) y lo escrito si no.
+                onb.escribir('paises', t.trim() ? [codigoDePais(t) || t.trim()] : []);
+              }} />
+          </div>
         </div>
       );
     }

@@ -4,6 +4,7 @@ import { MODOS, PLANES, type Modo } from '../data/demo';
 import { Button, Modal, Progress } from './ui';
 import { usePerfil, inicialesDe } from '../lib/perfil';
 import { useDatos } from '../api/datos';
+import { ListaDeTrabajo, useMotorVivo } from './MotorTrabajando';
 import { useOnboarding } from '../lib/onboarding';
 import { PerfilModal } from './PerfilModal';
 import { PersonalizarPanel } from './PersonalizarPanel';
@@ -48,6 +49,12 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
   onSalir?: () => void;
 }) {
   // `perfilVisible` es el perfil guardado MÁS la edición en curso: así el logo y los colores que
+  // Lo que el sistema está haciendo ahora mismo: lo dice el back (una sola pregunta para toda la app).
+  const motorVivo = useMotorVivo();
+  const motorTrabajando = motorVivo && motorVivo.corriendo
+    ? { que: motorVivo.paso || 'trabajando', detalle: motorVivo.detalle }
+    : null;
+
   // el cliente está eligiendo en el pop-up de personalización se ven ya en el sidebar, la barra de
   // arriba y el hero, sin esperar a que guarde.
   const { perfilVisible: perfil } = usePerfil();
@@ -307,9 +314,15 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
 
             <div className="ticker" style={{ marginLeft: 8 }}>
               <span className="ticker-label">MOTOR</span>
-              <span className="ticker-text">
-                {esReal ? 'Su negocio está conectado al motor: lo que hace aparece en Hoy' : 'Conecte su cuenta para ver acá lo que hace el motor'}
-              </span>
+              {/* La barra dice QUÉ está haciendo el motor cuando está trabajando; si no, lo de siempre. */}
+              {motorTrabajando?.que
+                ? <span className="ticker-text ticker-vivo">
+                    <span className="mt-spin" />
+                    <b>{motorTrabajando.que}</b>{motorTrabajando.detalle ? <>: {motorTrabajando.detalle}</> : null}
+                  </span>
+                : <span className="ticker-text">
+                    {esReal ? 'Su negocio está conectado al motor: lo que hace aparece en Hoy' : 'Conecte su cuenta para ver acá lo que hace el motor'}
+                  </span>}
             </div>
 
             <div className="topbar-right">
@@ -330,6 +343,13 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
               </div>
             </div>
           </div>
+
+          {/* ---------- LO QUE EL SISTEMA ESTÁ HACIENDO AHORA, EN LÍNEAS ----------
+              El dueño: «cada vez que el sistema esté haciendo algo debe salir en la barra del menú, así
+              tenemos visualización total de lo que está trabajando… si hay varias tareas, que salgan varias
+              líneas de carga al mismo tiempo». Siempre visible en toda la app; sin nada en marcha no ocupa
+              un solo píxel. */}
+          <ListaDeTrabajo />
 
           {/* ---------- BARRA DEL MOTOR: siempre visible en toda la app ---------- */}
           <div className="ebar">
@@ -397,7 +417,7 @@ function tituloVista(v: Vista) {
 function subtituloVista(v: Vista) {
   return ({
     hoy: 'Lo que el motor hizo, lo que espera de usted y lo que necesita su atención',
-    onboarding: 'Cinco pantallas cortas y el motor queda trabajando',
+    onboarding: 'Seis pantallas cortas y el motor queda trabajando',
     campanas: 'Cada campaña con el veredicto de los 5 jueces y sus piezas',
     conversaciones: 'Todo lo que sus agentes contestan, con el contexto de cada cliente',
     mercado: 'Qué está haciendo su competencia y por dónde conviene ir',

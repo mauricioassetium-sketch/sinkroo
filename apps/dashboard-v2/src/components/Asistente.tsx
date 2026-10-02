@@ -132,7 +132,7 @@ export function Asistente({ sesion, setVista }: { sesion: Sesion; setVista: (v: 
                     ? 'Un momento: el panel está leyendo si su código de entrada ya quedó registrado.'
                     : faltaCodigo
                       ? 'Apagado: falta su código de entrada. Lo recibe de quien le instaló Sinkroo; escríbalo aquí arriba y valídelo. Sin él el asistente no avanza y el motor no arranca.'
-                      : 'Empiece a llenar los datos del negocio: son cinco preguntas cortas que el motor usa para arrancar.'}
+                      : `Empiece a llenar los datos del negocio: son ${onb.pasos.length} preguntas cortas que el motor usa para arrancar.`}
                   onClick={siguiente}>Continuar <I_ArrowRight size={14} /></Button>
                 <span className="tiny muted">{noAvanza
                   ? <>{faltaCodigo ? 'falta el código de entrada' : 'leyendo su código de entrada…'} · sin él no se puede seguir</>

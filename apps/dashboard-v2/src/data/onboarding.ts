@@ -4,7 +4,7 @@
 // POR QUÉ ESTÁ ARMADO ASÍ
 //
 //  1. Sigue el mismo patrón que Campañas: un paso por pantalla con el stepper arriba. El dueño
-//     rechazó el scroll largo; cinco pantallas cortas se terminan, una larga se abandona.
+//     rechazó el scroll largo; seis pantallas cortas se terminan, una larga se abandona.
 //  2. Pide SOLO lo que el motor no puede deducir. Todo lo demás va con su `infiere`: la frase que
 //     dice de dónde lo saca («de su Instagram saco quién le comenta y cada cuánto publica»). Así
 //     el cliente ve que no está llenando un formulario: está corrigiendo lo que el motor ya sabe.
@@ -52,7 +52,7 @@ export const ARCHIVOS_ACEPTADOS_BACK =
 export type CampoOnb = {
   id: string;
   etiqueta: string;
-  tipo: 'texto' | 'texto-largo' | 'numero' | 'chips' | 'chips-multi' | 'material' | 'docs' | 'links';
+  tipo: 'texto' | 'texto-largo' | 'numero' | 'chips' | 'chips-multi' | 'material' | 'docs' | 'links' | 'ubicacion';
   ayuda: string;
   opciones?: string[];
   detalle?: Record<string, string>;
@@ -199,7 +199,33 @@ export const PASOS_ONB: PasoOnb[] = [
     nota: 'Con el nombre y la descripción alcanza: lo demás se puede agregar después.',
   },
   {
-    n: 2, t: 'Qué vende', d: 'Productos y precios', icono: '💵',
+    n: 2, t: 'Dónde está', d: 'Su ciudad y su país', icono: '📍',
+    titular: '¿Dónde está su negocio?',
+    paraQue: 'Con su ciudad y su país el motor cuenta el mercado real que tiene alrededor —cuántos competidores hay a su alcance y de qué tipo— y lee los anuncios que se pautan en ese mercado. Sin esto el estudio sale global, que no sirve para decidir dónde pautar.',
+    infiere: 'Si no lo pone, lo intenta sacar de sus páginas y sus redes. Si no lo consigue, trabaja global y se lo dice.',
+    minima: [],
+    campos: [
+      // ESTE BLOQUE ES EL ARREGLO DEL HUECO. Antes había tres campos acá (continente, país y ciudad) y el
+      // de país no dibujaba nada: era una lista de opciones sin opciones, así que el cliente no encontraba
+      // dónde poner su país por ningún lado, y el motor se quedaba sin ciudad para contar el mercado.
+      // Ahora es un solo bloque que pide los dos datos y los llena solo con la ubicación del navegador.
+      { id: 'ubicacion', etiqueta: 'Su ciudad y su país', tipo: 'ubicacion',
+        ayuda: 'Toque «Usar mi ubicación» y el navegador le dice al motor dónde está. O escríbalo: da igual, el motor lo usa igual.' },
+      { id: 'alcance_comercial', etiqueta: 'Hasta dónde vende', tipo: 'chips', ayuda: 'Si no elige nada, el sistema trabaja GLOBAL: sin ciudad, sin país y sin continente. Elija sólo si su negocio opera en un lugar concreto.',
+        opciones: ['Global', 'Un continente', 'Un país', 'Una ciudad'],
+        detalle: {
+          'Global': 'Vende en varias jurisdicciones: el sistema no ata su mercado a ningún país ni ciudad.',
+          'Un continente': 'Vende en varios países del mismo continente: elija cuál abajo.',
+          'Un país': 'Vende en un solo país: dígalo arriba.',
+          'Una ciudad': 'Vende en una ciudad: dígala arriba. Es el caso de una peluquería o un restaurante.',
+        } },
+      { id: 'continentes', etiqueta: 'Si vende en un continente, ¿cuál?', tipo: 'chips-multi', ayuda: 'El sistema lee el mercado en los países principales de ese continente. Puede marcar varios.',
+        opciones: ['Latinoamérica', 'América del Norte', 'Europa', 'Medio Oriente', 'Asia', 'África', 'Oceanía'] },
+    ],
+    nota: 'La ciudad es la que más cambia el estudio: con ella el motor cuenta los negocios que tiene alrededor y de qué tipo son.',
+  },
+  {
+    n: 3, t: 'Qué vende', d: 'Productos y precios', icono: '💵',
     titular: 'Qué vende y a cuánto',
     paraQue: 'Sin precios, el motor no sabe cuánto puede gastar por venta.',
     infiere: 'Con su tienda conectada, los precios y el stock se leen de ahí y se mantienen solos.',
@@ -216,7 +242,7 @@ export const PASOS_ONB: PasoOnb[] = [
     nota: 'Los precios se pueden cargar después.',
   },
   {
-    n: 3, t: 'Su material', d: 'Suba lo que tenga', icono: '📎',
+    n: 4, t: 'Su material', d: 'Suba lo que tenga', icono: '📎',
     titular: 'Suba lo que ya tiene',
     paraQue: 'Con esto el motor escribe con su información real: precios, promesas, condiciones y su tono, tal como usted los tiene escritos.',
     infiere: 'Si no sube nada, arranca con su descripción y lo que encuentre en sus páginas y redes.',
@@ -229,7 +255,7 @@ export const PASOS_ONB: PasoOnb[] = [
     nota: 'Los archivos se pueden sacar cuando quiera y nada se publica con ellos sin que lo vea antes: primero pasa por el panel.',
   },
   {
-    n: 4, t: 'Cómo trabaja', d: 'Tono, presupuesto y frenos', icono: '🎚️',
+    n: 5, t: 'Cómo trabaja', d: 'Tono, presupuesto y frenos', icono: '🎚️',
     titular: 'Cómo quiere que trabaje',
     paraQue: 'Define cómo suena cada pieza, cuánto puede gastar y qué no puede hacer nunca sin preguntarle. Es lo que le permite dejarlo trabajando sin mirarlo.',
     infiere: 'El tono se ajusta solo con sus conversaciones: si habla corto y directo, las piezas salen así.',
@@ -242,18 +268,9 @@ export const PASOS_ONB: PasoOnb[] = [
         opciones: ['Vender más', 'Clientes nuevos', 'Recuperar', 'Que lo conozcan'] },
       { id: 'presupuesto', etiqueta: 'Cuánto quiere invertir por día', tipo: 'chips', ayuda: 'Es un techo: el motor no lo pasa y no lo mueve sin su permiso.',
         opciones: PRESUPUESTOS, detalle: DETALLE_PRESUPUESTO },
-      { id: 'alcance_comercial', etiqueta: 'Hasta dónde vende', tipo: 'chips', ayuda: 'Si no elige nada, el sistema trabaja GLOBAL: sin ciudad, sin país y sin continente. Elija solo si su negocio opera en un lugar concreto.',
-        opciones: ['Global', 'Un continente', 'Un país', 'Una ciudad'],
-        detalle: {
-          'Global': 'Vende en varias jurisdicciones: el sistema no ata su mercado a ningún país ni ciudad.',
-          'Un continente': 'Vende en varios países del mismo continente: elija cuáles abajo.',
-          'Un país': 'Vende en un solo país: dígalo abajo.',
-          'Una ciudad': 'Vende en una ciudad: dígala abajo. Es el caso de una peluquería o un restaurante.',
-        } },
-      { id: 'continentes', etiqueta: 'Si vende en un continente, ¿cuál?', tipo: 'chips-multi', ayuda: 'El sistema lee el mercado en los países principales de ese continente. Puede marcar varios.',
-        opciones: ['Latinoamérica', 'América del Norte', 'Europa', 'Medio Oriente', 'Asia', 'África', 'Oceanía'] },
-      { id: 'paises', etiqueta: 'Si vende en un país, ¿cuál?', tipo: 'chips-multi', ayuda: 'Escriba el código de dos letras (CO, US, AE…) o el nombre: el sistema lo entiende. Puede marcar varios.' },
-      { id: 'ciudad', etiqueta: 'Si vende en una ciudad, ¿cuál?', tipo: 'texto', ayuda: 'Vacío si su negocio es global o de varios países: una ciudad se usa solo para leer el mercado local.' },
+      // LA UBICACIÓN SE MUDÓ AL PASO 2 («Dónde está»). Estaba acá abajo, entre el tono y la autonomía, y
+      // era imposible de encontrar: el cliente declaraba su ciudad en un paso que habla de otra cosa. Los
+      // cuatro campos (alcance, continente, país y ciudad) viven ahora en su propio paso y con su botón.
       { id: 'canales', etiqueta: 'Dónde quiere que trabaje', tipo: 'chips-multi', ayuda: 'WhatsApp cierra la conversación; las redes llevan la gente a ella. Puede marcar varias.',
         opciones: ['WhatsApp', 'Instagram', 'Facebook', 'TikTok'] },
       { id: 'publicaciones_semana', etiqueta: 'Cuánto quiere publicar en sus redes', tipo: 'chips', ayuda: 'Es contenido propio, no pauta: mantener las redes activas entre campaña y campaña.',
@@ -271,7 +288,7 @@ export const PASOS_ONB: PasoOnb[] = [
     nota: 'Los frenos ya vienen puestos y no se tocan desde aquí: no publica de noche, no manda más de un mensaje por persona por día y no toca el presupuesto sin permiso.',
   },
   {
-    n: 5, t: 'Conectar', d: 'Dónde publica', icono: '🔌',
+    n: 6, t: 'Conectar', d: 'Dónde publica', icono: '🔌',
     titular: 'Dónde publica y con qué',
     paraQue: 'El sistema todavía no publica en las redes. Cuando lo haga, será en las cuentas del negocio, nunca en las de Sinkroo: sin la cuenta conectada no va a publicar ahí.',
     infiere: 'Si ya usa el mismo email en su tienda y en Instagram, el motor reconoce la marca y avisa antes de conectar nada.',
@@ -285,7 +302,7 @@ export const PASOS_ONB: PasoOnb[] = [
 
 /** El paso que el cliente tiene que terminar ahora: el primero sin completar. */
 export const siguientePaso = (hechos: number[]) =>
-  PASOS_ONB.find(p => !hechos.includes(p.n))?.n || 5;
+  PASOS_ONB.find(p => !hechos.includes(p.n))?.n || 6;
 
 // =============================================================================================
 // LA BIENVENIDA — lo primero que ve el cliente después de entrar
@@ -318,7 +335,7 @@ export const BIENVENIDA = {
     { t: 'Al mercado exacto', s: 'El motor apunta a quien de verdad le compra.' },
   ],
   // El pie de la bienvenida: cuánto cuesta en tiempo y qué hay que saber.
-  pie: ['5 pasos', '4 minutos', 'Cero conocimiento técnico'],
+  pie: ['6 pasos', '4 minutos', 'Cero conocimiento técnico'],
   reglas: [
     'Nada se publica sin pasar por el panel ni sin su permiso.',
   ],
