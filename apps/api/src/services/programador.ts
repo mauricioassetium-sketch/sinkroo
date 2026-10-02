@@ -63,7 +63,11 @@ export async function loQueDedujoVera(db: Pool, businessId: string): Promise<{ p
     // Primero el vocabulario del rubro (es el que nombra la categoría); si no hay, las palabras propias.
     const delVocabulario = (res.palabras_clave ?? []).filter(p => p.de === 'el vocabulario del rubro').map(p => p.palabra);
     const propias = (res.palabras_clave ?? []).map(p => p.palabra);
-    const palabras = [...new Set([...delVocabulario, ...propias])].filter(p => p.length >= 3).slice(0, 4);
+    // LA CATEGORÍA DEL NEGOCIO VA PRIMERO. Es el término que dice a qué se dedica (lo nombra el modelo en
+    // `categoriaDelNegocio`), así que la lectura de anuncios sale con él y no con una palabra del copy: un
+    // servicio de lujo se lee como «luxury concierge», no como «defi».
+    const deLaCategoria = (res.palabras_clave ?? []).filter(p => p.de === 'la categoría del negocio').map(p => p.palabra);
+    const palabras = [...new Set([...deLaCategoria, ...delVocabulario, ...propias])].filter(p => p.length >= 3).slice(0, 4);
     const paises = [...new Set((res.lugares_que_nombra ?? []).map(l => PAIS_DE[String(l).toLowerCase().trim()]).filter(Boolean))].slice(0, 3);
     return { palabras, paises };
   } catch { return { palabras: [], paises: [] }; }

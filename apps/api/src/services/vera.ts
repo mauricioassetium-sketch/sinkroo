@@ -281,8 +281,18 @@ export async function buscarSimilares(termino: string, cuantas = 6): Promise<{ n
 export function categoriaPertinente(resumen: string, termino: string): boolean {
   const t = normal(resumen);
   const propio = normal(termino).split(' ')[0];
+  // UNA PÁGINA DE DESAMBIGUACIÓN NO ES UNA CATEGORÍA. «Defi» devolvía una lista de cosas distintas que se
+  // llaman así —un asteroide, un partido belga— y nombraba «decentralized finance», así que pasaba el
+  // filtro y el motor buscaba el mercado con eso. Medido con un negocio de lujo en Dubái: la categoría
+  // salía «defi» y el informe decía que su categoría no existía en su mercado, con el mercado lleno.
+  if (/may refer to|puede referirse a|puede hacer referencia|desambiguacion|disambiguation|most commonly refers/.test(t)) return false;
+  // Se acepta una categoría cuando el artículo habla de una ACTIVIDAD o de una TECNOLOGÍA, no sólo de
+  // finanzas: un negocio de lujo, una agencia o un oficio también tienen su categoría y su mercado.
   const acepta = ['activo', 'token', 'blockchain', 'digital', 'financ', 'tecnolog', 'invers', 'mercado',
-    'propiedad', 'energ', 'carbono', 'verific', 'infraestructura', 'regulacion', 'contrato inteligente'];
+    'propiedad', 'energ', 'carbono', 'verific', 'infraestructura', 'regulacion', 'contrato inteligente',
+    'servicio', 'empresa', 'negocio', 'profesion', 'oficio', 'cliente', 'industria', 'comercial', 'hotel',
+    'turismo', 'lujo', 'agencia', 'consultor', 'gestion', 'logistica', 'construccion', 'salud',
+    'educacion', 'transporte', 'inmobiliari', 'seguro', 'banca', 'pago', 'venta', 'producto', 'marca'];
   const rechaza = ['etnia', 'grupo etnico', 'bantu', 'dia de la semana', 'pelicula', 'cancion', 'album',
     'lengua', 'idioma', 'pueblo indigena', 'planta', 'animal', 'deporte', 'futbol', 'vehiculo'];
   return propio.length > 1 && t.includes(propio) && acepta.some(a => t.includes(a)) && !rechaza.some(r => t.includes(r));

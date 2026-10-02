@@ -16,7 +16,7 @@ import { capaDeOficio } from './oficio.js';
 import { planosDelGuion } from './planos.js';
 import { generarImagen, promptVisual, motivoDelUltimoFalloDeImagen, motorDeImagenEnUso } from './imagenes.js';
 import { promptDeImagen, motorDeImagen, tarjetasDelCuadro, textoDeUnSoloCuadro, textoDeMovimiento, cineDeLaPieza, PORQUE_DE_LAS_TARJETAS } from './prompts-por-motor.js';
-import { escenaEnIngles, movimientoDeLaEscena } from './escritor.js';
+import { escenaEnIngles, movimientoDeLaEscena, categoriaDelNegocio } from './escritor.js';
 import { generarVideo, motivoDelUltimoFallo, carpetaDeVideos } from './video.js';
 import { animarFoto, armarPieza, hayMotorDeVideo, liberarElMotorDeImagen } from './video-animado.js';
 import fs from 'node:fs';
@@ -505,12 +505,46 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
     archivosLeidos.texto.slice(0, 4000), ...paginas.map(p => `${p.titulo} ${p.descripcion} ${p.texto}`)].join(' '), 12);
   // Se prueban los términos del MÁS específico al más corto, y se acepta el primero que dé una categoría
   // QUE TENGA QUE VER con el negocio. Un término corto y ambiguo («rwa») devuelve cualquier cosa.
-  const candidatos = claves.filter(c => c.de === 'el vocabulario del rubro').map(c => c.palabra)
-    .sort((a, b) => b.split(' ').length - a.split(' ').length || b.length - a.length).slice(0, 8);
+  // QUÉ TÉRMINOS SE PRUEBAN: primero el vocabulario del rubro (los que ya se conocen) y DESPUÉS los que
+  // nombra el propio material. Sin los segundos, un negocio que no es del montón —un servicio de lujo, una
+  // agencia, un oficio— no encontraba su categoría: sólo se probaban las palabras de la lista, así que o
+  // quedaba «sin término» o quedaba con una que no era. Medido: un servicio de lujo en Dubái terminó con
+  // «defi» (una palabra de su material) y el motor salió a buscar su mercado con eso.
+  const delVocabulario = claves.filter(c => c.de === 'el vocabulario del rubro').map(c => c.palabra);
+  const delMaterial = claves.filter(c => c.de === 'el material del negocio').map(c => c.palabra);
+  const candidatos = [...new Set([...delVocabulario, ...delMaterial])]
+    .sort((a, b) => b.split(' ').length - a.split(' ').length || b.length - a.length).slice(0, 10);
+  // LA CATEGORÍA, PRIMERO COMO LA DIRÍA UNA PERSONA. Se le pregunta al modelo a qué se dedica el negocio, en
+  // dos palabras y en los dos idiomas (`categoriaDelNegocio`), porque picar palabras del material es lo que
+  // hacía que un servicio de lujo terminara buscando su mercado con «defi». Si el modelo no contesta, se
+  // sigue con los términos del vocabulario y del material, que es como se hacía antes.
+  const dicha = await categoriaDelNegocio({
+    nombre: ctx.nombre, descripcion: ctx.descripcion, queHace: leido.queHace, lugares: leido.lugares,
+  });
   let categoria: Awaited<ReturnType<typeof leerWikipedia>> | null = null;
   let termino = '';
   let similares: { nombre: string; que: string; url: string }[] = [];
-  for (const t of candidatos) {
+  // La frase del modelo primero y, si no tiene artículo, sus palabras: «luxury concierge» no está en la
+  // enciclopedia pero «concierge» sí, y es la que nombra la categoría. La última palabra primero, que en
+  // inglés es el sustantivo («luxury concierge» → «concierge»).
+  const delModelo = [...new Set(([dicha?.es, dicha?.en].filter(Boolean) as string[]).flatMap(t => {
+    const suyas = String(t).split(/\s+/).filter(w => w.length >= 5);
+    return [String(t), ...[...suyas].reverse()];
+  }))];
+  for (const t of delModelo) {
+    const cat = await leerWikipedia(t);
+    if (!cat.ok || !categoriaPertinente(cat.resumen, t)) continue;
+    const sims = (await buscarSimilares(t, 8)).filter(s => similarPertinente(s.que)).slice(0, 6);
+    categoria = cat; termino = t; similares = sims;
+    if (sims.length) break;
+  }
+  // LA CATEGORÍA VIAJA CON LAS PALABRAS CLAVE. Es el término que después sale a leer la Biblioteca de
+  // Anuncios (y el que ordena la búsqueda del mercado): si se queda afuera, el lector sigue buscando con las
+  // palabras del copy y el mercado vuelve a salir con lo que no compite.
+  if (dicha?.en) claves.unshift({ palabra: dicha.en, de: 'la categoría del negocio' });
+  // Si la categoría que dijo el modelo no tiene artículo, se prueban los términos del material: es el camino
+  // de siempre y sigue sirviendo para los rubros que ya están en el vocabulario.
+  for (const t of (categoria ? [] : candidatos)) {
     const cat = await leerWikipedia(t);
     if (!cat.ok || !categoriaPertinente(cat.resumen, t)) continue;
     const sims = (await buscarSimilares(t, 8)).filter(s => similarPertinente(s.que)).slice(0, 6);
