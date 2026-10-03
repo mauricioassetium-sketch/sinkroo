@@ -2531,9 +2531,13 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
     // nuevo —medido: 12 filas para 5 hallazgos distintos— y el panel mostraba la misma frase repetida. Lo que
     // cambia entre corridas es la medición («400 anuncios» → «454»), no el hallazgo: se ACTUALIZA el que ya
     // está con el mismo tipo y título, y sólo se inserta si es la primera vez que aparece.
+    // El título lleva la medición («Su mercado tiene 454 anuncios»), así que entre corridas cambia el número:
+    // se compara el título SIN los números, para que «400 anuncios» y «454 anuncios» sean el mismo hallazgo y
+    // se actualice en vez de sumar otra fila. El título se escribe con el número nuevo.
     const actualizado = await db.query(
-      `UPDATE hallazgos SET dato = $4, porque = $5, fuente = $6, corrida_id = $7, created_at = now()
-        WHERE business_id = $1 AND tipo = $2 AND titulo = $3`,
+      `UPDATE hallazgos SET titulo = $3, dato = $4, porque = $5, fuente = $6, corrida_id = $7, created_at = now()
+        WHERE business_id = $1 AND tipo = $2
+          AND regexp_replace(titulo, '[0-9]+', '#', 'g') = regexp_replace($3, '[0-9]+', '#', 'g')`,
       [ctx.businessId, h.tipo, h.titulo, h.dato, h.porque, h.fuente, corridaId],
     );
     if (!actualizado.rowCount) {
