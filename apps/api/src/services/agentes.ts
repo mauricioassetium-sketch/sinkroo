@@ -2527,17 +2527,22 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
   }
 
   for (const h of hallazgos) {
-    // UN HALLAZGO REPETIDO NO ES UN HALLAZGO NUEVO. Cada corrida volvía a insertar lo mismo (el mismo hueco,
-    // el mismo anuncio más viejo) y el panel acumulaba copias: medido en un negocio de Dubái, 12 filas para 5
-    // hallazgos distintos, todas con la misma fecha y la misma fuente. Se inserta sólo si no estaba ya; si el
-    // dato cambió («lleva 57 días» → «58»), es otro hallazgo y entra.
-    await db.query(
-      `INSERT INTO hallazgos (business_id, tipo, titulo, dato, porque, fuente, corrida_id)
-       SELECT $1, $2, $3, $4, $5, $6, $7
-        WHERE NOT EXISTS (
-          SELECT 1 FROM hallazgos WHERE business_id = $1 AND tipo = $2 AND titulo = $3 AND dato = $4)`,
+    // UN HALLAZGO ES UNA AFIRMACIÓN CON SU DATO, NO UNA FILA POR CORRIDA. Antes cada corrida insertaba de
+    // nuevo —medido: 12 filas para 5 hallazgos distintos— y el panel mostraba la misma frase repetida. Lo que
+    // cambia entre corridas es la medición («400 anuncios» → «454»), no el hallazgo: se ACTUALIZA el que ya
+    // está con el mismo tipo y título, y sólo se inserta si es la primera vez que aparece.
+    const actualizado = await db.query(
+      `UPDATE hallazgos SET dato = $4, porque = $5, fuente = $6, corrida_id = $7, created_at = now()
+        WHERE business_id = $1 AND tipo = $2 AND titulo = $3`,
       [ctx.businessId, h.tipo, h.titulo, h.dato, h.porque, h.fuente, corridaId],
     );
+    if (!actualizado.rowCount) {
+      await db.query(
+        `INSERT INTO hallazgos (business_id, tipo, titulo, dato, porque, fuente, corrida_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [ctx.businessId, h.tipo, h.titulo, h.dato, h.porque, h.fuente, corridaId],
+      );
+    }
   }
 
   return {
