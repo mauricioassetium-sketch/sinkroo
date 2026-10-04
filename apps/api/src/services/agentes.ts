@@ -576,7 +576,11 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
 
   // Lo que descubrió se usa YA en esta corrida: los demás agentes leen de ctx.
   if (!ctx.rubro.trim() && leido.rubro) ctx.rubro = leido.rubro;
-  if (termino) ctx.categoria = termino;   // el término con el que se busca el mercado (el rubro es una frase)
+  // LA CATEGORÍA CON LA QUE SE BUSCA EL MERCADO, siempre. El término de la enciclopedia la confirma, pero no
+  // es obligatorio para buscar: cuando no hay artículo (o la enciclopedia no contesta), la categoría que
+  // nombró el modelo sirve igual. Antes, si el término quedaba vacío, el mapa salía a buscar con la frase con
+  // la que el negocio se describe y no encontraba nada.
+  ctx.categoria = termino || dicha?.en || ctx.categoria;
   if (leido.alcance !== 'sin_determinar') {
     // LA ZONA NO SE PISA CON UN TEXTO. Antes, un negocio de alcance global quedaba con la zona «negocio global
     // (varias jurisdicciones)»: la zona —que es lo único que el mapa geocodifica— se perdía y el mapa
