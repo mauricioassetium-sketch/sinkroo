@@ -42,6 +42,9 @@ export type Trabajo = {
   ronda?: number;
   /** El promedio real de las corridas anteriores: con esto la barra dice cuánto falta. */
   estimado_seg?: number | null;
+  /** Los agentes que ya dejaron su tarea en la corrida en curso. El panel los marca y saca por descarte al que
+   *  está trabajando ahora: sin esto adivinaba y, con la lista de corridas vieja, siempre daba Vera. */
+  agentes_hechos?: string[];
 };
 
 let actual: MotorVivo | null = null;

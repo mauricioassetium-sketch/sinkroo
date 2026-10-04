@@ -145,10 +145,14 @@ export async function motorRoutes(app: FastifyInstance, db: Pool) {
     const trabajos: {
       clase: string; que: string; detalle: string; paso_de?: number; pasos?: number; segundos?: number;
       ronda?: number; estimado_seg?: number | null;
+      /** Los agentes que YA dejaron su tarea en esta corrida, en orden. Con esto el panel sabe quién trabajó y,
+       *  por descarte, quién está trabajando ahora: sin esto adivinaba «el primero del equipo que no aparece» y,
+       *  con la lista de corridas vieja, ese primero era siempre Vera. */
+      agentes_hechos?: string[];
     }[] = [];
 
     const corrida = (await db.query(
-      `SELECT paso, detalle, paso_de, pasos, ronda, latido_at,
+      `SELECT id, paso, detalle, paso_de, pasos, ronda, latido_at,
               extract(epoch FROM (now() - empezada_at))::int AS segundos
          FROM corridas
         WHERE business_id = $1 AND estado = 'corriendo'
@@ -162,9 +166,14 @@ export async function motorRoutes(app: FastifyInstance, db: Pool) {
         `SELECT avg(extract(epoch FROM (terminada_at - empezada_at)))::int AS s FROM corridas
           WHERE business_id = $1 AND estado = 'terminada' AND terminada_at IS NOT NULL AND empezada_at IS NOT NULL`,
         [u.business_id]).catch(() => ({ rows: [] }))).rows[0]?.s || 0);
+      // Los que ya dejaron tarea en ESTA corrida: el panel los marca y saca por descarte al que trabaja.
+      const hechos = (await db.query<{ agente: string }>(
+        `SELECT agente FROM tareas_corrida WHERE corrida_id = $1 ORDER BY orden`,
+        [corrida.id]).catch(() => ({ rows: [] }))).rows.map(r => r.agente);
       trabajos.push({
         clase: 'corrida',
         que: corrida.paso || 'El motor está trabajando',
+        agentes_hechos: hechos,
         detalle: corrida.detalle || '',
         paso_de: Number(corrida.paso_de) || 0,
         pasos: Number(corrida.pasos) || 0,

@@ -97,7 +97,11 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
   // La barra de arriba cuenta lo que hay de verdad: un negocio nuevo no tiene nada trabajando, ni
   // decisiones, ni alarmas. Sin back no hay cuenta que leer, así que también es cero: nunca se
   // rellena con agentes, decisiones ni alarmas de ejemplo.
-  const trabajando = esReal && datos.resumen ? (datos.resumen.corridas > 0 ? 1 : 0) : 0;
+  // LAS TAREAS DEL MOTOR EN CURSO, AHORA MISMO. Antes esta línea decía «1 agentes trabajando» siempre que el
+  // negocio tuviera alguna corrida en su historia —incluso con el motor quieto— y el dueño lo vivía como una
+  // contradicción: «dice que hay un agente trabajando pero veo que todos están parados». El latido del motor es
+  // lo único que sabe si está trabajando en este momento.
+  const trabajandoAhora = motorVivo?.corriendo ? motorVivo.tareas : 0;
   const esperando = 0;
   const criticas = 0;
   const conversacionesSinLeer = esReal ? (datos.resumen?.conversaciones ?? 0) : 0;
@@ -355,7 +359,9 @@ export function Layout({ vista, setVista, children, theme, cicloTema, toast, mod
           <div className="ebar">
             <span className="ebar-dot" />
             <span className="ebar-seg">
-              <b>{trabajando} agentes</b> trabajando en su proyecto
+              {trabajandoAhora > 0
+                ? <><b>{trabajandoAhora}</b> {trabajandoAhora === 1 ? 'tarea del motor' : 'tareas del motor'} en curso ahora</>
+                : <>el motor está <b>quieto</b>: la última corrida terminó</>}
             </span>
             <span className="ebar-sep" />
             <span className="ebar-seg">

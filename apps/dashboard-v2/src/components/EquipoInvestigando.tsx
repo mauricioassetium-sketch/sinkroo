@@ -56,12 +56,32 @@ const horaDe = (iso?: string | null) => {
 };
 
 /** El resultado que dejó una tarea, en una línea: «clave: valor · clave: valor». Sin detalle, lo dice. */
-const resultadoEnLinea = (r?: Record<string, unknown>) => {
+/**
+ * LO QUE DEJÓ UNA TAREA, EN RENGLONES — la respuesta primero, la procedencia después.
+ *
+ * Antes se tomaban los primeros cuatro campos del JSON tal como vinieran, y los de control (`fuente_tipo`,
+ * `fuente`, `porque`) van primero: la respuesta de verdad del agente quedaba afuera y el dueño pedía ver «más
+ * respuestas». Ahora los campos de control van al final, y se muestran hasta seis con más texto cada uno.
+ */
+const CAMPOS_DE_CONTROL = new Set([
+  'fuente_tipo', 'fuente', 'sin_fuente', 'porque', 'falta', 'perfil_actualizado', 'zona_actualizada',
+  'como_lo_entendio', 'para_volver',
+]);
+const resultadoEnLinea = (r?: Record<string, unknown>, cuantos = 6) => {
   try {
-    const partes = Object.entries(r || {})
-      .filter(([, v]) => v !== null && v !== undefined && v !== '')
-      .map(([k, v]) => `${k}: ${typeof v === 'object' ? JSON.stringify(v) : String(v)}`);
-    return partes.length ? partes.slice(0, 4).join(' · ') : 'sin detalle cargado';
+    const entradas = Object.entries(r || {}).filter(([, v]) => v !== null && v !== undefined && v !== '');
+    // Primero lo que el agente trajo (la respuesta), después cómo lo obtuvo.
+    const deVerdad = entradas.filter(([k]) => !CAMPOS_DE_CONTROL.has(k));
+    const deControl = entradas.filter(([k]) => CAMPOS_DE_CONTROL.has(k));
+    const ordenadas = [...deVerdad, ...deControl];
+    if (!ordenadas.length) return 'sin detalle cargado';
+    const de = (v: unknown) => {
+      const t = typeof v === 'object' ? JSON.stringify(v) : String(v);
+      return t.length > 220 ? `${t.slice(0, 217)}…` : t;
+    };
+    const partes = ordenadas.map(([k, v]) => `${k}: ${de(v)}`);
+    const recortado = partes.slice(0, cuantos);
+    return recortado.join(' · ') + (partes.length > cuantos ? ` · y ${partes.length - cuantos} dato(s) más` : '');
   } catch { return 'sin detalle cargado'; }
 };
 
@@ -112,7 +132,12 @@ export function EquipoInvestigando({ setToast, irAGaleria }: PropsEquipo) {
    * refresco llegaba tarde y ningún agente mostraba su barra. Así es determinista.
    */
   const corridaViva = corridas.find(c => enCurso(c.estado)) ?? null;
-  const hechosEnLaCorrida = new Set((corridaViva?.tareas ?? []).map(t => t.agente));
+  // LOS QUE YA TRABAJARON EN ESTA CORRIDA, en vivo (llegan cada 2 s con el latido del motor): los de la lista
+  // de corridas llegan tarde y por eso el activo era siempre el primero del equipo.
+  const hechosEnLaCorrida = new Set([
+    ...(vivo?.trabajos?.[0]?.agentes_hechos ?? []),
+    ...(corridaViva?.tareas ?? []).map(t => t.agente),
+  ]);
   const agenteEnPaso = (() => {
     // El nombre del paso viene en la TAREA en curso (`trabajos[0].que`, «Vera lee su negocio»): el campo
     // `paso` de la corrida no lo devuelve este endpoint, y por eso el agente activo salía vacío y ningún
@@ -273,7 +298,9 @@ export function EquipoInvestigando({ setToast, irAGaleria }: PropsEquipo) {
                             : reg
                               ? 'Su última tarea quedó registrada con la corrida terminada: no tiene trabajo pendiente.'
                               : 'El back no tiene ninguna tarea de este agente: no se pinta como si hubiera trabajado.'}>
-                          {enEsePaso ? 'trabajando ahora' : curso ? 'trabajando' : reg ? 'terminó su tarea' : 'sin registro'}
+                          {enEsePaso ? 'trabajando ahora'
+                            : enMarcha && hechosEnLaCorrida.has(a.id) ? 'trabajó en esta corrida'
+                              : curso ? 'trabajando' : reg ? 'terminó su tarea' : 'sin registro'}
                         </span>
                       </div>
                       {/* LA BARRA Y EL RESUMEN, SÓLO PARA EL QUE ESTÁ TRABAJANDO AHORA: así se ve de un vistazo
