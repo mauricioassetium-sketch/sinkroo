@@ -3,8 +3,9 @@ import type { Pool } from 'pg';
 import { exigirSesion } from '../lib/auth.js';
 import { exigirCuerpo, limpiar, limpiarLista } from '../lib/seguridad.js';
 import { conAvisoDePin, exigirPin } from '../lib/pin.js';
-import { TARIFA, saldoDe, costoDeRonda } from '../services/creditos.js';
-import { correrInvestigacion, desvioActual } from '../services/agentes.js';
+import { TARIFA, saldoDe, costoDeRonda, PRECIOS_POR_TIPO } from '../services/creditos.js';
+import { mezclaDeRonda, proximaRonda, usosPorTipo } from '../services/mezcla.js';
+import { correrInvestigacion, desvioActual, PASOS_DE_UNA_CORRIDA } from '../services/agentes.js';
 import { lanzarLecturaDeAnuncios, loQueDedujoVera, paisesDeclarados } from '../services/programador.js';
 import { crearPublico, evaluar } from '../services/mirofish.js';
 
@@ -18,7 +19,7 @@ import { crearPublico, evaluar } from '../services/mirofish.js';
 
 /** De dónde saca el motor el contexto: lo que el negocio escribió en el onboarding. */
 async function contexto(db: Pool, businessId: string) {
-  const b = await db.query('SELECT name, description, zona, rubro FROM businesses WHERE id = $1', [businessId]);
+  const b = await db.query('SELECT name, description, zona, rubro, categoria FROM businesses WHERE id = $1', [businessId]);
   const o = await db.query('SELECT datos FROM onboarding WHERE business_id = $1', [businessId]);
   const datos = (o.rows[0]?.datos || {}) as Record<string, unknown>;
   return {
@@ -31,6 +32,9 @@ async function contexto(db: Pool, businessId: string) {
     // La ciudad: la que el negocio eligió en Primeros pasos. Si no eligió ninguna, va vacía: un negocio
     // global no tiene ciudad y el sistema no le inventa una (antes caía en Medellín por defecto).
     zona: String(b.rows[0]?.zona || datos.ciudad || ''),
+    // La categoría con la que se busca el mercado («luxury concierge»): la guarda el paso que lee el
+    // material. Si todavía no está, la corrida la nombra en ese paso.
+    categoria: String(b.rows[0]?.categoria || ''),
   };
 }
 
@@ -64,7 +68,21 @@ export async function motorRoutes(app: FastifyInstance, db: Pool) {
     // UNA RONDA: con `ronda: true` el motor escribe cinco piezas distintas —cada una con su ángulo y su
     // formato— y las prueba todas, en vez de una sola. Es lo que el dueño pide desde el panel cuando quiere
     // opciones que competir entre sí.
-    const r = await correrInvestigacion(db, ctx, 'investigacion', (req.body as { ronda?: boolean } | undefined)?.ronda === true);
+    let r: Awaited<ReturnType<typeof correrInvestigacion>>;
+    try {
+      r = await correrInvestigacion(db, ctx, 'investigacion', (req.body as { ronda?: boolean } | undefined)?.ronda === true);
+    } catch (e) {
+      // LA CORRIDA TAMBIÉN SE CIERRA CUANDO SE CAE. Si no, el panel muestra la línea de carga para siempre
+      // («el motor está escribiendo y votando…») sobre un trabajo que ya murió.
+      await db.query(
+        `UPDATE corridas SET estado = 'fallida', terminada_at = now(), latido_at = now(),
+                detalle = $2, avance = coalesce(avance, '[]'::jsonb) || $3::jsonb
+          WHERE business_id = $1 AND estado = 'corriendo'`,
+        [u.business_id, `la corrida se cayó: ${String((e as Error)?.message || '').slice(0, 160)}`,
+          JSON.stringify([{ paso: 'Se cayó', detalle: 'el motor no pudo terminar', cuando: new Date().toISOString() }])],
+      ).catch(() => {});
+      throw e;
+    }
     // Y sale a leer la Biblioteca de Anuncios con las palabras y los países del negocio: sin esto, la
     // corrida cuenta el mercado solo con lo que ya estaba guardado. No se espera: si tarda, no frena.
     lanzarLecturaDeAnuncios(
@@ -72,6 +90,95 @@ export async function motorRoutes(app: FastifyInstance, db: Pool) {
       await loQueDedujoVera(db, u.business_id), await paisesDeclarados(db, u.business_id),
       (m) => req.log.info(m));
     return reply.status(201).send(r);
+  });
+
+  /**
+   * EN QUÉ VA LA CORRIDA AHORA MISMO. Es la ruta que el panel pregunta cada pocos segundos mientras el motor
+   * trabaja: el paso en el que va, su detalle, cuántos pasos son, el recorrido ya hecho con su hora, lo que
+   * cada agente anotó hasta ahora y cuánto lleva. Antes no existía: el panel disparaba la ronda y no tenía a
+   * quién preguntarle, así que el dueño veía «sin rondas todavía» y esperaba a ciegas.
+   *
+   * El estimado sale del PROMEDIO REAL de las corridas terminadas de ESE negocio. Sin historial no se inventa
+   * un número: se devuelve null y el panel dice que todavía no hay estimado.
+   */
+  app.get('/api/agentes/corriendo', async (req, reply) => {
+    const u = await exigirSesion(req, reply); if (!u || !u.business_id) return;
+    const c = (await db.query(
+      `SELECT id, motivo, estado, paso, detalle, paso_de, pasos, avance, ronda, empezada_at, terminada_at,
+              extract(epoch FROM (now() - empezada_at))::int AS segundos,
+              (latido_at IS NOT NULL AND now() - latido_at > interval '5 minutes') AS sin_latido,
+              extract(epoch FROM (now() - coalesce(latido_at, empezada_at)))::int AS segundos_sin_latido
+         FROM corridas WHERE business_id = $1 ORDER BY empezada_at DESC LIMIT 1`, [u.business_id])).rows[0];
+    // Los nombres de los pasos los manda el back: el panel los pinta tal cual y no hay dos listas que se
+    // puedan desincronizar.
+    const pasos_nombres = [...PASOS_DE_UNA_CORRIDA];
+    if (!c) return { corriendo: false, corrida: null, tareas: [], pasos_nombres, estimado_seg: null };
+    const tareas = (await db.query(
+      `SELECT agente, que, resultado, orden, terminada_at FROM tareas_corrida WHERE corrida_id = $1 ORDER BY orden`,
+      [c.id])).rows;
+    const promedio = Number((await db.query(
+      `SELECT avg(extract(epoch FROM (terminada_at - empezada_at)))::int AS s FROM corridas
+        WHERE business_id = $1 AND estado = 'terminada' AND terminada_at IS NOT NULL AND empezada_at IS NOT NULL`,
+      [u.business_id])).rows[0]?.s || 0) || null;
+    return {
+      // Una corrida sin latido hace rato NO está corriendo: el proceso murió sin cerrarla. Se dice.
+      corriendo: c.estado === 'corriendo' && !c.sin_latido,
+      corrida: c, tareas, pasos_nombres,
+      estimado_seg: c.estado === 'corriendo' ? promedio : null,
+      se_paso_del_promedio: (c.estado === 'corriendo' && promedio) ? Math.max(0, Number(c.segundos) - promedio) : null,
+    };
+  });
+
+  /**
+   * QUÉ ESTÁ HACIENDO EL SISTEMA AHORA. No es «la corrida»: es TODO lo que está en marcha, en una lista, para
+   * que el panel lo muestre en la barra del menú (el dueño: «cada vez que el sistema esté haciendo algo debe
+   * salir en la barra del menú… si hay varias tareas que salgan varias líneas de carga al mismo tiempo»).
+   *
+   * Lo que se publica sale del ESTADO REAL, nunca de una promesa:
+   *   1. La corrida del motor (estado 'corriendo' y con el latido fresco): su paso, su detalle y lo que lleva.
+   *   2. Los videos EN MONTAJE: piezas con su imagen pintada y sin video ni motivo escrito. El barrido de
+   *      arranque marca los que quedaron cortados, así que lo que está en esa lista es trabajo de verdad.
+   * Si no hay nada, la lista va vacía y el panel no muestra nada.
+   */
+  app.get('/api/sistema/trabajando', async (req, reply) => {
+    const u = await exigirSesion(req, reply); if (!u || !u.business_id) return;
+    const trabajos: {
+      clase: string; que: string; detalle: string; paso_de?: number; pasos?: number; segundos?: number; ronda?: number;
+    }[] = [];
+
+    const corrida = (await db.query(
+      `SELECT paso, detalle, paso_de, pasos, ronda, latido_at,
+              extract(epoch FROM (now() - empezada_at))::int AS segundos
+         FROM corridas
+        WHERE business_id = $1 AND estado = 'corriendo'
+          AND (latido_at IS NULL OR now() - latido_at < interval '5 minutes')
+        ORDER BY empezada_at DESC LIMIT 1`, [u.business_id]).catch(() => ({ rows: [] }))).rows[0];
+    if (corrida) {
+      trabajos.push({
+        clase: 'corrida',
+        que: corrida.paso || 'El motor está trabajando',
+        detalle: corrida.detalle || '',
+        paso_de: Number(corrida.paso_de) || 0,
+        pasos: Number(corrida.pasos) || 0,
+        segundos: Number(corrida.segundos) || 0,
+        ronda: Number(corrida.ronda) || 0,
+      });
+    }
+
+    // Los videos que están montándose: tienen su imagen y todavía no tienen ni arte ni motivo.
+    const montando = (await db.query(
+      `SELECT id, left(titulo, 60) AS titulo FROM piezas
+        WHERE business_id = $1
+          AND coalesce(generacion->>'tipo_de_contenido', '') = 'video'
+          AND generacion ? 'imagen_generada'
+          AND NOT (generacion ? 'video_generado')
+          AND NOT (generacion ? 'video_error')
+        LIMIT 8`, [u.business_id]).catch(() => ({ rows: [] }))).rows as { id: string; titulo: string }[];
+    for (const p of montando) {
+      trabajos.push({ clase: 'montaje', que: 'Armando el video de una pieza', detalle: p.titulo });
+    }
+
+    return { trabajando: trabajos, cuantas: trabajos.length };
   });
 
   /** Las corridas con lo que hizo cada agente: es la bitácora que se ve en el panel. */
@@ -130,7 +237,7 @@ export async function motorRoutes(app: FastifyInstance, db: Pool) {
 
   // ---------------- MiroFish ----------------
 
-  /** Evalúa una pieza: 5 jueces, 500 del público y la predicción con su desvío. Cuesta 48 créditos. */
+  /** Evalúa una pieza: 5 jueces, 500 del público y la predicción con su desvío. Cuesta TARIFA.evaluarPieza. */
   /**
    * LAS RONDAS DEL NEGOCIO: cada una con sus candidatas, su puntaje y la que ganó. Es lo que el panel lee
    * para mostrar las opciones que compitieron, sin inventar ninguna: si no hay rondas, la lista va vacía.
@@ -142,20 +249,24 @@ export async function motorRoutes(app: FastifyInstance, db: Pool) {
          FROM rondas WHERE business_id = $1 ORDER BY numero DESC LIMIT 20`, [u.business_id])).rows;
     const candidatas = (await db.query(
       `SELECT p.id, p.ronda, p.angulo, p.formato, p.titulo, p.texto, p.created_at,
+              p.generacion->>'tipo_de_contenido' AS tipo_de_contenido,
               e.puntaje, e.orden, e.id AS evaluacion_id
          FROM piezas p
          LEFT JOIN evaluaciones e ON e.pieza_id = p.id
         WHERE p.business_id = $1 AND p.ronda > 0
         ORDER BY p.ronda DESC, e.puntaje DESC NULLS LAST, p.created_at DESC`, [u.business_id])).rows;
+    // LA MEZCLA DE LA PRÓXIMA RONDA DE ESTE NEGOCIO, con el precio de cada tipo. El panel muestra esto
+    // ANTES de gastar: el número sale de acá (y de ningún otro lado) y es el mismo que se cobra en el libro.
+    const tipos = mezclaDeRonda(await usosPorTipo(db, u.business_id), await proximaRonda(db, u.business_id));
     return {
       rondas: rondas.map(r => ({
         ...r,
         candidatas: candidatas.filter((c: any) => Number(c.ronda) === Number(r.numero)),
       })),
-      // Lo que cuesta una ronda, con el número del back (el mismo que se cobra en el libro).
-      tarifa: { ...TARIFA, costo_ronda: costoDeRonda(5) },
+      // La tabla por tipo y lo que costaría la próxima ronda, con su suma por tipo.
+      tarifa: { ...TARIFA, por_tipo: PRECIOS_POR_TIPO, mezcla: tipos, costo_ronda: costoDeRonda(tipos) },
       creditos: await saldoDe(db, u.business_id),
-      cuantas_piezas: 5,
+      cuantas_piezas: tipos.length,
     };
   });
 
@@ -164,7 +275,7 @@ export async function motorRoutes(app: FastifyInstance, db: Pool) {
     const c = exigirCuerpo<{ titulo?: string; texto?: string; formato?: string; pieza_id?: string; pin?: string }>(req.body, [], reply);
     if (!c) return;
 
-    // ACCIÓN SENSIBLE: esto gasta 48 créditos y no se devuelve. Por eso pide el PIN de seguridad —y antes
+    // ACCIÓN SENSIBLE: esto gasta créditos y no se devuelve. Por eso pide el PIN de seguridad —y antes
     // de tocar el saldo, para no dejar el cobro a medias—. Si el negocio todavía no tiene PIN, la
     // evaluación sigue y la respuesta lo dice (no se le rompe el uso a quien nunca creó un PIN).
     const pin = await exigirPin(req, reply, u.business_id, c.pin);
@@ -180,14 +291,16 @@ export async function motorRoutes(app: FastifyInstance, db: Pool) {
       return reply.status(400).send({ error: 'hay que mandar la pieza o el texto a evaluar', codigo: 'falta_pieza' });
     }
 
-    // El saldo se mira ANTES de gastar: evaluar cuesta 48 créditos y nadie puede quedar en rojo.
+    // El saldo se mira ANTES de gastar: evaluar cuesta lo que dice la tabla (TARIFA.evaluarPieza) y nadie
+    // puede quedar en rojo. El precio NO se escribe acá: vive en creditos.ts, que es el único dueño.
+    const cuestaEvaluar = TARIFA.evaluarPieza;
     const saldo = await db.query(
       `SELECT COALESCE((SELECT saldo FROM movimientos_creditos WHERE business_id = $1 ORDER BY created_at DESC LIMIT 1), 0) AS s`,
       [u.business_id]);
-    if (Number(saldo.rows[0].s) < 48) {
+    if (Number(saldo.rows[0].s) < cuestaEvaluar) {
       return reply.status(402).send({
         error: 'no alcanzan los créditos para evaluar', codigo: 'sin_creditos',
-        detalle: `evaluar cuesta 48 y el saldo es ${saldo.rows[0].s}: cargue créditos o cambie de plan`,
+        detalle: `evaluar cuesta ${cuestaEvaluar} y el saldo es ${saldo.rows[0].s}: cargue créditos o cambie de plan`,
       });
     }
 

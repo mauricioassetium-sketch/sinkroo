@@ -585,6 +585,12 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
   // que resolvió la enciclopedia («asset»): con el término corto el mapa busca negocios que se llamen «asset» y
   // no encuentra los del rubro. La enciclopedia confirma que la categoría existe; no la recorta.
   ctx.categoria = dicha?.en || termino || ctx.categoria;
+  // Y queda guardada como dato del NEGOCIO, no de esta corrida: el mapa y la búsqueda de comparables la
+  // necesitan siempre, y si el modelo no contesta en una vuelta, la de la vuelta anterior sigue sirviendo.
+  if (ctx.categoria) {
+    try { await db.query('UPDATE businesses SET categoria = $2 WHERE id = $1', [ctx.businessId, ctx.categoria]); }
+    catch { /* si no se puede escribir, la corrida sigue con la categoría en memoria */ }
+  }
   if (leido.alcance !== 'sin_determinar') {
     // LA ZONA NO SE PISA CON UN TEXTO. Antes, un negocio de alcance global quedaba con la zona «negocio global
     // (varias jurisdicciones)»: la zona —que es lo único que el mapa geocodifica— se perdía y el mapa

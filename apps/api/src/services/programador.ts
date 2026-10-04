@@ -24,7 +24,7 @@ const HORA_OBJETIVO = Number(process.env.INVESTIGAR_HORA || 6);   // 6 de la ma�
 const CADA_MS = Number(process.env.INVESTIGAR_REVISA_MIN || 30) * 60 * 1000;
 
 /** Un negocio al que se le puede leer el mercado hoy. */
-type Negocio = { id: string; nombre: string; descripcion: string; rubro: string; zona: string };
+type Negocio = { id: string; nombre: string; descripcion: string; rubro: string; zona: string; categoria?: string };
 
 /**
  * LOS CONTINENTES Y SUS PAÍSES. El negocio no tiene por qué saber códigos ISO: elige un continente y el
@@ -145,7 +145,7 @@ export function lanzarLecturaDeAnuncios(
 async function investigar(db: Pool, n: Negocio, log: (m: string) => void) {
   try {
     const r = await correrInvestigacion(db, {
-      businessId: n.id, nombre: n.nombre, descripcion: n.descripcion, rubro: n.rubro, zona: n.zona,
+      businessId: n.id, nombre: n.nombre, descripcion: n.descripcion, rubro: n.rubro, zona: n.zona, categoria: n.categoria,
     }, 'investigacion diaria');
     const sinFuente = (r.tareas || []).filter((t: any) => t.resultado?.sin_fuente).map((t: any) => t.agente);
     log(`investigación diaria de «${n.nombre}»: ${r.tareas.length} tareas, ${r.hallazgos.length} hallazgos` +
@@ -163,7 +163,7 @@ export async function revisarInvestigacionDiaria(db: Pool, log: (m: string) => v
   // Los negocios que ya dijeron qué hacen y dónde venden, y a los que hoy no se les ha corrido.
   const r = await db.query(
     `SELECT b.id, b.name AS nombre, coalesce(b.description,'') AS descripcion,
-            coalesce(b.rubro,'') AS rubro, coalesce(b.zona,'') AS zona
+            coalesce(b.rubro,'') AS rubro, coalesce(b.zona,'') AS zona, coalesce(b.categoria,'') AS categoria
        FROM businesses b
       -- SIN EXIGIR ZONA. Antes sólo se investigaba a los negocios con zona cargada: uno sin ciudad —o con
       -- el material sin nombrarla— no se investigaba NUNCA y no había forma de enterarse. Ahora se investiga a

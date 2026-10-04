@@ -100,6 +100,10 @@ export async function migrate(db: Pool): Promise<void> {
     ALTER TABLE businesses ADD COLUMN IF NOT EXISTS creditos INT NOT NULL DEFAULT 0;
     ALTER TABLE businesses ADD COLUMN IF NOT EXISTS zona TEXT NOT NULL DEFAULT '';
     ALTER TABLE businesses ADD COLUMN IF NOT EXISTS rubro TEXT NOT NULL DEFAULT '';
+    -- LA CATEGORÍA DEL NEGOCIO («luxury concierge», «asset verification»): la nombra el modelo a partir del
+    -- material que sube el cliente. Se guarda como dato del negocio —no de la corrida— para que el estudio del
+    -- mapa y la búsqueda de comparables la tengan siempre, aunque en una corrida el modelo no conteste.
+    ALTER TABLE businesses ADD COLUMN IF NOT EXISTS categoria TEXT NOT NULL DEFAULT '';
 
     CREATE TABLE IF NOT EXISTS conversations (
       id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
