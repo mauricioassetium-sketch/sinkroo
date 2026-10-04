@@ -578,7 +578,12 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
   if (!ctx.rubro.trim() && leido.rubro) ctx.rubro = leido.rubro;
   if (termino) ctx.categoria = termino;   // el término con el que se busca el mercado (el rubro es una frase)
   if (leido.alcance !== 'sin_determinar') {
-    ctx.zona = leido.alcance === 'global' ? 'negocio global (varias jurisdicciones)' : (leido.lugares[0] || ctx.zona);
+    // LA ZONA NO SE PISA CON UN TEXTO. Antes, un negocio de alcance global quedaba con la zona «negocio global
+    // (varias jurisdicciones)»: la zona —que es lo único que el mapa geocodifica— se perdía y el mapa
+    // intentaba ubicar esa frase en el mundo entero. Medido: «no se pudo ubicar «negocio global (varias
+    // jurisdicciones)» en el mapa». Un negocio puede vender al mundo y tener su plaza en Dubái: la ciudad se
+    // conserva, y que el alcance sea global se dice donde corresponde (el informe y los mercados que se leen).
+    if (leido.alcance !== 'global' && leido.lugares[0] && !String(ctx.zona || '').trim()) ctx.zona = leido.lugares[0];
   }
 
   // Y si el perfil no tenía el rubro, queda cargado: la próxima corrida ya arranca sabiéndolo.
