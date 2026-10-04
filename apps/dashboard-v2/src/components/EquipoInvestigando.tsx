@@ -12,6 +12,7 @@ import { useDetalle, type Detalle } from './Detalle';
 // servidor; sin back el mismo contrato llega vacío y el bloque invita a conectar la cuenta. No hay
 // una versión «de ejemplo» de este bloque: simular trabajo sería inventar resultados.
 import { useDatos, type Corrida, type TareaCorrida } from '../api/datos';
+import { useMotorVivo } from './MotorTrabajando';
 import { EstadoVacio } from './EstadoVacio';
 import { baseApi, token } from '../api/cliente';
 
@@ -82,6 +83,8 @@ type PropsEquipo = {
 
 export function EquipoInvestigando({ setToast, irAGaleria }: PropsEquipo) {
   const d = useDatos();
+  // El motor vivo: con esto se sabe CUÁL de los diez está trabajando en este momento y en qué paso va.
+  const vivo = useMotorVivo();
   const detalle = useDetalle();
   // El motor corriendo ahora mismo, pedido desde acá: mientras responde, el botón lo dice.
   const [corriendo, setCorriendo] = useState(false);
@@ -222,6 +225,18 @@ export function EquipoInvestigando({ setToast, irAGaleria }: PropsEquipo) {
                 {AGENTES.map(a => {
                   const reg = porAgente.get(a.id);
                   const curso = !!reg && enCurso(reg.c.estado);
+                  // ¿ESTE AGENTE ES EL QUE ESTÁ TRABAJANDO AHORA MISMO? El back nombra el paso con el agente
+                  // («Vera lee su negocio») y el detalle dice qué está haciendo en ese paso: con eso la tarjeta
+                  // muestra quién trabaja, con su barra y su resumen, en vez de un «trabajando» parejo para todos.
+                  const pasoVivo = String(vivo?.paso || '');
+                  const enEsePaso = !!vivo?.corriendo && pasoVivo.length > 0
+                    && new RegExp(`(^|\\W)${a.nombre}(\\W|$)`, 'i').test(pasoVivo);
+                  const pasoDe = Number(vivo?.corrida?.paso_de ?? 0) || 0;
+                  const pasos = Number(vivo?.corrida?.pasos ?? 0) || 0;
+                  const segundos = Number(vivo?.corrida?.segundos ?? 0) || 0;
+                  const estimado = Number((vivo?.trabajos?.find(t => t.clase === 'corrida') as { estimado_seg?: number } | undefined)?.estimado_seg ?? 0) || 0;
+                  const porc = pasos ? Math.min(100, Math.round((pasoDe / pasos) * 100)) : 0;
+                  const falta = estimado > segundos ? estimado - segundos : 0;
                   const clase = curso ? 'working' : 'idle';
                   return (
                     <div key={a.id} className={`eq-ag ${clase}`}>
@@ -234,9 +249,23 @@ export function EquipoInvestigando({ setToast, irAGaleria }: PropsEquipo) {
                             : reg
                               ? 'Su última tarea quedó registrada con la corrida terminada: no tiene trabajo pendiente.'
                               : 'El back no tiene ninguna tarea de este agente: no se pinta como si hubiera trabajado.'}>
-                          {curso ? 'trabajando' : reg ? 'terminó su tarea' : 'sin registro'}
+                          {enEsePaso ? 'trabajando ahora' : curso ? 'trabajando' : reg ? 'terminó su tarea' : 'sin registro'}
                         </span>
                       </div>
+                      {/* LA BARRA Y EL RESUMEN, SÓLO PARA EL QUE ESTÁ TRABAJANDO AHORA: así se ve de un vistazo
+                          quién tiene la tarea en la mano y qué está haciendo, sin leer los diez renglones. */}
+                      {enEsePaso && (
+                        <>
+                          <span className="eq-barra" title={`paso ${pasoDe} de ${pasos}: ${porc}%`}>
+                            <span className="eq-barra-fill" style={{ width: `${porc}%` }} />
+                          </span>
+                          <div className="eq-ahora">
+                            <b>En qué está: </b>{pasoVivo}{vivo?.detalle ? ` — ${vivo.detalle}` : ''}
+                            {segundos ? ` · lleva ${Math.floor(segundos / 60)}:${String(Math.round(segundos % 60)).padStart(2, '0')}` : ''}
+                            {falta ? ` · faltan ~${Math.floor(falta / 60)}:${String(Math.round(falta % 60)).padStart(2, '0')}` : ''}
+                          </div>
+                        </>
+                      )}
                       <div className="eq-rol" title={a.rol}>{a.rol}</div>
                       <div className="eq-ahora" title={reg ? `${reg.t.que} · corrida del ${horaDe(reg.c.empezada_at)}` : undefined}>
                         <b>Qué hizo: </b>{reg ? reg.t.que : 'Todavía no dejó ninguna tarea en una corrida.'}

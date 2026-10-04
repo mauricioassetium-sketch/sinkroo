@@ -419,6 +419,21 @@
   font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; color: #fff;
   background: rgba(0,0,0,.5); padding: 3px 7px; border-radius: 99px; backdrop-filter: blur(3px); }
 .pz-ico { position: absolute; top: 46%; left: 50%; transform: translate(-50%, -50%); color: rgba(255,255,255,.92); }
+/* LA ETIQUETA DEL TIPO DE CONTENIDO: dice qué es cada contenido de la ronda (video, reel de imágenes, imagen
+   con texto…) al lado de su ángulo, con los mismos tokens del design system. */
+.tag-tipo { margin-left: 7px; padding: 1.5px 8px; border-radius: 99px; font-size: 10px; font-weight: 800;
+  white-space: nowrap; color: var(--purple4); background: rgba(147,51,234,.16); border: 1px solid rgba(147,51,234,.32); }
+/* EL CARGADOR CIRCULAR: el aro que gira mientras algo viene por la red, con su porcentaje cuando el
+   servidor dice cuánto pesa. Nada de barras que fingen avanzar. */
+.cargando { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 14px 0; }
+.cargando svg { display: block; }
+.cargando-aro { animation: girar 1s linear infinite; transform-origin: 50% 50%; }
+.cargando-tx { font-size: 11.5px; color: var(--muted); font-weight: 700; }
+@keyframes girar { to { transform: rotate(360deg); } }
+/* El aro chiquito del aviso «montando el video…»: el mismo giro, en el tamaño de una insignia. */
+.aro-mini { display: inline-block; width: 9px; height: 9px; margin-right: 5px; vertical-align: -1px;
+  border-radius: 50%; border: 1.5px solid rgba(255,255,255,.35); border-top-color: #fff; animation: girar .9s linear infinite; }
+
 /* EL ARTE DE LA PIEZA DENTRO DEL RECUADRO: lo que el motor produjo, sin salir de la galería. */
 .pz-art { position: absolute; inset: 0; display: grid; place-items: center; }
 .pz-art img { width: 100%; height: 100%; object-fit: cover; border: 0 !important; border-radius: 0 !important; margin: 0 !important; }
@@ -1167,6 +1182,11 @@
 .eq-wrap .card-title { font-size: 12.5px; }
 .eq-wrap .acc-why { font-size: 10px; line-height: 1.4; margin-top: 7px; }
 .eq-wrap .bs { font-size: 10px; }
+
+/* --- La barra del agente que está trabajando AHORA, dentro de su propia tarjeta: dice qué hace y cuánto
+       falta, sin tener que leer los diez renglones para encontrar al que tiene la tarea en la mano. --- */
+.eq-barra { display: block; height: 4px; border-radius: 99px; background: var(--border2); overflow: hidden; margin: 6px 0 4px; }
+.eq-barra-fill { display: block; height: 100%; background: linear-gradient(90deg, var(--purple3), var(--purple)); border-radius: 99px; transition: width .4s ease; }
 
 /* --- Los 6 agentes, de a 3 por fila: dos filas en vez de seis --- */
 .eq-agentes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; flex: 1 1 auto; }
@@ -2179,3 +2199,119 @@ html.marca-cliente .pers-flotante { color: var(--sobre-grad); }
   animation: onbFlecha 1.6s ease-in-out infinite;
 }
 @media (prefers-reduced-motion: reduce) { .onb-alarma, .onb-flecha { animation: none; } }
+
+
+/* =====================================================================================================
+   LA RONDA EN VIVO — la línea de carga de una ronda y sus seis procesos.
+   El dueño lo pidió con estas palabras: «cuando lanzo una ronda no sale en ningún lado que está
+   corriendo, cargando algo… solo toca esperar, no sé cuánto tiempo. Debe haber una línea de carga e
+   indicar lo que está pasando en esa ronda, cada proceso».
+   La barra marca PASOS TERMINADOS, no una animación: el movimiento real de esta línea es el reloj, el
+   detalle («imagen 4 de 6 · opción 2 de 5») y los pasos que se van marcando. Nada de barras que fingen
+   avanzar (es la regla del panel).
+   ===================================================================================================== */
+.mv { margin-top: 12px; padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(168,85,247,.35);
+  background: rgba(168,85,247,.07); }
+.mv-cerrada { border-color: var(--border2); background: transparent; }
+.mv-t { font-size: 12.5px; font-weight: 800; }
+.mv-pulso { width: 9px; height: 9px; border-radius: 50%; background: var(--purple3); flex-shrink: 0;
+  animation: mv-latido 1.6s infinite; }
+@keyframes mv-latido {
+  0% { box-shadow: 0 0 0 0 rgba(168,85,247,.55); }
+  70% { box-shadow: 0 0 0 9px rgba(168,85,247,0); }
+  100% { box-shadow: 0 0 0 0 rgba(168,85,247,0); }
+}
+.mv-punto { width: 9px; height: 9px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
+.mv-pista { height: 7px; margin-top: 10px; border-radius: 99px; background: var(--border2); overflow: hidden; }
+.mv-pista i { display: block; height: 100%; border-radius: 99px;
+  background: linear-gradient(90deg, var(--purple2), var(--purple3)); transition: width .6s ease; }
+.mv-detalle { margin-top: 7px; font-size: 11.5px; color: var(--muted); }
+.mv-pasos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-top: 10px; }
+@media (max-width: 900px) { .mv-pasos { grid-template-columns: minmax(0, 1fr); } }
+.mv-paso { display: flex; align-items: center; gap: 8px; padding: 7px 9px; border-radius: 9px;
+  border: 1px solid var(--border); opacity: .55; min-width: 0; }
+.mv-paso.mv-on { opacity: 1; border-color: rgba(168,85,247,.55); background: rgba(168,85,247,.10); }
+.mv-paso.mv-done { opacity: 1; border-color: rgba(34,197,94,.45); background: rgba(34,197,94,.08); }
+.mv-paso-n { display: grid; place-items: center; width: 20px; height: 20px; flex-shrink: 0; border-radius: 50%;
+  border: 1px solid var(--border2); font-size: 10.5px; font-weight: 800; }
+.mv-paso.mv-on .mv-paso-n { border-color: var(--purple2); background: rgba(168,85,247,.20); color: var(--purple3); }
+.mv-paso.mv-done .mv-paso-n { border-color: rgba(34,197,94,.5); background: rgba(34,197,94,.16); color: var(--green); }
+.mv-paso-t { display: block; font-size: 11.5px; font-weight: 800; }
+.mv-paso-d { display: block; font-size: 10px; color: var(--muted); line-height: 1.3; }
+.mv-pie { margin-top: 9px; color: var(--muted); }
+.mv-proc { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 8px; align-items: baseline;
+  margin-top: 3px; font-size: 11px; }
+.mv-proc-h { color: var(--muted2); font-variant-numeric: tabular-nums; }
+.mv-proc-q { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mv-proc-a { font-size: 9.5px; color: var(--purple3); text-transform: lowercase; }
+
+
+/* =====================================================================================================
+   EL MOTOR TRABAJANDO — el indicador circular, en todos los lugares donde el motor escribe.
+   El dueño: «cuando el motor esté corriendo debe salir la misma barra de carga circular en todos los
+   lugares donde el motor mete información, para que se sepa que está trabajando».
+   Es UN solo indicador (components/MotorTrabajando.tsx) y sale en: la cabecera de Hoy, Mercado, Campañas,
+   Conversaciones y Créditos, y dentro de TODOS los estados vacíos (EstadoVacio) — que son los bloques que
+   el motor llena. Un solo reloj para todo el panel: 4 s mientras trabaja, 20 s cuando está quieto.
+   ===================================================================================================== */
+.mt-linea { display: flex; align-items: center; gap: 8px; margin: 10px 0; padding: 8px 11px; border-radius: 10px;
+  border: 1px solid rgba(168,85,247,.35); background: rgba(168,85,247,.07); font-size: 11.5px;
+  color: var(--txt); line-height: 1.35; flex-wrap: wrap; }
+.mt-chica { margin: 0; padding: 5px 9px; font-size: 11px; border-radius: 8px; }
+.mt-cortada { border-color: rgba(245,158,11,.45); background: rgba(245,158,11,.08); }
+.mt-spin { width: 13px; height: 13px; flex-shrink: 0; border-radius: 50%;
+  border: 2px solid rgba(168,85,247,.25); border-top-color: var(--purple3); animation: mt-girar .8s linear infinite; }
+@keyframes mt-girar { to { transform: rotate(360deg); } }
+.mt-punto { width: 9px; height: 9px; flex-shrink: 0; border-radius: 50%; background: var(--amber); }
+.mt-txt { min-width: 0; }
+.mt-detalle { display: block; margin-top: 2px; font-size: 10.5px; color: var(--muted); }
+.vacio-motor { margin-top: 10px; display: flex; justify-content: center; }
+@media (prefers-reduced-motion: reduce) { .mt-spin { animation: none; } }
+
+
+/* =====================================================================================================
+   LA LISTA DE LO QUE EL SISTEMA ESTÁ HACIENDO (barra del menú, siempre visible).
+   El dueño: «cada vez que el sistema esté haciendo algo debe salir en la barra del menú, así tenemos
+   visualización total de lo que está trabajando… si hay varias tareas, que salgan varias líneas de carga
+   al mismo tiempo». Una línea por tarea, con su paso, su detalle y su reloj. Sin nada en marcha no ocupa
+   un solo píxel.
+   ===================================================================================================== */
+.tk-trabajos { display: flex; flex-direction: column; gap: 4px; padding: 8px 16px 0; }
+.tk-cuantas { font-size: 10px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--purple3); }
+.tk-trabajo { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 9px;
+  border: 1px solid rgba(168,85,247,.35); background: rgba(168,85,247,.07); font-size: 11.5px; min-width: 0; }
+.tk-trabajo-t { min-width: 0; flex: 1 1 auto; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.tk-paso { font-size: 10.5px; color: var(--purple3); font-weight: 700; }
+.tk-detalle { font-size: 10.5px; color: var(--muted); min-width: 0; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; max-width: 46vw; }
+.tk-reloj { font-size: 10.5px; color: var(--muted2); font-variant-numeric: tabular-nums; flex-shrink: 0; }
+.ticker-vivo { display: inline-flex; align-items: center; gap: 7px; }
+@media (max-width: 900px) { .tk-detalle { max-width: 60vw; } }
+
+
+/* =====================================================================================================
+   LISTAS LARGAS CON SCROLL PROPIO — la página no se estira sin fin.
+   El dueño, mirando Hoy: «que la sección de la ÚLTIMA CORRIDA tenga scroll, para que no separe mucho la
+   sección de El equipo, agente por agente… mantener esto en el resto de los módulos así no se nos extiende
+   el scroll infinito a la página principal de HOY».
+   Se acota en las TRES primitivas de lista del panel, así vale en todos los módulos de una vez:
+     · .tl        → las líneas de tiempo del motor (Hoy ×3, El equipo investigando)
+     · .guards    → las listas de filas (Créditos, Campañas, MiroFish, En línea, Publicar, Cuenta)
+     · .eq-agentes→ el equipo agente por agente
+   Acotar no recorta nada: cada lista se desliza DENTRO de su tarjeta y el alto de la tarjeta deja de
+   depender de cuántas filas traiga.
+   ===================================================================================================== */
+/* EL EQUIPO DE AGENTES NO LLEVA TOPE (regla del dueño: «no pongas scroll ahí, deja que se vean todos»): con
+   los diez agentes el contenido mide 800 px y un tope de 360 los dejaba fuera de la vista. La lista de
+   corridas y los guards sí siguen con su scroll propio. */
+.tl, .guards { max-height: 360px; overflow-y: auto; overscroll-behavior: contain; }
+.eq-agentes { overflow: visible; }
+.tl { padding-right: 6px; }
+.guards.tl, .tl.tl { max-height: 360px; }
+@media (max-width: 900px) { .tl, .guards, .eq-agentes { max-height: 300px; } }
+/* La barra de scroll, fina y del color de la casa (no la del sistema). */
+.tl::-webkit-scrollbar, .guards::-webkit-scrollbar, .eq-agentes::-webkit-scrollbar { width: 8px; }
+.tl::-webkit-scrollbar-thumb, .guards::-webkit-scrollbar-thumb, .eq-agentes::-webkit-scrollbar-thumb {
+  background: var(--border2); border-radius: 99px; }
+.tl::-webkit-scrollbar-track, .guards::-webkit-scrollbar-track, .eq-agentes::-webkit-scrollbar-track {
+  background: transparent; }
