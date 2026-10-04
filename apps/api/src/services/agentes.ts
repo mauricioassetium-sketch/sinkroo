@@ -581,7 +581,10 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
   // es obligatorio para buscar: cuando no hay artículo (o la enciclopedia no contesta), la categoría que
   // nombró el modelo sirve igual. Antes, si el término quedaba vacío, el mapa salía a buscar con la frase con
   // la que el negocio se describe y no encontraba nada.
-  ctx.categoria = termino || dicha?.en || ctx.categoria;
+  // La categoría que se usa para buscar es la del MODELO (la descriptiva: «asset verification»), no el término
+  // que resolvió la enciclopedia («asset»): con el término corto el mapa busca negocios que se llamen «asset» y
+  // no encuentra los del rubro. La enciclopedia confirma que la categoría existe; no la recorta.
+  ctx.categoria = dicha?.en || termino || ctx.categoria;
   if (leido.alcance !== 'sin_determinar') {
     // LA ZONA NO SE PISA CON UN TEXTO. Antes, un negocio de alcance global quedaba con la zona «negocio global
     // (varias jurisdicciones)»: la zona —que es lo único que el mapa geocodifica— se perdía y el mapa
@@ -2506,7 +2509,11 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
   if (mapa.ok && mapa.conNombre > 0) {
     hallazgos.push({
       tipo: 'mercado',
-      titulo: `Su mercado tiene ${mapa.conNombre} ${mapa.oficio} con nombre`,
+      // El texto se ajusta al número: «1 negocios» es lo que salía cuando la ciudad tenía un solo local con
+      // ese nombre.
+      titulo: mapa.conNombre === 1
+        ? 'Su mercado tiene 1 negocio de su rubro en su ciudad'
+        : `Su mercado tiene ${mapa.conNombre} ${mapa.oficio} con nombre`,
       dato: `${mapa.conNombre} en ${mapa.ciudad}, sobre ${mapa.lugares} lugares mapeados`,
       porque: mapa.zonas.length
         ? `Se concentra en ${mapa.zonas.slice(0, 3).map(z => `${z.z} (${z.n})`).join(', ')}.`
