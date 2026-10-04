@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process';
 import type { Pool } from 'pg';
 import { correrInvestigacion } from './agentes.js';
-import { paisesDeLaZona } from '../lib/paises.js';
+import { paisesDeLaZona, PAISES_DEL_CONTINENTE } from '../lib/paises.js';
 
 // =============================================================================================
 // LA INVESTIGACIÓN DIARIA — lo que la pantalla de entrada promete: «investiga el mercado cada mañana».
@@ -31,16 +31,6 @@ type Negocio = { id: string; nombre: string; descripcion: string; rubro: string;
  * sistema lee en los mercados principales de ese continente. Es una lista declarada —se ve qué países
  * cubre cada uno— y no se inventa por negocio.
  */
-const PAISES_DEL_CONTINENTE: Record<string, string[]> = {
-  latinoamerica: ['CO', 'MX', 'AR', 'CL', 'PE', 'BR', 'EC', 'PA'],
-  'america del norte': ['US', 'CA', 'MX'],
-  europa: ['ES', 'GB', 'DE', 'FR', 'IT', 'NL'],
-  'medio oriente': ['AE', 'SA', 'QA', 'KW'],
-  asia: ['SG', 'JP', 'IN', 'ID'],
-  africa: ['ZA', 'NG', 'KE'],
-  oceania: ['AU', 'NZ'],
-};
-
 /** Los lugares que nombra el negocio, en código de país: así el trabajador sabe dónde leer. */
 const PAIS_DE: Record<string, string> = {
   medellin: 'CO', bogota: 'CO', cali: 'CO', barranquilla: 'CO', colombia: 'CO',

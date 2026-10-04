@@ -24,6 +24,20 @@ export const PAISES: Record<string, string> = {
   TR: 'Turquía', US: 'Estados Unidos', UY: 'Uruguay', VE: 'Venezuela', AE: 'Emiratos Árabes Unidos',
 };
 
+/**
+ * LOS PAÍSES DE CADA CONTINENTE — para cuando el negocio dice «vendo en Europa» y hay que leer su mercado en
+ * los países que la forman. Las claves van sin tildes y en minúsculas (es como se comparan).
+ */
+export const PAISES_DEL_CONTINENTE: Record<string, string[]> = {
+  latinoamerica: ['CO', 'MX', 'AR', 'CL', 'PE', 'BR', 'EC', 'PA'],
+  'america del norte': ['US', 'CA', 'MX'],
+  europa: ['ES', 'GB', 'DE', 'FR', 'IT', 'NL'],
+  'medio oriente': ['AE', 'SA', 'QA', 'KW'],
+  asia: ['SG', 'JP', 'IN', 'ID'],
+  africa: ['ZA', 'NG', 'KE'],
+  oceania: ['AU', 'NZ'],
+};
+
 /** Cómo se escribe cada nombre en el material del negocio → su código. */
 const CODIGO_DE: Record<string, string> = Object.fromEntries(
   Object.entries(PAISES).map(([c, n]) => [n.toLowerCase(), c]),

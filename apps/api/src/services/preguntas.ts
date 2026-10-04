@@ -21,6 +21,11 @@
 // Una fila por dato (`clave`): si ya está contestado, `pedirDato` no molesta de nuevo.
 // =====================================================================================================
 import type { Pool } from 'pg';
+import { codigoDePais, PAISES_DEL_CONTINENTE } from '../lib/paises.js';
+
+/** La clave del continente como la espera la tabla del motor: sin tildes, en minúsculas. */
+const normalClave = (t: string) =>
+  t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
 
 export type DatoPedido = {
   businessId: string;
@@ -93,11 +98,35 @@ export async function guardarRespuesta(db: Pool, businessId: string, clave: stri
 
   if (clave === 'pais' || clave === 'paises' || clave === 'mercados') {
     const lista = limpio.split(/[,·|]/).map(p => p.trim()).filter(Boolean);
+    // LA RESPUESTA SE GUARDA COMO LA LEE EL MOTOR. El asistente guarda continentes y países por separado, y
+    // `paises` sólo acepta códigos de dos letras: contestar «Medio Oriente, Europa» y guardarlo tal cual dejaba
+    // la respuesta sin efecto (el motor la descartaba). Los continentes van a `continentes` —que el motor
+    // expande a sus países— y los países se resuelven a su código.
+    const continentes: string[] = [];
+    const codigos: string[] = [];
+    const sinResolver: string[] = [];
+    for (const parte of lista) {
+      const nombre = normalClave(parte);
+      if (PAISES_DEL_CONTINENTE[nombre]) { continentes.push(parte); continue; }
+      const codigo = codigoDePais(parte);
+      if (codigo) { codigos.push(codigo); continue; }
+      sinResolver.push(parte);
+    }
+    const datos: Record<string, unknown> = {};
+    if (continentes.length) datos.continentes = continentes;
+    if (codigos.length) datos.paises = codigos;
+    // Lo que no se pudo resolver se guarda tal cual, además: queda visible y el motor lo puede leer.
+    datos.mercados_declarados = limpio;
     await db.query(
-      `INSERT INTO onboarding (business_id, datos) VALUES ($1, jsonb_build_object('paises', $2::jsonb))
-       ON CONFLICT (business_id) DO UPDATE SET datos = onboarding.datos || jsonb_build_object('paises', $2::jsonb), actualizado = now()`,
-      [businessId, JSON.stringify(lista)]);
-    return `los mercados de sus clientes quedaron como «${lista.join(', ')}»: es donde el motor sale a leer su rubro`;
+      `INSERT INTO onboarding (business_id, datos) VALUES ($1, $2::jsonb)
+       ON CONFLICT (business_id) DO UPDATE SET datos = onboarding.datos || $2::jsonb, actualizado = now()`,
+      [businessId, JSON.stringify(datos)]);
+    const partes = [
+      continentes.length ? `continentes: ${continentes.join(', ')}` : '',
+      codigos.length ? `países: ${codigos.join(', ')}` : '',
+      sinResolver.length ? `sin ubicar: ${sinResolver.join(', ')}` : '',
+    ].filter(Boolean).join(' · ');
+    return `los mercados de sus clientes quedaron como «${limpio}» (${partes}): es donde el motor sale a leer su rubro`;
   }
 
   // Cualquier otro dato va al asistente con su nombre: así queda guardado, visible y reutilizable.
