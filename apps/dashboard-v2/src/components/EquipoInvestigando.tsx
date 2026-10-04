@@ -289,7 +289,10 @@ export function EquipoInvestigando({ setToast, irAGaleria }: PropsEquipo) {
                       ? 'La corrida anterior que devolvió el back:'
                       : `Las ${corridas.length - 1} corridas anteriores que devolvió el back:`}
                   </div>
-                  <div className="col-stack">
+                  {/* SE VEN DIEZ Y EL RESTO POR SCROLL. Medido: cada renglón mide 17 px con 11 de separación,
+                      así que diez renglones son 270 px (el alto del contenedor, en la clase). Antes se
+                      dibujaban las 19 de una y empujaban la tarjeta hacia abajo. */}
+                  <div className="col-stack corridas-scroll" title="Se ven las últimas diez. Deslice acá adentro para ver las anteriores.">
                     {corridas.slice(1).map(c => (
                       <div key={c.id} className="tiny" style={{ display: 'flex', gap: 7, flexWrap: 'wrap', alignItems: 'baseline' }}>
                         <b>{horaDe(c.empezada_at)}</b>
