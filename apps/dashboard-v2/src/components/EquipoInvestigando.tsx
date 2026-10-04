@@ -98,7 +98,31 @@ export function EquipoInvestigando({ setToast, irAGaleria }: PropsEquipo) {
    */
   const porAgente = new Map<string, { t: TareaCorrida; c: Corrida }>();
   for (const c of corridas) for (const t of c.tareas ?? []) if (!porAgente.has(t.agente)) porAgente.set(t.agente, { t, c });
-  const enMarcha = corridas.some(c => enCurso(c.estado));
+  // EL MOTOR CORRIENDO SE SABE POR SU LATIDO, NO POR LA LISTA DE CORRIDAS. La lista se refresca cada 30
+  // segundos: una corrida de siete (con la escritura pausada) empezaba y terminaba entre dos refrescos, así
+  // que la tarjeta nunca mostraba a nadie trabajando. El latido llega cada 2 segundos mientras corre.
+  const enMarcha = !!vivo?.corriendo || corridas.some(c => enCurso(c.estado));
+
+  /**
+   * QUIÉN ESTÁ TRABAJANDO AHORA. Dos fuentes, en orden:
+   *   1. El paso vivo del motor, si nombra a un agente («Vera lee su negocio»).
+   *   2. Los que ya dejaron su tarea en la corrida en curso: el que trabaja es el PRIMERO del equipo que
+   *      todavía no aparece, porque el motor los hace en orden.
+   * Antes se adivinaba sólo por el texto del paso, y con corridas cortas (la escritura está pausada) el
+   * refresco llegaba tarde y ningún agente mostraba su barra. Así es determinista.
+   */
+  const corridaViva = corridas.find(c => enCurso(c.estado)) ?? null;
+  const hechosEnLaCorrida = new Set((corridaViva?.tareas ?? []).map(t => t.agente));
+  const agenteEnPaso = (() => {
+    // El nombre del paso viene en la TAREA en curso (`trabajos[0].que`, «Vera lee su negocio»): el campo
+    // `paso` de la corrida no lo devuelve este endpoint, y por eso el agente activo salía vacío y ningún
+    // agente mostraba su barra.
+    const paso = String(vivo?.paso || vivo?.trabajos?.[0]?.que || '');
+    if (!enMarcha || !paso) return '';
+    const nombrado = AGENTES.find(a => new RegExp(`(^|\W)${a.nombre}(\W|$)`, 'i').test(paso));
+    if (nombrado) return nombrado.id;
+    return AGENTES.find(a => !hechosEnLaCorrida.has(a.id))?.id ?? '';
+  })();
   const tareasTotales = corridas.reduce((s, c) => s + (c.tareas?.length ?? 0), 0);
 
   /** Pide una corrida de verdad y vuelve a leer el back: lo que aparezca después es lo que hay. */
@@ -229,9 +253,8 @@ export function EquipoInvestigando({ setToast, irAGaleria }: PropsEquipo) {
                   // ¿ESTE AGENTE ES EL QUE ESTÁ TRABAJANDO AHORA MISMO? El back nombra el paso con el agente
                   // («Vera lee su negocio») y el detalle dice qué está haciendo en ese paso: con eso la tarjeta
                   // muestra quién trabaja, con su barra y su resumen, en vez de un «trabajando» parejo para todos.
-                  const pasoVivo = String(vivo?.paso || '');
-                  const enEsePaso = !!vivo?.corriendo && pasoVivo.length > 0
-                    && new RegExp(`(^|\\W)${a.nombre}(\\W|$)`, 'i').test(pasoVivo);
+                  const pasoVivo = String(vivo?.paso || vivo?.trabajos?.[0]?.que || '');
+                  const enEsePaso = agenteEnPaso === a.id;
                   const pasoDe = Number(vivo?.corrida?.paso_de ?? 0) || 0;
                   const pasos = Number(vivo?.corrida?.pasos ?? 0) || 0;
                   const segundos = Number(vivo?.corrida?.segundos ?? 0) || 0;

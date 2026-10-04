@@ -78,8 +78,9 @@ async function preguntar(): Promise<void> {
       avisar();
     }
   } catch { /* sin back no hay aviso: el bloque se queda como está */ }
-  // Se vuelve a preguntar: cada 4 s mientras trabaja, cada 20 s cuando está quieto.
-  const cada = actual?.corriendo ? 4000 : 20000;
+  // Se vuelve a preguntar: cada 2 s mientras trabaja —una corrida con la escritura pausada dura siete
+  // segundos, y con 4 no se alcanzaba a ver quién trabajaba— y cada 20 s cuando está quieto.
+  const cada = actual?.corriendo ? 2000 : 20000;
   reloj = setTimeout(() => void preguntar(), cada);
 }
 
