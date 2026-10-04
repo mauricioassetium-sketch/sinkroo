@@ -115,8 +115,13 @@ export function lanzarLecturaDeAnuncios(
   // ninguno, los que se deducen de su ZONA («Dubai, Emiratos Árabes Unidos» → AE). Antes, sin países
   // declarados no se leía nada: un negocio con su ciudad cargada y sin marcar países se quedaba sin lectura
   // de su mercado —y sin que nadie se lo dijera— aunque su zona ya dijera dónde está.
-  const declaradosOZona = declarados.length ? declarados : paisesDeLaZona(n.zona);
-  const paises = dedujo.paises.length ? dedujo.paises : declaradosOZona;
+  // LOS MERCADOS DEL CLIENTE VAN PRIMERO, Y SE SUMAN A LOS DEL MATERIAL. Antes, si el material nombraba un
+  // lugar, la respuesta del cliente se ignoraba (el ternario se quedaba con lo que dedujo Vera): el motor leía
+  // siempre donde está la empresa y nunca donde están sus clientes, que es justo lo que el dueño pidió
+  // corregir —«la mayoría de sus clientes son extranjeros»—. Ahora se juntan los dos, y los del cliente van
+  // adelante porque son los que deciden qué mercados entran en las consultas cuando hay que acotar.
+  const delCliente = declarados.length ? declarados : paisesDeLaZona(n.zona);
+  const paises = [...new Set([...delCliente, ...dedujo.paises])];
 
   // CUÁNTAS CONSULTAS SE LANZAN. La lectura es lenta: ~3 minutos por consulta (medido). Un negocio global que
   // declare cuatro mercados y tenga cuatro palabras serían 24 consultas: más de una hora y media por día, por
