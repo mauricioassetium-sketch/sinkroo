@@ -2527,11 +2527,14 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
       fuente: `OpenStreetMap · Overpass · ${mapa.url}`,
     });
   }
-  if (mapa.ok && mapa.conNombre === 0) {
+  // Para un negocio de VARIAS JURISDICCIONES este conteo no aplica —su propia tarea de Lux lo dice—: publicarlo
+  // igual se leería como «su mercado está vacío», que es falso. Y el texto dice con qué se buscó DE VERDAD: la
+  // categoría del negocio, no la frase con la que se describe a sí mismo.
+  if (mapa.ok && mapa.conNombre === 0 && leido.alcance !== 'global') {
     hallazgos.push({
       tipo: 'mercado',
       titulo: 'El mapa no tiene cargado ningún negocio de su rubro en su ciudad',
-      dato: `0 con nombre, ${mapa.lugares} lugares mapeados en ${mapa.ciudad}${mapa.porNombre ? ` (buscado por «${ctx.rubro}»)` : ''}`,
+      dato: `0 con nombre, ${mapa.lugares} lugares mapeados en ${mapa.ciudad}${mapa.porNombre ? ` (buscado por «${ctx.categoria || ctx.rubro}»)` : ''}`,
       porque: 'No es que el mercado no exista: es que OpenStreetMap no lo tiene cargado. La lista real se completa con la búsqueda web y la lectura de anuncios.',
       fuente: `OpenStreetMap · Overpass · ${mapa.url}`,
     });
