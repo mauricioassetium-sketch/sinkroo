@@ -6,7 +6,7 @@ import { leerIdentidadDeLaPagina } from './identidad.js';
 import { armarInformeDelMercadoLeido, type InformeDelMercado } from './mercado.js';
 import { armarLaPieza, conElTextoEscrito, type PiezaArmada } from './pieza.js';
 import { vocabularioDe } from './corrector.js';
-import { zonaDeLugares } from '../lib/paises.js';
+import { zonaDeLugares, paisesDeLaZona, nombreDePais, codigoDePais } from '../lib/paises.js';
 import { pedirDato } from './preguntas.js';
 import { crearPublico, evaluar as evaluarConMiroFish } from './mirofish.js';
 import { TARIFA, saldoDe, cobrarCreacion, costoDeRonda, detalleDeTipos, precioDeTipo } from './creditos.js';
@@ -649,12 +649,27 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
     const esGlobal = leido.alcance === 'global'
       || String(d.alcance_comercial ?? '').trim().toLowerCase() === 'global';
     if (esGlobal || (!declarados.length && !(leido.lugares || []).length)) {
+      // LAS OPCIONES SALEN DEL ESTUDIO, NO DE UNA LISTA FIJA. El motor ya leyó el mercado y sabe DÓNDE se mueve
+      // su rubro: los países donde se leyeron anuncios y los lugares que nombra su material. Esas son las
+      // primeras opciones —para que el cliente elija— y siempre queda el bloque para escribir y agregar el que
+      // falte (el dueño: «ya sabe aproximadamente de qué países o regiones son los clientes por lo que le
+      // arrojó el estudio, entonces le entrega las opciones predefinidas o un bloque para escribir y agregar»).
+      const paisesLeidos = (await db.query<{ pais: string }>(
+        `SELECT DISTINCT pais FROM anuncios_leidos WHERE business_id = $1 AND pais <> '' ORDER BY pais`,
+        [ctx.businessId])).rows.map(r => nombreDePais(r.pais));
+      const deLaPlaza = paisesDeLaZona(ctx.zona).map(c => nombreDePais(c));
+      const declaradosNombre = declarados.map(d => codigoDePais(d) ? nombreDePais(codigoDePais(d)) : String(d));
+      const sugeridas = [...new Set([...deLaPlaza, ...declaradosNombre, ...paisesLeidos])].filter(Boolean).slice(0, 6);
       await pedirDato(db, {
         businessId: ctx.businessId, clave: 'mercados', corridaId,
         pregunta: '¿En qué países o regiones están sus clientes?',
-        porque: 'El motor sale a leer su rubro —y a contar quién pauta— en los mercados donde están sus clientes. Si vende a gente de varios países, dígalos: apuntar al lugar donde está la empresa le traería el público equivocado.',
+        porque: 'El motor sale a leer su rubro —y a contar quién pauta— en los mercados donde están sus clientes. '
+          + 'Abajo van los que ya le salieron en el estudio de su mercado; marque los que correspondan y agregue '
+          + 'los que falten. Apuntar al lugar donde está la empresa le traería el público equivocado.',
         ejemplo: 'Emiratos Árabes Unidos, Europa, Estados Unidos',
-        opciones: ['Su ciudad o su país', 'Medio Oriente', 'Europa', 'Estados Unidos', 'Latinoamérica', 'Asia', 'Global'],
+        // Las del estudio primero (lo que el motor ya dedujo) y las regiones después, como salida rápida.
+        opciones: [...sugeridas, ...['Medio Oriente', 'Europa', 'Estados Unidos', 'Latinoamérica', 'Asia', 'Global']
+          .filter(o => !sugeridas.includes(o))].slice(0, 10),
       });
     }
   } catch { /* si no se puede leer el asistente, no se pregunta: la corrida sigue */ }

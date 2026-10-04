@@ -1,5 +1,5 @@
 // =====================================================================================================
-// LO QUE EL MOTOR NECESITA SABER — el pop up con el que el cliente le responde.
+// LO QUE EL MOTOR NECESITA SABER — el bloque con el que el cliente le responde.
 //
 // POR QUÉ EXISTE
 //
@@ -8,22 +8,26 @@
 // así: «si la información no es suficiente el sistema debe ser inteligente y preguntar directo algo que no
 // tenga; el usuario debe poder responder para resolverlo».
 //
-// CÓMO SE VE
+// LAS OPCIONES NO SON UNA LISTA FIJA: salen del estudio del mercado que el motor ya hizo (los países donde
+// leyó anuncios de su rubro y los lugares que nombra su material). Por eso van primero las suyas y por eso
+// siempre está el bloque para ESCRIBIR Y AGREGAR la que falte: quien sabe dónde están sus clientes es el
+// cliente, no el sistema.
 //
-// Una tarjeta por pregunta abierta, arriba de «Su día», con: qué necesita, para qué (en términos del
-// negocio), un ejemplo de cómo se responde y el campo para escribir. Al responder dice QUÉ QUEDÓ escrito (no
-// un «listo» a secas) y la pregunta desaparece.
+// Se pueden marcar varias y agregar las que quiera: se guardan todas juntas en la misma respuesta.
 //
 // Sin preguntas abiertas no dibuja nada: no ocupa lugar en la pantalla.
 // =====================================================================================================
 import { useEffect, useState } from 'react';
 import { Card, Badge, Button } from './ui';
-import { I_Sparkle, I_Check } from './icons';
+import { I_Sparkle, I_Check, I_Plus, I_X } from './icons';
 import { leerPreguntas, responderPregunta, type PreguntaDelMotor } from '../api/cliente';
 
 export function PreguntasDelMotor({ setToast }: { setToast?: (m: string) => void }) {
   const [abiertas, setAbiertas] = useState<PreguntaDelMotor[]>([]);
-  const [texto, setTexto] = useState<Record<string, string>>({});
+  // Lo que se arma por pregunta: lo marcado de la lista del estudio y lo que se agrega escribiendo.
+  const [marcadas, setMarcadas] = useState<Record<string, string[]>>({});
+  const [agregadas, setAgregadas] = useState<Record<string, string[]>>({});
+  const [borrador, setBorrador] = useState<Record<string, string>>({});
   const [enviando, setEnviando] = useState('');
   const [quedo, setQuedo] = useState('');
 
@@ -35,12 +39,31 @@ export function PreguntasDelMotor({ setToast }: { setToast?: (m: string) => void
   };
   useEffect(() => { void traer(); }, []);
 
+  const alternar = (id: string, op: string) =>
+    setMarcadas(m => {
+      const suyas = m[id] || [];
+      return { ...m, [id]: suyas.includes(op) ? suyas.filter(x => x !== op) : [...suyas, op] };
+    });
+
+  const agregar = (id: string) => {
+    const t = String(borrador[id] || '').trim();
+    if (!t) { setToast?.('Escriba el país o la región antes de agregarla'); return; }
+    setAgregadas(a => {
+      const suyas = a[id] || [];
+      return suyas.some(x => x.toLowerCase() === t.toLowerCase()) ? a : { ...a, [id]: [...suyas, t] };
+    });
+    setBorrador(b => ({ ...b, [id]: '' }));
+  };
+
+  const quitar = (id: string, cual: string) =>
+    setAgregadas(a => ({ ...a, [id]: (a[id] || []).filter(x => x !== cual) }));
+
   const responder = async (p: PreguntaDelMotor) => {
-    const valor = String(texto[p.id] || '').trim();
-    if (!valor) { setToast?.('Escriba la respuesta antes de enviarla'); return; }
+    const todas = [...(marcadas[p.id] || []), ...(agregadas[p.id] || [])];
+    if (!todas.length) { setToast?.('Marque una opción del estudio o escriba la suya antes de enviar'); return; }
     setEnviando(p.id);
     try {
-      const r = await responderPregunta(p.id, valor);
+      const r = await responderPregunta(p.id, todas.join(', '));
       setQuedo(r.que_quedo || 'quedó guardado');
       setAbiertas(a => a.filter(x => x.id !== p.id));
       setToast?.(r.que_quedo || 'Respuesta guardada');
@@ -60,37 +83,69 @@ export function PreguntasDelMotor({ setToast }: { setToast?: (m: string) => void
           <I_Check size={12} style={{ color: 'var(--green)' }} /> <b>Quedó guardado:</b> {quedo}
         </div>
       )}
-      {abiertas.map(p => (
-        <div key={p.id} className="col-stack" style={{ marginBottom: 12 }}>
-          <div className="alarm-title">{p.pregunta}</div>
-          {p.porque && <div className="alarm-sug"><b>Para qué: </b>{p.porque}</div>}
-          {Array.isArray(p.opciones) && p.opciones.length > 0 && (
-            <div className="onb-chips">
-              {p.opciones.map(op => (
-                <button key={op} type="button" className={`tipo-chip ${texto[p.id] === op ? 'sel' : ''}`}
-                  title={`Responder «${op}»`}
-                  onClick={() => setTexto(t => ({ ...t, [p.id]: t[p.id] === op ? '' : op }))}>
-                  {texto[p.id] === op ? '✓ ' : ''}{op}
-                </button>
-              ))}
+      {abiertas.map(p => {
+        const suyas = marcadas[p.id] || [];
+        const extras = agregadas[p.id] || [];
+        return (
+          <div key={p.id} className="col-stack" style={{ marginBottom: 14 }}>
+            <div className="alarm-title">{p.pregunta}</div>
+            {p.porque && <div className="alarm-sug"><b>Para qué: </b>{p.porque}</div>}
+
+            {Array.isArray(p.opciones) && p.opciones.length > 0 && (
+              <>
+                <div className="tiny muted">Lo que ya le salió en el estudio de su mercado: marque las que correspondan.</div>
+                <div className="onb-chips">
+                  {p.opciones.map(op => (
+                    <button key={op} type="button" className={`tipo-chip ${suyas.includes(op) ? 'sel' : ''}`}
+                      title={`Marcar «${op}» como uno de sus mercados`}
+                      onClick={() => alternar(p.id, op)}>
+                      {suyas.includes(op) ? '✓ ' : ''}{op}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+
+            <div className="tiny muted">¿Falta alguno? Escríbalo y agréguelo:</div>
+            <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+              <input className="input" style={{ flex: 1, minWidth: 200 }}
+                placeholder={p.ejemplo ? `Ejemplo: ${p.ejemplo}` : 'Escriba el país o la región'}
+                value={borrador[p.id] || ''}
+                onChange={e => setBorrador(b => ({ ...b, [p.id]: e.target.value }))}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); agregar(p.id); } }} />
+              <Button variant="ghost" className="btn-sm" title="Lo agrega a su respuesta"
+                onClick={() => agregar(p.id)}>
+                <I_Plus size={12} /> Agregar
+              </Button>
             </div>
-          )}
-          <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-            <input className="input" style={{ flex: 1, minWidth: 220 }}
-              placeholder={p.ejemplo ? `Ejemplo: ${p.ejemplo}` : 'Escriba su respuesta'}
-              value={texto[p.id] || ''}
-              onChange={e => setTexto(t => ({ ...t, [p.id]: e.target.value }))} />
-            <Button variant="primary" className="btn-sm" disabled={enviando === p.id}
-              title="Guarda su respuesta donde el motor la lee: la próxima corrida ya trabaja con ella."
-              onClick={() => void responder(p)}>
-              {enviando === p.id ? 'Guardando…' : 'Responder'}
-            </Button>
+
+            {extras.length > 0 && (
+              <div className="onb-chips">
+                {extras.map(x => (
+                  <button key={x} type="button" className="tipo-chip sel" title="Quitarlo de la respuesta"
+                    onClick={() => quitar(p.id, x)}>
+                    {x} <I_X size={11} />
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <div className="row" style={{ gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <Button variant="primary" className="btn-sm" disabled={enviando === p.id}
+                title="Guarda su respuesta donde el motor la lee: la próxima corrida ya trabaja con ella."
+                onClick={() => void responder(p)}>
+                {enviando === p.id ? 'Guardando…' : 'Responder'}
+              </Button>
+              {(suyas.length + extras.length) > 0 && (
+                <span className="tiny muted">Va a responder: {[...suyas, ...extras].join(', ')}</span>
+              )}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
       <div className="acc-why">
-        Cada respuesta queda guardada en su negocio y el motor la usa en la próxima vuelta. No hace falta
-        tocar ningún botón más.
+        Cada respuesta queda guardada en su negocio y el motor la usa en la próxima vuelta: los mercados que
+        marque son los que va a leer para buscar a sus clientes.
       </div>
     </Card>
   );
