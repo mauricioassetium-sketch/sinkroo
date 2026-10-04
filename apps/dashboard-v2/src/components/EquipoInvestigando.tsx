@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Card, Badge, Button } from './ui';
 import { I_Zap, I_ArrowRight, I_Users, I_Eye } from './icons';
 /**
@@ -106,6 +106,26 @@ export function EquipoInvestigando({ setToast, irAGaleria }: PropsEquipo) {
   const d = useDatos();
   // El motor vivo: con esto se sabe CUÁL de los diez está trabajando en este momento y en qué paso va.
   const vivo = useMotorVivo();
+
+  /**
+   * REFRESCO EN VIVO DE LA CORRIDA. Mientras el motor corre, la lista de corridas se vuelve a leer cada 8
+   * segundos —las tareas llegan de a una, a medida que cada agente termina— y cuando la corrida termina se lee
+   * una vez más para quedarse con las tareas finales. Sin esto, la tarjeta quedaba con la foto del momento en
+   * que arrancó: «en curso · 0 agentes que dejaron tarea · Esta corrida no dejó tareas cargadas en el back»,
+   * con el motor ya habiendo hecho veinte.
+   */
+  const corria = useRef(false);
+  useEffect(() => {
+    const corriendo = !!vivo?.corriendo;
+    if (corriendo) corria.current = true;
+    if (!corriendo && !corria.current) return;
+    if (corriendo) {
+      const reloj = setInterval(() => void d.refrescar(), 8000);
+      return () => clearInterval(reloj);
+    }
+    corria.current = false;
+    void d.refrescar();
+  }, [vivo?.corriendo]);
   const detalle = useDetalle();
   // El motor corriendo ahora mismo, pedido desde acá: mientras responde, el botón lo dice.
   const [corriendo, setCorriendo] = useState(false);
