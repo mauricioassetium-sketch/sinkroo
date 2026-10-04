@@ -12,7 +12,7 @@ import { useDetalle, type Detalle } from './Detalle';
 // servidor; sin back el mismo contrato llega vacío y el bloque invita a conectar la cuenta. No hay
 // una versión «de ejemplo» de este bloque: simular trabajo sería inventar resultados.
 import { useDatos, type Corrida, type TareaCorrida } from '../api/datos';
-import { useMotorVivo } from './MotorTrabajando';
+import { useAgenteEnVivo, enCurso, enReloj } from '../lib/agente-en-vivo';
 import { MapaDelMotor } from './MapaDelMotor';
 import { EstadoVacio } from './EstadoVacio';
 import { baseApi, token } from '../api/cliente';
@@ -85,9 +85,6 @@ const resultadoEnLinea = (r?: Record<string, unknown>, cuantos = 6) => {
   } catch { return 'sin detalle cargado'; }
 };
 
-/** ¿Esa corrida sigue en curso? Lo dice el estado que devolvió el back, no el panel. */
-const enCurso = (estado?: string) => /corriendo|en_curso|en curso|pendiente|abierta/i.test(estado || '');
-
 /** El estado de una corrida, como se lee. Un estado que el panel no conoce se muestra tal como vino. */
 const estadoTxt = (estado?: string) => {
   const e = (estado || '').trim();
@@ -104,32 +101,29 @@ type PropsEquipo = {
 
 export function EquipoInvestigando({ setToast, irAGaleria }: PropsEquipo) {
   const d = useDatos();
-  // El motor vivo: con esto se sabe CUÁL de los diez está trabajando en este momento y en qué paso va.
-  const vivo = useMotorVivo();
+  const detalle = useDetalle();
+  // El motor corriendo, pedido desde acá: mientras responde, el botón lo dice.
+  const [corriendo, setCorriendo] = useState(false);
+  const corridas = d.corridas;
+  // TODO EL TRABAJO EN VIVO EN UN SOLO LUGAR (`lib/agente-en-vivo`): quién lo tiene, en qué va y cuánto falta.
+  const enVivo = useAgenteEnVivo(corridas);
 
   /**
-   * REFRESCO EN VIVO DE LA CORRIDA. Mientras el motor corre, la lista de corridas se vuelve a leer cada 8
-   * segundos —las tareas llegan de a una, a medida que cada agente termina— y cuando la corrida termina se lee
-   * una vez más para quedarse con las tareas finales. Sin esto, la tarjeta quedaba con la foto del momento en
-   * que arrancó: «en curso · 0 agentes que dejaron tarea · Esta corrida no dejó tareas cargadas en el back»,
-   * con el motor ya habiendo hecho veinte.
+   * REFRESCO EN VIVO: mientras el motor trabaja, la lista de corridas se relee cada 8 segundos —las tareas
+   * llegan de a una, a medida que cada agente termina— y una vez más al terminar, para quedarse con las tareas
+   * finales. Sin esto la tarjeta se quedaba con la foto del arranque («en curso · 0 tareas»).
    */
   const corria = useRef(false);
   useEffect(() => {
-    const corriendo = !!vivo?.corriendo;
-    if (corriendo) corria.current = true;
-    if (!corriendo && !corria.current) return;
-    if (corriendo) {
+    if (enVivo.enMarcha) corria.current = true;
+    if (!enVivo.enMarcha && !corria.current) return;
+    if (enVivo.enMarcha) {
       const reloj = setInterval(() => void d.refrescar(true), 8000);
       return () => clearInterval(reloj);
     }
     corria.current = false;
     void d.refrescar(true);
-  }, [vivo?.corriendo]);
-  const detalle = useDetalle();
-  // El motor corriendo ahora mismo, pedido desde acá: mientras responde, el botón lo dice.
-  const [corriendo, setCorriendo] = useState(false);
-  const corridas = d.corridas;
+  }, [enVivo.enMarcha]);
   const ultima = corridas[0] ?? null;
   /**
    * La última tarea registrada de cada agente. Se recorre de la corrida más nueva a la más vieja
@@ -138,45 +132,6 @@ export function EquipoInvestigando({ setToast, irAGaleria }: PropsEquipo) {
    */
   const porAgente = new Map<string, { t: TareaCorrida; c: Corrida }>();
   for (const c of corridas) for (const t of c.tareas ?? []) if (!porAgente.has(t.agente)) porAgente.set(t.agente, { t, c });
-  // EL MOTOR CORRIENDO SE SABE POR SU LATIDO, NO POR LA LISTA DE CORRIDAS. La lista se refresca cada 30
-  // segundos: una corrida de siete (con la escritura pausada) empezaba y terminaba entre dos refrescos, así
-  // que la tarjeta nunca mostraba a nadie trabajando. El latido llega cada 2 segundos mientras corre.
-  const enMarcha = !!vivo?.corriendo || corridas.some(c => enCurso(c.estado));
-
-  /**
-   * QUIÉN ESTÁ TRABAJANDO AHORA. Dos fuentes, en orden:
-   *   1. El paso vivo del motor, si nombra a un agente («Vera lee su negocio»).
-   *   2. Los que ya dejaron su tarea en la corrida en curso: el que trabaja es el PRIMERO del equipo que
-   *      todavía no aparece, porque el motor los hace en orden.
-   * Antes se adivinaba sólo por el texto del paso, y con corridas cortas (la escritura está pausada) el
-   * refresco llegaba tarde y ningún agente mostraba su barra. Así es determinista.
-   */
-  const corridaViva = corridas.find(c => enCurso(c.estado)) ?? null;
-  // LOS QUE YA TRABAJARON EN ESTA CORRIDA, en vivo (llegan cada 2 s con el latido del motor): los de la lista
-  // de corridas llegan tarde y por eso el activo era siempre el primero del equipo.
-  const hechosEnLaCorrida = new Set([
-    ...(vivo?.trabajos?.[0]?.agentes_hechos ?? []),
-    ...(corridaViva?.tareas ?? []).map(t => t.agente),
-  ]);
-  const agenteEnPaso = (() => {
-    if (!enMarcha) return '';
-    // LA LECTURA DEL MERCADO ES EL TRABAJO DE LUX. Cuando la corrida ya cerró y lo que sigue en marcha es la
-    // lectura de anuncios (minutos, no segundos), la tarjeta de Lux es la que tiene que mostrarlo: antes esa
-    // tarea no era de ningún agente y el dueño veía «pedí una corrida y no se refleja nada en los agentes».
-    const leyendo = vivo?.trabajos?.some(t => t.clase === 'lectura');
-    if (leyendo) return 'lux';
-    // PRIMERO LOS QUE YA TRABAJARON: esa lista la manda el back con el latido del motor y avanza de verdad, así
-    // que el que trabaja ahora es el primero del equipo que todavía no aparece. El nombre del paso se usa sólo
-    // al arrancar (o si esa lista no llegó), porque el texto del paso NO cambia durante la corrida: por eso la
-    // tarjeta mostraba a Vera de punta a punta aunque los demás estuvieran trabajando.
-    if (hechosEnLaCorrida.size > 0) {
-      return AGENTES.find(a => !hechosEnLaCorrida.has(a.id))?.id ?? '';
-    }
-    const paso = String(vivo?.paso || vivo?.trabajos?.[0]?.que || '');
-    if (!paso) return '';
-    const nombrado = AGENTES.find(a => new RegExp(`(^|\W)${a.nombre}(\W|$)`, 'i').test(paso));
-    return nombrado?.id ?? '';
-  })();
   const tareasTotales = corridas.reduce((s, c) => s + (c.tareas?.length ?? 0), 0);
 
   /** Pide una corrida de verdad y vuelve a leer el back: lo que aparezca después es lo que hay. */
@@ -242,8 +197,8 @@ export function EquipoInvestigando({ setToast, irAGaleria }: PropsEquipo) {
         <div className="eq-head-top">
           <span className="eq-live"><span className="dot-live" /> {d.real ? 'CORRIDAS DEL BACK' : 'SIN LEER TODAVÍA'}</span>
           <span className="eq-head-t">El equipo trabajando: la investigación de su mercado</span>
-          <Badge tone={enMarcha ? 'green' : 'muted'}>
-            {enMarcha ? 'una corrida en curso' : 'ninguna corrida corriendo'}
+          <Badge tone={enVivo.enMarcha ? 'green' : 'muted'}>
+            {enVivo.enMarcha ? 'una corrida en curso' : 'ninguna corrida corriendo'}
           </Badge>
           {d.error ? <Badge tone="red">{d.error}</Badge> : null}
         </div>
@@ -299,26 +254,17 @@ export function EquipoInvestigando({ setToast, irAGaleria }: PropsEquipo) {
             {/* ============ AGENTE POR AGENTE: su última tarea registrada, con su corrida ============ */}
             <Card className="eq-card"
               title={<span className="row" style={{ gap: 8 }}><I_Users size={14} style={{ color: 'var(--purple3)' }} /> El equipo, agente por agente</span>}
-              action={<Badge tone={enMarcha ? 'green' : 'muted'}>{AGENTES.length} agentes</Badge>}>
+              action={<Badge tone={enVivo.enMarcha ? 'green' : 'muted'}>{AGENTES.length} agentes</Badge>}>
               <div className="eq-agentes">
                 {AGENTES.map(a => {
                   const reg = porAgente.get(a.id);
                   const curso = !!reg && enCurso(reg.c.estado);
-                  // ¿ESTE AGENTE ES EL QUE ESTÁ TRABAJANDO AHORA MISMO? El back nombra el paso con el agente
-                  // («Vera lee su negocio») y el detalle dice qué está haciendo en ese paso: con eso la tarjeta
-                  // muestra quién trabaja, con su barra y su resumen, en vez de un «trabajando» parejo para todos.
-                  // El texto del que trabaja: si lo que corre es LA LECTURA (el trabajo de mercado de Lux), su
-                  // detalle es el de la lectura —no el del paso de la corrida—, que es lo que está haciendo él.
-                  const tareaDeEste = vivo?.trabajos?.find(x => (x.clase === 'lectura' && a.id === 'lux')) ?? vivo?.trabajos?.[0];
-                  const pasoVivo = String(vivo?.paso || tareaDeEste?.que || '');
-                  const detalleVivo = String(tareaDeEste?.detalle || vivo?.detalle || '');
-                  const enEsePaso = agenteEnPaso === a.id;
-                  const pasoDe = Number(vivo?.corrida?.paso_de ?? 0) || 0;
-                  const pasos = Number(vivo?.corrida?.pasos ?? 0) || 0;
-                  const segundos = Number(vivo?.corrida?.segundos ?? 0) || 0;
-                  const estimado = Number((vivo?.trabajos?.find(t => t.clase === 'corrida') as { estimado_seg?: number } | undefined)?.estimado_seg ?? 0) || 0;
-                  const porc = pasos ? Math.min(100, Math.round((pasoDe / pasos) * 100)) : 0;
-                  const falta = estimado > segundos ? estimado - segundos : 0;
+                  // Lo que muestra esta tarjeta sale de `enVivo` (ver `lib/agente-en-vivo`): si es este el que
+                  // tiene la tarea, con su barra y su resumen; si ya trabajó en esta corrida, marcado como tal.
+                  const enEsePaso = enVivo.activo === a.id;
+                  const porc = enVivo.porcentaje;
+                  const segundos = enVivo.segundos;
+                  const falta = enVivo.faltaSeg && enVivo.faltaSeg > 0 ? enVivo.faltaSeg : 0;
                   const clase = curso ? 'working' : 'idle';
                   return (
                     <div key={a.id} className={`eq-ag ${clase}`}>
@@ -332,7 +278,7 @@ export function EquipoInvestigando({ setToast, irAGaleria }: PropsEquipo) {
                               ? 'Su última tarea quedó registrada con la corrida terminada: no tiene trabajo pendiente.'
                               : 'El back no tiene ninguna tarea de este agente: no se pinta como si hubiera trabajado.'}>
                           {enEsePaso ? 'trabajando ahora'
-                            : enMarcha && hechosEnLaCorrida.has(a.id) ? 'trabajó en esta corrida'
+                            : enVivo.enMarcha && enVivo.hechos.has(a.id) ? 'trabajó en esta corrida'
                               : curso ? 'trabajando' : reg ? 'terminó su tarea' : 'sin registro'}
                         </span>
                       </div>
@@ -340,13 +286,13 @@ export function EquipoInvestigando({ setToast, irAGaleria }: PropsEquipo) {
                           quién tiene la tarea en la mano y qué está haciendo, sin leer los diez renglones. */}
                       {enEsePaso && (
                         <>
-                          <span className="eq-barra" title={`paso ${pasoDe} de ${pasos}: ${porc}%`}>
+                          <span className="eq-barra" title={`paso ${enVivo.pasoDe} de ${enVivo.pasos}: ${porc}%`}>
                             <span className="eq-barra-fill" style={{ width: `${porc}%` }} />
                           </span>
                           <div className="eq-ahora">
-                            <b>En qué está: </b>{pasoVivo}{detalleVivo ? ` — ${detalleVivo}` : ''}
-                            {segundos ? ` · lleva ${Math.floor(segundos / 60)}:${String(Math.round(segundos % 60)).padStart(2, '0')}` : ''}
-                            {falta ? ` · faltan ~${Math.floor(falta / 60)}:${String(Math.round(falta % 60)).padStart(2, '0')}` : ''}
+                            <b>En qué está: </b>{enVivo.paso}{enVivo.detalle ? ` — ${enVivo.detalle}` : ''}
+                            {segundos ? ` · lleva ${enReloj(segundos)}` : ''}
+                            {falta ? ` · faltan ~${enReloj(falta)}` : ''}
                           </div>
                         </>
                       )}
@@ -420,7 +366,7 @@ export function EquipoInvestigando({ setToast, irAGaleria }: PropsEquipo) {
                   {/* SE VEN DIEZ Y EL RESTO POR SCROLL. Medido: cada renglón mide 17 px con 11 de separación,
                       así que diez renglones son 270 px (el alto del contenedor, en la clase). Antes se
                       dibujaban las 19 de una y empujaban la tarjeta hacia abajo. */}
-                  <div className="col-stack corridas-scroll" title="Se ven las últimas diez. Deslice acá adentro para ver las anteriores.">
+                  <div className="col-stack lista-tope tope-10-corridas" title="Se ven las últimas diez. Deslice acá adentro para ver las anteriores.">
                     {corridas.slice(1).map(c => (
                       <div key={c.id} className="tiny" style={{ display: 'flex', gap: 7, flexWrap: 'wrap', alignItems: 'baseline' }}>
                         <b>{horaDe(c.empezada_at)}</b>

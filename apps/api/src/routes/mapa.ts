@@ -21,6 +21,7 @@ import type { FastifyInstance } from 'fastify';
 import type { Pool } from 'pg';
 import { exigirSesion } from '../lib/auth.js';
 import { coordenadasDe, nombreDePais, paisesDeLaZona, PAISES_DEL_CONTINENTE } from '../lib/paises.js';
+import { lecturaEnCurso } from '../services/programador.js';
 
 /** Los países que el negocio declaró (sueltos y por continente), ya expandidos a códigos. */
 async function queryPaises(db: Pool, businessId: string): Promise<string[]> {
@@ -58,10 +59,8 @@ export async function mapaRoutes(app: FastifyInstance, db: Pool) {
 
     // 1) LO QUE SE ESTÁ LEYENDO AHORA: la lectura abierta de los últimos 40 minutos (más vieja que eso es una
     //    lectura que se cortó sin cerrar, y decir «verificando» sería mentir).
-    const abierta = (await db.query<{ mercados: string[]; empezada_at: Date }>(
-      `SELECT mercados, empezada_at FROM lecturas_de_anuncios
-        WHERE business_id = $1 AND terminada_at IS NULL AND empezada_at > now() - interval '8 minutes'
-        ORDER BY empezada_at DESC LIMIT 1`, [u.business_id]).catch(() => ({ rows: [] }))).rows[0];
+    // La lectura en curso, la misma que usa el aviso del motor (una sola consulta para los dos).
+    const abierta = await lecturaEnCurso(db, u.business_id);
     const verificando = new Set((abierta?.mercados ?? []).map(m => String(m).toUpperCase()));
 
     // 2) LO YA LEÍDO: de dónde tiene anuncios el motor, cuántos y cuándo fue la última vez.

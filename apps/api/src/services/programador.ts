@@ -104,6 +104,28 @@ export async function paisesDeclarados(db: Pool, businessId: string): Promise<st
  * lectores peleándose por el mismo navegador y NINGUNA termina (medido: tres abiertas a la vez, todas en «0
  * fichas»). Antes de lanzar se mira si ya hay una trabajando.
  */
+/**
+ * LA LECTURA EN CURSO de un negocio, con lo que hace falta para mostrarla: sus mercados, sus palabras y cuántos
+ * anuncios lleva. Es la que no cerró y empezó hace menos de 8 minutos —una más vieja que eso es un proceso que
+ * murió sin cerrarla, y decir «verificando» sería mentir—. Vive acá y no en cada ruta porque el mapa y el aviso
+ * del motor necesitan lo mismo.
+ */
+export type LecturaEnCurso = {
+  mercados: string[]; palabras: string[]; fichas: number; segundos: number; consultas: number;
+};
+export async function lecturaEnCurso(db: Pool, businessId: string): Promise<LecturaEnCurso | null> {
+  try {
+    const r = await db.query<LecturaEnCurso>(
+      `SELECT mercados, palabras, fichas,
+              extract(epoch FROM (now() - empezada_at))::int AS segundos,
+              (cardinality(mercados) * cardinality(palabras))::int AS consultas
+         FROM lecturas_de_anuncios
+        WHERE business_id = $1 AND terminada_at IS NULL AND empezada_at > now() - interval '8 minutes'
+        ORDER BY empezada_at DESC LIMIT 1`, [businessId]);
+    return r.rows[0] ?? null;
+  } catch { return null; }
+}
+
 export async function hayLecturaEnCurso(db: Pool, businessId: string): Promise<boolean> {
   try {
     const r = await db.query(

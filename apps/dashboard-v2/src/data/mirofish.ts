@@ -160,23 +160,76 @@ export const ranking = () => rankingDe(OPCIONES);
 export const CUANTAS_PASAN = 3;
 
 // =============================================================================================
-// LA TARIFA — los números vigentes del proyecto, tal como están en `docs/plan/05-modelo-mirofish.md`
-// §8.2 y en la vista Créditos («Piezas y videos · 16 por pieza»). No hay otros precios: estos son
-// los que cierran y los que se muestran antes de gastar.
-//   · crear una ronda de 5 opciones ...... 120  (incluye investigar el mercado y escribir los prompts)
-//   · crear una variante de una pieza ..... 16
-//   · evaluar una pieza en MiroFish ........ 8  → una ronda de 5 = 40
-//   · el público (los 500) ................. 0  nunca se cobra
+// LA TARIFA — LA TABLA POR TIPO DE CONTENIDO (la fijó el dueño).
+//
+// EL DUEÑO DEL PRECIO ES EL BACK (`apps/api/src/services/creditos.ts`). Lo de acá es la copia del panel para
+// las pantallas que corren con datos de ejemplo —sin back conectado—, y cuando el back contesta
+// `GET /api/rondas` se muestran LOS SUYOS (`tarifa.por_tipo` y `tarifa.costo_ronda`), que son exactamente
+// los mismos que cobra el libro. Ninguna pantalla escribe un precio a mano: todos salen de acá o del back.
+//
+//   · video ................ 48   (30 segundos como máximo)
+//   · reel con animación ... 24   (animación + imagen + sonido)
+//   · reel de imágenes ..... 20   (varias imágenes en secuencia con sonido)
+//   · imagen con texto ..... 12   (una imagen sola con el texto encima)
+//   · título animado ......... 8   (una animación corta de título)
+//   · evaluar una pieza ...... 8   · el público (los 500) nunca se cobra
+//
+// UNA RONDA: 5 contenidos, COMO MÁXIMO 2 son video, y los otros 3 se reparten entre los cuatro tipos que no
+// son video. Con los 2 videos + reel con animación + imagen con texto + título animado:
+// 48+48+24+12+8 = 140 al crear, y 5×8 = 40 al evaluar = 180 créditos la ronda.
 // =============================================================================================
-// Tarifas en créditos. Una pieza nueva cuesta lo mismo que una variante: es el mismo trabajo de
-// creacion. Asi el numero cierra con la vista de Creditos ('16 por pieza') y con el doc del modelo
-// ('ronda 120'): 5 piezas x 16 = 80 para crear + 5 x 8 = 40 para evaluar = 120 la ronda.
+export type TipoDeContenido = 'video' | 'reel con animación' | 'reel de imágenes' | 'imagen con texto' | 'título animado';
+
+/** Lo que cuesta crear un contenido de cada tipo, en créditos. */
+export const PRECIOS_POR_TIPO: Record<TipoDeContenido, number> = {
+  video: 48,
+  'reel con animación': 24,
+  'reel de imágenes': 20,
+  'imagen con texto': 12,
+  'título animado': 8,
+};
+
+/** Los cinco tipos, en el orden en que se muestran. */
+export const TIPOS_DE_CONTENIDO: TipoDeContenido[] = [
+  'video', 'reel con animación', 'reel de imágenes', 'imagen con texto', 'título animado',
+];
+
+/** Qué es cada tipo, dicho como se lo diría al dueño (va al lado de su precio). */
+export const QUE_ES_CADA_TIPO: Record<TipoDeContenido, string> = {
+  video: 'video filmado, de 30 segundos como máximo',
+  'reel con animación': 'mezcla de animación, imagen y sonido, para llamar la atención',
+  'reel de imágenes': 'varias imágenes en secuencia, con sonido',
+  'imagen con texto': 'una imagen sola con el texto encima',
+  'título animado': 'una animación corta de título, para enganchar al principio',
+};
+
 export const TARIFA = {
   piezasRonda: 5,
-  crearPieza: 16,
-  crearVariante: 16,
   evaluarPieza: 8,
   publico: 0,
+  /** La tabla por tipo, tal como la cobra el back. */
+  porTipo: PRECIOS_POR_TIPO,
+};
+
+/** El precio de un tipo. Un tipo que no está en la tabla devuelve 0 y quien lo muestre lo dice. */
+export const precioDeTipo = (tipo: TipoDeContenido | string | null | undefined): number =>
+  (tipo ? (PRECIOS_POR_TIPO[tipo as TipoDeContenido] ?? 0) : 0);
+
+/** El tipo de contenido de una pieza, leído de su formato (los mismos nombres que usa el back). */
+export function tipoDeFormato(formato: string | null | undefined): TipoDeContenido | null {
+  const f = String(formato || '');
+  if (/t[íi]tulo animado/i.test(f)) return 'título animado';
+  if (/reel con animaci[óo]n|reel animado/i.test(f)) return 'reel con animación';
+  if (/reel de im[áa]genes|reel de fotos/i.test(f)) return 'reel de imágenes';
+  if (/reel con texto|imagen/i.test(f)) return 'imagen con texto';
+  if (/video/i.test(f)) return 'video';
+  return null;
+}
+
+/** Lo que cuesta crear una pieza por su formato. Sin tipo reconocido devuelve null: no se inventa precio. */
+export const precioDeFormato = (formato?: string | null): number | null => {
+  const tipo = tipoDeFormato(formato);
+  return tipo ? precioDeTipo(tipo) : null;
 };
 
 export interface CostoRonda {
@@ -184,24 +237,63 @@ export interface CostoRonda {
   crear: number;
   evaluar: number;
   total: number;
+  /** Qué tipo es cada contenido y cuánto cuesta crearlo: la suma, tal como se cobra. */
+  por_tipo: { tipo: TipoDeContenido; creditos: number }[];
+  mezcla: TipoDeContenido[];
 }
 
-/** Una ronda completa: 5 opciones nuevas. 120 + 40 = 160 créditos. */
-export const COSTO_RONDA: CostoRonda = {
-  piezas: TARIFA.piezasRonda,
-  crear: TARIFA.piezasRonda * TARIFA.crearPieza,
-  evaluar: TARIFA.piezasRonda * TARIFA.evaluarPieza,
-  total: TARIFA.piezasRonda * (TARIFA.crearPieza + TARIFA.evaluarPieza),
-};
+/** La mezcla de la primera ronda: 2 videos y los tres tipos que entran primero. */
+export const MEZCLA_DE_RONDA: TipoDeContenido[] = [
+  'video', 'video', 'reel con animación', 'imagen con texto', 'título animado',
+];
+
+/** Una ronda: se suma POR TIPO, no por un precio único por pieza. */
+export function costoDeRonda(tipos: TipoDeContenido[] = MEZCLA_DE_RONDA): CostoRonda {
+  const por_tipo = tipos.map(tipo => ({ tipo, creditos: precioDeTipo(tipo) }));
+  const crear = por_tipo.reduce((s, p) => s + p.creditos, 0);
+  const evaluar = tipos.length * TARIFA.evaluarPieza;
+  return { piezas: tipos.length, crear, evaluar, total: crear + evaluar, por_tipo, mezcla: tipos };
+}
+
+/** Lo que cuesta una ronda de 5 con dos videos: 140 + 40 = 180 créditos. */
+export const COSTO_RONDA: CostoRonda = costoDeRonda();
 
 /** Cuántas variantes hace una ronda de mejora: 3, no 5. */
 export const CUANTAS_VARIANTES = 3;
 
-/** Una ronda de mejora: `cuantas` variantes de la que ganó. Con 3 → 48 crear + 24 evaluar = 72. */
-export function costoMejora(cuantas: number = CUANTAS_VARIANTES): CostoRonda {
-  const crear = cuantas * TARIFA.crearVariante;
-  const evaluar = cuantas * TARIFA.evaluarPieza;
-  return { piezas: cuantas, crear, evaluar, total: crear + evaluar };
+/** Los cinco precios escritos cortos, para cuando la pantalla no sabe de qué tipo es la pieza. */
+export const PRECIOS_EN_UNA_LINEA: string = TIPOS_DE_CONTENIDO
+  .map(t => `${t} ${precioDeTipo(t)}`)
+  .join(' · ');
+
+/** Lo que cuesta lo más barato y lo más caro de la tabla: sirve para decir un rango sin inventar un número. */
+export const RANGO_DE_VARIANTE = {
+  min: Math.min(...Object.values(PRECIOS_POR_TIPO)),
+  max: Math.max(...Object.values(PRECIOS_POR_TIPO)),
+};
+
+/** «2 video · 1 reel con animación · 1 imagen con texto · 1 título animado»: cómo viene repartida una ronda. */
+export function resumenDeMezcla(tipos: TipoDeContenido[]): string {
+  const cuenta = new Map<TipoDeContenido, number>();
+  for (const t of tipos) cuenta.set(t, (cuenta.get(t) ?? 0) + 1);
+  return [...cuenta.entries()].map(([t, n]) => `${n} ${t}`).join(' · ');
+}
+
+/** El costo desglosado y sumado por tipo: «48 + 48 + 24 + 12 + 8 al crear, 40 al evaluar». */
+export const detalleDelCosto = (c: CostoRonda): string =>
+  `${c.por_tipo.map(p => p.creditos).join(' + ')} al crear, ${c.evaluar} al evaluar`;
+
+/** «entre 24 y 144 créditos» para `cuantas` variantes, cuando no se sabe de qué tipo son. */
+export const rangoDeVariantes = (cuantas: number): string =>
+  `${cuantas * RANGO_DE_VARIANTE.min} y ${cuantas * RANGO_DE_VARIANTE.max}`;
+
+/**
+ * Una ronda de mejora: `cuantas` variantes de la que ganó. Cada variante cuesta lo que cuesta SU tipo (una
+ * variante de video 48, una de imagen 12), así que el tipo entra por parámetro y nunca se escribe un número.
+ */
+export function costoMejora(cuantas: number = CUANTAS_VARIANTES, tipo: TipoDeContenido = 'video'): CostoRonda {
+  const mezcla: TipoDeContenido[] = Array.from({ length: cuantas }, () => tipo);
+  return costoDeRonda(mezcla);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -225,8 +317,10 @@ export const objecion = (o: Opcion) => objeciones(o)[0];
 // LA RONDA DE MEJORA — las 3 variantes que salen de la pieza que ganó la ronda anterior.
 //
 // La clave del negocio: no arranca de cero. Agarra la 1ª del ranking y le cambia UNA cosa por
-// variante (la objeción del juez más duro, prueba social, el ángulo). Por eso sale 72 créditos y
-// no 160: son 3 variantes de 16 + su evaluación de 8. La pieza original no se toca.
+// variante (la objeción del juez más duro, prueba social, el ángulo). Cada variante vale lo que valga
+// SU tipo —una de video 48, una de imagen 12, una de título animado 8— más su evaluación de 8: por eso
+// el número sale de la tabla (`costoMejora(cuantas, tipo)`) y no está escrito en ningún lado. La pieza
+// original no se toca.
 // ---------------------------------------------------------------------------------------------
 interface CambioMejora {
   id: string;

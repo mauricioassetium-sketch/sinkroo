@@ -19,7 +19,8 @@ import { diasEnElAire } from './mercado.js';
 import { detectarLengua } from './lenguas.js';
 import { sinSueltos } from '../lib/json-seguro.js';
 import { corregirConVocabulario } from './corrector.js';
-import { claseDeFormato, ESPECIFICACION, segundosDeLectura, tarjetasDeTexto } from './formatos.js';
+import { claseDeFormato, ESPECIFICACION, segundosDeLectura, tipoDeContenidoDe } from './formatos.js';
+import { tarjetasDelCuadro, textoDeUnSoloCuadro, PORQUE_DE_LAS_TARJETAS } from './prompts-por-motor.js';
 
 export type PiezaArmada = {
   titulo: string;
@@ -51,22 +52,28 @@ export function conElTextoEscrito(
   }
   const texto = dichas.join('\n\n');
   const clase = claseDeFormato(base.formato);
+  // LOS REELS: la secuencia de cuadros con su texto. El de texto de siempre, el de imágenes y el de
+  // animación comparten la misma forma —tarjetas que se leen— y lo que cambia es cómo se montan después
+  // (con sonido y con movimiento los nuevos). El título animado es un solo cuadro con su frase.
+  const esSecuencia = clase === 'reel_texto' || clase === 'reel_imagenes' || clase === 'reel_animacion';
   const imgs = (d.imagenesPropias ?? []).filter(i => !/logo|icon|favicon/i.test(`${i.para || ''} ${i.url}`));
   const fondoDe = (i: number) => imgs.length
     ? `su imagen ${imgs[i % imgs.length].url}`
     : 'una imagen suya (o una foto del trabajo, si no hay ninguna cargada)';
-  const tarjetas = clase === 'reel_texto'
-    ? tarjetasDeTexto(lineas.length ? lineas : [copy.gancho]).map((t, i) => ({ n: i + 1, texto: t, segundos: segundosDeLectura(t), fondo: fondoDe(i) }))
+  const tarjetas = esSecuencia
+    ? tarjetasDelCuadro(lineas.length ? lineas : [copy.gancho], tipoDeContenidoDe(base.formato) ?? 'reel de texto')
+      .map((t, i) => ({ n: i + 1, texto: t.texto, lineas: t.lineas, segundos: segundosDeLectura(t.texto), fondo: fondoDe(i) }))
     : [];
   const porEscena = Math.max(3, Math.round(30 / Math.max(1, lineas.length)));
   const guion = clase === 'video'
     ? lineas.map((l, i) => `${i * porEscena}-${(i + 1) * porEscena} s · DICE: ${l}`).join('\n')
-    : clase === 'reel_texto'
+    : esSecuencia
       ? tarjetas.map(t => `TARJETA ${t.n} (${t.segundos} s en pantalla) · TEXTO: «${t.texto}» · FONDO: ${t.fondo}`).join('\n')
       : '';
-  const textoSobreLaImagen = clase === 'imagen'
-    ? (copy.gancho.length > 60 ? `${copy.gancho.slice(0, 57)}…` : copy.gancho)
-    : '';
+  const cuadroUnico = (clase === 'imagen' || clase === 'titulo_animado')
+    ? textoDeUnSoloCuadro([copy.gancho, ...lineas, copy.cierre].filter(Boolean), tipoDeContenidoDe(base.formato) ?? 'imagen con texto')
+    : { texto: '', completo: true, porque: '' };
+  const textoSobreLaImagen = cuadroUnico.texto;
   return {
     ...base,
     titulo,
@@ -74,7 +81,10 @@ export function conElTextoEscrito(
     guion,
     detalle: {
       ...base.detalle,
+      tipo_de_contenido: tipoDeContenidoDe(base.formato),
       texto_sobre_la_imagen: textoSobreLaImagen,
+      // Con qué se armó el texto de los cuadros: el tope lo pone el motor de ffmpeg, no un gusto.
+      cuadro: { completo: cuadroUnico.completo, porque: cuadroUnico.porque || PORQUE_DE_LAS_TARJETAS },
       tarjetas,
       fuente_del_texto: 'escrito con un modelo (DeepSeek): las reglas del producto van en el encargo',
       por_que_este_texto: copy.por_que,
@@ -199,11 +209,18 @@ export function armarLaPieza(d: {
     ? `su imagen ${imagenesPropias[i % imagenesPropias.length].url}`
     : 'una imagen suya (o una foto del trabajo, si no hay ninguna cargada)';
 
-  // LAS TARJETAS del reel de texto: una frase por tarjeta, con los segundos que necesita para leerse.
-  const tarjetas = clase === 'reel_texto'
-    ? tarjetasDeTexto([gancho, ...String(cuerpo || '').split('\n').filter(Boolean), boton]).map((t, i) => ({
-      n: i + 1, texto: t, segundos: segundosDeLectura(t), fondo: fondoDe(i),
-    }))
+  // LAS TARJETAS de los reels: una frase por tarjeta, con los segundos que necesita para leerse. Valen para
+  // el reel de texto de siempre y para los dos nuevos (el de imágenes y el de animación), que después se
+  // montan con su sonido y su movimiento.
+  const esSecuencia = clase === 'reel_texto' || clase === 'reel_imagenes' || clase === 'reel_animacion';
+  // El texto se ARMA PARA EL CUADRO (tope de caracteres por tipo de contenido): si una frase no cabe, va en
+  // otra tarjeta en vez de recortarse. Antes se partía en dos por cantidad de palabras —y lo que sobraba del
+  // cuadro se perdía en silencio, que es texto del negocio borrado sin avisar.
+  const delCuadro = esSecuencia
+    ? tarjetasDelCuadro([gancho, ...String(cuerpo || '').split('\n').filter(Boolean), boton], tipoDeContenidoDe(formato) ?? 'reel de texto')
+    : [];
+  const tarjetas = esSecuencia
+    ? delCuadro.map((t, i) => ({ n: i + 1, texto: t.texto, lineas: t.lineas, segundos: segundosDeLectura(t.texto), fondo: fondoDe(i) }))
     : [];
 
   const guion = clase === 'video'
@@ -213,11 +230,17 @@ export function armarLaPieza(d: {
         resto[1] ? `10-20 s · SE VE: una prueba de que funciona\n            DICE: ${resto[1]}` : '',
         `20-30 s · DICE: ${cierre}\n            EN PANTALLA: ${boton}`,
       ].filter(Boolean).join('\n'), d.vocabulario).texto
-    : clase === 'reel_texto'
+    : esSecuencia
       ? tarjetas.map(t => `TARJETA ${t.n} (${t.segundos} s en pantalla) · TEXTO: «${t.texto}» · FONDO: ${t.fondo}`).join('\n')
       : '';
-  // La imagen no tiene guion: tiene su texto encima, que es todo el mensaje.
-  const textoSobreLaImagen = clase === 'imagen' ? (gancho.length > 60 ? `${gancho.slice(0, 57)}…` : gancho) : '';
+  // La imagen —y el título animado— no tienen guion: tienen su texto encima, que es todo el mensaje.
+  // La imagen y el título llevan UN cuadro: la frase tiene que entrar de un golpe (18 caracteres por renglón y
+  // 2 renglones en el título). Se elige la frase más corta que cabe —de todo el copy, no solo del gancho— y si
+  // ninguna entra se corta por palabra Y SE DICE, en vez de mostrar media frase como si fuera la frase.
+  const cuadroUnico = (clase === 'imagen' || clase === 'titulo_animado')
+    ? textoDeUnSoloCuadro([gancho, ...(cuerpo ? String(cuerpo).split('\n') : []), boton].filter(Boolean), tipoDeContenidoDe(formato) ?? 'imagen con texto')
+    : { texto: '', completo: true, porque: '' };
+  const textoSobreLaImagen = cuadroUnico.texto;
 
   // La referencia que aguanta en su categoría: el anuncio con más días activo entre los comparables.
   // No se copia: se cita, para saber contra qué se mide esta pieza.
@@ -243,6 +266,10 @@ export function armarLaPieza(d: {
       // QUÉ FORMATO ES Y QUÉ PIDE ESE FORMATO: la ficha del panel muestra esto, así el dueño ve si la
       // pieza está armada como lo que dice ser (y no como un video con voz cuando es un reel de texto).
       clase_de_pieza: clase,
+      // EL TIPO DE CONTENIDO: uno de los cinco de la ronda, con su precio por tipo. Los formatos de antes
+      // de la tabla quedan en null —y quien los muestre dirá que son anteriores— en vez de ponerles un
+      // número que nadie fijó.
+      tipo_de_contenido: tipoDeContenidoDe(formato),
       lo_que_el_formato_pide: {
         nombre: spec.nombre, que_es: spec.que_es, entregable: spec.entregable, como_se_arma: spec.como_se_arma,
         lleva_voz: spec.lleva_voz, lleva_audio: spec.lleva_audio, lleva_planos: spec.lleva_planos,

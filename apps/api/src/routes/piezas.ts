@@ -3,6 +3,8 @@ import type { FastifyInstance } from 'fastify';
 import type { Pool } from 'pg';
 import { exigirSesion } from '../lib/auth.js';
 import { exigirCuerpo, limpiar } from '../lib/seguridad.js';
+import { tipoDeContenidoDe, type TipoDeContenido } from '../services/formatos.js';
+import { precioDeTipo } from '../services/creditos.js';
 
 // =============================================================================================
 // LAS PIEZAS — y la ruta de la generación de video e imagen, ya lista para conectar.
@@ -39,11 +41,21 @@ export async function piezaRoutes(app: FastifyInstance, db: Pool) {
   app.get('/api/piezas', async (req, reply) => {
     const u = await exigirSesion(req, reply); if (!u || !u.business_id) return;
     const r = await db.query(
-      `SELECT id, titulo, formato, texto, guion, estado, generacion, created_at,
+      `SELECT id, titulo, formato, texto, guion, estado, generacion, created_at, ronda, angulo,
               (SELECT puntaje FROM evaluaciones e WHERE e.pieza_id = p.id ORDER BY created_at DESC LIMIT 1) AS puntaje,
               (SELECT id FROM evaluaciones e WHERE e.pieza_id = p.id ORDER BY created_at DESC LIMIT 1) AS evaluacion_id
          FROM piezas p WHERE business_id = $1 ORDER BY created_at DESC LIMIT 50`, [u.business_id]);
-    return { piezas: r.rows };
+    // CADA PIEZA CON SU TIPO Y SU PRECIO. El tipo sale del formato (o de lo que se guardó al escribirla, para
+    // las piezas de antes) y el precio sale de `creditos.ts`, que es el único dueño: la ficha del panel lo
+    // muestra tal cual, sin tener ningún número escrito en la pantalla.
+    return {
+      piezas: r.rows.map(p => {
+        const guardado = String((p.generacion as { tipo_de_contenido?: string } | null)?.tipo_de_contenido || '');
+        const tipo: TipoDeContenido | null = tipoDeContenidoDe(String(p.formato || ''))
+          || (guardado ? (guardado as TipoDeContenido) : null);
+        return { ...p, tipo_de_contenido: tipo, precio_creditos: tipo ? precioDeTipo(tipo) : null };
+      }),
+    };
   });
 
   /**

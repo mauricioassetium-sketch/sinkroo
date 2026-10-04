@@ -26,7 +26,11 @@ export type PlanosDelGuion = {
   estilo_unificado: string;
   modelos_declarados: { video: string; audio: string };
   fuente: string;
+  /** El contexto que se le mandó al motor además del guion (formato, idioma, tono, duración). */
+  contexto?: string;
 };
+
+import { entradaDePlanos } from './prompts-por-motor.js';
 
 const API = process.env.PENSHOT_API || 'http://127.0.0.1:8077';
 
@@ -52,15 +56,23 @@ async function estaArriba(): Promise<boolean> {
  * Desglosa un guion en planos. Devuelve null si el motor no está, tarda demasiado o falla: quien llame
  * decide qué hacer (en nuestro caso: la pieza se queda con su guion y lo dice).
  */
-export async function planosDelGuion(guion: string, timeoutMs = 240_000): Promise<PlanosDelGuion | null> {
-  const texto = String(guion || '').trim();
+export async function planosDelGuion(d: {
+  guion: string; formato?: string; segundos?: number; tono?: string; pais?: string; queHace?: string; timeoutMs?: number;
+}): Promise<PlanosDelGuion | null> {
+  const timeoutMs = d.timeoutMs ?? 240_000;
+  const texto = String(d.guion || '').trim();
   if (texto.length < 40) return null;
+  // EL GUION CON CONTEXTO: PenShot necesita el formato, la duración, el idioma y el tono, o inventa planos
+  // cuadrados o en otro idioma. El guion va literal adentro.
+  const entrada = entradaDePlanos({
+    guion: texto, formato: d.formato ?? '', segundos: d.segundos, tono: d.tono, pais: d.pais, queHace: d.queHace,
+  });
   if (!(await estaArriba())) return null;
   try {
     const r = await fetch(`${API}/api/v1/storyboard/sync`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ script: texto }),
+      body: JSON.stringify({ script: entrada.script }),
       signal: AbortSignal.timeout(timeoutMs),
     });
     if (!r.ok) return null;
@@ -94,6 +106,7 @@ export async function planosDelGuion(guion: string, timeoutMs = 240_000): Promis
       estilo_unificado: acciones.find(a => /estilo|style/i.test(a)) || 'el motor lo unifica entre planos',
       modelos_declarados: { video: String(meta?.video_model || 'sin declarar'), audio: String(meta?.audio_model || 'sin declarar') },
       fuente: 'el desglose del guion en planos del motor PenShot, con su prompt, su negativo y su duración por plano',
+      ...(entrada.porque ? { contexto: entrada.porque } : {}),
     };
   } catch { return null; }
 }

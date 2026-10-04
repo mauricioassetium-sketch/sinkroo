@@ -6,7 +6,7 @@ import { conAvisoDePin, exigirPin } from '../lib/pin.js';
 import { TARIFA, saldoDe, costoDeRonda, PRECIOS_POR_TIPO } from '../services/creditos.js';
 import { mezclaDeRonda, proximaRonda, usosPorTipo } from '../services/mezcla.js';
 import { correrInvestigacion, desvioActual, PASOS_DE_UNA_CORRIDA } from '../services/agentes.js';
-import { lanzarLecturaDeAnuncios, hayLecturaEnCurso, loQueDedujoVera, paisesDeclarados } from '../services/programador.js';
+import { lanzarLecturaDeAnuncios, hayLecturaEnCurso, lecturaEnCurso, loQueDedujoVera, paisesDeclarados } from '../services/programador.js';
 import { crearPublico, evaluar } from '../services/mirofish.js';
 
 // =============================================================================================
@@ -187,13 +187,7 @@ export async function motorRoutes(app: FastifyInstance, db: Pool) {
     // LA LECTURA DEL MERCADO, si está corriendo: es el trabajo LARGO de verdad (~3 minutos por consulta) y
     // tiene que verse. Antes no aparecía en ninguna parte —el dueño veía la corrida de un minuto como si el
     // motor leyera todo su mercado en ese rato— y su tarjeta (Lux, el agente de mercado) tampoco lo mostraba.
-    const leyendo = (await db.query(
-      `SELECT mercados, palabras, fichas,
-              extract(epoch FROM (now() - empezada_at))::int AS segundos,
-              (cardinality(mercados) * cardinality(palabras))::int AS consultas
-         FROM lecturas_de_anuncios
-        WHERE business_id = $1 AND terminada_at IS NULL AND empezada_at > now() - interval '8 minutes'
-        ORDER BY empezada_at DESC LIMIT 1`, [u.business_id]).catch(() => ({ rows: [] }))).rows[0];
+    const leyendo = await lecturaEnCurso(db, u.business_id);
     if (leyendo) {
       const paises = (leyendo.mercados ?? []).join(', ');
       const palabras = (leyendo.palabras ?? []).slice(0, 2).join(', ');

@@ -56,6 +56,29 @@ export const etiquetaReaccion = (r: string) => ETIQUETA_REACCION[r] ?? r;
 export const colorReaccion = (r: string) => COLOR_REACCION[r] ?? '#9ca3af';
 
 /** La fecha del back, en corto y en español de Colombia: «12 de septiembre». */
+/** Los segundos en reloj: 2:14 · 1:02:30. Es lo que corre en la línea de carga mientras la ronda trabaja. */
+export function relojDe(seg: number | null | undefined): string {
+  const s = Math.max(0, Math.round(Number(seg) || 0));
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), r = s % 60;
+  const dos = (n: number) => String(n).padStart(2, '0');
+  return h ? `${h}:${dos(m)}:${dos(r)}` : `${m}:${dos(r)}`;
+}
+
+/** Los segundos en palabras: «45 s» · «~4 min». Para el estimado (nunca un decimal disfrazado de exactitud). */
+export function enPalabras(seg: number | null | undefined): string {
+  const s = Math.max(0, Math.round(Number(seg) || 0));
+  if (s < 90) return `${s} s`;
+  const m = Math.round(s / 60);
+  return m < 60 ? `~${m} min` : `~${(m / 60).toFixed(1)} h`;
+}
+
+/** La hora del día de un instante: 14:32. Para saber CUÁNDO pasó cada proceso de la ronda. */
+export function horaCorta(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
 export function fechaCorta(iso: string): string {
   const f = new Date(iso);
   return isNaN(f.getTime()) ? 'sin fecha' : f.toLocaleDateString('es-CO', { day: 'numeric', month: 'long' });

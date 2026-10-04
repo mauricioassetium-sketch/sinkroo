@@ -7,6 +7,7 @@ import { useDetalle } from '../components/Detalle';
 import { useDatos } from '../api/datos';
 import { baseApi, token } from '../api/cliente';
 import { EstadoVacio } from '../components/EstadoVacio';
+import { MotorTrabajando } from '../components/MotorTrabajando';
 
 // =============================================================================================
 // CRÉDITOS — con el back encendido, TODO sale de su cuenta: el saldo y el libro de movimientos
@@ -260,6 +261,8 @@ function ViewCreditosNegocio({ setToast }: { setToast: (t: string) => void }) {
 
   return (
     <div className="dash">
+      {/* El motor trabajando, arriba de todo: es la pantalla donde su trabajo aparece. */}
+      <MotorTrabajando />
       <ViewHead
         icon={<I_Credit size={19} />}
         titulo="Créditos"

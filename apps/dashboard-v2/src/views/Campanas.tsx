@@ -12,11 +12,12 @@ import { CampanaViva } from '../components/CampanaViva';
 import { I_Megaphone, I_Check, I_Refresh, I_Vote, I_File, I_Zap, I_Trend, I_Eye, I_Robot, I_Play, I_Upload, I_Pause, I_Plus } from '../components/icons';
 import type { Vista } from '../components/Layout';
 import type { Campana, Modo } from '../data/demo';
-import { TARIFA } from '../data/mirofish';
+import { TARIFA, PRECIOS_EN_UNA_LINEA, RANGO_DE_VARIANTE, rangoDeVariantes } from '../data/mirofish';
 import { useDetalle } from '../components/Detalle';
 import { numeroConMiles } from '../lib/perfil';
 import { useDatos, type Campana as CampanaBack } from '../api/datos';
 import { EstadoVacio } from '../components/EstadoVacio';
+import { MotorTrabajando } from '../components/MotorTrabajando';
 import { baseApi, token } from '../api/cliente';
 import { useEvaluacion, etiquetaReaccion, colorReaccion, fechaCorta, numONulo } from '../components/mirofishDatos';
 
@@ -397,7 +398,7 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
   /** Recomendación 3: marcar 3 variantes del mismo mensaje para rotar el creativo. Nada se escribe acá. */
   const aplicarVariantes = () => {
     setAplicadas(a => (a.includes('variantes') ? a : [...a, 'variantes']));
-    setToast(`Marcado: 3 variantes de ${PACK.nombre} por ${3 * TARIFA.crearVariante} créditos. Pedírselas al motor todavía no sale de esta pantalla`);
+    setToast(`Marcado: 3 variantes de ${PACK.nombre}. Cuesta entre ${rangoDeVariantes(3)} créditos —cada una vale lo que valga su tipo (${PRECIOS_EN_UNA_LINEA})—. Pedírselas al motor todavía no sale de esta pantalla`);
   };
   const deshacerVariantes = () => {
     setAplicadas(a => a.filter(k => k !== 'variantes'));
@@ -467,7 +468,7 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
       { tipo: 'datos', filas: [
         { k: 'Qué hay que cambiar', v: 'la objeción, nada más', s: 'mismo formato, mismo producto y mismo público' },
         { k: 'Quién la volvería a juzgar', v: `${nJueces} jueces + 500 del público`, s: 'al público no se le cobra nunca' },
-        { k: 'Lo que costaría', v: `${TARIFA.crearVariante + TARIFA.evaluarPieza} créditos`, s: `1 variante (${TARIFA.crearVariante}) + volver a juzgarla (${TARIFA.evaluarPieza})` },
+        { k: 'Lo que costaría', v: `entre ${RANGO_DE_VARIANTE.min + TARIFA.evaluarPieza} y ${RANGO_DE_VARIANTE.max + TARIFA.evaluarPieza} créditos`, s: `1 variante, que vale lo que valga su tipo (${PRECIOS_EN_UNA_LINEA}), + volver a juzgarla (${TARIFA.evaluarPieza})` },
         { k: 'Créditos que tiene', v: d.creditos ? String(d.creditos.saldo) : '— todavía no llegan del servidor', s: d.creditos ? 'el saldo que trae el servidor' : 'el servidor todavía no manda el saldo' },
       ] },
       { tipo: 'aviso', texto: 'La versión de ahora no se pierde: queda guardada con el voto de cada juez. Pedirle la corrección al motor es un paso aparte, y todavía no sale desde esta pantalla.' },
@@ -516,6 +517,8 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
 
   return (
     <div className="dash">
+      {/* El motor trabajando, arriba de todo: es la pantalla donde su trabajo aparece. */}
+      <MotorTrabajando />
       <ViewHead
         icon={<I_Megaphone size={19} />}
         titulo="Campañas"
@@ -1206,7 +1209,7 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
                 <small>{`Su pieza lleva ${PACK.artefactos} ${PACK.artefactos === 1 ? 'versión' : 'versiones'}: rotar el mensaje es lo que sostiene el costo por venta.`}</small>
                 {aplicadas.includes('variantes') && (
                   <small style={{ color: 'var(--green)', fontWeight: 700 }}>
-                    {`Marcado: van 3 variantes del mismo mensaje. Cuestan ${3 * TARIFA.crearVariante} créditos de los ${d.creditos ? d.creditos.saldo : '—'} que tiene. Pedirlas al motor todavía no sale desde aquí.`}
+                    {`Marcado: van 3 variantes del mismo mensaje, entre ${rangoDeVariantes(3)} créditos según su tipo (${PRECIOS_EN_UNA_LINEA}), de los ${d.creditos ? d.creditos.saldo : '—'} que tiene. Pedirlas al motor todavía no sale desde aquí.`}
                   </small>
                 )}
               </span>
@@ -1214,7 +1217,7 @@ export function ViewCampanas({ setToast, modo, setVista }: { setToast: (t: strin
                 <Button variant="ghost" className="btn-sm" title="Quita la marca: no se encarga ninguna variante y no se gasta ningún crédito. Es reversible."
                   onClick={deshacerVariantes}><I_Refresh size={12} /> Deshacer</Button>
               ) : (
-                <Button variant="ghost" className="btn-sm" title={`Marca 3 variantes del mismo mensaje para rotar el creativo. Cuestan ${3 * TARIFA.crearVariante} créditos y no tocan el presupuesto. Nada se le pide al motor desde esta pantalla y la marca se quita cuando quiera.`}
+                <Button variant="ghost" className="btn-sm" title={`Marca 3 variantes del mismo mensaje para rotar el creativo. Cuestan entre ${rangoDeVariantes(3)} créditos, porque cada una vale lo que valga su tipo (${PRECIOS_EN_UNA_LINEA}), y no tocan el presupuesto. Nada se le pide al motor desde esta pantalla y la marca se quita cuando quiera.`}
                   onClick={aplicarVariantes}>3 variantes</Button>
               )}
             </div>

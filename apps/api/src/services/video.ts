@@ -23,9 +23,11 @@
 // =============================================================================================
 
 import { execFile } from 'node:child_process';
-import { mkdir, copyFile, stat } from 'node:fs/promises';
+import { textoParaLaVoz } from './prompts-por-motor.js';
+import { mkdir, copyFile, rename, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
+import { SEGUNDOS_MAXIMOS_VIDEO } from './formatos.js';
 
 const correr = promisify(execFile);
 
@@ -52,6 +54,17 @@ const RAIZ = process.env.VIDEOS_DIR || '/root/work/sinkroo-a/datos/videos';
  */
 const RITMO = '0.92';
 
+/**
+ * El ritmo para Edge TTS. El motor guarda el ritmo como multiplicador («0.92») y Edge TTS lo pide como
+ * porcentaje con signo («-8%»): son el mismo ajuste en dos formatos, y con el de acá la voz no se genera
+ * (falla en silencio y la pieza queda sin locución). Se convierte en un solo lugar.
+ */
+export const ritmoParaEdge = (ritmo: string): string => {
+  const n = Number(ritmo);
+  if (!Number.isFinite(n) || n === 1) return '+0%';
+  return `${n > 1 ? '+' : ''}${Math.round((n - 1) * 100)}%`;
+};
+
 /** El motivo del último montaje que falló. Sin esto sólo queda «Command failed», que no dice nada. */
 let ultimoMotivo = '';
 export const motivoDelUltimoFallo = () => ultimoMotivo;
@@ -65,7 +78,39 @@ export type VideoGenerado = {
   voz_porque: string;
   fuente: string;
   materiales: number;
+  /** Qué se le quitó al texto antes de que la voz lo leyera (la forma, nunca el contenido). */
+  texto_de_la_voz?: { quitado: string[]; porque: string };
+  /** Si hubo que cortarlo para que no pasara de 30 s (el techo que fijó el dueño). */
+  recortado_a_30s?: boolean;
+  /** Lo que duraba antes de cortarlo: se dice, no se borra. */
+  segundos_antes_de_recortar?: number;
 };
+
+/**
+ * EL TECHO DE 30 SEGUNDOS. El dueño lo fijó: un video dura 30 segundos como máximo. El montaje se arma con
+ * 6 escenas de 5 s, pero la voz puede estirarlo —y un video de 41 segundos no es lo que se pidió—. Cuando se
+ * pasa, se corta acá y se dice cuánto duraba: el archivo queda con lo que se pidió, y el número real queda
+ * guardado en vez de desaparecer.
+ */
+async function recortarA30(archivo: string, limite: number): Promise<boolean> {
+  const temporal = `${archivo}.cortando.mp4`;
+  try {
+    await correr('ffmpeg', [
+      '-hide_banner', '-loglevel', 'error', '-y', '-i', archivo, '-t', String(limite),
+      '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23', '-pix_fmt', 'yuv420p',
+      '-c:a', 'aac', '-b:a', '128k', '-movflags', '+faststart', temporal,
+    ], { timeout: 240_000 });
+    const info = await stat(temporal);
+    if (info.size < 50_000) { await rm(temporal, { force: true }); return false; }
+    await rm(archivo, { force: true });
+    await rename(temporal, archivo);
+    return true;
+  } catch (e) {
+    await rm(temporal, { force: true }).catch(() => undefined);
+    console.error('[video] no se pudo recortar a', limite, 's:', (e as Error)?.message);
+    return false;
+  }
+}
 
 /**
  * EL GUION QUE SE DICE EN VOZ ALTA. El dueño lo señaló: «todos hablando lo mismo, se repite el texto».
@@ -129,9 +174,21 @@ export function guionParaLaVoz(texto: string, titulo?: string): string {
  * Todas son voces colombianas de Edge TTS (gratis, sin llave) y el ritmo baja al 92%: hablar más
  * despacio es la mitad del arreglo del «tono robótico».
  */
-export function vozSegunCaso(tono: string | undefined, pais?: string): { voz: string; porque: string; ritmo: string } {
+export function vozSegunCaso(tono: string | undefined, pais?: string, idioma?: string): { voz: string; porque: string; ritmo: string } {
   const t = String(tono || '').toLowerCase();
   const p = String(pais || '').toLowerCase();
+  // LA VOZ VA EN LA LENGUA DE LA PIEZA. Un negocio que vende en inglés y se locuta con voz colombiana suena
+  // a doblaje, y el que escucha lo nota antes que nada. La lengua la decide el motor (la del mercado, medida
+  // en los avisos que encuentra), no el país del domicilio: por eso entra por parámetro.
+  if (/ingl|english/.test(String(idioma || '').toLowerCase())) {
+    if (/cercan|cálid|calid|amable|familiar|comercio/.test(t)) {
+      return { voz: 'en-US-JennyNeural', porque: 'la pieza va en inglés y el negocio se presentó «Cercano y cálido»: voz conversacional', ritmo: RITMO };
+    }
+    if (/formal|profesional|institucional|corporativ|serio/.test(t)) {
+      return { voz: 'en-GB-RyanNeural', porque: 'la pieza va en inglés con tono institucional: voz sobria de registro británico', ritmo: RITMO };
+    }
+    return { voz: 'en-US-GuyNeural', porque: 'la pieza va en inglés y no hay tono declarado: voz neutra', ritmo: RITMO };
+  }
   const esColombia = !p || /colombia|co\b/.test(p);
   const base = esColombia ? 'es-CO' : (/mexic/.test(p) ? 'es-MX' : (/argentin|rioplat/.test(p) ? 'es-AR' : 'es-CO'));
   if (/cercan|cálid|calid|amable|familiar|comercio/.test(t)) {
@@ -160,7 +217,7 @@ async function duracion(archivo: string): Promise<number> {
  */
 export async function generarVideo(d: {
   businessId: string; piezaId: string; formato: string; titulo: string; copy: string;
-  materiales: string[]; tono?: string; pais?: string; timeoutMs?: number;
+  materiales: string[]; tono?: string; pais?: string; lengua?: string; timeoutMs?: number;
 }): Promise<VideoGenerado | null> {
   const materiales = (d.materiales ?? []).filter(Boolean);
   if (!materiales.length) return null;
@@ -168,7 +225,10 @@ export async function generarVideo(d: {
   // no planos filmados; una imagen no tiene voz. El formato manda.
   const f = String(d.formato || '').toLowerCase();
   if (!/video/.test(f) || /texto/.test(f)) return null;
-  const voz = vozSegunCaso(d.tono, d.pais);
+  const voz = vozSegunCaso(d.tono, d.pais, d.lengua);
+  // El texto que va a leer la voz, pasado por los DOS filtros: el de contenido (repetidos y título) y el de
+  // forma (lo que un lector de voz no puede leer). Se guarda qué se quitó, para que se pueda revisar.
+  const textoDeLaVoz = textoParaLaVoz(guionParaLaVoz(String(d.copy || ''), String(d.titulo || '')));
   const segundosEspera = d.timeoutMs ?? 15 * 60_000;
   // El aspecto es el de la PIEZA: una pieza cuadrada no puede salir vertical, o el resultado no es el
   // que se pidió. El formato manda (es el mismo dato con el que se pintó su imagen).
@@ -177,8 +237,9 @@ export async function generarVideo(d: {
   const args = [
     'cli.py',
     '--video-subject', String(d.titulo || 'la pieza').slice(0, 180),
-    // Lo que se dice: el copy limpio (sin el título pegado y sin frases repetidas), no el texto crudo.
-    '--video-script', guionParaLaVoz(String(d.copy || ''), String(d.titulo || '')).slice(0, 2400),
+    // Lo que se dice: primero el copy sin el título pegado y sin frases repetidas (guionParaLaVoz), y después
+    // la forma que el motor de VOZ sí puede leer (textoParaLaVoz): sin emojis, numerales, enlaces ni markdown.
+    '--video-script', textoDeLaVoz.texto.slice(0, 2400),
     '--video-language', 'es',
     '--video-source', 'local',
     '--video-materials', materiales.join(','),
@@ -210,11 +271,18 @@ export async function generarVideo(d: {
     await mkdir(carpeta, { recursive: true });
     const archivo = path.join(carpeta, `${d.piezaId}.mp4`);
     await copyFile(origen, archivo);
+    // EL TECHO DE 30 SEGUNDOS: si el montaje se pasó, se corta y se dice lo que duraba.
+    const segundosMontados = await duracion(archivo);
+    const sePaso = segundosMontados > SEGUNDOS_MAXIMOS_VIDEO + 0.05;
+    const recortado = sePaso ? await recortarA30(archivo, SEGUNDOS_MAXIMOS_VIDEO) : false;
     return {
-      archivo, url: `/api/piezas/${d.piezaId}/video`, peso: info.size,
+      archivo, url: `/api/piezas/${d.piezaId}/video`, peso: (await stat(archivo)).size,
       segundos: await duracion(archivo), voz: voz.voz, voz_porque: voz.porque,
+ // Con qué se armó el texto que se lee: sin esto, «el video habla distinto al copy» no se puede explicar.
+ texto_de_la_voz: { quitado: textoDeLaVoz.quitado, porque: textoDeLaVoz.porque },
       fuente: 'MoneyPrinterTurbo (MIT, sin GPU) · voz Edge TTS y subtítulos nativos',
       materiales: materiales.length,
+      ...(sePaso ? { recortado_a_30s: recortado, segundos_antes_de_recortar: segundosMontados } : {}),
     };
   } catch (e) {
     // El error de un comando fallido no está en `message` («Command failed»): el motivo real viene en la
@@ -230,3 +298,59 @@ export async function generarVideo(d: {
 
 export const carpetaDeVideos = () => RAIZ;
 export const herramientaDeVideo = () => MPT;
+
+/**
+ * VOLVER A ARMAR LOS MONTAJES QUE SE CORTARON.
+ *
+ * Un montaje vive DENTRO del proceso: si el back se reinicia (un despliegue, un apagón, una edición con el
+ * servidor de desarrollo), esa promesa muere y la pieza se queda con sus imágenes pintadas —pagadas— y sin
+ * video. Antes eso se declaraba cortado y ahí quedaba: el dueño veía «el video no salió» en una pieza que
+ * tenía TODO para armarse, y la única salida era volver a pagar una ronda entera.
+ *
+ * Ahora esas piezas se vuelven a montar SOLAS al arrancar el back, una por una, con el mismo material que ya
+ * está en disco. No se espera: montar tarda minutos y el arranque no se puede quedar colgado por eso.
+ */
+export async function recuperarMontajes(
+  db: { query: (sql: string, valores?: unknown[]) => Promise<{ rows: Record<string, any>[] }> },
+  log: (m: string) => void = () => {},
+): Promise<number> {
+  let hechos = 0;
+  const candidatas = await db.query(
+    `SELECT id, business_id, formato, titulo, texto, generacion FROM piezas
+      WHERE coalesce(generacion->>'tipo_de_contenido', '') = 'video'
+        AND generacion ? 'imagen_generada'
+        AND NOT (generacion ? 'video_generado')
+      ORDER BY id
+      LIMIT 10`,
+  ).catch(() => ({ rows: [] as Record<string, any>[] }));
+
+  for (const p of candidatas.rows) {
+    const materiales = ((p.generacion?.imagenes_generadas ?? []) as { archivo?: string }[])
+      .map(i => String(i?.archivo || '')).filter(Boolean);
+    if (!materiales.length) continue;
+    // El tono con el que se elige la voz: el del negocio (es el mismo que usó la corrida).
+    const tono = ((await db.query('SELECT tone FROM businesses WHERE id = $1', [p.business_id])
+      .catch(() => ({ rows: [] as Record<string, any>[] }))).rows[0]?.tone ?? '') as string;
+    log(`volviendo a armar el video de ${p.id} (${materiales.length} imágenes ya pintadas)`);
+    const vid = await generarVideo({
+      businessId: String(p.business_id), piezaId: String(p.id), formato: String(p.formato),
+      titulo: String(p.titulo || ''), copy: String(p.texto || ''), materiales, tono, timeoutMs: 900_000,
+    });
+    if (vid) {
+      // Se guarda el video Y SE BORRA EL MOTIVO de corte: la pieza ya no está cortada, está hecha.
+      await db.query(
+        `UPDATE piezas SET generacion = jsonb_set(generacion - 'video_error', '{video_generado}', $2::jsonb) WHERE id = $1`,
+        [p.id, JSON.stringify(vid)],
+      ).catch(() => {});
+      hechos += 1;
+      log(`video recuperado: ${vid.archivo} · ${vid.segundos}s · ${vid.peso} bytes`);
+    } else {
+      await db.query(
+        `UPDATE piezas SET generacion = jsonb_set(generacion, '{video_error}', $2::jsonb) WHERE id = $1`,
+        [p.id, JSON.stringify({ motivo: `no se pudo armar otra vez: ${motivoDelUltimoFallo()}`, cuando: new Date().toISOString() })],
+      ).catch(() => {});
+      log(`no se pudo recuperar el video de ${p.id}: ${motivoDelUltimoFallo()}`);
+    }
+  }
+  return hechos;
+}

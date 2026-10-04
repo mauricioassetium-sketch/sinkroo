@@ -1,12 +1,16 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Card, Badge, Button } from './ui';
 import { I_Robot, I_Search, I_Sparkle, I_Vote, I_Rocket, I_Check, I_Target, I_File, I_Credit } from './icons';
-import { COSTO_RONDA } from '../data/mirofish';
+import {
+  COSTO_RONDA, PRECIOS_POR_TIPO, QUE_ES_CADA_TIPO, TARIFA, TIPOS_DE_CONTENIDO,
+  resumenDeMezcla, detalleDelCosto,
+  type CostoRonda, type TipoDeContenido,
+} from '../data/mirofish';
 import type { Modo } from '../data/demo';
 import { useDatos } from '../api/datos';
 import { baseApi, token } from '../api/cliente';
 import { EstadoVacio } from './EstadoVacio';
-import { useEvaluacion, fechaCorta } from './mirofishDatos';
+import { useEvaluacion, fechaCorta, relojDe, enPalabras, horaCorta } from './mirofishDatos';
 import type { PasoCampana } from './CampanaPasos';
 
 // =============================================================================================
@@ -39,13 +43,21 @@ function FlujoReal({ modo, ir }: { modo: Modo; ir?: (p: PasoCampana) => void }) 
   // -----------------------------------------------------------------------------------------------
   const [rondas, setRondas] = useState<{
     id: string; numero: number; piezas: number; evaluadas: number; creditos: number; ganadora_puntaje: number | null; created_at: string;
-    candidatas: { id: string; angulo: string; formato: string; puntaje: number | null; orden: number | null; titulo: string }[];
+    candidatas: {
+      id: string; angulo: string; formato: string; puntaje: number | null; orden: number | null; titulo: string;
+      /** El tipo de contenido que le tocó en la mezcla de la ronda, tal como lo mandó el back. */
+      tipo_de_contenido?: TipoDeContenido | null;
+    }[];
   }[]>([]);
   const [pidiendo, setPidiendo] = useState(false);
   const [avisoRonda, setAvisoRonda] = useState('');
   const [saldoRondas, setSaldoRondas] = useState<number | null>(null);
-  const [costoRonda, setCostoRonda] = useState<number>(COSTO_RONDA.total);
-  const [cuantasPiezas, setCuantasPiezas] = useState<number>(COSTO_RONDA.piezas);
+  // LO QUE CUESTA Y DE DÓNDE SALIÓ. Arranca con la copia del panel (la de `data/mirofish.ts`, para cuando el
+  // back todavía no contestó) y en cuanto contesta /api/rondas se reemplaza por la tarifa DEL BACK: la tabla
+  // por tipo y la suma por tipo de la próxima ronda de este negocio. El precio lo pone el back, no la pantalla.
+  const [costo, setCosto] = useState<CostoRonda>(COSTO_RONDA);
+  const [porTipo, setPorTipo] = useState<Record<string, number>>(PRECIOS_POR_TIPO);
+  const [tarifaDelBack, setTarifaDelBack] = useState(false);
 
   const leerRondas = useCallback(async () => {
     try {
@@ -53,35 +65,100 @@ function FlujoReal({ modo, ir }: { modo: Modo; ir?: (p: PasoCampana) => void }) 
       if (!r.ok) return;
       const j = await r.json();
       setRondas(Array.isArray(j?.rondas) ? j.rondas : []);
-      if (j?.tarifa?.costo_ronda?.total) setCostoRonda(Number(j.tarifa.costo_ronda.total));
-      if (j?.cuantas_piezas) setCuantasPiezas(Number(j.cuantas_piezas));
+      // LA TARIFA DEL BACK: la tabla por tipo y la ronda sumada por tipo (es lo mismo que cobra el libro).
+      if (j?.tarifa?.por_tipo) setPorTipo({ ...j.tarifa.por_tipo });
+      if (j?.tarifa?.costo_ronda?.total) {
+        setCosto({
+          piezas: Number(j.tarifa.costo_ronda.piezas),
+          crear: Number(j.tarifa.costo_ronda.crear),
+          evaluar: Number(j.tarifa.costo_ronda.evaluar),
+          total: Number(j.tarifa.costo_ronda.total),
+          por_tipo: Array.isArray(j.tarifa.costo_ronda.por_tipo) ? j.tarifa.costo_ronda.por_tipo : [],
+          mezcla: Array.isArray(j.tarifa.mezcla) ? j.tarifa.mezcla : [],
+        });
+        setTarifaDelBack(true);
+      }
       if (typeof j?.creditos === 'number') setSaldoRondas(j.creditos);
     } catch { /* sin rondas: la tarjeta lo dice */ }
   }, []);
   useEffect(() => { void leerRondas(); }, [leerRondas]);
 
+  // =============================================================================================
+  // LA RONDA EN VIVO: qué está pasando AHORA y cuánto falta.
+  // El dueño lo pidió así: «cuando lanzo una ronda no sale en ningún lado que está corriendo, cargando
+  // algo… solo toca esperar, no sé cuánto tiempo». El back publica en qué paso va con su detalle
+  // (/api/agentes/corriendo) y acá se le pregunta cada 3 segundos MIENTRAS trabaja. También se pregunta al
+  // entrar a la pantalla: si recargás la página con una ronda corriendo, la línea de carga sigue ahí.
+  // =============================================================================================
+  const [enVivo, setEnVivo] = useState<{
+    corriendo: boolean;
+    corrida: { estado: string; paso: string; detalle: string; paso_de: number; pasos: number; ronda: number;
+               avance?: { paso: string; detalle?: string; cuando: string }[]; empezada_at: string; terminada_at?: string | null;
+               segundos: number; sin_latido?: boolean; segundos_sin_latido?: number } | null;
+    tareas: { agente?: string; que?: string; orden?: number; terminada_at?: string }[];
+    pasos_nombres?: string[];
+    estimado_seg: number | null;
+  } | null>(null);
+
+  const leerEnVivo = useCallback(async () => {
+    try {
+      const r = await fetch(baseApi() + '/api/agentes/corriendo', { headers: token() ? { Authorization: 'Bearer ' + token() } : {} });
+      if (!r.ok) return null;
+      const j = await r.json();
+      setEnVivo(j);
+      return j as { corriendo: boolean } | null;
+    } catch { return null; }
+  }, []);
+
+  // El refresco de lo que ya está guardado, en una referencia: así el relojito no se rearma en cada render.
+  const refrescar = useRef<() => Promise<void>>(async () => {});
+  refrescar.current = async () => { await leerRondas(); await d.refrescar(); };
+
+  // Al entrar: ¿hay una ronda corriendo? (esto es lo que faltaba cuando había que recargar la página a mano).
+  useEffect(() => { void leerEnVivo(); }, [leerEnVivo]);
+
+  // Mientras corre se pregunta cada 3 s; cuando termina, el relojito se apaga solo y se refresca la pantalla.
+  useEffect(() => {
+    if (!enVivo?.corriendo && !pidiendo) return;
+    const t = setInterval(async () => {
+      const j = await leerEnVivo();
+      if (j && !j.corriendo) {
+        clearInterval(t);
+        setPidiendo(false);
+        setAvisoRonda('La ronda terminó: abajo están las cinco opciones con su puntaje y cuál ganó.');
+        void refrescar.current();
+      }
+    }, 3000);
+    return () => clearInterval(t);
+  }, [enVivo?.corriendo, pidiendo, leerEnVivo]);
+
   const pedirRonda = async () => {
     setPidiendo(true);
     setAvisoRonda('');
-    try {
-      const r = await fetch(baseApi() + '/api/agentes/correr', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(token() ? { Authorization: 'Bearer ' + token() } : {}) },
-        body: JSON.stringify({ ronda: true }),
-      });
-      const j = await r.json().catch(() => ({}));
-      if (!r.ok) {
-        setAvisoRonda(String(j?.detalle || j?.error || 'el back no dejó pedir la ronda'));
-      } else {
-        const sol = (j?.tareas ?? []).filter((t: { agente?: string }) => t.agente === 'sol');
-        setAvisoRonda(String(sol[sol.length - 1]?.que || 'La ronda corrió: mirá abajo las cinco opciones con su puntaje.'));
-        await leerRondas();
-        await d.refrescar();
+    // La petición queda EN VUELO y el panel no se queda esperándola: la respuesta del back llega recién
+    // cuando la ronda terminó (minutos después). El avance lo muestra la línea de carga, no la respuesta.
+    void leerEnVivo();
+    void (async () => {
+      try {
+        const r = await fetch(baseApi() + '/api/agentes/correr', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...(token() ? { Authorization: 'Bearer ' + token() } : {}) },
+          body: JSON.stringify({ ronda: true }),
+        });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) {
+          setAvisoRonda(String(j?.detalle || j?.error || 'el back no dejó pedir la ronda'));
+          setPidiendo(false);
+        } else {
+          await refrescar.current();
+          setPidiendo(false);
+        }
+      } catch {
+        setAvisoRonda('no se pudo hablar con el back');
+        setPidiendo(false);
       }
-    } catch {
-      setAvisoRonda('no se pudo hablar con el back');
-    }
-    setPidiendo(false);
+      await leerEnVivo();
+    })();
   };
   const evaluaciones = useMemo(() => [...d.evaluaciones]
     .sort((a, b) => (a.orden ?? 999) - (b.orden ?? 999) || (Number(b.puntaje) || 0) - (Number(a.puntaje) || 0)),
@@ -93,6 +170,17 @@ function FlujoReal({ modo, ir }: { modo: Modo; ir?: (p: PasoCampana) => void }) 
   const noPasan = evaluaciones.filter(e => Number(e.puntaje) < 80);
   const saldo = d.creditos ? d.creditos.saldo : null;
   const irAlPaso1 = ir ? { accion: 'Ir al paso 1', onAccion: () => ir(1) } : {};
+
+  // ---- Lo que necesita la línea de carga, ya resuelto ----
+  const rv = enVivo?.corrida ?? null;
+  const nombresDePasos = enVivo?.pasos_nombres ?? [];
+  const pasoDe = rv?.paso_de || 0;
+  const totalDePasos = rv?.pasos || nombresDePasos.length || 6;
+  // La barra marca PASOS TERMINADOS, no una animación que finge avanzar: el movimiento real de esta línea es
+  // el reloj, el detalle (imagen 4 de 6 · opción 2 de 5) y los pasos que se van marcando.
+  const pctVivo = totalDePasos ? Math.round((100 * Math.max(0, pasoDe - 1)) / totalDePasos) : 0;
+  const minutosDelCierre = rv?.terminada_at ? (Date.now() - new Date(rv.terminada_at).getTime()) / 60000 : null;
+  const verLinea = Boolean(rv && (enVivo?.corriendo || pidiendo || (minutosDelCierre !== null && minutosDelCierre < 30)));
 
   return (
     <>
@@ -132,16 +220,43 @@ function FlujoReal({ modo, ir }: { modo: Modo; ir?: (p: PasoCampana) => void }) 
           ))}
         </div>
 
-        {/* ---- EL COSTO: el precio de una ronda y el saldo que el servidor manda de verdad ---- */}
+        {/* ---- EL COSTO: el precio de cada tipo y la ronda sumada por tipo, antes de gastar ---- */}
         <div className="flujo-costo">
           <span className="flujo-costo-ico"><I_Credit size={15} /></span>
           <span className="flujo-costo-tx">
-            Una ronda cuesta <b>{COSTO_RONDA.total} créditos</b> — {COSTO_RONDA.crear} por crear las {COSTO_RONDA.piezas} opciones
-            y {COSTO_RONDA.evaluar} por evaluarlas. <b>El público no cuesta.</b>{' '}
+            Una ronda son <b>{costo.piezas} contenidos</b> y cuesta <b>{costo.total} créditos</b>: {costo.crear} al
+            crearlos y {costo.evaluar} al pasarlos por MiroFish ({TARIFA.evaluarPieza} por contenido). <b>Como máximo 2 son video</b> y los otros {Math.max(0, costo.piezas - 2)} se reparten entre
+            los cuatro tipos que no son video. <b>El público no cuesta.</b>{' '}
             {saldo === null
               ? 'Su saldo todavía no llegó del servidor.'
               : <>Su saldo hoy: <b>{saldo} créditos</b>.</>}
+            {' '}
+            {tarifaDelBack
+              ? 'Estos precios son los del servidor, los mismos que cobra el libro.'
+              : 'El servidor todavía no mandó su tarifa: estos son los precios vigentes del proyecto.'}
           </span>
+        </div>
+        {/* ---- LA TABLA POR TIPO: lo que vale cada contenido, antes de gastar. Los números salen del back
+             (`tarifa.por_tipo`); nunca están escritos en la pantalla. ---- */}
+        <div className="row" style={{ gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+          {TIPOS_DE_CONTENIDO.map(t => (
+            <span key={t} className="guard" style={{ flex: '1 1 46%', minWidth: 210, margin: 0 }}
+              title={`${t}: ${QUE_ES_CADA_TIPO[t]}. Cuesta ${porTipo[t] ?? '—'} créditos.`}>
+              <span className="guard-lb">
+                {t}
+                <small>{QUE_ES_CADA_TIPO[t]}</small>
+              </span>
+              <span className="guard-val" style={{ color: t === 'video' ? 'var(--purple3)' : 'var(--green)' }}>
+                {porTipo[t] ?? '—'}
+              </span>
+            </span>
+          ))}
+        </div>
+        <div className="tiny muted" style={{ marginTop: 8 }}>
+          Los créditos son por contenido, según su tipo: el video {porTipo['video'] ?? '—'}, el reel con animación{' '}
+          {porTipo['reel con animación'] ?? '—'}, el reel de imágenes {porTipo['reel de imágenes'] ?? '—'}, la imagen
+          con texto {porTipo['imagen con texto'] ?? '—'} y el título animado {porTipo['título animado'] ?? '—'}.
+          Evaluar cada uno con los 5 jueces y los 500 del público cuesta {TARIFA.evaluarPieza} créditos.
         </div>
       </Card>
 
@@ -154,24 +269,108 @@ function FlujoReal({ modo, ir }: { modo: Modo; ir?: (p: PasoCampana) => void }) 
           : <Badge tone="muted">sin rondas todavía</Badge>}
       >
         <div className="bs">
-          Una ronda son <b>{cuantasPiezas} piezas distintas</b> —cada una entra por otro ángulo y en otro formato— y cada
-          una se vota por separado: los 5 jueces y los 500 del público. Queda la del puntaje más alto. Cuesta{' '}
-          <b>{costoRonda} créditos</b>{saldoRondas === null ? '.' : <> y su saldo hoy es <b>{saldoRondas}</b>.</>}
+          Una ronda son <b>{costo.piezas} contenidos distintos</b> —cada uno entra por otro ángulo y con su tipo,
+          y <b>como máximo 2 son video</b>— y cada uno se vota por separado: los 5 jueces y los 500 del público.
+          Queda el del puntaje más alto. Cuesta <b>{costo.total} créditos</b>
+          {saldoRondas === null ? '.' : <> y su saldo hoy es <b>{saldoRondas}</b>.</>}
+          {costo.mezcla.length ? <> Esta ronda viene así: {resumenDeMezcla(costo.mezcla)}.</> : null}
         </div>
         <div className="row" style={{ marginTop: 10, gap: 8, flexWrap: 'wrap' }}>
           <Button
             variant="primary"
             onClick={pedirRonda}
             disabled={pidiendo}
-            title={`Pídale al motor una ronda nueva: ${cuantasPiezas} piezas distintas, cada una con su votación (${costoRonda} créditos)`}
+            title={`Pídale al motor una ronda nueva: ${costo.piezas} contenidos, como máximo 2 videos, cada uno con su votación (${costo.total} créditos: ${detalleDelCosto(costo)})`}
           >
-            {pidiendo ? 'El motor está escribiendo y votando…' : `Generar una ronda nueva (${cuantasPiezas} piezas · ${costoRonda} créditos)`}
+            {pidiendo ? 'El motor está escribiendo y votando…' : `Generar una ronda nueva (${costo.piezas} contenidos · ${costo.total} créditos)`}
           </Button>
           {avisoRonda ? <span className="tiny muted" style={{ alignSelf: 'center' }}>{avisoRonda}</span> : null}
         </div>
+        {/* ==================== LA RONDA EN VIVO: qué está pasando y cuánto lleva ==================== */}
+        {verLinea && rv ? (
+          <div className={'mv' + (enVivo?.corriendo ? '' : ' mv-cerrada')}>
+            <div className="row spread mv-cab" style={{ gap: 10, flexWrap: 'wrap' }}>
+              <span className="row" style={{ gap: 8, alignItems: 'center', minWidth: 0 }}>
+                {enVivo?.corriendo ? <span className="mv-pulso" title="el motor está trabajando ahora mismo" /> : <span className="mv-punto" />}
+                <b className="mv-t">
+                  {enVivo?.corriendo
+                    ? `Ronda ${rv.ronda ? rv.ronda + ' en marcha' : 'en marcha'} · paso ${pasoDe} de ${totalDePasos}: ${rv.paso || 'trabajando'}`
+                    : rv.estado === 'cortada' ? 'La última ronda se cortó: el servidor se reinició mientras trabajaba'
+                      : rv.estado === 'fallida' ? 'La última ronda no terminó'
+                        : 'La última ronda terminó'}
+                </b>
+              </span>
+              <span className="tiny muted">
+                {enVivo?.corriendo ? <>lleva <b>{relojDe(rv.segundos)}</b></> : null}
+                {enVivo?.corriendo && enVivo.estimado_seg
+                  ? <> · estimado {enPalabras(enVivo.estimado_seg)} (el promedio real de sus rondas)</>
+                  : null}
+                {enVivo?.corriendo && !enVivo.estimado_seg && !rv.sin_latido
+                  ? <> · todavía sin estimado: no hay rondas terminadas de las que sacarlo</>
+                  : null}
+                {enVivo?.corriendo && rv.sin_latido
+                  ? <> · <b>sin señales desde hace {relojDe(rv.segundos - (rv.segundos_sin_latido || 0))}</b>: puede haberse cortado</>
+                  : null}
+                {!enVivo?.corriendo && rv.empezada_at && rv.terminada_at
+                  ? <>{fechaCorta(rv.empezada_at)} · duró {relojDe((new Date(rv.terminada_at).getTime() - new Date(rv.empezada_at).getTime()) / 1000)}</>
+                  : null}
+              </span>
+            </div>
+
+            {enVivo?.corriendo ? (
+              <>
+                <div className="mv-pista" title={`${pasoDe - 1} de ${totalDePasos} pasos terminados`}>
+                  <i style={{ width: `${pctVivo}%` }} />
+                </div>
+                {rv.detalle ? <div className="mv-detalle">{rv.detalle}</div> : null}
+              </>
+            ) : null}
+
+            <div className="mv-pasos">
+              {(nombresDePasos.length ? nombresDePasos : []).map((nombre, i) => {
+                const n = i + 1;
+                const terminoLaCorrida = Boolean(rv.terminada_at) && rv.estado === 'terminada';
+                const hecho = terminoLaCorrida || n < pasoDe;
+                const ahora = Boolean(enVivo?.corriendo) && n === pasoDe;
+                const delRecorrido = (rv.avance ?? []).find(a => a.paso === nombre);
+                return (
+                  <div key={nombre} className={'mv-paso' + (ahora ? ' mv-on' : '') + (hecho ? ' mv-done' : '')}>
+                    <span className="mv-paso-n">{hecho ? '✓' : ahora ? '⟳' : n}</span>
+                    <span style={{ minWidth: 0 }}>
+                      <span className="mv-paso-t">{nombre}</span>
+                      <span className="mv-paso-d">
+                        {delRecorrido
+                          ? `${delRecorrido.detalle || 'hecho'}${delRecorrido.cuando ? ` · ${horaCorta(delRecorrido.cuando)}` : ''}`
+                          : ahora ? 'en esto está ahora' : 'pendiente'}
+                      </span>
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="mv-pie">
+              <div className="tiny muted">
+                {enVivo?.tareas?.length
+                  ? <>{enVivo.tareas.length} {enVivo.tareas.length === 1 ? 'proceso anotado' : 'procesos anotados'} — los últimos:</>
+                  : 'Todavía no anotó ningún proceso.'}
+              </div>
+              {/* LOS ÚLTIMOS PROCESOS, uno por línea: el dueño pidió «indicar lo que está pasando en esa
+                  ronda, cada proceso». Van del más nuevo al más viejo y se quedan los 5 últimos. */}
+              {(enVivo?.tareas ?? []).slice(-5).reverse().map((t, i) => (
+                <div className="mv-proc" key={`${t.orden}-${i}`}>
+                  <span className="mv-proc-h">{t.terminada_at ? horaCorta(t.terminada_at) : ''}</span>
+                  <span className="mv-proc-q" title={t.que}>{t.que}</span>
+                  <span className="mv-proc-a">{t.agente}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
         {rondas.length === 0 ? (
           <div className="tiny muted" style={{ marginTop: 10 }}>
-            Todavía no hay ninguna ronda guardada. Cuando la pida, acá quedan las {cuantasPiezas} opciones con su puntaje y cuál ganó.
+            Todavía no hay ninguna ronda guardada. Cuando la pida, acá quedan los {costo.piezas} contenidos con su tipo, su puntaje y cuál ganó.
           </div>
         ) : (
           rondas.map(r => (
@@ -187,7 +386,8 @@ function FlujoReal({ modo, ir }: { modo: Modo; ir?: (p: PasoCampana) => void }) 
                 <div className="guard" key={c.id}>
                   <span className="guard-lb">
                     {i === 0 ? '★ ' : ''}{c.angulo || 'sin ángulo declarado'}
-                    <small>{`${c.formato} · ${c.puntaje == null ? 'todavía sin votar' : `${c.puntaje} de 100 · puesto ${c.orden ?? '—'}`}`}</small>
+                    {c.tipo_de_contenido ? <b className="tag-tipo">{c.tipo_de_contenido}</b> : null}
+                    <small>{`${c.formato} · ${c.puntaje == null ? 'todavía sin votar' : `${c.puntaje} de 100 · puesto ${c.orden ?? '—'}`}${c.tipo_de_contenido ? ` · vale ${porTipo[c.tipo_de_contenido] ?? '—'} créditos` : ''}`}</small>
                   </span>
                   <span className="guard-val" style={{ color: c.puntaje == null ? 'var(--muted)' : colorDePuntaje(Number(c.puntaje)) }}>
                     {c.puntaje == null ? '—' : c.puntaje}

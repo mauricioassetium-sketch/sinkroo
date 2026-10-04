@@ -6,7 +6,57 @@ import type { Modo } from '../data/demo';
 import { useDatos, type Pieza as PiezaBack, type PromptGeneracion } from '../api/datos';
 import { EstadoVacio } from './EstadoVacio';
 import { fechaCorta } from './mirofishDatos';
+import { QUE_ES_CADA_TIPO, tipoDeFormato, precioDeFormato, type TipoDeContenido } from '../data/mirofish';
 import { baseApi, token } from '../api/cliente';
+
+/**
+ * TRAER CON LA SESIÓN, CONTANDO LO QUE VA LLEGANDO. Se lee el cuerpo por pedazos y se compara con lo que el
+ * servidor dijo que pesaba (`Content-Length`): ese es el porcentaje que muestra el cargador. Es un dato
+ * medido, no una animación que finge avanzar.
+ */
+async function traerConProgreso(url: string, alAvanzar: (pct: number) => void): Promise<string> {
+  const r = await fetch(baseApi() + url, { headers: token() ? { Authorization: 'Bearer ' + token() } : {} });
+  if (!r.ok) throw new Error(`el servidor contestó ${r.status}`);
+  const total = Number(r.headers.get('Content-Length') || 0);
+  const lector = r.body?.getReader();
+  if (!lector) return URL.createObjectURL(await r.blob());
+  const trozos: BlobPart[] = [];
+  let leidos = 0;
+  for (;;) {
+    const { done, value } = await lector.read();
+    if (done) break;
+    if (value) {
+      trozos.push(value);
+      leidos += value.byteLength;
+      if (total > 0) alAvanzar(Math.min(99, Math.round((leidos / total) * 100)));
+    }
+  }
+  return URL.createObjectURL(new Blob(trozos, { type: r.headers.get('Content-Type') || 'application/octet-stream' }));
+}
+
+/**
+ * EL CARGADOR: un aro que gira mientras algo viene por la red, y —cuando el servidor dice cuánto pesa— el
+ * porcentaje de verdad, no una barra que finge avanzar. Va con el nombre de lo que se está cargando, para
+ * que nadie mire una pantalla sin saber qué espera.
+ */
+function Cargando({ pct, que }: { pct?: number | null; que: string }) {
+  const conPct = typeof pct === 'number' && pct > 0 && pct < 100;
+  const radio = 16;
+  const vuelta = 2 * Math.PI * radio;
+  return (
+    <div className="cargando">
+      <svg width="40" height="40" viewBox="0 0 40 40" className={conPct ? '' : 'cargando-aro'} aria-hidden="true">
+        <circle cx="20" cy="20" r={radio} fill="none" stroke="rgba(255,255,255,.16)" strokeWidth="3.5" />
+        <circle cx="20" cy="20" r={radio} fill="none" stroke="var(--purple2)" strokeWidth="3.5" strokeLinecap="round"
+          strokeDasharray={vuelta} strokeDashoffset={conPct ? vuelta * (1 - (pct as number) / 100) : vuelta * 0.72}
+          transform="rotate(-90 20 20)" />
+      </svg>
+      <span className="cargando-tx">
+        {conPct ? `cargando ${que}… ${pct}%` : `cargando ${que}…`}
+      </span>
+    </div>
+  );
+}
 
 /**
  * La imagen generada de una pieza. Una etiqueta <img> no puede mandar la sesión, así que la imagen se
@@ -15,21 +65,20 @@ import { baseApi, token } from '../api/cliente';
 function ImagenDeLaPieza({ url, grande }: { url: string; grande?: boolean }) {
   const [src, setSrc] = useState<string | null>(null);
   const [fallo, setFallo] = useState(false);
+  const [pct, setPct] = useState<number | null>(null);
   useEffect(() => {
     let vivo = true;
     let blob: string | null = null;
     (async () => {
       try {
-        const r = await fetch(baseApi() + url, { headers: token() ? { Authorization: 'Bearer ' + token() } : {} });
-        if (!r.ok) { if (vivo) setFallo(true); return; }
-        blob = URL.createObjectURL(await r.blob());
+        blob = await traerConProgreso(url, pct => { if (vivo) setPct(pct); });
         if (vivo) setSrc(blob);
       } catch { if (vivo) setFallo(true); }
     })();
     return () => { vivo = false; if (blob) URL.revokeObjectURL(blob); };
   }, [url]);
   if (fallo) return <span className="tiny muted">la imagen no se pudo cargar en el navegador</span>;
-  if (!src) return <span className="tiny muted">cargando la imagen…</span>;
+  if (!src) return <Cargando pct={pct} que="la imagen" />;
   // En la carta va chica; abierta va a lo ancho de la pantalla, que es para lo que se toca.
   return <img src={src} alt="La imagen generada de esta pieza"
     style={grande
@@ -46,6 +95,7 @@ function VideoDeLaPieza({ url, grande }: { url: string; grande?: boolean }) {
   const [src, setSrc] = useState<string | null>(null);
   const [fallo, setFallo] = useState(false);
   const ref = useRef<HTMLVideoElement | null>(null);
+  const [pct, setPct] = useState<number | null>(null);
   // EL SONIDO PIDE UN TOQUE, y no es un capricho nuestro: los navegadores NO dejan arrancar un video CON
   // audio sin que la persona toque algo (probado: `NotAllowedError`). Así que arranca SIN sonido —para que
   // algo se mueva y se vea que está— y el botón de al lado le pone la voz, con ese toque que el navegador
@@ -63,16 +113,14 @@ function VideoDeLaPieza({ url, grande }: { url: string; grande?: boolean }) {
     let blob: string | null = null;
     (async () => {
       try {
-        const r = await fetch(baseApi() + url, { headers: token() ? { Authorization: 'Bearer ' + token() } : {} });
-        if (!r.ok) { if (vivo) setFallo(true); return; }
-        blob = URL.createObjectURL(await r.blob());
+        blob = await traerConProgreso(url, pct => { if (vivo) setPct(pct); });
         if (vivo) setSrc(blob);
       } catch { if (vivo) setFallo(true); }
     })();
     return () => { vivo = false; if (blob) URL.revokeObjectURL(blob); };
   }, [url]);
   if (fallo) return <span className="tiny muted">el video no se pudo cargar en el navegador</span>;
-  if (!src) return <span className="tiny muted">cargando el video…</span>;
+  if (!src) return <Cargando pct={pct} que="el video" />;
   // CON SONIDO: nada de `muted` —lo que se quiere oír es la voz y los subtítulos hablados—. Si el
   // navegador pide un toque para arrancar, los controles están ahí; el pedido se hace con el clic que
   // abrió esta ventana, que es cuando el navegador lo permite.
@@ -294,9 +342,21 @@ type PiezaGal = {
   planos: { planos: { n: number; duracion_s: number; prompt: string; prompt_negativo: string; audio?: string }[]; duracion_total_s: number; motor: string; estilo_unificado: string; modelos_declarados: { video: string; audio: string } } | null;
   /** La especificación del formato: qué es, qué produce y con qué criterios se juzga. */
   formato_pide: { nombre?: string; que_es?: string; entregable?: string; como_se_arma?: string; criterios_con_los_que_se_juzga?: string[] } | null;
+  /** EL TIPO DE CONTENIDO de la pieza y lo que cuesta crearla, tal como lo manda el back. */
+  tipo_de_contenido: TipoDeContenido | null;
+  precio_creditos: number | null;
 };
 
 const esVideo = (f: string) => /video|reel/i.test(f);
+
+/** Cómo se llama lo que se ve, según el tipo de la pieza: el video, el reel, la imagen o el título. */
+const queSeVe = (tipo: TipoDeContenido | null): string => {
+  if (tipo === 'video') return 'el video';
+  if (tipo === 'imagen con texto') return 'la imagen';
+  if (tipo === 'título animado') return 'el título';
+  if (tipo) return 'el reel';
+  return 'el contenido';
+};
 
 /** La fecha del back, en corto: «creada el 12 de septiembre». */
 const creada = (iso: string) => `creada el ${fechaCorta(iso)}`;
@@ -332,6 +392,13 @@ export function Galeria({ setToast, ir }: { modo: Modo; setToast: (t: string) =>
       imagen: ((g as { imagen_generada?: never }).imagen_generada ?? null),
       video: ((g as { video_generado?: never }).video_generado ?? null),
       video_error: ((g as { video_error?: never }).video_error ?? null),
+      // EL TIPO DE CONTENIDO Y SU PRECIO: los manda el back con la pieza (el tipo sale de su formato y el
+      // precio de la tabla, que vive en el back). Si la pieza es de un formato anterior a la tabla, el back
+      // manda null y acá se dice, en vez de mostrar un precio que nadie fijó para ella.
+      tipo_de_contenido: ((p as { tipo_de_contenido?: TipoDeContenido | null }).tipo_de_contenido
+        ?? tipoDeFormato(p.formato)) || null,
+      precio_creditos: (p as { precio_creditos?: number | null }).precio_creditos
+        ?? precioDeFormato(p.formato),
       prompt: porNombre ?? null,
     };
   });
@@ -446,19 +513,23 @@ export function Galeria({ setToast, ir }: { modo: Modo; setToast: (t: string) =>
                     </div>
                   )
                   : <span className="pz-ico">{esVideo(o.formato) ? <I_Film size={30} /> : <I_Image size={30} />}</span>}
-                {esVideo(o.formato) && (
+                {(esVideo(o.formato) || o.tipo_de_contenido || o.video) && (
                   <span className={`pz-video ${o.video ? 'listo' : o.video_error ? 'fallo' : 'montando'}`}
                     style={o.video ? { cursor: 'pointer' } : undefined}
                     onClick={o.video ? () => setVerArte({
                       tipo: 'video', url: o.video!.url, titulo: o.titulo,
-                      nota: `${o.video!.segundos} s · voz ${o.video!.voz} — ${o.video!.voz_porque}`,
+                      nota: `${o.video!.segundos} s · ${queSeVe(o.tipo_de_contenido)} · ${o.video!.voz} — ${o.video!.voz_porque}`,
                     }) : undefined}
                     title={o.video
-                      ? `Toque para verlo con sonido: ${o.video.segundos} s, voz ${o.video.voz}`
+                      ? `Toque para ver ${queSeVe(o.tipo_de_contenido)}: ${o.video.segundos} s${o.video.segundos <= 30 ? '' : ' (pasa de 30 s)'}`
                       : o.video_error
-                        ? `El montaje falló: ${o.video_error.motivo}`
-                        : 'El motor está montando el video: es un video de verdad, con voz y subtítulos, y tarda unos minutos en estar. Aparece acá solo.'}>
-                    {o.video ? `▶ ver el video · ${o.video.segundos} s` : o.video_error ? 'el video no salió' : 'montando el video…'}
+                        ? `No se pudo armar ${queSeVe(o.tipo_de_contenido)}: ${o.video_error.motivo}`
+                        : `El motor está armando ${queSeVe(o.tipo_de_contenido)}: se arma en el servidor y aparece acá solo.`}>
+                    {o.video
+                      ? `▶ ver ${queSeVe(o.tipo_de_contenido)} · ${o.video.segundos} s`
+                      : o.video_error
+                        ? `${queSeVe(o.tipo_de_contenido)} no salió`
+                        : <><span className="aro-mini" /> armando {queSeVe(o.tipo_de_contenido)}…</>}
                   </span>
                 )}
               </div>
@@ -488,6 +559,18 @@ export function Galeria({ setToast, ir }: { modo: Modo; setToast: (t: string) =>
                 </div>
                 {pieza && pieza.id === o.id && (
                   <div className="pz-ficha">
+                    <div className="op-row">
+                      <span className="op-k">Tipo de contenido</span>
+                      <span className="bs">
+                        {o.tipo_de_contenido
+                          ? <>
+                            <b>{o.tipo_de_contenido}</b>
+                            {o.precio_creditos != null ? <> — <b>{o.precio_creditos} créditos</b> crearlo</> : null}
+                            <span className="tiny muted" style={{ display: 'block' }}>{QUE_ES_CADA_TIPO[o.tipo_de_contenido]}</span>
+                          </>
+                          : <span className="tiny muted">Este formato es anterior a la tabla por tipo: no tiene precio por tipo asignado.</span>}
+                      </span>
+                    </div>
                     <div className="op-row"><span className="op-k">Formato</span><span className="bs">{o.formato}</span></div>
                     <div className="op-row"><span className="op-k">Estado</span><span className="bs">{o.estado}</span></div>
                     {o.fecha && <div className="op-row"><span className="op-k">Fecha</span><span className="bs">{o.fecha}</span></div>}
@@ -498,7 +581,7 @@ export function Galeria({ setToast, ir }: { modo: Modo; setToast: (t: string) =>
                     </div>
                     {o.guion ? (
                       <div className="op-row">
-                        <span className="op-k">{o.clase === 'reel_texto' ? 'Las tarjetas, una por una' : 'El guion, escena por escena'}</span>
+                        <span className="op-k">{/^reel/.test(o.clase) ? 'Las tarjetas, una por una' : 'El guion, escena por escena'}</span>
                         <span className="bs" style={{ whiteSpace: 'pre-wrap' }}>{o.guion}</span>
                       </div>
                     ) : null}
@@ -534,7 +617,7 @@ export function Galeria({ setToast, ir }: { modo: Modo; setToast: (t: string) =>
                     ) : null}
                     {o.video ? (
                       <div className="op-row">
-                        <span className="op-k">El video, montado</span>
+                        <span className="op-k">{`${queSeVe(o.tipo_de_contenido)[0].toUpperCase()}${queSeVe(o.tipo_de_contenido).slice(1)}, armado`}</span>
                         <span className="bs">
                           <span className="tiny muted" style={{ display: 'block' }}>
                             {`${o.video.segundos} s · ${Math.round(o.video.peso / 1024)} KB · voz ${o.video.voz} — ${o.video.voz_porque}`}
@@ -542,7 +625,7 @@ export function Galeria({ setToast, ir }: { modo: Modo; setToast: (t: string) =>
                           <VideoDeLaPieza url={o.video.url} />
                           <div style={{ marginTop: 6 }}>
                             <Button variant="outline" className="btn-sm"
-                              title="Abre el video a pantalla completa, con su voz y sus subtítulos"
+                              title={`Abre ${queSeVe(o.tipo_de_contenido)} a pantalla completa, con su sonido`}
                               onClick={() => setVerArte({
                                 tipo: 'video', url: o.video!.url, titulo: o.titulo,
                                 nota: `${o.video!.segundos} s · voz ${o.video!.voz} — ${o.video!.voz_porque}`,

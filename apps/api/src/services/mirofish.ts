@@ -1,5 +1,5 @@
 import type { Pool } from 'pg';
-import { claseDeFormato, ESPECIFICACION } from './formatos.js';
+import { claseDeFormato, ESPECIFICACION, type ClaseDePieza } from './formatos.js';
 import { TARIFA } from './creditos.js';
 import { azar, desvioActual, semillaDe } from './agentes.js';
 
@@ -63,7 +63,7 @@ export async function crearPublico(db: Pool, businessId: string, zonaBase = '') 
 }
 
 /** Lo que un agente del público piensa de la pieza, según su perfil y lo que la pieza dice. */
-function reaccionDe(perfil: { edad: number; interes: string; sensibilidad: string; estilo: string }, pieza: { texto: string; formato: string }, az: () => number, clase: 'video' | 'reel_texto' | 'imagen' = 'video') {
+function reaccionDe(perfil: { edad: number; interes: string; sensibilidad: string; estilo: string }, pieza: { texto: string; formato: string }, az: () => number, clase: ClaseDePieza = 'video') {
   let voto = 45 + az() * 35;                                   // base: 45 a 80
   if (/precio|\$|cop|usd/i.test(pieza.texto)) voto += 6;      // contestar el precio ayuda
   if (pieza.texto.length > 120) voto += 4;                     // una pieza con qué decir rinde más
@@ -73,8 +73,10 @@ function reaccionDe(perfil: { edad: number; interes: string; sensibilidad: strin
   if (perfil.estilo === 'experto') voto -= 3;
   if (perfil.estilo === 'impulsivo') voto += 7;
   if (clase === 'video') voto += 5;                            // el video se ve más
-  if (clase === 'reel_texto') voto -= 2;                       // el texto se lee menos que el video
-  if (clase === 'imagen') voto -= 1;                           // una imagen sola dice menos que un video
+  // El reel se lee menos que el video, sea de texto, de imágenes o con animación: el ajuste es el mismo.
+  if (clase === 'reel_texto' || clase === 'reel_imagenes' || clase === 'reel_animacion') voto -= 2;
+  // La imagen sola dice menos que un video, y un título animado dice todavía menos que la imagen: mismo ajuste.
+  if (clase === 'imagen' || clase === 'titulo_animado') voto -= 1;
   voto = Math.max(0, Math.min(100, Math.round(voto)));
 
   const reaccion = voto >= 75 ? 'compra' : voto >= 60 ? 'guarda' : voto >= 45 ? 'indiferente' : 'pasa';
@@ -93,6 +95,11 @@ export async function evaluar(db: Pool, businessId: string, pieza: {
   id?: string; titulo: string; texto: string; formato: string;
   /** Lo que la pieza trae armado de su formato (tarjetas, texto sobre la imagen): con eso se juzga de verdad. */
   generacion?: Record<string, unknown>;
+}, avisos?: {
+  /** Se llama cuando los cinco jueces terminaron de votar. Sirve para la línea de carga del panel. */
+  jueces?: () => void;
+  /** Se llama cuando empieza a reaccionar el público. */
+  publico?: () => void;
 }) {
   const az = azar(semillaDe(`${businessId}:${pieza.titulo}:${pieza.texto}`));
   const desvio = await desvioActual(db, businessId);
@@ -138,7 +145,11 @@ export async function evaluar(db: Pool, businessId: string, pieza: {
     );
   }
 
+  // Los cinco jueces ya votaron: se avisa (la línea de carga del panel pasa al público).
+  try { avisos?.jueces?.(); } catch { /* un aviso no puede tumbar una evaluación */ }
+
   // 2 · Las 500 personas del público
+  try { avisos?.publico?.(); } catch { /* idem */ }
   const agentes = await db.query(
     'SELECT numero, edad, interes, sensibilidad, estilo FROM publico_agentes WHERE business_id = $1 ORDER BY numero',
     [businessId],

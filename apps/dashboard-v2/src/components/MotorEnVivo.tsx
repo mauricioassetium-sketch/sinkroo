@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Card, Badge, Button } from './ui';
 import { I_Zap, I_Check, I_ArrowRight, I_Refresh, I_Vote } from './icons';
 import { ETAPAS_MOTOR } from '../data/demo';
-import { CUANTAS_PASAN, TARIFA } from '../data/mirofish';
+import { CUANTAS_PASAN, TARIFA, PRECIOS_EN_UNA_LINEA } from '../data/mirofish';
 import { useDetalle, type Bloque } from './Detalle';
 import { useDatos, type Evaluacion } from '../api/datos';
 import { EstadoVacio } from './EstadoVacio';
@@ -256,7 +256,7 @@ export function MotorEnVivo({ setToast, ir }: { setToast: (t: string) => void; i
         'Los 5 jueces volverían a puntuar la versión nueva y la ordenarían contra el lote.',
         `Las ${CUANTAS_PASAN} mejores quedarían listas para publicar.`,
       ] },
-      { tipo: 'aviso', tono: 'amber', texto: `Esto no gasta publicidad: se paga en créditos, ${TARIFA.crearVariante} por la corrección más ${TARIFA.evaluarPieza} por volver a juzgarla, y todavía no sale de esta pantalla. La pieza de hoy queda guardada con su voto.` },
+      { tipo: 'aviso', tono: 'amber', texto: `Esto no gasta publicidad: se paga en créditos —la corrección vale lo que valga el tipo de la pieza (${PRECIOS_EN_UNA_LINEA}) más ${TARIFA.evaluarPieza} por volver a juzgarla—, y todavía no sale de esta pantalla. La pieza de hoy queda guardada con su voto.` },
     ],
     fuente: 'Sale del veredicto de los 5 jueces sobre esta pieza, tal como quedó guardado en MiroFish.',
     acciones: [
