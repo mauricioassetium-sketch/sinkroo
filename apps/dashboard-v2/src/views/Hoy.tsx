@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { MotorTrabajando } from '../components/MotorTrabajando';
 import { Card, Badge, Button } from '../components/ui';
 import { EquipoInvestigando } from '../components/EquipoInvestigando';
+import { PreguntasDelMotor } from '../components/PreguntasDelMotor';
 import { Ring, BarRow } from '../components/viz';
 import { usePerfil, nombreDePila } from '../lib/perfil';
 import { SinkrooMark, I_ArrowRight, I_Wallet, I_Eye, I_Star, I_Clock, I_Rocket, I_Users, I_Trend } from '../components/icons';
@@ -206,6 +207,10 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
           Complete el primer paso para comenzar
         </div>
       )}
+      {/* LO PRIMERO: LO QUE EL MOTOR NECESITA SABER. Va arriba de todo porque es lo que destraba su trabajo:
+          sin ese dato, el estudio del mercado sale (o no sale) con lo que haya. Con preguntas abiertas se ve;
+          sin preguntas no dibuja nada y la pantalla queda igual. */}
+      <PreguntasDelMotor setToast={setToast} />
       {!(onb.arrancado && onb.listos.length === 5) && (
         <Card className={onb.listos.length === 0 ? 'onb-alarma' : ''}
           title={<span className="row" style={{ gap: 8 }}><I_Rocket size={14} style={{ color: 'var(--purple3)' }} /> Primeros pasos

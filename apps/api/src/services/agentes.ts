@@ -7,6 +7,7 @@ import { armarInformeDelMercadoLeido, type InformeDelMercado } from './mercado.j
 import { armarLaPieza, conElTextoEscrito, type PiezaArmada } from './pieza.js';
 import { vocabularioDe } from './corrector.js';
 import { zonaDeLugares } from '../lib/paises.js';
+import { pedirDato } from './preguntas.js';
 import { crearPublico, evaluar as evaluarConMiroFish } from './mirofish.js';
 import { TARIFA, saldoDe, cobrarCreacion, costoDeRonda, detalleDeTipos, precioDeTipo } from './creditos.js';
 import { claseDeFormato, formatoDe, tipoDeContenidoDe, SEGUNDOS_MAXIMOS_VIDEO, type TipoDeContenido } from './formatos.js';
@@ -614,6 +615,49 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
       }
     }
   } catch { /* si no se puede escribir, la corrida sigue con lo leído */ }
+
+  // LO QUE EL MOTOR NECESITA SABER Y NO ESTÁ EN EL MATERIAL: LO PREGUNTA.
+  //
+  // El dueño lo pidió así: «si la información no es suficiente el sistema debe ser inteligente y preguntar
+  // directo algo que no tenga; el usuario debe poder responder para resolverlo». Son dos datos distintos y
+  // los dos cambian el estudio:
+  //   · DÓNDE ESTÁ LA EMPRESA (su plaza): es lo que el mapa geocodifica. Sin ciudad no hay conteo de locales.
+  //   · DÓNDE ESTÁN SUS CLIENTES (su mercado): un servicio de conserjería en Dubái atiende sobre todo a gente
+  //     de afuera. Si no declaró países ni continentes, el motor no sabe en qué mercados leer su rubro, y
+  //     darlo por local sería medirle el mercado equivocado.
+  if (!String(ctx.zona || '').trim()) {
+    await pedirDato(db, {
+      businessId: ctx.businessId, clave: 'ciudad', corridaId,
+      pregunta: '¿En qué ciudad está su negocio?',
+      porque: 'Con su ciudad el motor cuenta los negocios parecidos que tiene alrededor en el mapa y mira cómo se mueve el rubro en su plaza. Su material no la nombra.',
+      ejemplo: 'Dubái, Emiratos Árabes Unidos',
+    });
+  }
+  try {
+    const onb = await db.query<{ datos: Record<string, unknown> }>(
+      'SELECT datos FROM onboarding WHERE business_id = $1', [ctx.businessId]);
+    const d = onb.rows[0]?.datos ?? {};
+    const declarados = [...(Array.isArray(d.paises) ? d.paises : []), ...(Array.isArray(d.continentes) ? d.continentes : [])]
+      .map(String).filter(Boolean);
+    // SE PREGUNTA SIEMPRE QUE EL NEGOCIO SEA GLOBAL, aunque su material nombre una ciudad: el material dice
+    // DÓNDE ESTÁ o de dónde es, no dónde están sus clientes. Un servicio de conserjería en Dubái atiende sobre
+    // todo a gente de afuera, y medirle el mercado en su ciudad sería medirle el público equivocado (es la
+    // distinción que marcó el dueño).
+    // Un negocio GLOBAL recibe la pregunta aunque haya declarado dónde vende: declarar el país donde opera no
+    // es decir dónde están sus clientes (el dueño: «el mercado de conserjería es fuera de Dubái, la mayoría de
+    // sus clientes son extranjeros»). Se pregunta una sola vez: la respuesta queda guardada y no se repite.
+    const esGlobal = leido.alcance === 'global'
+      || String(d.alcance_comercial ?? '').trim().toLowerCase() === 'global';
+    if (esGlobal || (!declarados.length && !(leido.lugares || []).length)) {
+      await pedirDato(db, {
+        businessId: ctx.businessId, clave: 'mercados', corridaId,
+        pregunta: '¿En qué países o regiones están sus clientes?',
+        porque: 'El motor sale a leer su rubro —y a contar quién pauta— en los mercados donde están sus clientes. Si vende a gente de varios países, dígalos: apuntar al lugar donde está la empresa le traería el público equivocado.',
+        ejemplo: 'Emiratos Árabes Unidos, Europa, Estados Unidos',
+        opciones: ['Su ciudad o su país', 'Medio Oriente', 'Europa', 'Estados Unidos', 'Latinoamérica', 'Asia', 'Global'],
+      });
+    }
+  } catch { /* si no se puede leer el asistente, no se pregunta: la corrida sigue */ }
 
   // EL MAPA DEL MERCADO, YA CON LA CATEGORÍA DEL MATERIAL. Busca por NOMBRE de comercio, no por descripción:
   // con la frase con la que el negocio se describe («We redefine luxury management…») no encuentra nada, y con

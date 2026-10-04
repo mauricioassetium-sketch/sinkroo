@@ -205,6 +205,32 @@ export async function migrate(db: Pool): Promise<void> {
 
     CREATE INDEX IF NOT EXISTS idx_hallazgos_business ON hallazgos(business_id, created_at DESC);
 
+    -- LAS PREGUNTAS DEL MOTOR: lo que le falta para poder trabajar y que SÓLO EL CLIENTE puede responder.
+    --
+    -- POR QUÉ EXISTE: el motor no puede inventar lo que no está en el material. Antes, si le faltaba un dato
+    -- —la ciudad, el mercado donde están sus clientes—, o se quedaba callado o sacaba una conclusión con lo
+    -- que hubiera. El dueño lo pidió así: «si la información no es suficiente el sistema debe ser inteligente
+    -- y preguntar directo algo que no tenga; el usuario debe poder responder para resolverlo».
+    --
+    -- Una fila por dato pedido (clave): si el motor vuelve a necesitar lo mismo y ya está contestado, se usa
+    -- la respuesta; si no lo está, se actualiza la pregunta (no se acumulan copias).
+    CREATE TABLE IF NOT EXISTS preguntas_del_motor (
+      id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      business_id   UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+      clave         TEXT NOT NULL,
+      pregunta      TEXT NOT NULL,
+      porque        TEXT NOT NULL DEFAULT '',
+      ejemplo       TEXT NOT NULL DEFAULT '',
+      opciones      JSONB,
+      respuesta     TEXT,
+      respondida_at TIMESTAMPTZ,
+      corrida_id    UUID REFERENCES corridas(id) ON DELETE SET NULL,
+      created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_preguntas_clave ON preguntas_del_motor(business_id, clave);
+    CREATE INDEX IF NOT EXISTS idx_preguntas_abiertas ON preguntas_del_motor(business_id, respondida_at);
+
     -- Las piezas: lo que el motor escribe. La generación de video y de imagen entra por 'generacion'.
     CREATE TABLE IF NOT EXISTS piezas (
       id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -259,6 +285,19 @@ export async function migrate(db: Pool): Promise<void> {
     -- competencia = de los anuncios públicos). Sin esto, los 500 son inventados y repartidos parejo.
     -- De qué ronda salió cada pieza, y por dónde entró (su ángulo): sin esto, las 5 opciones de una ronda
     -- son indistinguibles entre sí y no se puede decir cuál ganó ni por qué.
+    -- EL AVANCE EN VIVO DE UNA CORRIDA. La corrida nace con estado 'corriendo' y va latiendo mientras
+    -- trabaja: el panel lee esto cada pocos segundos para mostrar la línea de carga y lo que está pasando.
+    -- Sin esto, una ronda era una caja negra: la fila nacía al terminar y no había nada que mirar.
+    -- OJO: acá adentro los comentarios son de SQL (--). Con // Postgres corta en el segundo carácter y la
+    -- migración ENTERA falla; como está envuelta en try/catch, falla en silencio, con un solo aviso.
+    ALTER TABLE corridas ADD COLUMN IF NOT EXISTS paso TEXT NOT NULL DEFAULT '';
+    ALTER TABLE corridas ADD COLUMN IF NOT EXISTS detalle TEXT NOT NULL DEFAULT '';
+    ALTER TABLE corridas ADD COLUMN IF NOT EXISTS paso_de INT NOT NULL DEFAULT 0;
+    ALTER TABLE corridas ADD COLUMN IF NOT EXISTS pasos INT NOT NULL DEFAULT 0;
+    ALTER TABLE corridas ADD COLUMN IF NOT EXISTS avance JSONB NOT NULL DEFAULT '[]'::jsonb;
+    ALTER TABLE corridas ADD COLUMN IF NOT EXISTS latido_at TIMESTAMPTZ;
+    ALTER TABLE corridas ADD COLUMN IF NOT EXISTS ronda INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE tareas_corrida ADD COLUMN IF NOT EXISTS terminada_at TIMESTAMPTZ NOT NULL DEFAULT now();
     ALTER TABLE piezas ADD COLUMN IF NOT EXISTS ronda INTEGER NOT NULL DEFAULT 0;
     ALTER TABLE piezas ADD COLUMN IF NOT EXISTS angulo TEXT NOT NULL DEFAULT '';
 

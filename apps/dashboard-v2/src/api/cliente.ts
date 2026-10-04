@@ -240,6 +240,25 @@ export const leerOnboarding = () => pedir<OnboardingRemoto>('/api/onboarding');
 export const guardarOnboarding = (cuerpo: { datos?: Record<string, unknown>; hechos?: number[]; arrancado?: boolean }) =>
   pedir<OnboardingRemoto>('/api/onboarding', { metodo: 'PUT', cuerpo });
 
+// ---------------- Las preguntas del motor ----------------
+
+/**
+ * LO QUE EL MOTOR NECESITA SABER Y NO ESTÁ EN SU MATERIAL. El panel lo muestra como un pop up: el cliente
+ * responde y la respuesta se guarda donde el motor la lee, así la próxima corrida ya trabaja con ella.
+ */
+export type PreguntaDelMotor = {
+  id: string; clave: string; pregunta: string; porque: string; ejemplo: string;
+  opciones: string[] | null; created_at: string;
+};
+
+export const leerPreguntas = () =>
+  pedir<{ abiertas: PreguntaDelMotor[]; respondidas: number }>('/api/preguntas');
+
+export const responderPregunta = (id: string, respuesta: string) =>
+  pedir<{ ok: boolean; que_quedo: string; clave: string }>(`/api/preguntas/${id}/responder`, {
+    metodo: 'POST', cuerpo: { respuesta },
+  });
+
 /**
  * LA UBICACIÓN QUE DA EL NAVEGADOR — lo que hay detrás del botón «Usar mi ubicación» del paso «Dónde está».
  *

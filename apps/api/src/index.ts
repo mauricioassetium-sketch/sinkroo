@@ -25,6 +25,7 @@ import { predictRoutes } from './routes/predict.js';
 import { webhookRoutes } from './routes/webhook.js';
 import { entradaRoutes } from './routes/entrada.js';
 import { ubicacionRoutes } from './routes/ubicacion.js';
+import { preguntaRoutes } from './routes/preguntas.js';
 import { programarInvestigacionDiaria } from './services/programador.js';
 import { archivosRoutes } from './routes/archivos.js';
 
@@ -107,6 +108,8 @@ export async function buildApp() {
   // Los códigos de entrada: la puerta por la que el negocio entra al producto.
   entradaRoutes(app);
   ubicacionRoutes(app);
+  // Las preguntas del motor: lo que le falta y sólo el cliente puede responder.
+  preguntaRoutes(app, db);
   // Los archivos del negocio. Se espera a que termine porque adentro registra el lector de
   // multipart/form-data y las rutas tienen que quedar puestas después de eso.
   await archivosRoutes(app);
