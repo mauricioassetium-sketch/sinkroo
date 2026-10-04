@@ -117,13 +117,25 @@ export function lanzarLecturaDeAnuncios(
   // de su mercado —y sin que nadie se lo dijera— aunque su zona ya dijera dónde está.
   const declaradosOZona = declarados.length ? declarados : paisesDeLaZona(n.zona);
   const paises = dedujo.paises.length ? dedujo.paises : declaradosOZona;
+
+  // CUÁNTAS CONSULTAS SE LANZAN. La lectura es lenta: ~3 minutos por consulta (medido). Un negocio global que
+  // declare cuatro mercados y tenga cuatro palabras serían 24 consultas: más de una hora y media por día, por
+  // negocio, para leer mercados que no cambian de un día para el otro. Se acota a TRES mercados —los primeros,
+  // que son la plaza del negocio y los que el cliente declaró— con DOS palabras de su categoría cada uno:
+  // seis consultas, y queda dicho en el registro qué se leyó y qué quedó afuera.
+  const maxPaises = 3, maxPalabras = 2;
+  const paisesLeidos = paises.slice(0, maxPaises);
+  const palabrasLeidas = palabras.slice(0, maxPalabras);
   const args = [new URL('../../workers/lector-anuncios.mjs', import.meta.url).pathname,
     '--negocio', n.id, '--salida', `/tmp/anuncios-${n.id}.json`];
-  for (const palabra of palabras) for (const pais of paises) args.push(`${palabra}:${pais}`);
+  for (const pais of paisesLeidos) for (const palabra of palabrasLeidas) args.push(`${palabra}:${pais}`);
   try {
     const hijo = spawn(process.execPath, args, { env: process.env, detached: true, stdio: 'ignore' });
     hijo.unref();
-    log(`lectura de anuncios lanzada para «${n.nombre}»: ${palabras.join(', ')} en ${paises.join(', ')}`);
+    log(`lectura de anuncios lanzada para «${n.nombre}»: ${palabrasLeidas.join(', ')} en ${paisesLeidos.join(', ')}`
+      + ` (${palabrasLeidas.length * paisesLeidos.length} consultas`
+      + (paises.length > paisesLeidos.length ? ` · quedan ${paises.length - paisesLeidos.length} mercados para las próximas vueltas` : '')
+      + `)`);
   } catch (e) {
     log(`no se pudo lanzar la lectura de anuncios de «${n.nombre}»: ${String((e as Error).message).slice(0, 120)}`);
   }
