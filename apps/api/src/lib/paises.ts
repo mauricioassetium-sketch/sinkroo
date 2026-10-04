@@ -38,6 +38,51 @@ export const PAISES_DEL_CONTINENTE: Record<string, string[]> = {
   oceania: ['AU', 'NZ'],
 };
 
+/**
+ * DÓNDE CAE CADA PAÍS EN EL MAPA — el centro del país, en latitud y longitud.
+ *
+ * Es para el mapa del motor: cada mercado que se está verificando se enciende en su lugar. Son centros
+ * aproximados (a ojo de mapa alcanza) y están los países donde el producto ya trabaja.
+ */
+export const COORDENADAS: Record<string, [number, number]> = {
+  AE: [23.9, 54.3], SA: [24.0, 45.0], QA: [25.3, 51.2], KW: [29.3, 47.5], OM: [21.0, 57.0],
+  BH: [26.0, 50.5], IL: [31.4, 35.0], TR: [39.0, 35.2], EG: [26.8, 30.8], MA: [31.8, -7.1],
+  ES: [40.4, -3.7], GB: [54.0, -2.0], DE: [51.2, 10.4], FR: [46.6, 2.4], IT: [41.9, 12.6],
+  NL: [52.1, 5.3], PT: [39.4, -8.2], SE: [60.1, 18.6], PL: [51.9, 19.1], GR: [39.1, 21.8],
+  US: [39.8, -98.6], CA: [56.1, -106.3], MX: [23.6, -102.6], CR: [9.7, -84.1] as [number, number],
+  PA: [8.5, -80.8], DO: [18.7, -70.2], CO: [4.6, -74.3], VE: [6.4, -66.6], EC: [-1.8, -78.2],
+  PE: [-9.2, -75.0], BO: [-16.3, -63.6], BR: [-14.2, -51.9], PY: [-23.4, -58.4], UY: [-32.5, -55.8],
+  AR: [-38.4, -63.6], CL: [-35.7, -71.5], CN: [35.9, 104.2], IN: [20.6, 79.0], JP: [36.2, 138.3],
+  SG: [1.4, 103.8], ID: [-0.8, 113.9], AU: [-25.3, 133.8], NZ: [-40.9, 174.9],
+  ZA: [-30.6, 22.9], NG: [9.1, 8.7], KE: [-0.0, 37.9],
+};
+
+/** Las ciudades que se usan como plaza, para que el punto caiga en la ciudad y no en el centro del país. */
+export const COORDENADAS_DE_CIUDAD: Record<string, [number, number]> = {
+  dubai: [25.2048, 55.2708], dubái: [25.2048, 55.2708], 'abu dabi': [24.45, 54.38], 'abu dhabi': [24.45, 54.38],
+  doha: [25.29, 51.53], riad: [24.71, 46.68], yeda: [21.49, 39.19], estambul: [41.01, 28.98],
+  medellin: [6.24, -75.58], medellín: [6.24, -75.58], bogota: [4.71, -74.07], bogotá: [4.71, -74.07],
+  cali: [3.45, -76.53], barranquilla: [10.96, -74.80], cartagena: [10.39, -75.51],
+  'ciudad de mexico': [19.43, -99.13], cdmx: [19.43, -99.13], guadalajara: [20.67, -103.35],
+  monterrey: [25.69, -100.32], 'buenos aires': [-34.60, -58.38], santiago: [-33.45, -70.67],
+  lima: [-12.05, -77.04], quito: [-0.18, -78.47], 'sao paulo': [-23.55, -46.63], 'rio de janeiro': [-22.91, -43.17],
+  madrid: [40.42, -3.70], barcelona: [41.39, 2.17], londres: [51.51, -0.13], paris: [48.86, 2.35],
+  'nueva york': [40.71, -74.01], 'new york': [40.71, -74.01], miami: [25.76, -80.19],
+  'los angeles': [34.05, -118.24], singapur: [1.35, 103.82], tokio: [35.68, 139.69],
+  sidney: [-33.87, 151.21], 'ciudad de panama': [8.98, -79.52],
+};
+
+/**
+ * EL PUNTO DEL MAPA: primero la ciudad si se conoce, si no el país. Devuelve null cuando no hay con qué
+ * ubicarlo (mejor no pintar nada que pintarlo en el lugar equivocado).
+ */
+export function coordenadasDe(codigoPais: unknown, ciudad?: unknown): [number, number] | null {
+  const ciudadClave = String(ciudad ?? '').split(',')[0].trim().toLowerCase();
+  if (ciudadClave && COORDENADAS_DE_CIUDAD[ciudadClave]) return COORDENADAS_DE_CIUDAD[ciudadClave];
+  const codigo = String(codigoPais ?? '').trim().toUpperCase();
+  return COORDENADAS[codigo] ?? null;
+}
+
 /** Cómo se escribe cada nombre en el material del negocio → su código. */
 const CODIGO_DE: Record<string, string> = Object.fromEntries(
   Object.entries(PAISES).map(([c, n]) => [n.toLowerCase(), c]),

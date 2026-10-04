@@ -232,6 +232,22 @@ export async function migrate(db: Pool): Promise<void> {
       created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
     );
 
+    -- LAS LECTURAS DE ANUNCIOS, para que el mapa del motor pueda decir QUÉ ESTÁ VERIFICANDO AHORA.
+    -- El trabajador anota una fila al empezar (con los mercados que va a leer) y la cierra al terminar: el panel
+    -- lee de acá qué ciudades o países se están mirando en este momento, y si la búsqueda es global o local.
+    CREATE TABLE IF NOT EXISTS lecturas_de_anuncios (
+      id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      business_id  UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+      mercados     TEXT[] NOT NULL DEFAULT '{}',
+      palabras     TEXT[] NOT NULL DEFAULT '{}',
+      empezada_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+      terminada_at TIMESTAMPTZ,
+      fichas       INT NOT NULL DEFAULT 0,
+      motivo       TEXT NOT NULL DEFAULT ''
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_lecturas_business ON lecturas_de_anuncios(business_id, empezada_at DESC);
+
     CREATE UNIQUE INDEX IF NOT EXISTS idx_preguntas_clave ON preguntas_del_motor(business_id, clave);
     CREATE INDEX IF NOT EXISTS idx_preguntas_abiertas ON preguntas_del_motor(business_id, respondida_at);
 

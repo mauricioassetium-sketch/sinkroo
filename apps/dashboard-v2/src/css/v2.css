@@ -1183,6 +1183,21 @@
 .eq-wrap .acc-why { font-size: 10px; line-height: 1.4; margin-top: 7px; }
 .eq-wrap .bs { font-size: 10px; }
 
+/* --- EL MAPA DEL MOTOR (al lado de Tino, dentro del equipo): el mundo en un solo camino y encima los puntos
+       de los mercados que se están verificando. El que se está mirando AHORA late; los ya verificados quedan
+       fijos, con su nombre. Ocupa la fila entera para que el mapa se vea grande. --- */
+.mapa-motor { grid-column: 1 / -1; margin-top: 7px; }
+.mapa-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.mapa-svg { width: 100%; height: auto; display: block; background: var(--bg3); border-radius: 11px; padding: 4px; }
+.mapa-tierra { fill: var(--border2); stroke: none; }
+.mapa-punto { fill: var(--purple3); opacity: .55; }
+.mapa-lugar.activo .mapa-punto { fill: var(--green); opacity: 1; }
+.mapa-halo { fill: none; stroke: var(--green); stroke-width: .8; animation: mapa-pulso 1.8s ease-out infinite; }
+@keyframes mapa-pulso { 0% { r: 2.2; opacity: .9; } 100% { r: 11; opacity: 0; } }
+.mapa-nombre { font-size: 4.4px; fill: var(--txt); paint-order: stroke; stroke: var(--bg2); stroke-width: 1.2; }
+.mapa-nombre.activo { fill: var(--green); font-weight: 700; }
+.mapa-pie { margin-top: 6px; }
+
 /* --- La barra del agente que está trabajando AHORA, dentro de su propia tarjeta: dice qué hace y cuánto
        falta, sin tener que leer los diez renglones para encontrar al que tiene la tarea en la mano. --- */
 .eq-barra { display: block; height: 4px; border-radius: 99px; background: var(--border2); overflow: hidden; margin: 6px 0 4px; }

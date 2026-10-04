@@ -13,6 +13,7 @@ import { useDetalle, type Detalle } from './Detalle';
 // una versión «de ejemplo» de este bloque: simular trabajo sería inventar resultados.
 import { useDatos, type Corrida, type TareaCorrida } from '../api/datos';
 import { useMotorVivo } from './MotorTrabajando';
+import { MapaDelMotor } from './MapaDelMotor';
 import { EstadoVacio } from './EstadoVacio';
 import { baseApi, token } from '../api/cliente';
 
@@ -283,6 +284,10 @@ export function EquipoInvestigando({ setToast, irAGaleria }: PropsEquipo) {
                     </div>
                   );
                 })}
+                {/* EL MAPA, AL LADO DE TINO (regla del dueño): qué ciudades o países está verificando el motor
+                    en este momento, con el punto que se ilumina y su nombre. Va dentro de la misma rejilla y
+                    ocupa la fila entera, así el mundo se ve grande. */}
+                <MapaDelMotor />
               </div>
               <div className="acc-why">
                 Cada agente con <b>la última tarea que dejó escrita en el back</b>, con su resultado y la corrida

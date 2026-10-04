@@ -180,6 +180,20 @@ async function guardarEnBase(consulta) {
 
 // ---------------------------------- La corrida ----------------------------------
 const resultado = { leido_at: new Date().toISOString(), consultas: [] };
+// QUEDA ANOTADO QUÉ SE VA A LEER, ANTES DE LEERLO. Es lo que el mapa del panel necesita para mostrar, con su
+// nombre, qué ciudades o países está verificando el motor ahora mismo. Se cierra al terminar, con las fichas.
+const mercadosDeLaLectura = [...new Set(objetivos.map(o => String(o).split(':').pop().toUpperCase()).filter(Boolean))];
+const palabrasDeLaLectura = [...new Set(objetivos.map(o => String(o).split(':')[0]).filter(Boolean))];
+let lecturaId = '';
+if (pool && NEGOCIO) {
+  try {
+    lecturaId = String((await pool.query(
+      `INSERT INTO lecturas_de_anuncios (business_id, mercados, palabras, motivo)
+       VALUES ($1, $2, $3, $4) RETURNING id`,
+      [NEGOCIO, mercadosDeLaLectura, palabrasDeLaLectura, 'lectura de anuncios'])).rows[0].id);
+  } catch { lecturaId = ''; }
+}
+
 for (const objetivo of objetivos) {
   const [palabra, pais = 'CO'] = objetivo.split(':');
   try {
@@ -201,4 +215,11 @@ for (const objetivo of objetivos) {
 }
 await pool?.end().catch(() => {});
 const total = resultado.consultas.reduce((n, c) => n + (c.fichas?.length || 0), 0);
+// Y se cierra la lectura: con esto el mapa deja de mostrarla como «verificando» y queda la constancia.
+if (pool && lecturaId) {
+  try {
+    await pool.query('UPDATE lecturas_de_anuncios SET terminada_at = now(), fichas = $2 WHERE id = $1', [lecturaId, total]);
+  } catch { /* si no se puede cerrar, la lectura queda abierta: el mapa la muestra como en curso */ }
+}
+
 console.log(`\nGuardado en ${SALIDA}: ${resultado.consultas.length} consultas, ${total} fichas.`);
