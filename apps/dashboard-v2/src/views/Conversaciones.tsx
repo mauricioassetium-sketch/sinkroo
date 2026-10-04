@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Card, Badge } from '../components/ui';
+import { MotorTrabajando } from '../components/MotorTrabajando';
 import { ViewHead } from '../components/viz';
 import { SecuenciaMensajesCard, flujoNuevo } from '../components/SecuenciaMensajesCard';
 import { I_Whatsapp, I_Chat, I_Users } from '../components/icons';
@@ -52,6 +53,8 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
 
   return (
     <div className="dash">
+      {/* El motor trabajando, arriba de todo: es la pantalla donde su trabajo aparece. */}
+      <MotorTrabajando />
       <ViewHead
         icon={<I_Whatsapp size={19} />}
         titulo="Conversaciones"
@@ -91,6 +94,7 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
             title={<span className="row" style={{ gap: 8 }}><I_Chat size={14} style={{ color: 'var(--purple3)' }} /> La bandeja</span>}
             action={<Badge tone={bandeja.length ? 'green' : 'muted'}>{bandeja.length === 1 ? '1 conversación' : `${bandeja.length} conversaciones`}</Badge>}
           >
+            <div className="lista-tope" title="Se ven las últimas conversaciones. Deslice acá adentro para ver las anteriores.">
             {bandeja.map(c => (
               <div key={c.id} className="notif" onClick={() => setSel(c.id)}
                 style={{ cursor: 'pointer', background: c.id === conv?.id ? 'var(--bg3)' : 'transparent', borderRadius: 10 }}
@@ -131,6 +135,7 @@ export function ViewConversaciones({ setToast, modo }: { setToast: (t: string) =
                 </div>
               </div>
             ))}
+            </div>
             <div className="acc-why">
               Cada fila es una conversación del back, con su teléfono, su etapa, su estado y su puntaje.
               <b> No hay ninguna fila de ejemplo</b>: lo que el back no tiene, esta bandeja no lo muestra.

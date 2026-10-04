@@ -90,6 +90,18 @@ html.light .badge-gray { background: rgba(0,0,0,.05); }
    empujando la tarjeta hacia abajo). El alto sale de la medida real de un renglón: 10 x 17 px + 9 x 11 px. */
 .corridas-scroll { max-height: 270px; overflow-y: auto; padding-right: 6px; scrollbar-width: thin; }
 
+/* NINGUNA LISTA LARGA ESTIRA LA PANTALLA (regla del dueño: «que solo se muestren 3 y el resto sea scroll…
+   así hacelo con el resto para que no se estire mucho la info en ningún lado»). Se ven los primeros renglones
+   y lo que sigue se alcanza deslizando DENTRO de la lista, sin mover el resto de la tarjeta.
+   El alto sale de la medida real de cada lista: los topes de 3 renglones están puestos donde el renglón es
+   grande y el número (3) es el que pidió; donde el renglón es chico queda el 48% de la pantalla. */
+.lista-tope { max-height: var(--tope, 48vh); overflow-y: auto; padding-right: 6px; scrollbar-width: thin; overscroll-behavior: contain; }
+.lista-tope::-webkit-scrollbar { width: 8px; }
+.lista-tope::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 99px; }
+/* Tres hallazgos: medidos 301 px cada uno con 13 de separación (Mercado) y 270 con 11 (Su día). */
+.tope-3-hallazgos { --tope: 929px; }
+.tope-3-hallazgos-dia { --tope: 832px; }
+
 /* LA BARRA DEL ENCABEZADO: el avance en pasos y el tiempo que falta, en la barra del menú (siempre visible).
    El renglón se apila —título y reloj arriba, la barra debajo, el detalle al final— para que entre en una
    franja de la altura del encabezado. */

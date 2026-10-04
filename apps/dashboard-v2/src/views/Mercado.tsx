@@ -600,6 +600,9 @@ ${p.prompt}` });
             )
           ) : (
             <>
+              {/* TRES HALLAZGOS Y EL RESTO POR SCROLL: con seis, esta tarjeta medía 1.908 px de alto. */}
+              <div className="lista-tope tope-3-hallazgos"
+                title="Se ven los últimos tres hallazgos. Deslice acá adentro para ver los anteriores.">
               {hallazgos.map(h => (
                 <div key={h.id} className="alarm oportunidad">
                   <div className="alarm-head">
@@ -615,6 +618,7 @@ ${p.prompt}` });
                   <div className="acc-why"><b>Fuente: </b>{h.fuente}</div>
                 </div>
               ))}
+              </div>
               <div className="datos-row" style={{ marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--border)' }}>
                 <div className="dato"><span className="dato-l">Hallazgos de su mercado</span><span className="dato-v">{hallazgos.length}</span></div>
                 <div className="dato"><span className="dato-l">El más reciente</span><span className="dato-v">{fechaCorta(hallazgos[0].created_at)}</span></div>

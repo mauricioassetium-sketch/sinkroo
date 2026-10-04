@@ -371,7 +371,9 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
               )}
               {...invitar()} />
           ) : (
-            <div className="col-stack">
+            /* TRES HALLAZGOS Y EL RESTO POR SCROLL (regla del dueño): con seis, la tarjeta medía 1.516 px. */
+            <div className="col-stack lista-tope tope-3-hallazgos-dia"
+              title="Se ven los últimos tres hallazgos. Deslice acá adentro para ver los anteriores.">
               {datos.hallazgos.map(h => (
                 <div key={h.id} className="alarm oportunidad">
                   <div className="alarm-head">
@@ -468,6 +470,7 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
                   </span>
                 </div>
               </div>
+              <div className="lista-tope" title="Se ven las últimas piezas evaluadas. Deslice acá adentro para ver las anteriores.">
               {datos.evaluaciones.map(e => {
                 const c = e.puntaje >= 80 ? 'var(--green)' : e.puntaje >= 60 ? 'var(--amber)' : 'var(--red)';
                 return (
@@ -485,6 +488,7 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
                   </div>
                 );
               })}
+              </div>
             </>
           )}
           <div className="acc-why">
@@ -521,7 +525,8 @@ export function ViewHoy({ setToast, setVista, modo }: { setToast: (t: string) =>
               )}
               {...invitar()} />
           ) : (
-            <div className="tl">
+            /* La bitácora tampoco se estira: se ven los primeros renglones y el resto por scroll. */
+            <div className="tl lista-tope">
               {(bitacoraCompleta ? datos.corridas : datos.corridas.slice(0, 5)).map(c => (
                 <div key={c.id} className="tl-item">
                   <span className="tl-dot" style={{ background: c.estado === 'ok' || c.estado === 'terminada' ? 'var(--green)' : 'var(--amber)' }} />
