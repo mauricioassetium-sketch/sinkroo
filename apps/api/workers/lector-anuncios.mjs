@@ -26,6 +26,7 @@
 // =============================================================================================
 
 import { readFileSync, writeFileSync } from 'node:fs';
+import { execSync } from 'node:child_process';
 import pg from 'pg';
 
 const CDP = process.env.CDP_URL || 'http://127.0.0.1:9222';
@@ -45,6 +46,28 @@ const pool = process.env.DATABASE_URL ? new pg.Pool({ connectionString: process.
 if (!objetivos.length) {
   console.error('Falta qué buscar. Ejemplo: node workers/lector-anuncios.mjs --salida /tmp/f.json "keratina:CO"');
   process.exit(2);
+}
+
+/**
+ * EL NAVEGADOR SE ASEGURA ANTES DE LEER. Esta lectura necesita un Chrome de verdad, y si no está, cada
+ * consulta falla y el negocio se queda sin su mercado —en silencio y por algo que no tiene nada que ver con
+ * él: el navegador se cayó y nadie lo levantó—. Acá se comprueba que responda y, si no, se levanta con el
+ * mismo lanzador que usa el servicio del sistema.
+ */
+async function asegurarNavegador() {
+  const responde = async () => {
+    try { const r = await fetch(`${CDP}/json/version`, { signal: AbortSignal.timeout(3000) }); return r.ok; } catch { return false; }
+  };
+  if (await responde()) return true;
+  try {
+    const raiz = new URL('../../../', import.meta.url).pathname;
+    execSync(`bash ${raiz}scripts/navegador-del-motor.sh`, { stdio: 'ignore', timeout: 70000 });
+  } catch { /* si no se puede levantar, se intenta leer igual: el fallo se dice en cada consulta */ }
+  for (let i = 0; i < 15; i++) {
+    await new Promise(r => setTimeout(r, 1000));
+    if (await responde()) return true;
+  }
+  return false;
 }
 
 /** La pestaña del navegador que ya está abierta. */
@@ -88,6 +111,9 @@ class Sesion {
 }
 
 async function abrirSesion() {
+  // Si el navegador no está, se levanta: esta lectura no tiene con qué leer sin él.
+  const hay = await asegurarNavegador();
+  if (!hay) throw new Error('el navegador del motor no responde y no se pudo levantar');
   const url = await pestaña();
   const ws = new WebSocket(url);
   await new Promise((resolver, rechazar) => {

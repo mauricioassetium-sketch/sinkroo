@@ -36,6 +36,17 @@ const ALIAS: Record<string, string> = {
   'emiratos arabes unidos': 'AE', 'emiratos arabes': 'AE', uae: 'AE', dubai: 'AE', emiratos: 'AE',
   espana: 'ES', mexico: 'MX', brasil: 'BR', panama: 'PA', peru: 'PE', japon: 'JP',
   'arabia saudi': 'SA', catar: 'QA', qatar: 'QA', turquia: 'TR', canada: 'CA',
+  // LAS CIUDADES TAMBIÉN DICEN EL PAÍS. Un negocio escribe su ciudad sin el país («Medellín») y sin esto se
+  // quedaba sin país: sin país no hay lectura de anuncios ni mercados donde buscar. Son las ciudades donde el
+  // producto ya tiene negocios y las capitales del mundo hispano y del Golfo.
+  medellin: 'CO', bogota: 'CO', cali: 'CO', barranquilla: 'CO', cartagena: 'CO', 'ciudad de mexico': 'MX',
+  cdmx: 'MX', guadalajara: 'MX', monterrey: 'MX', 'buenos aires': 'AR', 'sao paulo': 'BR', 'sao pablo': 'BR',
+  'rio de janeiro': 'BR', santiago: 'CL', lima: 'PE', quito: 'EC', guayaquil: 'EC', 'panama city': 'PA',
+  'ciudad de panama': 'PA', montevideo: 'UY', asuncion: 'PY', 'la paz': 'BO', 'santa cruz': 'BO',
+  caracas: 'VE', 'san jose': 'CR', madrid: 'ES', barcelona: 'ES', valencia: 'ES', sevilla: 'ES',
+  'miami': 'US', 'nueva york': 'US', 'new york': 'US', 'los angeles': 'US', houston: 'US', chicago: 'US',
+  'mexico df': 'MX', 'abu dabi': 'AE', 'abu dhabi': 'AE', sharjah: 'AE', doha: 'QA', riad: 'SA',
+  yeda: 'SA', 'jeddah': 'SA', 'kuwait': 'KW', manama: 'BH', mascate: 'OM', muscat: 'OM', estambul: 'TR',
 };
 
 const sinTildes = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
@@ -64,6 +75,21 @@ export function codigoDePais(texto: unknown): string {
 /** El país tal como lo escribió el cliente, para mostrarlo en pantalla sin traicionar lo que dijo. */
 export function comoLoEscribio(texto: unknown): string {
   return String(texto ?? '').trim().slice(0, 60);
+}
+
+/**
+ * LOS PAÍSES QUE SE DEDUCEN DE LA ZONA. Sirve para cuando el negocio no declaró países: si su zona dice
+ * «Dubai, Emiratos Árabes Unidos», el mercado que le importa es AE. Sin esto, la lectura de anuncios no se
+ * lanzaba («sin nada por defecto»), así que un negocio con su ciudad cargada y sin países declarados se
+ * quedaba sin lectura —en silencio— aunque su mercado estuviera a la vista.
+ */
+export function paisesDeLaZona(zona: unknown): string[] {
+  const partes = String(zona ?? '').split(/[,·|]/).map(p => p.trim()).filter(Boolean);
+  const codigos = partes.map(p => codigoDePais(p)).filter(Boolean);
+  if (codigos.length) return [...new Set(codigos)];
+  // Si el último tramo no se reconoce, se prueba con el todo («Dubai Emiratos Arabes Unidos»).
+  const todo = codigoDePais(zona);
+  return todo ? [todo] : [];
 }
 
 /**

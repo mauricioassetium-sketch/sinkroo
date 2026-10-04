@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process';
 import type { Pool } from 'pg';
 import { correrInvestigacion } from './agentes.js';
+import { paisesDeLaZona } from '../lib/paises.js';
 
 // =============================================================================================
 // LA INVESTIGACIÓN DIARIA — lo que la pantalla de entrada promete: «investiga el mercado cada mañana».
@@ -120,7 +121,12 @@ export function lanzarLecturaDeAnuncios(
   // Los países: primero los que Vera encontró en el material, más los que el negocio declaró (países
   // sueltos y continentes). SIN NADA POR DEFECTO: si no hay ni uno, no se lee — porque el sistema es
   // global y no puede dar por sentado que un negocio opera en Colombia, ni en ningún país.
-  const paises = dedujo.paises.length ? dedujo.paises : declarados;
+  // Los países: primero los que Vera encontró en el material, después los que declaró el negocio y, si no hay
+  // ninguno, los que se deducen de su ZONA («Dubai, Emiratos Árabes Unidos» → AE). Antes, sin países
+  // declarados no se leía nada: un negocio con su ciudad cargada y sin marcar países se quedaba sin lectura
+  // de su mercado —y sin que nadie se lo dijera— aunque su zona ya dijera dónde está.
+  const declaradosOZona = declarados.length ? declarados : paisesDeLaZona(n.zona);
+  const paises = dedujo.paises.length ? dedujo.paises : declaradosOZona;
   const args = [new URL('../../workers/lector-anuncios.mjs', import.meta.url).pathname,
     '--negocio', n.id, '--salida', `/tmp/anuncios-${n.id}.json`];
   for (const palabra of palabras) for (const pais of paises) args.push(`${palabra}:${pais}`);
@@ -157,8 +163,11 @@ export async function revisarInvestigacionDiaria(db: Pool, log: (m: string) => v
     `SELECT b.id, b.name AS nombre, coalesce(b.description,'') AS descripcion,
             coalesce(b.rubro,'') AS rubro, coalesce(b.zona,'') AS zona
        FROM businesses b
+      -- SIN EXIGIR ZONA. Antes sólo se investigaba a los negocios con zona cargada: uno sin ciudad —o con
+      -- el material sin nombrarla— no se investigaba NUNCA y no había forma de enterarse. Ahora se investiga a
+      -- todo negocio del que se sepa algo (rubro o descripción) y, si falta la ciudad, el motor lo dice como
+      -- hallazgo en el panel para que se pueda cargar.
       WHERE (coalesce(b.rubro,'') <> '' OR length(coalesce(b.description,'')) >= 20)
-        AND coalesce(b.zona,'') <> ''
         AND NOT EXISTS (
           SELECT 1 FROM corridas c
            WHERE c.business_id = b.id

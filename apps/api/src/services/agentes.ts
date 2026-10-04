@@ -2526,6 +2526,19 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
     });
   }
 
+  // SI EL MERCADO NO SE PUEDE MEDIR POR FALTA DE CIUDAD, SE DICE EN EL PANEL. Antes quedaba sólo en la tarea
+  // del agente: el negocio sin ciudad no se investigaba —el programador lo salteaba— y el dueño no tenía
+  // forma de saber qué le faltaba. Un hallazgo con lo que hay que hacer es lo que lo vuelve arreglable.
+  if (mapa && !mapa.ok && /ciudad o zona/.test(String(mapa.falta || ''))) {
+    hallazgos.push({
+      tipo: 'falta_dato',
+      titulo: 'El motor no puede medir su mercado: falta su ciudad',
+      dato: String(mapa.falta || ''),
+      porque: 'Con la ciudad, el motor cuenta los negocios parecidos que tiene alrededor y en qué zonas se concentran. Se carga en Primeros pasos, en el paso «Dónde está»: con el botón de ubicación o escribiéndola.',
+      fuente: 'el motor, al buscar su mercado en el mapa (OpenStreetMap)',
+    });
+  }
+
   for (const h of hallazgos) {
     // UN HALLAZGO ES UNA AFIRMACIÓN CON SU DATO, NO UNA FILA POR CORRIDA. Antes cada corrida insertaba de
     // nuevo —medido: 12 filas para 5 hallazgos distintos— y el panel mostraba la misma frase repetida. Lo que
