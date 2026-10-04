@@ -33,6 +33,17 @@ const AGENTE_POR_ID: Record<string, Agente> = AGENTES.reduce(
   (m, a) => { m[a.id] = a; return m; }, {} as Record<string, Agente>,
 );
 
+/**
+ * LOS NOMBRES DEL EQUIPO, sacados del catálogo y no escritos a mano.
+ *
+ * Los textos de esta tarjeta decían «los 6 agentes —Lux, Rex, Nia, Kai, Sol y Rumi—» y el motor usa diez:
+ * Vera, Iris, Nova y Tino trabajaban sin aparecer en ninguna parte. Escribirlos desde el catálogo hace que
+ * sumar un agente no deje un texto mintiendo.
+ */
+const LISTA_DEL_EQUIPO = AGENTES.length > 1
+  ? `${AGENTES.slice(0, -1).map(a => a.nombre).join(', ')} y ${AGENTES[AGENTES.length - 1]?.nombre ?? ''}`
+  : (AGENTES[0]?.nombre ?? 'el equipo');
+
 /** La hora del back, en corto: día, mes y hora. Se calcula, no se escribe a mano. */
 const horaDe = (iso?: string | null) => {
   if (!iso) return '';
@@ -129,10 +140,10 @@ export function EquipoInvestigando({ setToast, irAGaleria }: PropsEquipo) {
       { tipo: 'datos', filas: [
         { k: 'Dónde está', v: 'Campañas → Galería' },
         { k: 'Quién le pone el número', v: '5 jueces + 500 del público', s: 'dan el veredicto antes de que la pieza se publique' },
-        { k: 'Quién investiga el mercado', v: 'Los 6 agentes', s: 'Lux, Rex, Nia, Kai, Sol y Rumi: trabajan y no votan' },
+        { k: 'Quién investiga el mercado', v: `Los ${AGENTES.length} agentes`, s: `${LISTA_DEL_EQUIPO}: trabajan y no votan` },
         { k: 'Piezas evaluadas en este negocio', v: String(d.evaluaciones.length), s: d.evaluaciones.length > 0 ? 'tal como están en el back' : 'todavía no hay ninguna' },
       ] },
-      { tipo: 'texto', texto: 'Son dos cosas distintas: aquí los 6 agentes investigan su mercado y corren cuando el motor corre; MiroFish entra solo cuando hay una pieza concreta que verificar.' },
+      { tipo: 'texto', texto: `Son dos cosas distintas: aquí los ${AGENTES.length} agentes investigan su mercado y corren cuando el motor corre; MiroFish entra solo cuando hay una pieza concreta que verificar.` },
     ],
     fuente: 'El back de Sinkroo: las corridas de los agentes y las evaluaciones de MiroFish.',
     acciones: [{ label: 'Cerrar', onClick: () => {} }],
@@ -157,13 +168,13 @@ export function EquipoInvestigando({ setToast, irAGaleria }: PropsEquipo) {
         <div className="eq-arranque">
           {d.real ? (
             <>
-              Los 6 agentes trabajan cuando el motor corre{d.negocio ? <> en <b>{d.negocio.name}</b></> : null}, y cada
+              Los {AGENTES.length} agentes trabajan cuando el motor corre{d.negocio ? <> en <b>{d.negocio.name}</b></> : null}, y cada
               corrida queda escrita en el servidor. Todo lo de abajo sale de ahí: <b>no hay ninguna línea simulada</b> —
               lo que el back no tiene, esta tarjeta no lo muestra.
             </>
           ) : (
             <>
-              Los 6 agentes —Lux, Rex, Nia, Kai, Sol y Rumi— trabajan cuando el motor corre, y cada corrida queda
+              Los {AGENTES.length} agentes —{LISTA_DEL_EQUIPO}— trabajan cuando el motor corre, y cada corrida queda
               escrita en el servidor. Todavía no está leyendo ninguna cuenta suya, así que no hay corridas que
               mostrar: conéctela en Primeros pasos y el equipo empieza. <b>Mientras tanto no hay ninguna línea simulada.</b>
             </>
@@ -196,8 +207,8 @@ export function EquipoInvestigando({ setToast, irAGaleria }: PropsEquipo) {
           <EstadoVacio
             titulo={d.real ? 'El equipo todavía no dejó ninguna corrida' : 'El equipo todavía no ha corrido'}
             texto={d.real
-              ? 'Los 6 agentes —Lux, Rex, Nia, Kai, Sol y Rumi— no están corriendo ahora mismo: el motor corre cuando usted lo pide y, mientras espera, no se simula ningún trabajo. Cada corrida queda escrita en el servidor con lo que hizo cada agente, y aparece aquí con su hora.'
-              : 'Los 6 agentes —Lux, Rex, Nia, Kai, Sol y Rumi— no están corriendo: el motor necesita sus cuentas conectadas y su negocio, que es lo que se pone en Primeros pasos. Hasta entonces esta tarjeta no muestra ningún trabajo, porque no lo hay.'}
+              ? `Los ${AGENTES.length} agentes —${LISTA_DEL_EQUIPO}— no están corriendo ahora mismo: el motor corre cuando usted lo pide y, mientras espera, no se simula ningún trabajo. Cada corrida queda escrita en el servidor con lo que hizo cada agente, y aparece aquí con su hora.`
+              : `Los ${AGENTES.length} agentes —${LISTA_DEL_EQUIPO}— no están corriendo: el motor necesita sus cuentas conectadas y su negocio, que es lo que se pone en Primeros pasos. Hasta entonces esta tarjeta no muestra ningún trabajo, porque no lo hay.`}
             {...invitar()} />
         </Card>
       ) : (

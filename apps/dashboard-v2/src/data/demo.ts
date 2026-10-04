@@ -158,6 +158,21 @@ export interface Agente {
 
 export const AGENTES: Agente[] = [
   {
+    /* VERA VA PRIMERO, como en el motor: es la que entiende el negocio leyendo el material del cliente. Sin
+       ella los demás salen a investigar a ciegas. Faltaba en el catálogo del panel, igual que Iris, Nova y
+       Tino: el motor usa diez agentes y acá se veían seis. */
+    id: 'vera', nombre: 'Vera', rol: 'Analista de Negocio', tecnico: 'business-analyst', color: '#2dd4bf',
+    funcion: 'Lee el material del cliente —su web, sus documentos— y entiende qué hace, a quién le vende y de qué categoría es.',
+    estado: 'trabajando', autonomia: 'auto',
+    accion: 'Entendió el negocio y nombró su categoría con el material que subió',
+    ancla: 'Negocio · material del cliente',
+    resultado: 'La categoría con la que el motor sale a buscar su competencia, deducida del material',
+    artefacto: 'Ver qué entendió',
+    artefactoNombre: 'Lectura del negocio',
+    cuando: 'hace 1 min',
+    tarea: { etiqueta: 'piezas del material leídas', hecho: 1, total: 1 },
+  },
+  {
     id: 'lux', nombre: 'Lux', rol: 'Analista de Mercado', tecnico: 'market-analyst', color: '#a855f7',
     funcion: 'Lee los anuncios de su competencia, la demanda, los precios y su zona.',
     estado: 'trabajando', autonomia: 'auto',
@@ -228,6 +243,42 @@ export const AGENTES: Agente[] = [
     artefactoNombre: 'Conversación de la clienta',
     cuando: 'hace 20 min',
     tarea: { etiqueta: 'conversaciones atendidas', hecho: 12, total: 15 },
+  },
+  {
+    id: 'iris', nombre: 'Iris', rol: 'Directora de Arte', tecnico: 'art-director', color: '#fb7185',
+    funcion: 'Escribe los prompts de cada motor —imagen y video— con la decisión de cine de la pieza.',
+    estado: 'trabajando', autonomia: 'auto',
+    accion: 'Armó los prompts de los seis planos con una sola dirección de fotografía',
+    ancla: 'Pieza · planos y prompts',
+    resultado: 'Un solo etalonaje para toda la pieza y los tamaños de plano rotando',
+    artefacto: 'Ver los prompts',
+    artefactoNombre: 'Prompts por motor',
+    cuando: 'hace 5 min',
+    tarea: { etiqueta: 'planos con prompt', hecho: 6, total: 6 },
+  },
+  {
+    id: 'nova', nombre: 'Nova', rol: 'Tendencias y Formatos', tecnico: 'trends-and-formats', color: '#7dd3fc',
+    funcion: 'Mira qué formatos y temas se están moviendo en su mercado y elige el molde de cada pieza.',
+    estado: 'al_dia', autonomia: 'auto',
+    accion: 'Eligió el formato de la pieza con lo que se mueve en su rubro',
+    ancla: 'Mercado · formatos del día',
+    resultado: 'El formato que el motor usa para armar la pieza',
+    artefacto: 'Ver los formatos',
+    artefactoNombre: 'Formatos y tendencias',
+    cuando: 'hace 8 min',
+    tarea: { etiqueta: 'formatos revisados', hecho: 4, total: 4 },
+  },
+  {
+    id: 'tino', nombre: 'Tino', rol: 'Decisión', tecnico: 'decision-maker', color: '#bef264',
+    funcion: 'Con todo lo que midió el equipo, decide qué se sostiene, qué se prueba y qué se deja.',
+    estado: 'al_dia', autonomia: 'shared',
+    accion: 'Dejó la decisión del día: sostener el ángulo que rinde y probar uno nuevo',
+    ancla: 'Decisión · lo medido por el equipo',
+    resultado: 'Qué sostener, qué probar y qué dejar, con el dato de cada uno',
+    artefacto: 'Ver la decisión',
+    artefactoNombre: 'Decisión del día',
+    cuando: 'hace 3 min',
+    tarea: { etiqueta: 'decisiones tomadas', hecho: 1, total: 1 },
   },
 ];
 
