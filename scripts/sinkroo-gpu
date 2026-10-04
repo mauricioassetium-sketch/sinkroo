@@ -213,6 +213,13 @@ estado() {
     echo "túnel: cerrado (el motor no ve la GPU)"
   fi
   echo "modelo que pinta el motor: $(sed -n 's/^IMAGENES_MODELO=//p' "$ENV_DEL_BACK" 2>/dev/null || echo '(sin configurar)')"
+  # LAS IMÁGENES PUEDEN ESTAR DESCONECTADAS A PROPÓSITO (decisión del dueño): encender la GPU no las vuelve a
+  # conectar. Se dice acá para que nadie se quede esperando piezas pintadas que no van a salir.
+  if grep -q '^IMAGENES_DESCONECTADAS=1' "$ENV_DEL_BACK" 2>/dev/null; then
+    aviso "IMÁGENES y VIDEOS desconectados a pedido del dueño: la GPU queda encendida, pero el motor no le pide nada"
+    echo "   (es para no gastar en cada corrida). Para volver a conectarlos, quite IMAGENES_DESCONECTADAS y"
+    echo "   VIDEOS_DESCONECTADOS de $ENV_DEL_BACK y reinicie el back."
+  fi
   echo
   echo "para generar con fotos:  sinkroo-gpu encender"
 }
