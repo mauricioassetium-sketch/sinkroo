@@ -108,6 +108,14 @@ const MAX_ESCENAS = 6;
  *
  * Es lo que hace que dos piezas de la misma ronda digan cosas distintas: cada una va con su ángulo.
  */
+/**
+ * ¿ESTA CORRIDA ESCRIBE PIEZAS? El dueño lo pidió así: «deja las imágenes desconectadas… para no gastar plata en
+ * cada corrida». Escribir es lo que cuesta (96 créditos la pieza y 8 su evaluación); la investigación del
+ * mercado no cuesta ninguno. Con la marca puesta se hace todo el estudio y no se escribe: queda dicho en el
+ * registro y en el panel, con el motivo, en vez de aparecer una corrida sin piezas y sin explicación.
+ */
+const SIN_ESCRIBIR = () => /^(1|si|sí|true)$/i.test(String(process.env.NO_ESCRIBIR_PIEZAS || ''));
+
 async function escribirLaPiezaDeVerdad(
   base: PiezaArmada,
   d: Parameters<typeof armarLaPieza>[0] & { variante?: { angulo?: string; apertura?: string; formato?: string } },
@@ -115,6 +123,8 @@ async function escribirLaPiezaDeVerdad(
   tono: string,
   terminos: string[],
 ): Promise<PiezaArmada> {
+  // Sin escribir: se devuelve la pieza armada SIN llamar al modelo (no se gasta en la llamada).
+  if (SIN_ESCRIBIR()) return base;
   try {
     const formato = String(d.variante?.formato || d.formato || '');
     const hueco = d.hueco && typeof d.hueco === 'object'
@@ -1877,7 +1887,7 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
     await paso(2, ronda ? PASOS_DE_UNA_CORRIDA[1] : 'El equipo escribe la pieza',
       ronda ? `los ${VARIANTES.length} contenidos de la ronda ${numeroDeRonda}, cada uno con su ángulo`
             : 'con el material del negocio y el ángulo que ninguno usa');
-    const aEscribir = ronda
+    const aEscribir = SIN_ESCRIBIR() ? [] : ronda
       ? await Promise.all(VARIANTES.map(async v => escribirLaPiezaDeVerdad(
           armarLaPieza({ ...datosDeLaPieza, formato: v.formato, variante: v }),
           { ...datosDeLaPieza, formato: v.formato, variante: v }, ctx,
@@ -1888,6 +1898,19 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
     let escritasAhora = 0;
     /** Los tipos que se crearon DE VERDAD: con esto se cobra, por tipo, lo que salió. */
     const tiposCreados: TipoDeContenido[] = [];
+    // Y se dice por qué no se escribió: una corrida sin piezas sin explicación se lee como un fallo.
+    if (SIN_ESCRIBIR()) {
+      anotar({
+        agente: 'nia', orden: 4,
+        que: 'No escribió la pieza: está pausado a pedido del dueño para no gastar en cada corrida',
+        resultado: {
+          fuente_tipo: 'decisión del dueño (NO_ESCRIBIR_PIEZAS=1)',
+          porque: 'Escribir una pieza cuesta 96 créditos y su evaluación 8; la investigación del mercado no cuesta ninguno. El estudio de hoy quedó hecho: el informe del mercado y los hallazgos están arriba.',
+          para_volver: 'quite NO_ESCRIBIR_PIEZAS del entorno del back y reinicie: la próxima corrida vuelve a escribir',
+          fuente: 'decisión del dueño',
+        },
+      });
+    }
     for (const pz of aEscribir) {
       // Se evita el duplicado exacto: misma pieza, mismo texto Y MISMO ÁNGULO. Dos variantes de una ronda
       // son distintas por definición, así que el ángulo entra en la comparación.
