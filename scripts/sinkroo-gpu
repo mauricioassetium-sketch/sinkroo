@@ -1,0 +1,238 @@
+#!/usr/bin/env bash
+# =====================================================================================================
+# sinkroo-gpu — la GPU alquilada de Sinkroo, en un comando
+#
+#   sinkroo-gpu encender   enciende la máquina, levanta ComfyUI y abre el túnel del motor
+#   sinkroo-gpu apagar     la apaga (y cierra el túnel) — SIEMPRE se ejecuta al terminar el lote
+#   sinkroo-gpu estado     qué está encendido, cuánto se está gastando y con qué modelo pinta el motor
+#
+# POR QUÉ EXISTE: el motor pinta con un modelo PAGO (FLUX/SDXL en la GPU alquilada) y el modelo gratis quedó
+# apagado por decisión del dueño. Con la máquina apagada el motor NO pinta: la pieza sale con fondo liso y lo
+# dice. Encenderla era una receta de cuatro pasos a mano (arrancar, esperar, ComfyUI, túnel) y así se pierde
+# plata en olvidos y tiempo en repetirla. Esto es esa receta, en un comando, con la cuenta del gasto a la vista.
+#
+# LO QUE SE COBRA: la GPU por segundo encendida ($0,564/h en la A100) y el disco mientras la máquina EXISTA,
+# esté encendida o apagada (~$0,43/día por los 120 GB con los modelos). Por eso `apagar` no es un detalle.
+# =====================================================================================================
+set -uo pipefail
+
+ID="${SINKROO_GPU_ID:-53481876}"
+LLAVE="${SINKROO_GPU_LLAVE:-/root/.ssh/vast_deploy}"
+PUERTO_LOCAL="${SINKROO_GPU_PUERTO:-18188}"
+LLAVES="${LLAVES_GENERACION:-/etc/sinkroo/claves-generacion.env}"
+PID_TUNEL=/run/sinkroo-gpu-tunel.pid
+
+rojo() { printf '\033[31m%s\033[0m\n' "$1"; }
+verde() { printf '\033[32m%s\033[0m\n' "$1"; }
+aviso() { printf '\033[33m%s\033[0m\n' "$1"; }
+
+llave_vast() {
+  # La llave del proveedor: del entorno o del archivo de llaves (solo root). Nunca se imprime.
+  if [ -n "${VAST_API_KEY:-}" ]; then printf '%s' "$VAST_API_KEY"; return; fi
+  [ -r "$LLAVES" ] || return 1
+  sed -n 's/^VAST_API_KEY=//p' "$LLAVES" | head -1 | tr -d '"'
+}
+
+estado_maquina() { vastai show instance "$ID" --raw 2>/dev/null | python3 -c 'import json,sys; print(json.load(sys.stdin).get("actual_status","?"))' 2>/dev/null; }
+
+credito() {
+  local k; k=$(llave_vast) || { echo "?"; return; }
+  curl -s --max-time 25 -H "Authorization: Bearer $k" "https://console.vast.ai/api/v0/users/current/" \
+    | python3 -c 'import json,sys; d=json.load(sys.stdin); u=d.get("user") or d; print(u.get("credit"))' 2>/dev/null || echo "?"
+}
+
+direccion_ssh() {
+  local u host puerto
+  u=$(vastai ssh-url "$ID" 2>/dev/null | tr -d '\r')
+  host=$(printf '%s' "$u" | sed -E 's#^ssh://[^@]+@([^:]+):.*#\1#')
+  puerto=$(printf '%s' "$u" | sed -E 's#^.*:([0-9]+)$#\1#')
+  [ -n "$host" ] && [ -n "$puerto" ] || return 1
+  printf '%s %s' "$host" "$puerto"
+}
+
+# ¿El motor está viendo la GPU? Es la única prueba que vale: la misma dirección que usa el back.
+motor_ve_la_gpu() { curl -s -m 8 -o /dev/null -w '%{http_code}' "http://127.0.0.1:$PUERTO_LOCAL/system_stats" 2>/dev/null; }
+
+encender() {
+  local k; k=$(llave_vast) || { rojo "No encuentro VAST_API_KEY (ni en el entorno ni en $LLAVES)"; exit 1; }
+  export VAST_API_KEY="$k"
+
+  # RED DE SEGURIDAD: si este comando falla por cualquier motivo —incluido un error que yo no previne—, la
+  # máquina que encendimos NOSOTROS se apaga antes de salir. Apagar es idempotente; dejar facturando, no.
+  ARRANCADA_POR_NOSOTROS=no
+  trap 'codigo=$?; if [ "$codigo" != 0 ] && [ "$ARRANCADA_POR_NOSOTROS" = "sí" ]; then rojo "Salió mal (código $codigo): apago la máquina para que no quede facturando sola."; apagar; fi' EXIT
+
+  local credito_antes; credito_antes=$(credito)
+  echo "· crédito de la GPU antes de encender: \$$credito_antes"
+
+  local estado; estado=$(estado_maquina)
+  if [ "$estado" = "running" ]; then
+    aviso "La máquina ya estaba encendida. Sigo con ComfyUI y el túnel."
+  else
+    # LA CAPACIDAD DEL ANFITRIÓN VA Y VIENE: cuando no hay lugar contesta «Required resources are currently
+    # unavailable» y la petición queda en cola —a veces sí, a veces no—. Insistir es gratis (encender no se
+    # cobra hasta que arranca) y esperar a que se libere es lo que hacía un humano a mano. Intentos: los que
+    # se pidan (por defecto 3, cinco minutos entre uno y otro).
+    local intentos="${1:-3}" salida
+    for i in $(seq 1 "$intentos"); do
+      echo "· pidiendo la máquina $ID (intento $i de $intentos)…"
+      salida=$(vastai start instance "$ID" 2>&1 | tail -1)
+      case "$salida" in
+        *unavailable*)
+          if [ "$i" -lt "$intentos" ]; then
+            aviso "  el anfitrión no tiene GPU libre ahora (queda en cola). Espero 5 minutos y vuelvo a pedirla."
+            sleep 300
+          fi
+          continue ;;
+      esac
+      for _ in $(seq 1 20); do
+        [ "$(estado_maquina)" = "running" ] && break
+        sleep 15
+      done
+      [ "$(estado_maquina)" = "running" ] && break
+      if [ "$i" -lt "$intentos" ]; then aviso "  no arrancó en este intento; espero 5 minutos."; sleep 300; fi
+    done
+    if [ "$(estado_maquina)" != "running" ]; then
+      rojo "En $intentos intentos el anfitrión no dio GPU. NO quedó nada encendido y NO se gastó nada de GPU."
+      aviso "Se libera con el tiempo: vuelve a intentarlo más tarde con  sinkroo-gpu encender 6  (o sin número, 3 intentos)."
+      exit 1
+    fi
+    verde "· máquina encendida"
+    ARRANCADA_POR_NOSOTROS=sí
+  fi
+
+  # LA DIRECCIÓN SSH CAMBIA EN CADA ENCENDIDO: se lee de nuevo, nunca de memoria.
+  read -r HOST PUERTO <<<"$(direccion_ssh)" || { rojo "No pude leer la dirección SSH"; apagar; exit 1; }
+  local SSH="ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=20 -o ServerAliveInterval=20 -i $LLAVE -p $PUERTO root@$HOST"
+  echo "· dirección: $HOST:$PUERTO"
+
+  local ok_ssh=no
+  for _ in $(seq 1 12); do $SSH 'echo listo' >/dev/null 2>&1 && { ok_ssh=sí; break; }; sleep 10; done
+  [ "$ok_ssh" = "sí" ] || { rojo "El SSH no responde todavía"; apagar; exit 1; }
+
+  # ¿Ya está contestando? (si el lote anterior la dejó levantada, no se toca)
+  if $SSH 'curl -s -m 8 -o /dev/null http://127.0.0.1:8188/system_stats' >/dev/null 2>&1; then
+    verde "· ComfyUI ya estaba arriba"
+  else
+    echo "· levantando ComfyUI (en frío tarda varios minutos: la primera vez carga torch y CUDA)…"
+    # El arranque va en un guion DENTRO de la máquina: así no depende de comillas ni de que la sesión SSH siga
+    # viva (ComfyUI se moría al cerrarse la sesión cuando se lanzaba suelto). El patrón del pkill va enmarcado
+    # —`mai[n].py`— porque `pkill -f` con el nombre pelado mata el propio shell que lo contiene.
+    printf '%s\n' \
+      '#!/bin/bash' \
+      'pkill -f "mai[n].py --listen" 2>/dev/null' \
+      'sleep 3' \
+      'cd /workspace/ComfyUI' \
+      'exec ./venv/bin/python main.py --listen 127.0.0.1 --port 8188 >> /workspace/comfy-sinkroo-gpu.log 2>&1' \
+      | $SSH 'cat > /workspace/arrancar-comfy.sh && chmod +x /workspace/arrancar-comfy.sh && echo guion-escrito' >/dev/null 2>&1
+
+    $SSH 'setsid nohup /workspace/arrancar-comfy.sh > /dev/null 2>&1 < /dev/null & sleep 2; echo mandado' >/dev/null 2>&1
+
+    local listo=no
+    for _ in $(seq 1 40); do   # 40 × 15 s = 10 minutos, que es lo que tarda en frío
+      $SSH 'curl -s -m 8 -o /dev/null http://127.0.0.1:8188/system_stats' >/dev/null 2>&1 && { listo=sí; break; }
+      sleep 15
+    done
+    if [ "$listo" != "sí" ]; then
+      rojo "ComfyUI no levantó en 10 minutos. Lo último que dijo la máquina:"
+      $SSH 'tail -12 /workspace/comfy-sinkroo-gpu.log' 2>&1 | sed 's/^/    /'
+      apagar; exit 1
+    fi
+    verde "· ComfyUI arriba"
+  fi
+
+  # El túnel del motor: se mata el viejo si quedó colgado y se abre uno nuevo en segundo plano.
+  apagar_tunel
+  ssh -f -N -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ExitOnForwardFailure=yes \
+      -o ServerAliveInterval=30 -i "$LLAVE" -p "$PUERTO" -L "127.0.0.1:$PUERTO_LOCAL:127.0.0.1:8188" root@"$HOST"
+  # `ssh -f` se desprende y no deja un trabajo en segundo plano de ESTE shell, así que `$!` no sirve (con
+  # `set -u` eso reventaba el comando justo después de levantar ComfyUI, dejando la máquina encendida). El túnel
+  # se localiza por su propia línea de comando, que es única.
+  sleep 2
+  pgrep -f "L 127.0.0.1:$PUERTO_LOCAL:" > "$PID_TUNEL" 2>/dev/null
+  sleep 4
+
+  local http; http=$(motor_ve_la_gpu)
+  if [ "$http" = "200" ]; then
+    verde "· túnel abierto: el motor ya ve la GPU en http://127.0.0.1:$PUERTO_LOCAL"
+  else
+    rojo "El túnel no pasó (el motor vería $http). Reviso y apago para no dejar la máquina facturando sola."
+    apagar; exit 1
+  fi
+
+  echo
+  echo "LISTO PARA GENERAR. El motor ya está apuntando a la GPU:"
+  grep -E '^IMAGENES_(API_URL|MODELO)=' "$ENV_DEL_BACK" 2>/dev/null | sed 's/IMAGENES_API_URL=.*/IMAGENES_API_URL = el túnel de esta máquina/'
+  echo "Se cobra \$0,564 por hora mientras esté encendida. Al terminar el lote:  sinkroo-gpu apagar"
+}
+
+apagar_tunel() {
+  if [ -f "$PID_TUNEL" ]; then
+    while read -r p; do [ -n "$p" ] && kill "$p" 2>/dev/null; done < "$PID_TUNEL"
+    rm -f "$PID_TUNEL"
+  fi
+  pkill -f "L 127.0.0.1:$PUERTO_LOCAL:" 2>/dev/null
+}
+
+apagar() {
+  local k; k=$(llave_vast) || true
+  [ -n "${k:-}" ] && export VAST_API_KEY="$k"
+  echo "· cerrando el túnel del motor…"
+  apagar_tunel
+  echo "· apagando la máquina $ID…"
+  vastai stop instance "$ID" >/dev/null 2>&1
+  local estado
+  for _ in $(seq 1 10); do
+    estado=$(estado_maquina)
+    [ "$estado" = "exited" ] && break
+    sleep 10
+  done
+  if [ "$estado" = "exited" ]; then
+    verde "· máquina APAGADA (el disco sigue cobrándose: ~\$0,43/día con los modelos)"
+  else
+    rojo "· la máquina quedó en '$estado': REVÍSALA (sigue facturando)"
+  fi
+  echo "· crédito de la GPU ahora: \$$(credito)"
+  ARRANCADA_POR_NOSOTROS=no
+}
+
+estado() {
+  local k; k=$(llave_vast) || true
+  [ -n "${k:-}" ] && export VAST_API_KEY="$k"
+  local m; m=$(estado_maquina)
+  echo "máquina $ID: $m"
+  if [ "$m" = "running" ]; then
+    echo "  coste: \$0,564/h encendida (apágala al terminar:  sinkroo-gpu apagar)"
+  else
+    echo "  coste: \$0 encendida · el disco ~\$0,43/día mientras exista"
+  fi
+  echo "crédito: \$$(credito)"
+  if pgrep -f "L 127.0.0.1:$PUERTO_LOCAL:" >/dev/null 2>&1; then
+    echo "túnel: abierto en 127.0.0.1:$PUERTO_LOCAL · ComfyUI responde $(motor_ve_la_gpu)"
+  else
+    echo "túnel: cerrado (el motor no ve la GPU)"
+  fi
+  echo "modelo que pinta el motor: $(sed -n 's/^IMAGENES_MODELO=//p' "$ENV_DEL_BACK" 2>/dev/null || echo '(sin configurar)')"
+  echo
+  echo "para generar con fotos:  sinkroo-gpu encender"
+}
+
+ENV_DEL_BACK="${ENV_DEL_BACK:-/etc/sinkroo/back.env}"
+# LA DIRECCIÓN DEL TÚNEL TIENE QUE ESTAR EN EL ENTORNO DEL MOTOR. Sin esto, encender la GPU no alcanza: el
+# motor no sabe dónde está ComfyUI y no pinta nada (pasó cuando el archivo de entorno se rearmó). El túnel
+# vive siempre en la misma dirección local, así que se deja puesta acá y se comprueba en cada encendido.
+if [ -f "$ENV_DEL_BACK" ] && ! grep -q '^IMAGENES_API_URL=' "$ENV_DEL_BACK"; then
+  echo 'IMAGENES_API_URL=http://127.0.0.1:18188' >> "$ENV_DEL_BACK"
+fi
+
+case "${1:-estado}" in
+  encender|start|on) encender "${2:-3}" ;;
+  apagar|stop|off) apagar ;;
+  estado|status) estado ;;
+  *)
+    echo "uso: sinkroo-gpu {encender [intentos]|apagar|estado}"
+    echo "  encender  arranca la máquina, levanta ComfyUI y abre el túnel del motor (3 intentos por defecto)"
+    echo "  apagar    la apaga y cierra el túnel (SIEMPRE al terminar el lote)"
+    echo "  estado    qué está encendido, cuánto se gasta y con qué modelo pinta"
+    ;;
+esac
