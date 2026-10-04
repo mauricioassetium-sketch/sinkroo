@@ -324,34 +324,43 @@ export async function leerMapaReal(rubro: string, zona: string): Promise<MapaRea
   const clausulas = (porNombre ? [`node["name"~"${palabra}",i]`, `way["name"~"${palabra}",i]`] : mapa.filtros)
     .map(f => `${f}(${caja});`).join('\n  ');
   const q = `[out:json][timeout:25];\n(\n  ${clausulas}\n);\nout center tags;`;
-  const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(q)}`;
 
-  // Overpass se satura en las horas pico y devuelve 504: un segundo intento con pausa resuelve casi
-  // siempre. Si tampoco, el agente lo dice con la causa exacta y la corrida sigue con los demás.
+  // MÁS DE UN SERVIDOR DE MAPAS. Overpass se satura en las horas pico y además bloquea por cantidad de
+  // consultas: medido, su propia página de estado contestando 406 a este servidor. Con una sola dirección, el
+  // negocio se quedaba sin el conteo de su mercado por algo que no tiene nada que ver con él. Se prueban los
+  // servidores públicos en orden y se usa el primero que conteste; si ninguno, se dice con la causa exacta.
+  const SERVIDORES = [
+    'https://overpass-api.de/api/interpreter',
+    'https://overpass.kumi.systems/api/interpreter',
+    'https://overpass.osm.ch/api/interpreter',
+  ];
   let ultimoError = '';
-  for (let intento = 0; intento < 2; intento++) {
-    try {
-      if (intento) await new Promise(r => setTimeout(r, 1500));
-      const datos = await pedirJson(url, 20000);
-      const els = (datos?.elements ?? []) as any[];
-      const conNombre = els.filter(e => (e.tags || {}).name);
-      const nombres = [...new Set(conNombre.map(e => String(e.tags.name).trim()))];
-      const cuenta = new Map<string, number>();
-      for (const e of conNombre) {
-        const z = String(e.tags['addr:suburb'] || e.tags['addr:city'] || e.tags['addr:neighbourhood'] || '(sin zona)');
-        cuenta.set(z, (cuenta.get(z) || 0) + 1);
+  for (const servidor of SERVIDORES) {
+    const url = `${servidor}?data=${encodeURIComponent(q)}`;
+    for (let intento = 0; intento < 2; intento++) {
+      try {
+        if (intento) await new Promise(r => setTimeout(r, 1500));
+        const datos = await pedirJson(url, 20000);
+        const els = (datos?.elements ?? []) as any[];
+        const conNombre = els.filter(e => (e.tags || {}).name);
+        const nombres = [...new Set(conNombre.map(e => String(e.tags.name).trim()))];
+        const cuenta = new Map<string, number>();
+        for (const e of conNombre) {
+          const z = String(e.tags['addr:suburb'] || e.tags['addr:city'] || e.tags['addr:neighbourhood'] || '(sin zona)');
+          cuenta.set(z, (cuenta.get(z) || 0) + 1);
+        }
+        return {
+          ok: true, ciudad, pais, lugares: els.length, conNombre: nombres.length, nombres,
+          zonas: [...cuenta.entries()].map(([z, n]) => ({ z, n })).sort((a, b) => b.n - a.n).slice(0, 6),
+          oficio: mapa.oficio || `negocios que se llaman «${rubro}»`,
+          url, caja: `(${caja})`, porNombre,
+        };
+      } catch (e) {
+        ultimoError = String((e as Error).message || e).slice(0, 90);
       }
-      return {
-        ok: true, ciudad, pais, lugares: els.length, conNombre: nombres.length, nombres,
-        zonas: [...cuenta.entries()].map(([z, n]) => ({ z, n })).sort((a, b) => b.n - a.n).slice(0, 6),
-        oficio: mapa.oficio || `negocios que se llaman «${rubro}»`,
-        url, caja: `(${caja})`, porNombre,
-      };
-    } catch (e) {
-      ultimoError = String((e as Error).message || e).slice(0, 90);
     }
   }
-  return { ok: false, falta: `OpenStreetMap no respondió en dos intentos (${ultimoError}): se reintenta en la próxima corrida`, pais, ciudad };
+  return { ok: false, falta: `los servidores de mapas no respondieron (${ultimoError}): se reintenta en la próxima corrida`, pais, ciudad };
 }
 
 export type Informe = {
