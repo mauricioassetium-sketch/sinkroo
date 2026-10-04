@@ -108,7 +108,7 @@ export async function hayLecturaEnCurso(db: Pool, businessId: string): Promise<b
   try {
     const r = await db.query(
       `SELECT 1 FROM lecturas_de_anuncios
-        WHERE business_id = $1 AND terminada_at IS NULL AND empezada_at > now() - interval '25 minutes' LIMIT 1`,
+        WHERE business_id = $1 AND terminada_at IS NULL AND empezada_at > now() - interval '8 minutes' LIMIT 1`,
       [businessId]);
     return r.rows.length > 0;
   } catch { return false; }

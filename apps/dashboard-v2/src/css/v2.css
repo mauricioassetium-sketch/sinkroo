@@ -1194,6 +1194,12 @@
 .mapa-svg { width: 100%; height: auto; display: block; background: var(--bg3); border-radius: 11px; padding: 4px; }
 .mapa-tierra { fill: var(--border2); stroke: none; }
 .mapa-punto { fill: var(--purple3); opacity: .55; }
+/* Tres estados del punto: verificado (fijo), pendiente (un mercado declarado que falta leer) y el que se está
+   mirando ahora (verde y latiendo). */
+.mapa-lugar.verificado .mapa-punto { fill: var(--purple2); opacity: .85; }
+.mapa-lugar.pendiente .mapa-punto { fill: var(--muted); opacity: .45; }
+.mapa-nombre.verificado { fill: var(--purple2); font-weight: 600; }
+.mapa-nombre.pendiente { fill: var(--muted); }
 .mapa-lugar.activo .mapa-punto { fill: var(--green); opacity: 1; }
 .mapa-halo { fill: none; stroke: var(--green); stroke-width: .8; animation: mapa-pulso 1.8s ease-out infinite; }
 @keyframes mapa-pulso { 0% { r: 2.2; opacity: .9; } 100% { r: 11; opacity: 0; } }

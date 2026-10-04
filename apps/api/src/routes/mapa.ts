@@ -20,7 +20,21 @@
 import type { FastifyInstance } from 'fastify';
 import type { Pool } from 'pg';
 import { exigirSesion } from '../lib/auth.js';
-import { coordenadasDe, nombreDePais, paisesDeLaZona } from '../lib/paises.js';
+import { coordenadasDe, nombreDePais, paisesDeLaZona, PAISES_DEL_CONTINENTE } from '../lib/paises.js';
+
+/** Los países que el negocio declaró (sueltos y por continente), ya expandidos a códigos. */
+async function queryPaises(db: Pool, businessId: string): Promise<string[]> {
+  try {
+    const r = await db.query<{ datos: Record<string, unknown> }>(
+      'SELECT datos FROM onboarding WHERE business_id = $1', [businessId]);
+    const d = r.rows[0]?.datos ?? {};
+    const sueltos = (Array.isArray(d.paises) ? d.paises : []).map(p => String(p).trim().toUpperCase())
+      .filter(p => /^[A-Z]{2}$/.test(p));
+    const delContinente = (Array.isArray(d.continentes) ? d.continentes : [])
+      .flatMap(c => PAISES_DEL_CONTINENTE[String(c).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()] || []);
+    return [...new Set([...sueltos, ...delContinente])].slice(0, 8);
+  } catch { return []; }
+}
 
 type Lugar = {
   codigo: string; nombre: string; ciudad: string;
@@ -46,7 +60,7 @@ export async function mapaRoutes(app: FastifyInstance, db: Pool) {
     //    lectura que se cortó sin cerrar, y decir «verificando» sería mentir).
     const abierta = (await db.query<{ mercados: string[]; empezada_at: Date }>(
       `SELECT mercados, empezada_at FROM lecturas_de_anuncios
-        WHERE business_id = $1 AND terminada_at IS NULL AND empezada_at > now() - interval '40 minutes'
+        WHERE business_id = $1 AND terminada_at IS NULL AND empezada_at > now() - interval '8 minutes'
         ORDER BY empezada_at DESC LIMIT 1`, [u.business_id]).catch(() => ({ rows: [] }))).rows[0];
     const verificando = new Set((abierta?.mercados ?? []).map(m => String(m).toUpperCase()));
 
@@ -101,6 +115,18 @@ export async function mapaRoutes(app: FastifyInstance, db: Pool) {
       });
     }
 
+    // 2.b) LOS MERCADOS QUE LE TOCAN, aunque todavía no se hayan leído. Un negocio GLOBAL no se entiende con un
+    //      punto: el mapa tiene que mostrar el conjunto de mercados que declaró (Primeros pasos), marcando cuál
+    //      se está verificando, cuál ya se verificó y cuál falta. Antes sólo se dibujaba lo ya leído y el dueño
+    //      veía «un solo punto» en un negocio global.
+    const declaradosTodos = (await queryPaises(db, u.business_id));
+    for (const codigo of declaradosTodos) {
+      agregar(codigo, codigo === codigoPlaza ? ciudadDeLaPlaza : '', {
+        verificando: verificando.has(codigo), anuncios: 0, cuando: '',
+        deDonde: 'un mercado que declaró en Primeros pasos (todavía sin leer)',
+      });
+    }
+
     // 3) EL ALCANCE: local o global, según lo que declaró el negocio y cuántos mercados hay en juego.
     const onb = (await db.query<{ datos: Record<string, unknown> }>(
       'SELECT datos FROM onboarding WHERE business_id = $1', [u.business_id]).catch(() => ({ rows: [] }))).rows[0];
@@ -108,11 +134,13 @@ export async function mapaRoutes(app: FastifyInstance, db: Pool) {
     const declarado = String(datos.alcance_comercial ?? '').trim();
     const mercados = [...new Set([...verificando, ...leidos.map(l => String(l.pais).toUpperCase())])].filter(Boolean);
     const esGlobal = /global/i.test(declarado) || mercados.length > 1;
+    // El motivo dice lo que PASA: si no hay ninguna lectura corriendo, no se dice «está verificando».
+    const ocupado = verificando.size > 0;
     const alcance = esGlobal
       ? { tipo: 'global' as const, porque: mercados.length > 1
-          ? `está verificando ${mercados.length} mercados a la vez`
+          ? `${ocupado ? 'está verificando' : 'leyó'} ${mercados.length} mercados`
           : 'su negocio se declaró global en Primeros pasos' }
-      : { tipo: 'local' as const, porque: 'está verificando un solo mercado: el de su plaza' };
+      : { tipo: 'local' as const, porque: 'su búsqueda es de un solo mercado: el de su plaza' };
 
     const nombres = lugares.filter(l => l.verificando).map(l => l.ciudad || l.nombre);
     return {

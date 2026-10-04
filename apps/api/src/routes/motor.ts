@@ -184,6 +184,32 @@ export async function motorRoutes(app: FastifyInstance, db: Pool) {
       });
     }
 
+    // LA LECTURA DEL MERCADO, si está corriendo: es el trabajo LARGO de verdad (~3 minutos por consulta) y
+    // tiene que verse. Antes no aparecía en ninguna parte —el dueño veía la corrida de un minuto como si el
+    // motor leyera todo su mercado en ese rato— y su tarjeta (Lux, el agente de mercado) tampoco lo mostraba.
+    const leyendo = (await db.query(
+      `SELECT mercados, palabras, fichas,
+              extract(epoch FROM (now() - empezada_at))::int AS segundos,
+              (cardinality(mercados) * cardinality(palabras))::int AS consultas
+         FROM lecturas_de_anuncios
+        WHERE business_id = $1 AND terminada_at IS NULL AND empezada_at > now() - interval '8 minutes'
+        ORDER BY empezada_at DESC LIMIT 1`, [u.business_id]).catch(() => ({ rows: [] }))).rows[0];
+    if (leyendo) {
+      const paises = (leyendo.mercados ?? []).join(', ');
+      const palabras = (leyendo.palabras ?? []).slice(0, 2).join(', ');
+      const consultas = Number(leyendo.consultas || 1);
+      // El avance se mide por tiempo: cada consulta tarda ~3 minutos (medido).
+      trabajos.push({
+        clase: 'lectura',
+        que: `Leyendo el mercado: ${paises}`,
+        detalle: `buscando «${palabras}» en la Biblioteca de Anuncios · ${leyendo.fichas} anuncios leídos hasta ahora`,
+        paso_de: Math.min(consultas, Math.floor(Number(leyendo.segundos) / 180) + 1),
+        pasos: consultas,
+        segundos: Number(leyendo.segundos) || 0,
+        estimado_seg: Math.max(120, consultas * 180),
+      });
+    }
+
     // Los videos que están montándose: tienen su imagen y todavía no tienen ni arte ni motivo.
     const montando = (await db.query(
       `SELECT id, left(titulo, 60) AS titulo FROM piezas

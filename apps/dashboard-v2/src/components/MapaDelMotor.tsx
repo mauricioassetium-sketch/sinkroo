@@ -87,8 +87,11 @@ export function MapaDelMotor() {
         <path d={MUNDO_SVG} className="mapa-tierra" />
         {lugares.map(l => {
           const p = aPunto(l.lon, l.lat);
+          // Tres estados: el que se está mirando AHORA (late), el ya verificado y el que todavía falta leer
+          // (un mercado declarado en Primeros pasos). Así un negocio global se ve como lo que es: varios países.
+          const estado = l.verificando ? 'activo' : l.anuncios > 0 ? 'verificado' : 'pendiente';
           return (
-            <g key={`${l.codigo}-${l.ciudad}`} className={l.verificando ? 'mapa-lugar activo' : 'mapa-lugar'}>
+            <g key={`${l.codigo}-${l.ciudad}`} className={`mapa-lugar ${estado}`}>
               {l.verificando && <circle className="mapa-halo" cx={p.x} cy={p.y} r="2.2" />}
               <circle className="mapa-punto" cx={p.x} cy={p.y} r={l.verificando ? 1.7 : 1.2} />
               <title>{`${l.ciudad || l.nombre}${l.ciudad ? ` (${l.nombre})` : ''}${l.verificando ? ' · verificando ahora' : l.anuncios ? ` · ${l.anuncios} anuncios leídos` : ''}${l.cuando && !l.verificando ? ` · ${l.cuando}` : ''} — ${l.deDonde}`}</title>
@@ -98,7 +101,8 @@ export function MapaDelMotor() {
         {conNombre.map(l => {
           const p = aPunto(l.lon, l.lat);
           return (
-            <text key={`t-${l.codigo}-${l.ciudad}`} className={l.verificando ? 'mapa-nombre activo' : 'mapa-nombre'}
+            <text key={`t-${l.codigo}-${l.ciudad}`}
+              className={`mapa-nombre ${l.verificando ? 'activo' : l.anuncios > 0 ? 'verificado' : 'pendiente'}`}
               x={Math.min(p.x + 2.6, MUNDO_ANCHO - 2)} y={p.y + 1.1}>
               {l.ciudad || l.nombre}
             </text>
@@ -114,6 +118,14 @@ export function MapaDelMotor() {
           </span>
           <span className="tiny muted">{mapa?.resumen}</span>
         </div>
+        {/* Cuando el negocio es global y todavía tiene pocos mercados declarados, se dice qué falta: el mapa no
+            puede inventar los países, y el que sabe dónde están sus clientes es el dueño. */}
+        {mapa?.alcance.tipo === 'global' && lugares.length <= 2 && (
+          <div className="acc-why" style={{ marginTop: 6 }}>
+            <b>Su búsqueda es global:</b> el mapa muestra los mercados que tiene declarados. Para verlos todos,
+            responda «¿En qué países o regiones están sus clientes?» en el bloque de arriba.
+          </div>
+        )}
         <div className="acc-why" style={{ marginTop: 6 }}>
           {verificando.length
             ? <>Se está mirando <b>{verificando.map(l => l.ciudad || l.nombre).join(', ')}</b> en este momento: son los mercados donde el motor sale a leer los anuncios de su rubro.</>

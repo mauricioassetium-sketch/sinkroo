@@ -263,7 +263,7 @@ export type Datos = {
    *  false y la pantalla de resultados lo dice: el número no se finge. */
   metricas: Metricas | null;
   desvioPct: number;
-  refrescar: () => Promise<void>;
+  refrescar: (silencioso?: boolean) => Promise<void>;
   /** Guarda el onboarding en el back (mezcla los campos) y refresca. */
   guardar: (cuerpo: { datos?: Record<string, unknown>; hechos?: number[]; arrancado?: boolean }) => Promise<void>;
   arrancar: () => Promise<void>;
@@ -294,10 +294,14 @@ async function traer<T>(ruta: string, porDefecto: T): Promise<T> {
 export function ProveedorDatos({ children, modoDemo = false }: { children: ReactNode; modoDemo?: boolean }) {
   const [estado, setEstado] = useState<Datos>(VACIO);
 
-  const refrescar = useCallback(async () => {
+  const refrescar = useCallback(async (silencioso = false) => {
     // En modo demostración no se lee el back ni con sesión abierta: la demostración no es la cuenta.
     if (!hayApi() || !token() || modoDemo) { setEstado(VACIO); return; }
-    setEstado(e => ({ ...e, real: true, cargando: true, error: '' }));
+    // EL REFRESCO EN VIVO NO PONE LA PANTALLA EN CARGA. Si lo hace, todo el panel parpadea: los bloques
+    // desaparecen y vuelven cada vez que se relee —durante una corrida eso pasa cada 8 s— y el estado en vivo se
+    // reinicia (el dueño lo describió exacto: «se sigue receteando completo y desaparece esta imagen y sale
+    // otra»). El primer llenado sí muestra la carga; el refresco cambia los datos por debajo, sin vaciar nada.
+    setEstado(e => ({ ...e, real: true, ...(silencioso ? {} : { cargando: true }), error: '' }));
     const [neg, onb, camp, piez, eval_, hall, corr, publ, conv, arch, cred, calib, back, integ, metr, inform, prm, tend] = await Promise.all([
       traer<{ negocio: Negocio; resumen: Resumen; onboarding: { hechos: number[]; arrancado: boolean } } | null>('/api/negocio', null),
       traer<{ datos: Record<string, unknown>; hechos: number[]; arrancado: boolean }>('/api/onboarding', { datos: {}, hechos: [], arrancado: false }),
@@ -351,13 +355,15 @@ export function ProveedorDatos({ children, modoDemo = false }: { children: React
   const guardar = useCallback(async (cuerpo: { datos?: Record<string, unknown>; hechos?: number[]; arrancado?: boolean }) => {
     if (!hayApi() || !token() || modoDemo) return;
     await guardarOnboarding(cuerpo).catch(() => {});
-    void refrescar();
+    // Silencioso: `guardar` se dispara mientras el cliente escribe (autoguardado). Con la pantalla en carga, el
+    // panel parpadearía en cada tecla.
+    void refrescar(true);
   }, [refrescar, modoDemo]);
 
   const arrancar = useCallback(async () => {
     if (!hayApi() || !token() || modoDemo) return;
     await arrancarMotor().catch(() => {});
-    void refrescar();
+    void refrescar(true);
   }, [refrescar, modoDemo]);
 
   // El estado se completa con las funciones una sola vez, para no re-renderizar de más.
