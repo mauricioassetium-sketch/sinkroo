@@ -143,7 +143,8 @@ export async function motorRoutes(app: FastifyInstance, db: Pool) {
   app.get('/api/sistema/trabajando', async (req, reply) => {
     const u = await exigirSesion(req, reply); if (!u || !u.business_id) return;
     const trabajos: {
-      clase: string; que: string; detalle: string; paso_de?: number; pasos?: number; segundos?: number; ronda?: number;
+      clase: string; que: string; detalle: string; paso_de?: number; pasos?: number; segundos?: number;
+      ronda?: number; estimado_seg?: number | null;
     }[] = [];
 
     const corrida = (await db.query(
@@ -154,6 +155,13 @@ export async function motorRoutes(app: FastifyInstance, db: Pool) {
           AND (latido_at IS NULL OR now() - latido_at < interval '5 minutes')
         ORDER BY empezada_at DESC LIMIT 1`, [u.business_id]).catch(() => ({ rows: [] }))).rows[0];
     if (corrida) {
+      // EL ESTIMADO, para la barra del encabezado: el promedio REAL de las corridas terminadas de ese negocio.
+      // Sin historial no se inventa un número: va null y la barra dice que todavía no hay estimado (el dueño
+      // pidió «cuánto falta visualmente», y un tiempo inventado es peor que decir que no se sabe).
+      const promedio = Number((await db.query(
+        `SELECT avg(extract(epoch FROM (terminada_at - empezada_at)))::int AS s FROM corridas
+          WHERE business_id = $1 AND estado = 'terminada' AND terminada_at IS NOT NULL AND empezada_at IS NOT NULL`,
+        [u.business_id]).catch(() => ({ rows: [] }))).rows[0]?.s || 0);
       trabajos.push({
         clase: 'corrida',
         que: corrida.paso || 'El motor está trabajando',
@@ -162,6 +170,7 @@ export async function motorRoutes(app: FastifyInstance, db: Pool) {
         pasos: Number(corrida.pasos) || 0,
         segundos: Number(corrida.segundos) || 0,
         ronda: Number(corrida.ronda) || 0,
+        estimado_seg: promedio > 0 ? promedio : null,
       });
     }
 

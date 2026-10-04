@@ -89,6 +89,13 @@ html.light .badge-gray { background: rgba(0,0,0,.05); }
 /* La lista de corridas del panel: se ven diez y el resto se alcanza con scroll dentro de la lista (no
    empujando la tarjeta hacia abajo). El alto sale de la medida real de un renglón: 10 x 17 px + 9 x 11 px. */
 .corridas-scroll { max-height: 270px; overflow-y: auto; padding-right: 6px; scrollbar-width: thin; }
+
+/* LA BARRA DEL ENCABEZADO: el avance en pasos y el tiempo que falta, en la barra del menú (siempre visible).
+   El renglón se apila —título y reloj arriba, la barra debajo, el detalle al final— para que entre en una
+   franja de la altura del encabezado. */
+.tk-trabajo-linea { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.tk-barra { display: block; height: 4px; border-radius: 99px; background: var(--border2); overflow: hidden; margin: 4px 0 2px; min-width: 160px; }
+.tk-barra-fill { display: block; height: 100%; background: linear-gradient(90deg, var(--purple3), var(--purple)); border-radius: 99px; transition: width .4s ease; }
 .corridas-scroll::-webkit-scrollbar { width: 8px; }
 .corridas-scroll::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 99px; }
 .nav-item { display: flex; align-items: center; gap: 11px; padding: 10px 12px; border-radius: 10px; color: var(--muted); font-weight: 500; font-size: 13.5px; cursor: pointer; transition: all .12s; margin-bottom: 2px; position: relative; width: 100%; text-align: left; }
