@@ -25,11 +25,49 @@
 //   Cada argumento es palabra:país (ISO2). El archivo de salida se reescribe y se VA COMPLETANDO.
 // =============================================================================================
 
-import { readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import pg from 'pg';
 
-const CDP = process.env.CDP_URL || 'http://127.0.0.1:9222';
+// LA FLOTA DE NAVEGADORES: cada lector toma su propio puesto (puertos 9222 a 9231), con un cerrojo en /run
+// para que dos lecturas no se pisen. El dueño lo pidió así: «deja abierto 10 navegadores diferentes para que
+// cada uno, si lo necesita, use su propio navegador».
+const PUESTOS = Number(process.env.NAVEGADORES || 10);
+const PUERTO_BASE = Number(process.env.CDP_PUERTO_BASE || 9222);
+const CERROJOS = process.env.CERROJOS_NAVEGADOR || '/run/sinkroo-navegador';
+let CDP = process.env.CDP_URL || 'http://127.0.0.1:' + PUERTO_BASE;
+
+/** Toma el primer puesto libre: devuelve su número y su puerto, o null si están todos ocupados. */
+function tomarPuesto() {
+  for (let n = 1; n <= PUESTOS; n++) {
+    const f = `${CERROJOS}/${n}.pid`;
+    let libre = true;
+    try {
+      const previo = readFileSync(f, 'utf8').trim();
+      if (previo) {
+        try { process.kill(Number(previo), 0); libre = false; }   // el dueño del cerrojo sigue vivo
+        catch { libre = true; }                                   // murió: el cerrojo quedó viejo
+      }
+    } catch { libre = true; }
+    if (!libre) continue;
+    try {
+      mkdirSync(CERROJOS, { recursive: true });
+      writeFileSync(f, String(process.pid));
+      return { n, puerto: PUERTO_BASE + n - 1, cerrojo: f };
+    } catch { /* sin permiso para el cerrojo: se prueba el siguiente */ }
+  }
+  return null;
+}
+
+const PUESTO = tomarPuesto();
+if (PUESTO) {
+  CDP = `http://127.0.0.1:${PUESTO.puerto}`;
+  console.log(`[lector] puesto ${PUESTO.n} de ${PUESTOS} (puerto ${PUESTO.puerto})`);
+}
+const soltarPuesto = () => {
+  if (!PUESTO) return;
+  try { unlinkSync(PUESTO.cerrojo); } catch { /* ya no está */ }
+};
 const ESPERA_CARGA = Number(process.env.ESPERA_CARGA || 9000);
 const MAX_FICHAS = Number(process.env.MAX_FICHAS || 80);
 
@@ -61,7 +99,8 @@ async function asegurarNavegador() {
   if (await responde()) return true;
   try {
     const raiz = new URL('../../../', import.meta.url).pathname;
-    execSync(`bash ${raiz}scripts/navegador-del-motor.sh`, { stdio: 'ignore', timeout: 70000 });
+    // Se levanta EL NAVEGADOR DE ESTE PUESTO (no el primero): si hay varios lectores, cada uno tiene el suyo.
+    execSync(`bash ${raiz}scripts/navegador-del-motor.sh arrancar ${PUESTO?.n ?? 1}`, { stdio: 'ignore', timeout: 70000 });
   } catch { /* si no se puede levantar, se intenta leer igual: el fallo se dice en cada consulta */ }
   for (let i = 0; i < 15; i++) {
     await new Promise(r => setTimeout(r, 1000));
@@ -222,4 +261,10 @@ if (pool && lecturaId) {
   } catch { /* si no se puede cerrar, la lectura queda abierta: el mapa la muestra como en curso */ }
 }
 
+// El puesto se suelta pase lo que pase: si queda el cerrojo, ese navegador no lo usa nadie más.
+process.on('exit', soltarPuesto);
+process.on('SIGINT', () => { soltarPuesto(); process.exit(0); });
+process.on('SIGTERM', () => { soltarPuesto(); process.exit(0); });
+
 console.log(`\nGuardado en ${SALIDA}: ${resultado.consultas.length} consultas, ${total} fichas.`);
+soltarPuesto();

@@ -6,7 +6,7 @@ import { conAvisoDePin, exigirPin } from '../lib/pin.js';
 import { TARIFA, saldoDe, costoDeRonda, PRECIOS_POR_TIPO } from '../services/creditos.js';
 import { mezclaDeRonda, proximaRonda, usosPorTipo } from '../services/mezcla.js';
 import { correrInvestigacion, desvioActual, PASOS_DE_UNA_CORRIDA } from '../services/agentes.js';
-import { lanzarLecturaDeAnuncios, loQueDedujoVera, paisesDeclarados } from '../services/programador.js';
+import { lanzarLecturaDeAnuncios, hayLecturaEnCurso, loQueDedujoVera, paisesDeclarados } from '../services/programador.js';
 import { crearPublico, evaluar } from '../services/mirofish.js';
 
 // =============================================================================================
@@ -88,7 +88,8 @@ export async function motorRoutes(app: FastifyInstance, db: Pool) {
     lanzarLecturaDeAnuncios(
       { id: u.business_id, nombre: ctx.nombre, descripcion: ctx.descripcion, rubro: ctx.rubro, zona: ctx.zona },
       await loQueDedujoVera(db, u.business_id), await paisesDeclarados(db, u.business_id),
-      (m) => req.log.info(m));
+      (m) => req.log.info(m),
+      await hayLecturaEnCurso(db, u.business_id));
     return reply.status(201).send(r);
   });
 

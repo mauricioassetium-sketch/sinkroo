@@ -98,10 +98,32 @@ export async function paisesDeclarados(db: Pool, businessId: string): Promise<st
  * mano, solo que ahora lo lanza el programador en vez de una persona. No se espera su respuesta: si
  * tarda, no frena la investigación del día; lo que lea queda en la tabla de anuncios leídos.
  */
+/**
+ * ¿HAY UNA LECTURA EN CURSO? El lector tarda ~3 minutos por consulta y seis consultas son un rato largo: si
+ * cada corrida lanza la suya —y las corridas se repiten cada minuto y medio— se apilan tres, cuatro, cinco
+ * lectores peleándose por el mismo navegador y NINGUNA termina (medido: tres abiertas a la vez, todas en «0
+ * fichas»). Antes de lanzar se mira si ya hay una trabajando.
+ */
+export async function hayLecturaEnCurso(db: Pool, businessId: string): Promise<boolean> {
+  try {
+    const r = await db.query(
+      `SELECT 1 FROM lecturas_de_anuncios
+        WHERE business_id = $1 AND terminada_at IS NULL AND empezada_at > now() - interval '25 minutes' LIMIT 1`,
+      [businessId]);
+    return r.rows.length > 0;
+  } catch { return false; }
+}
+
 export function lanzarLecturaDeAnuncios(
   n: Negocio, dedujo: { palabras: string[]; paises: string[] },
   declarados: string[], log: (m: string) => void,
+  /** Si ya hay una lectura en curso para este negocio, no se lanza otra (ver `hayLecturaEnCurso`). */
+  yaHayUna = false,
 ) {
+  if (yaHayUna) {
+    log(`lectura de anuncios: ya hay una en curso para «${n.nombre}» — no se lanza otra (se apilarían y ninguna termina)`);
+    return;
+  }
   // Las palabras y los países salen de lo que dedujo Vera; si todavía no hay nada, se cae al rubro del
   // perfil y a Colombia. Nunca se leen palabras inventadas ni un mercado que el negocio no nombró.
   const palabras = dedujo.palabras.length
@@ -187,7 +209,8 @@ export async function revisarInvestigacionDiaria(db: Pool, log: (m: string) => v
   for (const n of negocios) {
     await investigar(db, n, log);
     // Y de una, la lectura de anuncios con las palabras del rubro que quedó en el perfil (lo que dedujo Vera).
-    lanzarLecturaDeAnuncios(n, await loQueDedujoVera(db, n.id), await paisesDeclarados(db, n.id), log);
+    lanzarLecturaDeAnuncios(n, await loQueDedujoVera(db, n.id), await paisesDeclarados(db, n.id), log,
+      await hayLecturaEnCurso(db, n.id));
   }
   // Y de paso: los créditos de bienvenida del primer mes que ya vencieron.
   try { await vencerBienvenidas(db, log); } catch (e) { log(`no se pudieron vencer los créditos: ${String((e as Error).message).slice(0, 120)}`); }
