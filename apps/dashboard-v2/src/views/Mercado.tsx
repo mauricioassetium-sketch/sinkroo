@@ -6,6 +6,7 @@ import { I_Globe, I_Trend, I_Zap, I_Users, I_Target, I_Megaphone, I_Dot } from '
 import { useDatos } from '../api/datos';
 import { baseApi, token } from '../api/cliente';
 import { EstadoVacio } from '../components/EstadoVacio';
+import { MotorTrabajando } from '../components/MotorTrabajando';
 import { lista } from '../lib/lista';
 import type { Vista } from '../components/Layout';
 
@@ -512,6 +513,8 @@ ${p.prompt}` });
 
   return (
     <div className="dash">
+      {/* El motor trabajando, arriba de todo: es la pantalla donde su trabajo aparece. */}
+      <MotorTrabajando />
       <ViewHead
         icon={<I_Globe size={19} />}
         titulo="Mercado"
@@ -629,7 +632,8 @@ ${p.prompt}` });
             Lo que el back sí sabe de su mercado es cómo está repartido su público, con el peso y el
             origen del dato de cada segmento: un peso sin origen no se muestra. */}
         <Card
-          title={<span className="row" style={{ gap: 8 }}><I_Users size={14} style={{ color: 'var(--purple3)' }} /> Su público, calibrado</span>}
+          /* El título no promete una calibración: dice lo que la tarjeta muestra, que son sus 500 agentes. */
+          title={<span className="row" style={{ gap: 8 }}><I_Users size={14} style={{ color: 'var(--purple3)' }} /> Su público</span>}
           action={<Badge tone={d.calibracion?.calibrada ? 'purple' : 'muted'}>
             {d.calibracion ? `${d.calibracion.total} agentes` : (d.real ? 'leyendo' : 'sin leer')}
           </Badge>}
@@ -646,11 +650,53 @@ ${p.prompt}` });
               onAccion={() => void d.refrescar()}
             />
           ) : !d.calibracion.calibrada ? (
-            /* Sin calibrar, el panel entero pesa igual en todos los segmentos: hay que decirlo tal cual. */
-            <EstadoVacio
-              titulo="Sus 500 agentes trabajan con su propio criterio"
-              texto={`Los ${d.calibracion.total} agentes del panel están repartidos en partes iguales: todavía no se calibró con su público real. Cuando el panel lea las proporciones de quienes interactúan con su cuenta, cada segmento empieza a pesar lo que pesa de verdad y esta tarjeta muestra su público, no un promedio.`}
-            />
+            /* SIN CALIBRAR: SE MUESTRA EL PÚBLICO REAL, NO UNA PROMESA.
+               Antes acá decía que «cuando el panel lea las proporciones de quienes interactúan con su cuenta,
+               cada segmento empieza a pesar lo que pesa de verdad»: una promesa de calibración que el dueño
+               ya descartó (el modelo se mantiene sin audiencia, con el comportamiento simulado de los 500).
+               Lo que sí sabe el back —y ahora se ve— es quiénes son esos 500: cómo se reparten por estilo y
+               por edad, con ejemplos con nombre. */
+            d.publico && d.publico.total > 0 ? (
+              <>
+                <div className="como-se-lee">
+                  <b>Sus {d.publico.total} agentes:</b> cada uno tiene su nombre, su edad, su interés y su
+                  estilo, y con eso reacciona a cada pieza. Trabajan con ese comportamiento simulado —no se
+                  calibran con su cuenta—, así que esto es su público tal como está.
+                </div>
+                <div className="guards">
+                  {d.publico.por_estilo.map(e => (
+                    <div key={e.estilo} className="guard">
+                      <I_Users size={14} style={{ color: 'var(--purple3)', flexShrink: 0 }} />
+                      <span className="guard-lb">{e.estilo}<small>cómo mira una pieza</small></span>
+                      <span className="guard-val">{e.n} {e.n === 1 ? 'agente' : 'agentes'}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="datos-row" style={{ marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--border)' }}>
+                  {d.publico.por_edad.map(r => (
+                    <div className="dato" key={r.rango}>
+                      <span className="dato-l">{r.rango} años</span><span className="dato-v">{r.n}</span>
+                    </div>
+                  ))}
+                </div>
+                {Array.isArray(d.publico.muestra) && d.publico.muestra.length > 0 && (
+                  <div className="acc-why">
+                    <b>Algunos de sus agentes: </b>
+                    {d.publico.muestra.slice(0, 4).map((a: { nombre?: string; edad?: number; interes?: string; sensibilidad?: string }, i: number) => (
+                      <span key={i}>{i > 0 ? ' · ' : ''}{a.nombre} ({a.edad}, {a.interes}, {a.sensibilidad})</span>
+                    ))}
+                  </div>
+                )}
+                <div className="acc-why">
+                  <b>Fuente: </b>los {d.publico.total} agentes que el motor creó para su negocio, leídos del
+                  servidor uno por uno. No hay ningún peso calibrado con su cuenta.
+                </div>
+              </>
+            ) : (
+              <EstadoVacio
+                titulo="Todavía no se ha leído su público"
+                texto="Aquí se ve quiénes son sus 500 agentes (su estilo, su edad y sus intereses) y así reaccionan a cada pieza. Vuelva a leerlo y aparecen." />
+            )
           ) : (
             /* ---------- EL PÚBLICO CALIBRADO, REAL ----------
                El peso va en la barra (se ve la proporción) y cada segmento queda con sus agentes, su
