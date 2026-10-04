@@ -268,11 +268,17 @@ export async function movimientoDeLaEscena(escena: string, camara: string, timeo
  * null y la corrida sigue con el camino de siempre (nunca se cae por esto).
  */
 export async function categoriaDelNegocio(
-  entrada: { nombre: string; descripcion: string; queHace?: string; lugares?: string[] },
-  timeoutMs = 20_000,
+  entrada: { nombre: string; descripcion: string; queHace?: string; lugares?: string[]; material?: string },
+  timeoutMs = 25_000,
 ): Promise<{ es: string; en: string; porque: string } | null> {
-  const texto = [entrada.nombre, entrada.descripcion, entrada.queHace]
-    .filter(Boolean).join(' — ').replace(/\s+/g, ' ').trim().slice(0, 1200);
+  // LA CATEGORÍA SALE DE LO QUE EL CLIENTE SUBIÓ, no de una suposición: se le pasa el texto de su página web
+  // y de sus documentos, que es lo que el motor leyó, y el modelo nombra la categoría a partir de eso. La
+  // descripción y lo que dedujo Vera van primero (son el resumen más limpio) y el material va detrás, con más
+  // espacio, porque ahí están los servicios concretos con los que se lo puede buscar en el mercado.
+  const resumen = [entrada.nombre, entrada.descripcion, entrada.queHace]
+    .filter(Boolean).join(' — ').replace(/\s+/g, ' ').trim().slice(0, 900);
+  const material = String(entrada.material || '').replace(/\s+/g, ' ').trim().slice(0, 6000);
+  const texto = material.length > 200 ? `${resumen}\n\nMaterial del cliente (su web y sus documentos):\n${material}` : resumen;
   if (texto.length < 20) return null;
   const llave = llaveDelModelo();
   if (!llave) return null;
@@ -287,12 +293,14 @@ export async function categoriaDelNegocio(
         messages: [
           {
             role: 'system',
-            content: 'You name the CATEGORY of a business the way a person would when looking for its '
-              + 'competition: two or three words, the kind of thing that appears in a directory, never a '
-              + 'slogan and never a word taken from the marketing copy. Example: a company that manages '
-              + 'luxury homes and travel for rich clients is "luxury concierge" (Spanish: "conserjería de '
-              + 'lujo"). Answer ONLY this JSON: {"es": "<categoría en español>", "en": "<category in '
-              + 'English>", "porque": "<una línea, en español, de dónde lo sacaste>"}',
+            content: 'From the client MATERIAL below (their own website and documents), name the CATEGORY '
+              + 'of the business the way a person would when looking for its competition: two or three '
+              + 'words, the kind of thing that appears in a directory, never a slogan and never a word '
+              + 'taken from the marketing copy. Base it on what the material says the business DOES. '
+              + 'Example: a company that manages luxury homes and travel for rich clients is "luxury '
+              + 'concierge" (Spanish: "conserjería de lujo"). Answer ONLY this JSON: {"es": '
+              + '"<categoría en español>", "en": "<category in English>", "porque": "<una línea, en '
+              + 'español, diciendo en qué parte del material te basaste>"}',
           },
           { role: 'user', content: texto },
         ],

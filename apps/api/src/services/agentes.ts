@@ -416,16 +416,9 @@ export const PASOS_DE_UNA_CORRIDA = [
 ] as const;
 
 export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'investigacion', ronda = false) {
-  // EL MAPA BUSCA POR NOMBRE DE COMERCIO, NO POR DESCRIPCIÓN. Se busca con la CATEGORÍA y no con el rubro: el
-  // rubro es la frase con la que el negocio se describe («We redefine luxury management…») y con eso el mapa
-  // no encuentra nada. La categoría se nombra más adelante, en el paso de Vera, así que se pide acá con lo
-  // que ya se sabe del negocio. Se usa el término EN INGLÉS porque es como se llaman los comercios del Golfo
-  // («222 Concierge»), y la última palabra de la categoría cuando es una frase: es el sustantivo.
-  if (!ctx.categoria) {
-    const dicha = await categoriaDelNegocio({ nombre: ctx.nombre, descripcion: ctx.descripcion });
-    if (dicha?.en) ctx.categoria = dicha.en;
-  }
-  const mapa = await leerMapaReal(ctx.categoria || ctx.rubro, ctx.zona);
+  // EL ESTUDIO DEL MAPA SE CALCULA MÁS ABAJO, después de leer el material del cliente: la categoría con la que
+  // se busca sale de ESE material (su web y sus documentos), así que hasta no leerlo no se sabe con qué
+  // palabra buscar sus parecidos en la ciudad.
   const inf = await informeDe(db, ctx);
   const piezas = piezasVivas(inf);
   const patron = (inf?.informe?.patron ?? []) as { k: string; v: string; s?: string }[];
@@ -538,6 +531,8 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
   // sigue con los términos del vocabulario y del material, que es como se hacía antes.
   const dicha = await categoriaDelNegocio({
     nombre: ctx.nombre, descripcion: ctx.descripcion, queHace: leido.queHace, lugares: leido.lugares,
+    // EL MATERIAL COMPLETO, que es lo que el cliente subió: el texto de sus páginas y de sus documentos.
+    material: [archivosLeidos.texto, ...paginas.map(p => `${p.titulo} ${p.descripcion} ${p.texto}`)].join('\n'),
   });
   let categoria: Awaited<ReturnType<typeof leerWikipedia>> | null = null;
   let termino = '';
@@ -601,6 +596,11 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
       }
     }
   } catch { /* si no se puede escribir, la corrida sigue con lo leído */ }
+
+  // EL MAPA DEL MERCADO, YA CON LA CATEGORÍA DEL MATERIAL. Busca por NOMBRE de comercio, no por descripción:
+  // con la frase con la que el negocio se describe («We redefine luxury management…») no encuentra nada, y con
+  // su categoría («luxury concierge» → «concierge») sí encuentra los parecidos de la ciudad.
+  const mapa = await leerMapaReal(ctx.categoria || ctx.rubro, ctx.zona);
 
   anotar({
     agente: 'vera', orden: 0,
@@ -916,8 +916,17 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
     // lista de palabras decidía quién es del mercado, y estaba en una sola lengua. Los términos van con
     // límites de palabra, porque «rwa» tiene tres letras y suelto coincide con cualquier cosa.
     const escapar = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const terminos = [...new Set(Object.values(palabrasPorLengua).flat()
-      .map(t => String(t).toLowerCase().replace(/\s+/g, ' ').trim()).filter(t => t.length >= 3))];
+    const terminos = [...new Set([
+      ...Object.values(palabrasPorLengua).flat()
+        .map(t => String(t).toLowerCase().replace(/\s+/g, ' ').trim()).filter(t => t.length >= 3),
+      // LA CATEGORÍA DEL NEGOCIO TAMBIÉN ES UN TÉRMINO DE LA CATEGORÍA. El vocabulario de Lex está armado para
+      // los rubros que ya conoce (tokenización, RWA, blockchain): un servicio de lujo en Dubái no nombra
+      // ninguna de esas palabras, así que NINGÚN anuncio pasaba el filtro y el informe decía «1 comparable de
+      // verdad» sobre 546 fichas, con Dubái lleno de conserjerías. La categoría que el motor ya nombró
+      // («luxury concierge») entra como término, con sus palabras sueltas para que también cuente «concierge».
+      ...[ctx.categoria || '', ...String(ctx.categoria || '').split(/\s+/)]
+        .map(t => t.toLowerCase().replace(/\s+/g, ' ').trim()).filter(t => t.length >= 5),
+    ])];
     const reTerminos = terminos.map(t => new RegExp(`(^|[^a-z0-9áéíóúñ])${escapar(t)}([^a-z0-9áéíóúñ]|$)`));
     // UN ANUNCIO, UNA VEZ, CON SU MEJOR TEXTO. La Biblioteca devuelve la misma pieza muchas veces —una por
     // palabra buscada y por país— y de una fila a otra cambia lo que trae. Elegir «la primera» o «la más
