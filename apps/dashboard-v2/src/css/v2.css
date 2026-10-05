@@ -1196,9 +1196,11 @@
 .mapa-punto { fill: var(--purple3); opacity: .55; }
 /* Tres estados del punto: verificado (fijo), pendiente (un mercado declarado que falta leer) y el que se está
    mirando ahora (verde y latiendo). */
-.mapa-lugar.verificado .mapa-punto { fill: var(--purple2); opacity: .85; }
+/* Los tres estados, con el color que pidió el dueño: VERDE mientras busca (latiendo), AZUL cuando ya terminó,
+   y gris apagado el mercado que está en la lista y todavía no se leyó. */
+.mapa-lugar.verificado .mapa-punto { fill: var(--blue); opacity: .95; }
 .mapa-lugar.pendiente .mapa-punto { fill: var(--muted); opacity: .45; }
-.mapa-nombre.verificado { fill: var(--purple2); font-weight: 600; }
+.mapa-nombre.verificado { fill: var(--blue); font-weight: 600; }
 .mapa-nombre.pendiente { fill: var(--muted); }
 .mapa-lugar.activo .mapa-punto { fill: var(--green); opacity: 1; }
 .mapa-halo { fill: none; stroke: var(--green); stroke-width: .8; animation: mapa-pulso 1.8s ease-out infinite; }

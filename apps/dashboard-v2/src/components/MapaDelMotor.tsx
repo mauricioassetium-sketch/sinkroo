@@ -63,10 +63,6 @@ export function MapaDelMotor() {
 
   const lugares = mapa?.lugares ?? [];
   const verificando = lugares.filter(l => l.verificando);
-  // Los nombres de los que están encendidos siempre; los ya verificados sólo si son pocos (si no, tapan el mapa).
-  const conNombre = verificando.length
-    ? verificando
-    : (lugares.length <= 4 ? lugares : lugares.slice(0, 4));
 
   return (
     <div className="mapa-motor">
@@ -98,12 +94,17 @@ export function MapaDelMotor() {
             </g>
           );
         })}
-        {conNombre.map(l => {
+        {/* TODOS los lugares llevan su nombre: con ocho mercados, mostrar sólo cuatro dejaba puntos marcados y
+            sin nombre (lo que el dueño vio en pantalla). El nombre se corre de lado y de alto según el lugar,
+            para que no se pisen entre ellos. */}
+        {lugares.map((l, i) => {
           const p = aPunto(l.lon, l.lat);
           return (
             <text key={`t-${l.codigo}-${l.ciudad}`}
               className={`mapa-nombre ${l.verificando ? 'activo' : l.anuncios > 0 ? 'verificado' : 'pendiente'}`}
-              x={Math.min(p.x + 2.6, MUNDO_ANCHO - 2)} y={p.y + 1.1}>
+              textAnchor={p.x > MUNDO_ANCHO / 2 ? 'end' : 'start'}
+              x={p.x > MUNDO_ANCHO / 2 ? Math.max(p.x - 2.4, 2) : Math.min(p.x + 2.4, MUNDO_ANCHO - 2)}
+              y={p.y + [1.1, -1.4, 2.9, -3.1][i % 4]}>
               {l.ciudad || l.nombre}
             </text>
           );
