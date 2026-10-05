@@ -62,6 +62,28 @@ export function MapaDelMotor() {
   if (!mapa && !fallo) return null; // mientras no haya nada que mostrar, no ocupa lugar
 
   const lugares = mapa?.lugares ?? [];
+
+  // LOS NOMBRES, ACOMODADOS PARA QUE NO SE PISEN. Con ocho mercados hay puntos que caen juntos (India con
+  // Pakistán, Reino Unido con España) y los nombres se montaban uno sobre otro. Se coloca de a uno: cada nombre
+  // prueba primero su lugar natural y, si está ocupado, se corre hacia arriba o hacia abajo hasta quedar libre.
+  // Es determinista (el mismo mapa da siempre el mismo dibujo) y con ocho mercados alcanza de sobra.
+  const puestos: { x0: number; x1: number; y: number }[] = [];
+  const nombres = lugares.map(l => {
+    const p = aPunto(l.lon, l.lat);
+    const texto = l.ciudad || l.nombre;
+    const ancho = texto.length * 2.4 + 1.5;        // a 4,9 px, una letra mide ~2,4 unidades del mapa
+    const pegados: { x0: number; x1: number; y: number }[] = [0, -3, 3, -6, 6, -9, 9, -12].map(alto => {
+      const y = p.y + 1.5 + alto;
+      return p.x > MUNDO_ANCHO / 2
+        ? { x1: p.x - 2.4, x0: p.x - 2.4 - ancho, y }   // a la izquierda del punto
+        : { x0: p.x + 2.4, x1: p.x + 2.4 + ancho, y };  // a la derecha
+    });
+    const libre = pegados.find(c => puestos.every(q =>
+      c.x1 < q.x0 - 1 || c.x0 > q.x1 + 1 || Math.abs(c.y - q.y) > 2.6));
+    const elegido = libre ?? pegados[0];
+    puestos.push(elegido);
+    return { l, texto, caja: elegido, izquierda: p.x > MUNDO_ANCHO / 2 };
+  });
   const verificando = lugares.filter(l => l.verificando);
 
   return (
@@ -94,21 +116,13 @@ export function MapaDelMotor() {
             </g>
           );
         })}
-        {/* TODOS los lugares llevan su nombre: con ocho mercados, mostrar sólo cuatro dejaba puntos marcados y
-            sin nombre (lo que el dueño vio en pantalla). El nombre se corre de lado y de alto según el lugar,
-            para que no se pisen entre ellos. */}
-        {lugares.map((l, i) => {
-          const p = aPunto(l.lon, l.lat);
-          return (
-            <text key={`t-${l.codigo}-${l.ciudad}`}
-              className={`mapa-nombre ${l.verificando ? 'activo' : l.anuncios > 0 ? 'verificado' : 'pendiente'}`}
-              textAnchor={p.x > MUNDO_ANCHO / 2 ? 'end' : 'start'}
-              x={p.x > MUNDO_ANCHO / 2 ? Math.max(p.x - 2.4, 2) : Math.min(p.x + 2.4, MUNDO_ANCHO - 2)}
-              y={p.y + [1.1, -1.4, 2.9, -3.1][i % 4]}>
-              {l.ciudad || l.nombre}
-            </text>
-          );
-        })}
+        {/* Todos los lugares llevan su nombre, ya acomodados arriba para que no se pisen. */}
+        {nombres.map(({ l, texto, caja, izquierda }) => (
+          <text key={`t-${l.codigo}-${l.ciudad}`} className="mapa-nombre"
+            textAnchor={izquierda ? 'end' : 'start'} x={izquierda ? caja.x1 : caja.x0} y={caja.y}>
+            {texto}
+          </text>
+        ))}
       </svg>
 
       <div className="mapa-pie">
