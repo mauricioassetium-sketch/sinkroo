@@ -1,0 +1,1349 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Auditoría de prompts · Sinkroo</title>
+<style>
+  :root {
+    --tinta: #16161d; --suave: #5b5b6b; --linea: #e4e4ec; --fondo: #f7f7fa; --papel: #ffffff;
+    --morado: #6d4aff; --morado-suave: #f0ecff; --aviso: #b42318; --ok: #067647;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--fondo); color: var(--tinta);
+    font: 17px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+  .hoja { max-width: 980px; margin: 0 auto; padding: 40px 28px 90px; }
+  header.tapa { background: var(--papel); border: 1px solid var(--linea); border-radius: 18px; padding: 30px 32px; margin-bottom: 34px; }
+  header.tapa h1 { margin: 0 0 6px; font-size: 30px; letter-spacing: -.4px; }
+  header.tapa p { margin: 6px 0 0; color: var(--suave); }
+  .etiqueta { display: inline-block; background: var(--morado-suave); color: var(--morado);
+    border-radius: 999px; padding: 4px 12px; font-size: 13px; font-weight: 600; margin-bottom: 14px; }
+  nav { background: var(--papel); border: 1px solid var(--linea); border-radius: 18px; padding: 18px 26px; margin-bottom: 34px; }
+  nav a { color: var(--morado); text-decoration: none; display: block; padding: 5px 0; }
+  nav a:hover { text-decoration: underline; }
+  h1 { font-size: 27px; margin: 44px 0 14px; padding-top: 18px; border-top: 1px solid var(--linea); }
+  h2 { font-size: 22px; margin: 38px 0 12px; }
+  h3 { font-size: 18px; margin: 28px 0 10px; }
+  p, li { color: #23232c; }
+  strong { color: var(--tinta); }
+  code { background: var(--morado-suave); color: #4a2fd0; padding: 2px 6px; border-radius: 6px; font-size: 14.5px;
+    font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace; }
+  pre { background: #1b1b22; color: #e8e8f0; padding: 18px 20px; border-radius: 12px; overflow-x: auto;
+    font-size: 13.5px; line-height: 1.55; white-space: pre-wrap; word-break: break-word; }
+  pre code { background: none; color: inherit; padding: 0; font-size: 13.5px; }
+  blockquote { border-left: 3px solid var(--morado); margin: 18px 0; padding: 4px 0 4px 18px; color: var(--suave); }
+  table { border-collapse: collapse; width: 100%; margin: 20px 0; background: var(--papel);
+    border: 1px solid var(--linea); border-radius: 12px; overflow: hidden; font-size: 15px; }
+  th, td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--linea); vertical-align: top; }
+  th { background: #fbfbfe; font-size: 14px; color: var(--suave); text-transform: uppercase; letter-spacing: .4px; }
+  tr:last-child td { border-bottom: none; }
+  em { color: var(--suave); }
+  hr { border: none; border-top: 1px solid var(--linea); margin: 34px 0; }
+</style>
+</head>
+<body>
+<div class="hoja">
+  <header class="tapa">
+    <div class="etiqueta">Auditoría · 30/09/2026 23:21</div>
+    <h1>La cadena de prompts de Sinkroo</h1>
+    <p>Qué sistema usa cada prompt, cómo se le dan las órdenes a cada modelo de generación, y los ocho
+       hallazgos con su evidencia — más <strong>el texto completo de todos los prompts</strong> para auditar.</p>
+    <p style="margin-top:14px;color:var(--suave)">Ejemplo: el negocio cargado (verificación de activos del
+       mundo real, domicilio en el DIFC de Dubái) y el último guion que escribió el motor.</p>
+  </header>
+
+  <nav>
+    <a href="#estandar">Parte 0 · El estándar del proyecto y cómo está el sistema contra él, norma por norma</a>
+    <a href="#hallazgos">Parte 1 · El informe: la cadena, los ocho hallazgos y lo que propongo</a>
+    <a href="#completos">Parte 2 · El prompt completo, verbatim (nuestras órdenes + las del motor de planos + el texto literal de una corrida real)</a>
+  </nav>
+
+  <section id="estandar"><h1 id="21-manual-de-estandares-de-ingenieria-de-prompts-y-orquestacion-audiovisual">21 · Manual de estándares de ingeniería de prompts y orquestación audiovisual</h1>
+<p>Este es el estándar del proyecto, y <strong>así está el sistema contra él</strong> (todo comprobado con el protocolo de
+validación en seco, sin encender la GPU). Cada norma dice dónde vive y qué la sostiene.</p>
+<h2 id="modulo-1-principios">Módulo 1 · Principios</h2>
+<table>
+<thead>
+<tr>
+<th>Principio</th>
+<th>Estado</th>
+<th>Dónde vive</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Separación estricta de responsabilidades</strong> — los modelos de texto piensan y escriben; el motor de planos estructura; los motores generativos ejecutan lo que el núcleo decide</td>
+<td>✓</td>
+<td><code>escritor.ts</code> (texto), <code>planos.ts</code>→PenShot (estructura), <code>prompts-por-motor.ts</code> (la decisión), <code>imagenes.ts</code>/<code>video-animado.ts</code> (ejecución)</td>
+</tr>
+<tr>
+<td><strong>Cero ambigüedad conceptual</strong> — cada línea con representación física filmable</td>
+<td>✓</td>
+<td><code>tangibilidad.ts</code> + la regla 4 del encargo de Nia + la reparación automática</td>
+</tr>
+<tr>
+<td><strong>Control centralizado de la estética</strong> — la dirección de fotografía no se delega</td>
+<td>✓</td>
+<td><code>cineDeLaPieza()</code>: un etalonaje por pieza, ópticas y tamaños que rotan, luz que avanza</td>
+</tr>
+<tr>
+<td><strong>Validación pre-ejecución obligatoria (modo seco)</strong></td>
+<td>✓</td>
+<td><code>pruebas/validar-en-seco.ts</code> — cuatro controles y veredicto APTO / NO APTO</td>
+</tr>
+</tbody>
+</table>
+<h2 id="modulo-2-las-cinco-capas">Módulo 2 · Las cinco capas</h2>
+<table>
+<thead>
+<tr>
+<th>Capa</th>
+<th>Norma</th>
+<th>Estado</th>
+<th>Dónde</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1 · Copy (Nia)</td>
+<td>Frases cortas, una idea, 4-6 líneas, usted, sin promesas vacías, <strong>cada línea filmable</strong>, y que entre en 30 s (~330 caracteres)</td>
+<td>✓</td>
+<td><code>escritor.ts</code> → <code>elEncargo</code>, reglas 1 a 8</td>
+</tr>
+<tr>
+<td>2 · Planos (PenShot)</td>
+<td>Sólo variables duras (quién hace qué, dónde, con qué, duración ≤5 s). <strong>No</strong> decide luz, óptica, cámara ni etalonaje</td>
+<td>✓</td>
+<td><code>entradaDePlanos()</code> pide sólo eso; <code>soloVariablesDuras()</code> descarta lo demás</td>
+</tr>
+<tr>
+<td>3 · Traducción</td>
+<td>Sin «no camera talk»; conserva cada término de cámara, luz y encuadre; sin cortes a 300 caracteres</td>
+<td>✓</td>
+<td><code>escritor.escenaEnIngles</code> (términos conservados, corte en 900)</td>
+</tr>
+<tr>
+<td>4 · Imagen (FLUX.1-dev)</td>
+<td>Cero negativos (guía destilada); todo en positivo; <strong>un etalonaje maestro</strong> por pieza; óptica por tamaño de plano (24 mm general, 35 mm medio, 85 mm primer plano)</td>
+<td>✓</td>
+<td><code>promptDeImagen()</code> + <code>cineDeLaPieza()</code></td>
+</tr>
+<tr>
+<td>5 · Video (Wan 2.1 I2V)</td>
+<td>Campo de movimiento independiente de la foto; vectores de animación y de cámara explícitos</td>
+<td>✓</td>
+<td><code>textoDeMovimiento()</code> (recibe el movimiento del motor y reserva su lugar antes de recortar)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="modulo-3-protocolo-de-validacion-en-seco">Módulo 3 · Protocolo de validación en seco</h2>
+<p><code>npx tsx pruebas/validar-en-seco.ts "&lt;guion&gt;" [tono] [lengua] [zona]</code> — y decide APTO o NO APTO.</p>
+<table>
+<thead>
+<tr>
+<th>Control</th>
+<th>Qué comprueba</th>
+<th>Estado</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1 · Integridad del guion</td>
+<td>Que cada línea nombre una acción o un lugar real (el botón no se revisa: no es una escena)</td>
+<td>✓</td>
+</tr>
+<tr>
+<td>2 · Coherencia de planos</td>
+<td>Que la cantidad y las duraciones entren en la pieza y que la fila cubra a la voz (la normalización de tiempos frente a los bloques de audio)</td>
+<td>✓</td>
+</tr>
+<tr>
+<td>3 · Limpieza estética</td>
+<td>Que los 6 prompts traigan los descriptores del motor, que la óptica corresponda a cada tamaño de plano, que haya <strong>un solo etalonaje</strong> y <strong>ni un resto</strong> de la estética del motor de planos</td>
+<td>✓</td>
+</tr>
+<tr>
+<td>4 · Validez de las estructuras</td>
+<td>Que el cuerpo que se manda al 8077 sea JSON válido y que de su respuesta se lean los 4 campos que el motor usa</td>
+<td>✓</td>
+</tr>
+</tbody>
+</table>
+<h2 id="el-recorrido-de-una-pieza-que-cumplio-todo-medido">El recorrido de una pieza que cumplió todo (medido)</h2>
+<pre><code>guion (Nia, con tangibilidad y reparación)      → 5 líneas, todas filmables
+planos (PenShot)                                → 11 devueltos; el motor usa 6 repartidos
+traducción                                      → conserva los términos de cámara
+imagen (FLUX dev)                               → general 24mm · medio 35mm · medio corto 85mm · medio · general 24mm · primer plano 85mm
+etalonaje                                       → uno solo: Fujifilm ETERNA
+luz                                             → hora dorada → luz pareja → hora azul
+video (Wan)                                     → 6 de 6 planos piden movimiento real
+voz (edge-tts)                                  → 26,5 s; las tomas fijas se estiran para cubrirla
+veredicto                                       → APTO PARA GASTAR GPU
+</code></pre>
+<h2 id="los-dos-defectos-que-el-protocolo-destapo-y-quedaron-arreglados">Los dos defectos que el protocolo destapó y quedaron arreglados</h2>
+<ol>
+<li><strong>La pieza se cortaba al tramo más corto.</strong> Las tomas fijas duraban 3 s y el corte final usaba <code>-shortest</code>:
+   con una voz de 26,5 s y 17 s de imagen, <strong>se perdía el final de la voz</strong>. Ahora el largo de cada toma fija
+   se calcula para que la fila dure exactamente lo que dura la voz.</li>
+<li><strong>El guion no entraba en la pieza.</strong> Nia escribía 430 caracteres para una pieza de 30 s (33 s de voz). El
+   encargo ahora declara el presupuesto de tiempo, y el protocolo lo controla antes de gastar GPU.</li>
+</ol>
+<h2 id="lo-que-queda-decision-del-dueno">Lo que queda (decisión del dueño)</h2>
+<ul>
+<li><strong>Publicar la pieza de prueba</strong> en la GPU con el estándar ya cumplido, para verlo con los ojos.</li>
+<li><strong>Borrar <code>promptDePieza</code></strong> (<code>prompts.ts</code>): no lo usa nadie, es ruido puro.</li>
+</ul></section>
+  <section id="hallazgos"><h1 id="19-informe-la-cadena-de-prompts-quien-le-habla-a-cada-modelo-y-con-que-orden">19 · Informe: la cadena de prompts, quién le habla a cada modelo y con qué orden</h1>
+<p>Escrito a pedido del dueño: «<em>definitivamente el problema es el prompt que se le da al sistema, no está bien
+configurado… revisá qué sistemas están usando ese prompt generado, cómo se le están dando las órdenes a los
+modelos de generación</em>».</p>
+<p>Todo lo que sigue está sacado del código y de lo que quedó guardado de corridas reales: no es teoría.</p>
+<hr />
+<h2 id="1-la-cadena-completa-de-punta-a-punta">1. La cadena completa, de punta a punta</h2>
+<pre><code>material del negocio (web, archivos, descripción que escribió el dueño)
+    │
+    ├─► VERA (lee el negocio)                    → qué hace, a quién le vende, en qué idioma
+    ├─► LUX (lee el mercado)                     → avisos reales, el hueco que nadie llena, el ángulo
+    ├─► REX (demanda y precios) / KAI / SOL / RUMI / NOVA / IRIS / TINO
+    │
+    ▼
+NIA — escribe el copy         [escritor.ts · escribirLaPieza · DeepSeek]
+    │  devuelve: título, gancho, 4-6 líneas, cierre
+    ▼
+PENSHOT — desglosa el guion en planos   [planos.ts → servicio local 8077 · DeepSeek]
+    │  ADENTRO suyo hay 6 agentes con SUS PROPIOS prompts:
+    │  script_parser → shot_segmenter → video_splitter → prompt_converter → quality_auditor → continuity_guardian
+    │  devuelve por plano: prompt (inglés), prompt_negativo, duración, audio
+    ▼
+escenaEnIngles — traduce la escena     [escritor.ts · DeepSeek]
+    ▼
+FLUX.1-dev — pinta la foto             [imagenes.ts · conLaGpuAlquilada → ComfyUI 8188]
+    ▼
+Wan 2.1 I2V — anima la foto            [video-animado.ts · animarFoto → ComfyUI 8189]
+    ▼
+edge-tts — la voz + ffmpeg — subtítulos   [video-animado.ts · armarPieza]
+</code></pre>
+<p><strong>Quién manda en el prompt visual (hoy):</strong> el texto que llega al motor de imagen es una mezcla de <strong>tres
+manos distintas</strong>, y ahí está el problema de fondo:</p>
+<table>
+<thead>
+<tr>
+<th>mano</th>
+<th>qué aporta</th>
+<th>dónde</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>PenShot (<code>prompt_converter</code>)</td>
+<td>la escena y el estilo</td>
+<td>servicio <code>story-shot-agent</code></td>
+</tr>
+<tr>
+<td>nuestro traductor (<code>escenaEnIngles</code>)</td>
+<td>la escena <strong>en inglés</strong></td>
+<td><code>escritor.ts</code></td>
+</tr>
+<tr>
+<td>el motor (<code>promptDeImagen</code>)</td>
+<td>el oficio fotográfico, la luz, la paleta, el formato</td>
+<td><code>prompts-por-motor.ts</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="2-la-orden-exacta-que-recibe-cada-modelo">2. La orden exacta que recibe cada modelo</h2>
+<h3 id="21-nia-el-copy-escritorts-elencargo">2.1 Nia — el copy (<code>escritor.ts → elEncargo</code>)</h3>
+<p>Lo que se le pide, textual: escribir el copy de UNA pieza; frases cortas con punto; una idea por frase; 4-6
+líneas si es video («<strong>cada línea es una escena del video: tiene que poder verse algo distinto en cada
+una</strong>»); nada de cifras, promesas ni «el mejor»; se le habla al cliente de usted.
+Reglas del sistema: «<em>Es un redactor publicitario que escribe anuncios cortos y concretos para negocios
+reales. Devuelve sólo JSON.</em>»</p>
+<h3 id="22-penshot-los-planos-adentro-del-servicio-story-shot-agent">2.2 PenShot — los planos (adentro del servicio <code>story-shot-agent</code>)</h3>
+<p>Sus prompts están en <code>src/penshot/neopen/prompts/v1.x/en/*.yaml</code>, con DeepSeek (<code>deepseek-chat</code>) como modelo.</p>
+<ul>
+<li><strong><code>shot_segmenter_prompt.yaml</code></strong> (corta el guion en planos) — bueno: «<em>world-class storyboard/shot
+  designer… descripciones visuales concretas y vivas, incluyendo </em><em>composición, iluminación, ambiente</em><em>,
+  estado del personaje</em>» + duraciones por tipo de plano.</li>
+<li><strong><code>prompt_converter_prompt.yaml</code></strong> (escribe el prompt final de cada plano) — <strong>acá está el techo</strong>:</li>
+<li>«<em>Avoid highly technical jargon; keep prompts accessible and model-friendly</em>»</li>
+<li>«<em>Keep prompts concise and avoid overly long or complex sentences</em>»</li>
+<li>«<em>Prefer concrete visual elements over abstract concepts</em>»</li>
+<li>Largo recomendado: <strong>{min_length}-{max_length} palabras</strong> (20-200 en la configuración).</li>
+<li>Sus requisitos de "video prompt" son de <strong>continuidad</strong> (diálogo literal, colores de ropa, props):
+    <strong>no hay una sola regla sobre cámara, óptica, movimiento, luz o etalonaje</strong>.</li>
+<li><strong><code>shot_config.py</code></strong>: fragmentos de 1 a 5 s, se corta arriba de 5,5 s, prompt de 20-200 palabras.</li>
+</ul>
+<p><strong>Conclusión de esta parte:</strong> ese motor está diseñado para <strong>no cambiar entre planos</strong> (continuidad para
+Sora/Veo/Kling), no para dirigir fotografía. Pedirle "cine con especificación en profundidad" va <strong>contra su
+propia orden</strong>: por eso devuelve «cinematic lighting» y poco más.</p>
+<h3 id="23-nuestro-traductor-escritorts-escenaeningles">2.3 Nuestro traductor (<code>escritor.ts → escenaEnIngles</code>)</h3>
+<p>Regla del sistema, textual: «<em>You turn a Spanish description of a real photo scene into ONE line of plain
+English for an image generator. Describe only what is visible: who does what, where, with which objects. No
+selling words, no quality words, </em><em>no camera talk</em><em>, no text in the image, no brands, no logos…</em>»</p>
+<h3 id="24-el-motor-de-imagen-prompts-por-motorts-promptdeimagen-imagenests">2.4 El motor de imagen (<code>prompts-por-motor.ts → promptDeImagen</code> + <code>imagenes.ts</code>)</h3>
+<ul>
+<li>FLUX: una frase en inglés, en positivo, con el oficio fotográfico (<code>shot on a full-frame camera with a 50mm
+  lens at f/2.0…</code>), la paleta y el formato. <strong>Sin negativo</strong> (es de guía destilada: cfg 1).</li>
+<li>SDXL: etiquetas separadas por comas + un negativo de 241 caracteres, y <strong>el sujeto primero</strong>.</li>
+<li>El grafo de ComfyUI: <code>KSampler</code> (pasos y cfg según el modelo), <code>EmptyLatentImage</code>, <code>FluxGuidance</code> para el
+  dev, <code>VAEDecode</code>, <code>SaveImage</code>.</li>
+</ul>
+<h3 id="25-el-motor-de-video-video-animadots">2.5 El motor de video (<code>video-animado.ts</code>)</h3>
+<ul>
+<li>Grafo Wan 2.1 I2V: 20 pasos, cfg 5, shift 5, unipc, ruido de arranque 0,05, LoRA destilado en 0.</li>
+<li><strong>El texto que recibe es el del plano</strong> (la descripción de la foto), o sea una escena quieta: el movimiento
+  solo entra si el plano lo nombró de casualidad («camera slowly pans»).</li>
+</ul>
+<h3 id="26-la-voz-y-los-subtitulos">2.6 La voz y los subtítulos</h3>
+<ul>
+<li>La voz la elige <code>vozSegunCaso</code> por <strong>tono + lengua de la pieza</strong> (inglés institucional → <code>en-GB-RyanNeural</code>;
+  español → voces colombianas), a ritmo -8% (<code>ritmoParaEdge</code>).</li>
+<li>Los subtítulos salen del <strong>mismo texto que lee la voz</strong>, repartidos por la duración real del audio.</li>
+</ul>
+<hr />
+<h2 id="3-la-evidencia-dura-el-prompt-real-de-la-ultima-corrida">3. La evidencia dura: el prompt real de la última corrida</h2>
+<p><strong>El guion que escribió Nia</strong> (pieza «El hueco que nadie está midiendo…»):</p>
+<blockquote>
+<p>Usted ya sabe que sus activos del mundo real no se verifican igual en todas partes. / El problema no es la
+tokenizacion. / El problema es que no hay una forma común de verificar el grado de soberanía de cada
+activo. / Sin esa verificación, la trazabilidad se rompe y la custodia de activos queda en duda. / Con
+verificación de grado soberano, los gemelos digitales y los contratos inteligentes operan sobre una base
+confiable. / Escriba por WhatsApp</p>
+</blockquote>
+<p><strong>El plano que escribió PenShot</strong> para eso (1 de 7):</p>
+<blockquote>
+<p>«<em>vertical 9:16 full shot, real-life interior space, afternoon natural light, slightly worn tabletop,
+casually placed everyday objects, no staged arrangement, </em><em>no people present</em><em>, quiet and authentic
+atmosphere, camera slowly pans horizontally…</em>»</p>
+</blockquote>
+<p><strong>El prompt que llegó al motor de imagen</strong> (sacado de la pieza, <code>generacion.prompt_visual</code>):</p>
+<blockquote>
+<p>«<em>editorial commercial photograph, vertical 9:16 framing, subject slightly off-centre, </em><em>showing a desk
+surface and wall textures in an everyday room</em><em>, lit by afternoon sunlight through a side window, </em><em>with no
+people</em><em>, in a real workplace, in use, with everyday objects around, … </em><em>clean tidy surfaces, clear
+uncluttered background, plain unbranded containers and plain packaging, empty walls</em><em>»</em></p>
+</blockquote>
+<p>Resultado: una mesa con frascos. El dueño tenía razón y ahora se ve por qué, paso por paso.</p>
+<hr />
+<h2 id="4-los-siete-hallazgos">4. Los siete hallazgos</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>hallazgo</th>
+<th>evidencia</th>
+<th>estado</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>El traductor borra la especificación de cámara.</strong> <code>escenaEnIngles</code> tiene la orden «no camera talk» y el plano es justamente donde vive la cámara.</td>
+<td>Probado: de 412 caracteres con «medium shot, golden hour side light, fine grain, Kodak 2383» quedan 298 <strong>sin ninguna palabra de cámara</strong>.</td>
+<td><strong>PENDIENTE</strong> (el hallazgo más grande)</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>El motor de planos aplana a propósito</strong>: «evitá la jerga técnica», «sé conciso», 20-200 palabras, y sus requisitos son de continuidad, no de fotografía.</td>
+<td><code>prompt_converter_prompt.yaml</code> (textual arriba)</td>
+<td><strong>PENDIENTE</strong> — decisión: o se le cambia su prompt, o el motor deja de pedirle el prompt visual y solo le pide los planos</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>El prompt de imagen se cortaba a 300 caracteres</strong> y el oficio genérico iba delante de la escena.</td>
+<td><code>promptDeImagen</code>: <code>.slice(0, 300)</code>; el genérico <code>editorial commercial photograph…</code> iba primero</td>
+<td><strong>MEDIO</strong>: ya puse la escena primero y saqué el genérico; <strong>el corte de 300 sigue</strong></td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>La línea «paredes vacías / envases lisos / fondo despejado» vaciaba la foto.</strong> Era mi truco contra las letras inventadas.</td>
+<td>Está en el prompt real de arriba</td>
+<td><strong>ARREGLADO</strong> (hoy)</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>El guion es abstracto y sin sujeto visible</strong>: «soberanía», «trazabilidad», «gemelos digitales». Ninguna línea exige algo que se pueda filmar.</td>
+<td>El guion real de arriba</td>
+<td><strong>PENDIENTE</strong> — es la raíz: si el guion no tiene sujeto, el plano no puede tenerlo</td>
+</tr>
+<tr>
+<td>6</td>
+<td><strong>El motor de video recibe la descripción de la foto, no el movimiento.</strong></td>
+<td><code>agentes.ts</code> le pasa <code>escenaIngles</code> como prompt positivo</td>
+<td><strong>PENDIENTE</strong></td>
+</tr>
+<tr>
+<td>7</td>
+<td><strong>Los negativos de FLUX son letra muerta</strong> (guía destilada, cfg 1): todo lo que no se quiere hay que pedirlo en positivo.</td>
+<td><code>NECESIDADES['imagen-flux']</code> y la muestra de cfg 3,5 quemada</td>
+<td><strong>ARREGLADO</strong> (hoy, documentado)</td>
+</tr>
+<tr>
+<td>9</td>
+<td><strong>La dirección de fotografía la improvisaba el motor de planos, plano por plano.</strong> Su instrucción es de continuidad, no de cine (ver hallazgo 2), así que en la misma pieza convivían «natural overcast» y «Kodak 2383», la óptica cambiaba sin criterio y la luz no tenía que ver con la línea del guion.</td>
+<td>Corrida seca: los seis prompts traían «cinematic, sunny morning, Fujifilm ETERNA grading, natural overcast, 35mm lens, static camera, motion blur 0.3, frame rate 24». PenShot <strong>ignoró</strong> la orden de no escribir estética.</td>
+<td><strong>ARREGLADO</strong>: el motor decide el cine de toda la pieza (<code>cineDeLaPieza</code>) y lo que el plano diga de luz/óptica/acabado se descarta (<code>soloVariablesDuras</code>). Verificado: general 24mm hora dorada → medio 35mm → medio corto 85mm luz pareja → medio → general 24mm hora azul → primer plano 85mm, <strong>un solo etalonaje (ETERNA) en los seis</strong>, cero restos de la estética de PenShot</td>
+</tr>
+<tr>
+<td>8</td>
+<td><strong>El motor de planos devuelve muchos más planos de los que entran y NO obedece al número que se le pide.</strong> Y el nuestro se quedaba con los primeros: las últimas líneas del guion se quedaban sin imagen.</td>
+<td>Medido tres veces con el mismo guion: <strong>15 planos / 47,68 s</strong>, <strong>12 / 39,5 s</strong> y <strong>8 / 24,15 s</strong> para una pieza de 30 s. El motor usa 6 (≈20 s). Al pedirle «devolvé exactamente 6», devolvió 12: <strong>no lo respeta</strong>.</td>
+<td><strong>ARREGLADO de nuestro lado</strong>: los planos se toman <strong>repartidos</strong> a lo largo del guion (no los primeros) y los que no entran quedan guardados con la pieza</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="5-que-propongo-en-orden">5. Qué propongo, en orden</h2>
+<ol>
+<li><strong>Un solo dueño del prompt visual: el motor.</strong> Que PenShot siga cortando el guion en planos (duración,
+  sujeto, continuidad: eso lo hace bien) pero que <strong>el prompt de imagen y de video lo escriba nuestro motor</strong>
+  con una orden de dirección de fotografía de verdad (tamaño de plano, óptica, movimiento, luz, hora,
+  etalonaje, textura). Es la única forma de que la especificación no se pierda en dos traducciones.</li>
+<li><strong>El traductor debe traducir, no recortar</strong>: cambiar su orden a «conservá los términos de cámara, luz y
+  composición: son parte de la escena» y subir el corte de 300 caracteres.</li>
+<li><strong>El guion necesita sujeto visible</strong>: agregar a la orden de Nia una regla dura — <em>cada línea tiene que
+  poder filmarse con alguien haciendo algo concreto</em> — y declarar en la pieza cuando no se pudo.</li>
+<li><strong>Al motor de video, el movimiento explícito</strong>: un campo propio (qué se mueve, qué hace la cámara) escrito
+  por el mismo paso que escribe el prompt visual.</li>
+<li><strong>Medir antes de gastar</strong>: un comando de prueba que escriba el guion + los planos + los prompts <strong>sin
+  encender la GPU</strong>, para revisar el texto de punta a punta antes de pagar una sola hora de máquina.</li>
+</ol>
+<p>Los cinco puntos son de texto: no gastan GPU hasta que el texto esté bien.</p></section>
+  <section id="completos"><h1 id="20-el-prompt-completo-del-sistema-para-auditar">20 · El prompt completo del sistema, para auditar</h1>
+<p>Esto es <strong>todo lo que se le dice a cada modelo</strong>, en orden, tal cual está en el código y tal cual salió en la
+última corrida real. No hay nada retipeado a mano: el documento se arma con un volcado.</p>
+<p>El negocio del ejemplo es el que está cargado (verificación de activos del mundo real, con su domicilio en
+el DIFC de Dubái y sus doce mercados), y el guion es el último que escribió el motor.</p>
+<hr />
+<h2 id="a-las-ordenes-de-nuestro-motor-los-archivos-del-proyecto">A. Las órdenes de NUESTRO motor (los archivos del proyecto)</h2>
+<h3 id="a1-nia-el-encargo-del-copy-se-le-manda-a-deepseek">A.1 · Nia — el encargo del copy (se le manda a DeepSeek)</h3>
+<pre><code>function elEncargo(d: {
+  negocio: { nombre: string; queHace: string; ofrece: string[]; zona: string };
+  angulo: string; huecoDelMercado: string; formato: string; esVideo: boolean;
+  aQuien: string; objetivo: string; boton: string; tono: string; idioma: string;
+  terminosDelMercado: string[]; referencia: string; material: string;
+}): string {
+</code></pre>
+<p><strong>Su orden de sistema (textual):</strong> «<em>Es un redactor publicitario que escribe anuncios cortos y concretos para negocios reales. Devuelve sólo JSON.</em>»</p>
+<h3 id="a2-el-traductor-de-la-escena-al-ingles-se-le-manda-a-deepseek">A.2 · El traductor de la escena al inglés (se le manda a DeepSeek)</h3>
+<pre><code>            content: 'You translate a Spanish description of a photo/film scene into English for an image '
+              + 'generator. Describe only what is visible: who does what, where, with which objects. '
+              // LA CÁMARA ES PARTE DE LA ESCENA. Antes esta orden decía «no camera talk» y borraba justamente lo
+              // que hace cinematográfica a la toma: medido, un plano de 412 caracteres con «medium shot, golden
+              // hour side light, fine grain, Kodak 2383 grade» llegaba al motor como 298 caracteres SIN una
+              // sola palabra de cámara. La especificación se perdía en la traducción.
+              + 'KEEP, translated as-is, every camera, lens, framing, lighting, time-of-day and film-grading term '
+              + '(shot size, focal length, camera movement, light direction, grain, colour grade). They are part '
+              + 'of the scene, not decoration. '
+              + 'Do not add selling words, quality words, text in the image, brands or logos. '
+              + 'Do not invent people, places or objects that are not in the description. Answer with the line only.',
+</code></pre>
+<h3 id="a3-el-encargo-que-le-manda-nuestro-motor-a-penshot-guion-contexto-de-la-pieza">A.3 · El encargo que le manda nuestro motor a PenShot (guion + contexto de la pieza)</h3>
+<p>Se arma en <code>prompts-por-motor.ts → entradaDePlanos</code>. Su resultado literal está en la sección C.</p>
+<h3 id="a4-el-armador-del-prompt-de-imagen-y-del-de-video-prompts-por-motorts">A.4 · El armador del prompt de imagen y del de video (prompts-por-motor.ts)</h3>
+<p>El literal de cada uno, con un plano real, está en la sección C.</p>
+<hr />
+<h2 id="b-las-ordenes-del-motor-de-planos-penshot-servicio-local-sobre-deepseek">B. Las órdenes del motor de planos (PenShot, servicio local sobre DeepSeek)</h2>
+<p>Están en <code>/root/agentes/story-shot-agent/src/penshot/neopen/prompts/v1.x/en/</code>. Son <strong>seis agentes</strong>: el que
+lee el guion, el que lo corta en planos, el que los parte en fragmentos de 5 s, el que escribe el prompt
+final, el que audita y el que cuida la continuidad. Van enteros.</p>
+<h3 id="bs-script_parser_promptyaml">B.S · <code>script_parser_prompt.yaml</code></h3>
+<pre><code class="language-yaml"># Script parsing prompt templates
+version: &quot;1.2&quot;
+
+script_parser_system:
+  name: &quot;base_script_parser_prompt&quot;
+  description: &quot;System prompt template for parsing various screenplay formats into structured JSON&quot;
+  template: |
+    You are a professional script-parsing AI. Parse any input screenplay text into the following structured JSON strictly (do not output extra text).
+
+    [JSON schema]
+      {{
+        &quot;title&quot;: &quot;script title&quot;,
+        &quot;characters&quot;: [
+          {{
+            &quot;name&quot;: &quot;unique character name (use the full name as first introduced in the script)&quot;,
+            &quot;gender&quot;: &quot;male/female&quot;,
+            &quot;role&quot;: &quot;lead/support/narrator&quot;,
+            &quot;description&quot;: &quot;visual description (appearance, age, etc.)&quot;,
+            &quot;key_traits&quot;: [&quot;trait1&quot;, &quot;trait2&quot;]
+          }}
+        ],
+        &quot;scenes&quot;: [
+          {{
+            &quot;id&quot;: &quot;scene_001&quot;,
+            &quot;location&quot;: &quot;scene location&quot;,
+            &quot;description&quot;: &quot;visual scene description (lighting, mood, environment elements)&quot;,
+            &quot;time_of_day&quot;: &quot;morning/noon/afternoon/dusk/night/late_night&quot;,
+            &quot;weather&quot;: &quot;clear/rainy/overcast/snowy/sunny/misty (if present)&quot;,
+            &quot;audio_context&quot;: {{
+              &quot;scene_type&quot;: &quot;indoor/outdoor/cafe/park/street/living_room/rainy_outdoor/night_outdoor/other&quot;,
+              &quot;env_sounds&quot;: [
+                {{
+                  &quot;sound_type&quot;: &quot;rain/wind/thunder/water_drip/footstep/traffic/crowd/music/paper_rustle/tv_noise/bird/silence/other&quot;,
+                  &quot;intensity&quot;: 0.0-1.0,
+                  &quot;continuous&quot;: true/false,
+                  &quot;description&quot;: &quot;sound description&quot;,
+                  &quot;timing&quot;: &quot;opening/peak/ending&quot;
+                }}
+              ],
+              &quot;has_dialogue&quot;: true/false,
+              &quot;has_voiceover&quot;: true/false,
+              &quot;atmosphere&quot;: &quot;tense/warm/sad/calm/mysterious&quot;,
+              &quot;reverb&quot;: 0.0-1.0
+            }},
+            &quot;elements&quot;: [
+              {{
+                &quot;id&quot;: &quot;elem_001&quot;,
+                &quot;type&quot;: &quot;dialogue/action/scene&quot;,
+                &quot;sequence&quot;: &quot;unique sequence number in the script, e.g. 1&quot;,
+                &quot;duration&quot;: 3.5,
+                &quot;confidence&quot;: 0.95,
+                &quot;content&quot;: &quot;original element text (dialogue text or action description, empty string for silence)&quot;,
+                &quot;character&quot;: &quot;character name (must match characters[].name)&quot;,
+                &quot;target_character&quot;: &quot;target character name (must match characters[].name) or null&quot;,
+                &quot;description&quot;: &quot;visual description for this element (actions, expressions, shot details)&quot;,
+                &quot;intensity&quot;: 0.0-1.0,
+                &quot;emotion&quot;: &quot;neutral/happy/sad/angry/fear/surprise/disgust/anxious/calm/tender&quot;,
+                &quot;audio_context&quot;: {{
+                  &quot;sound_type&quot;: &quot;rain/wind/thunder/water_drip/footstep/traffic/crowd/music/tv_noise/bird/silence/other&quot;,
+                  &quot;description&quot;: &quot;sound description&quot;,
+                  &quot;intensity&quot;: 0.0-1.0
+                }}
+              }}
+            ]
+          }}
+        ],
+        &quot;global_metadata&quot;: {{
+          &quot;key_props&quot;: [
+            {{
+              &quot;name&quot;: &quot;prop name (e.g. \&quot;The Winged Ones\&quot;, lending card, ticket stub)&quot;,
+              &quot;description&quot;: &quot;visual description of the prop&quot;,
+              &quot;color&quot;: &quot;prop color&quot;,
+              &quot;importance&quot;: &quot;high/medium/low&quot;,
+              &quot;appears_in&quot;: [&quot;scene_001&quot;, &quot;scene_002&quot;]
+            }}
+          ],
+          &quot;character_outfits&quot;: [
+            {{
+              &quot;character&quot;: &quot;character name&quot;,
+              &quot;description&quot;: &quot;clothing visual description&quot;,
+              &quot;color&quot;: &quot;primary clothing color&quot;,
+              &quot;material&quot;: &quot;material&quot;,
+              &quot;style&quot;: &quot;style&quot;
+            }}
+          ],
+          &quot;key_locations&quot;: [
+            {{
+              &quot;name&quot;: &quot;location name&quot;,
+              &quot;description&quot;: &quot;visual description of the location&quot;,
+              &quot;visual_cues&quot;: [&quot;red sign&quot;, &quot;green bench&quot;],
+              &quot;appears_in&quot;: [&quot;scene_001&quot;, &quot;scene_002&quot;]
+            }}
+          ],
+          &quot;continuity_notes&quot;: &quot;continuity points to pay attention to (e.g. coat color must be consistent, exact book title, etc.)&quot;,
+          &quot;audio_atmosphere&quot;: &quot;global audio atmosphere&quot;,
+          &quot;recurring_sounds&quot;: [&quot;rain&quot;, &quot;footstep&quot;]
+        }}
+      }}
+
+    [Important parsing rules]
+      1. Character extraction:
+        - Extract all characters and keep names consistent; do not use vague pronouns (&quot;that person&quot;, &quot;he&quot;, &quot;she&quot;, &quot;they&quot;).
+        - Include clothing details explicitly in character.description when mentioned (e.g. plain jacket, light gray trench coat, off-white dress).
+
+      2. Element types:
+         - dialogue: character dialogue and must include the character field
+         - action: character action description
+         - scene: environmental/scene description
+
+      3. Scene splitting:
+        - Start a new scene on location or time changes
+        - scene.description should describe the overall visual atmosphere
+
+      4. Field separation (CRITICAL):
+       - content: store only the raw element text without modification
+          Dialogue: full original line text
+          Action: original action description (e.g. &quot;Chen Yang fumbles to pick up the book, looks up&quot;)
+          Scene: original scene text (e.g. &quot;Rain trickles, camera pans down from the overcast sky&quot;)
+
+       - description: store the visualized description used by downstream AI
+          Include composition, lighting, textures, expressions and action details
+          Use vivid visual language to support prompt generation
+          Example: &quot;POV shift to eye level: low-hanging clouds, thin rain slanting, Lin Xiaoyu crouches by the bench, off-white coat shoulder slightly damp&quot;
+
+       - audio_context.description: detailed audio description
+
+      5. Visual description requirements:
+         - Composition (overhead/low-angle/close-up/wide/track)
+         - Lighting (overcast/sunset/lamp/backlight)
+         - Texture (wet/reflective/rough/soft)
+         - Action detail (finger tremble/eyelash flutter/throat swallow)
+         - Expression (anxious/tender/shocked/expectant)
+
+      6. Duration heuristics (simplified):
+         - Dialogue: 2-6 seconds (based on line length)
+         - Action: 2-4 seconds
+         - Scene establishment: 3-5 seconds
+         - Silence/pauses: explicitly modeled with duration ≥ 1
+
+      7. Emotion inference: infer emotion rationally from context
+
+      8. Confidence scoring:
+         - 0.9-1.0: explicitly stated
+         - 0.7-0.8: reasonably inferred
+         - 0.5-0.6: plausible but uncertain
+
+
+# Natural language to structured storyboard prompt
+natural_language_script:
+  name: &quot;natural_language_prompt&quot;
+  description: &quot;Natural language script parsing&quot;
+  template: |
+    [Natural language parsing rules]
+      This is a script written in natural language narration; extract structured information from the prose.
+
+      1. content vs. description separation:
+         - content: store raw narrative text
+         - description: expand visual detail (composition, lighting, texture)
+
+      2. Infer implicit information:
+         - Scene: infer location, time, weather
+         - Characters: identify characters, resolve pronouns where possible
+         - Actions: extract character actions
+         - Dialogue: detect quoted speech or text following verbs like &quot;said&quot;
+
+      3. Preserve narrative order and spatial relations.
+
+
+# AI-generated storyboard script system prompt
+ai_storyboard_script:
+  name: &quot;ai_storyboard_prompt&quot;
+  description: &quot;AI-generated storyboard parsing&quot;
+  template: |
+    [AI storyboard parsing rules]
+      This is an AI-generated storyboard; shot descriptions often start with &quot;shot X&quot; or similar.
+
+      1. content vs. description separation:
+         - content: raw shot text
+         - description: complement with full visual detail
+
+      2. Extract shot metadata:
+         - shot type: wide/medium/close/near
+         - camera movement: tilt/pan/dolly/track
+         - composition: subject placement, depth of field
+
+      3. Fill missing info:
+         - scene info: location, time, weather
+         - character info: clothing, appearance
+         - prop info: book title, lending card, ticket stub
+         - emotional state: infer from actions and dialogue
+
+
+# Screenplay format system prompt
+screenplay_format_script:
+  name: &quot;screenplay_format_prompt&quot;
+  description: &quot;Standard screenplay format parsing&quot;
+  template: |
+    [Standard screenplay rules]
+      This is a screenplay in standard format.
+
+      1. Format cues:
+         - INT./EXT.: interior/exterior
+         - Character names: usually uppercase
+         - Dialogue: appears under the character name
+         - Parentheticals: action or expression guidance
+
+      2. content vs. description separation:
+         - content: raw text (scene headings, dialogue, parentheticals)
+         - description: expand visual details based on parentheticals
+
+      3. Extract key information:
+         - Pull clothing and prop details from parentheticals and dialogue
+         - Infer emotional states from dialogue
+
+
+# Structured scene prompt
+structured_scene_script:
+  name: &quot;structured_scene_prompt&quot;
+  description: &quot;Partially structured scene parsing&quot;
+  template: |
+    [Structured scene rules]
+      This is partially structured scene text.
+
+      1. content vs. description separation:
+         - content: preserve structured fields
+         - description: enrich visual detail
+
+      2. Fill missing info:
+         - Character appearance: age, hairstyle, clothing details
+         - Scene details: lighting, texture, environment elements
+         - Action continuity: fill intermediate actions
+         - Emotional changes: infer from dialogue and action
+
+      3. Maintain chronological and logical order.
+
+
+# Dialogue-only script prompt
+dialogue_only_script:
+  name: &quot;dialogue_only_prompt&quot;
+  description: &quot;Dialogue-only script parsing&quot;
+  template: |
+    [Dialogue-only rules]
+      This script contains only dialogue.
+
+      1. Dialogue parsing:
+         - content: store raw dialogue text
+         - description: infer visual cues from dialogue
+
+      2. Scene inference:
+         - Infer location from dialogue
+         - Infer time from keywords like &quot;today&quot; or &quot;next Wednesday&quot;
+         - Infer weather from words like &quot;it's raining&quot;
+
+      3. Relationship inference:
+         - Infer relationships from dialogue
+         - Infer tone/emotion from delivery
+
+      4. Action &amp; prop inference:
+         - Infer possible actions or props from dialogue
+
+      5. Confidence:
+         - Mark inferred content with low confidence (0.6-0.7)
+         - Preserve original meaning and avoid fabrication
+
+script_parser_user:
+  name: &quot;script_parser_user&quot;
+  description: &quot;User prompt template used for script parsing tasks&quot;
+  template: |
+    Parse the following script text and return the full JSON parsing result.
+
+    [Script text]
+    {script_text}
+
+    [Audio parsing rules]
+      1. Environment sound mapping:
+         - contains &quot;rain&quot;, &quot;raining&quot;, &quot;rain sound&quot; → sound_type: &quot;rain&quot;
+         - contains &quot;wind&quot;, &quot;wind sound&quot; → sound_type: &quot;wind&quot;
+         - contains &quot;thunder&quot;, &quot;thunder sound&quot; → sound_type: &quot;thunder&quot;
+         - contains &quot;drip&quot;, &quot;water drip&quot; → sound_type: &quot;water_drip&quot;
+         - contains &quot;footsteps&quot; → sound_type: &quot;footstep&quot;
+         - contains &quot;traffic&quot; → sound_type: &quot;traffic&quot;
+         - contains &quot;crowd&quot;, &quot;people&quot; → sound_type: &quot;crowd&quot;
+         - contains &quot;music&quot;, &quot;background music&quot; → sound_type: &quot;music&quot;
+         - contains &quot;tv&quot;, &quot;television&quot; → sound_type: &quot;tv_noise&quot;
+         - contains &quot;bird&quot;, &quot;birds&quot; → sound_type: &quot;bird&quot;
+         - contains &quot;quiet&quot;, &quot;silence&quot; → sound_type: &quot;silence&quot;
+
+      2. Scene type mapping:
+         - indoor/home/room → scene_type: &quot;indoor&quot; or &quot;living_room&quot;
+         - cafe → scene_type: &quot;cafe&quot;
+         - park → scene_type: &quot;park&quot;
+         - street/road → scene_type: &quot;street&quot;
+         - rainy + outdoor → scene_type: &quot;rainy_outdoor&quot;
+         - night + outdoor → scene_type: &quot;night_outdoor&quot;
+
+      3. Intensity heuristics (0-1):
+         - Use adjectives to estimate intensity (&quot;heavy rain&quot; → 0.8-1.0; &quot;light rain&quot;/&quot;drizzle&quot; → 0.2-0.4)
+         - &quot;approaching footsteps&quot; → intensity 0.3-0.7
+
+      4. Continuity: background audio → continuous: true; punctual effects (knock, drip) → continuous: false
+
+      5. Atmosphere inference: infer overall atmosphere (tense/warm/sad/calm)
+
+    [Global extraction rules]
+      global_metadata should include elements that persist across the script:
+
+      1. key_props: important props appearing in multiple scenes (visual description and color required)
+      2. character_outfits: character-specific clothing with color, material, style
+      3. key_locations: recurring locations with visual cues
+      4. continuity_notes: summarize visual elements that must remain consistent
+      5. audio_atmosphere: global audio style
+      6. recurring_sounds: repeated sounds
+
+    Return a valid JSON object only; do not include extra explanatory text or symbols.
+</code></pre>
+<h3 id="bs-shot_segmenter_promptyaml">B.S · <code>shot_segmenter_prompt.yaml</code></h3>
+<pre><code class="language-yaml">version: &quot;1.2&quot;
+
+shot_segmenter_system:
+  name: &quot;shot_segmenter_system&quot;
+  description: &quot;System prompt: split a structured script into an ordered sequence of shots&quot;
+  template: |
+    You are a world-class storyboard/shot designer, fluent in visual storytelling and shot construction.
+
+    Follow these rules:
+      1. Vivid description: Provide concrete, vivid visual descriptions including composition, lighting, mood, character state and emotional nuance.
+      2. Continuity guarantee: Enforce continuity constraints; ensure character appearance, position and state remain consistent.
+      3. Duration estimation: Estimate each shot's duration reasonably based on element content and type to maintain rhythm.
+      4. Shot description: Keep each shot description clear and focused on visual elements and emotional tone.
+      5. Character focus: Emphasize the main character in a shot; ensure their position and state are consistent within the shot.
+      6. Scene consistency: Maintain consistent visual style and environment elements inside the same scene.
+      7. Transition suggestions: Provide suitable transition recommendations (cut, fade in/out, dissolve, etc.) based on content and pacing.
+      8. Avoid over-segmentation; preserve visual and narrative coherence.
+      9. Suggested shot durations by content and emotional weight:
+         - Fast-paced action/incident: 1.5–2.5s (sudden brakes, running, accidents)
+         - Dialogue/reaction shots: 2.5–4s (adjust by line length and emotion)
+         - Establishing/environment: 3–5s (allow immersion)
+         - Emotional peak/key lines: 4–6s (allow emotional payoff)
+         - Close-up details/prop reveal: 2–3s (ensure readability)
+
+    Key integrity requirements:
+      - Dialogue completeness: Dialogue elements must appear verbatim in their corresponding shot descriptions; do not omit or summarize.
+      - Prop consistency: The same prop must retain identical name, appearance, color and any visible text across shots.
+      - Text accuracy: Any text that appears on props must remain identical across related shots.
+      - Character visual IDs: Each character's clothing color, accessories and visual marks must remain consistent with the script across all shots.
+      - Costume assignment: Do not assign A's clothing traits to B.
+      - Element tracing: Each shot's description must clearly cover the key information represented by its element_ids.
+
+    Ensure generated shot descriptions are coherent, detailed, and suitable for AI video generation.
+
+shot_segmenter_user:
+  name: &quot;shot_segmenter_user&quot;
+  description: &quot;User prompt: supply scene info and element list and request shot splitting&quot;
+  template: |
+    Split the following scene into an ordered sequence of shots.
+
+    Scene information:
+      Location: {location}
+      Time of day: {time_of_day}
+      Weather: {weather}
+      Description: {description}
+
+    Full element list (with full text):
+      {elements_list}
+
+    [Global context - MUST be strictly followed]
+      {global_context}
+
+    Splitting rules:
+      1. Dialogue elements typically use close_up or medium_shot; duration based on line length and emotional weight:
+         - Short lines (2–3s): 2.5–3.5s
+         - Medium lines (4–6s): 3.5–5s
+         - Long emotional lines (6–8s): 5–7s
+
+      2. IMPORTANT: Dialogue lines must appear verbatim in shot descriptions; do not replace with &quot;they say...&quot; or summarize.
+
+      3. Action elements typically use medium_shot; duration by complexity:
+         - Simple single actions: 1.5–2.5s
+         - Compound action sequences: 2.5–4s
+
+      4. Scene descriptions use wide_shot with 3–5s duration.
+
+      5. Merge consecutive related elements into one shot when appropriate to avoid over-splitting.
+
+      6. Prop consistency: Strictly follow the key props listed in [Global context]; the same prop must retain identical name, appearance, color and any visible text.
+
+      7. Costume assignment: Strictly follow character outfit definitions in [Global context]; do not mix up character clothing.
+
+      8. Dialogue must appear fully in its assigned shot.
+
+      9. Avoid splitting a single element/dialogue across multiple shots unless the original duration truly exceeds ~7–8s.
+
+      10. If an element duration is short (&lt;3s), present it within a single shot rather than split.
+
+      11. For medium-length elements (3–6s), check for natural visual pause points; keep single shot if none.
+
+      12. If splitting is required (&gt;7s), ensure each resulting shot has independent visual focus or emotional progression.
+
+    Return a JSON array where each item is:
+    {{
+      &quot;id&quot;: &quot;shot_001&quot;,
+      &quot;description&quot;: &quot;detailed shot description (must include full dialogue if applicable)&quot;,
+      &quot;duration&quot;: estimated_duration_seconds (min 1.0),
+      &quot;shot_type&quot;: &quot;wide_shot/medium_shot/close_up&quot;,
+      &quot;main_character&quot;: &quot;main character name (if any)&quot;,
+      &quot;confidence&quot;: confidence_score (0.0-1.0),
+      &quot;element_ids&quot;: [&quot;elem_001&quot;,&quot;elem_002&quot;]
+    }}
+
+    Return a valid JSON array only; do not include additional explanatory text or symbols.
+</code></pre>
+<h3 id="bv-video_splitter_promptyaml">B.V · <code>video_splitter_prompt.yaml</code></h3>
+<pre><code class="language-yaml">version: &quot;1.2&quot;
+
+video_splitter_system:
+  name: &quot;video_splitter_system&quot;
+  description: &quot;System prompt guiding the AI on how to split long shots into AI-generatable short fragments&quot;
+  template: |
+    You are a top-tier film editor and storyboard designer, expert in visual narrative and pacing.
+    Your task is to intelligently split longer shots into fragments suitable for AI video generation:
+      1. Decide whether a shot needs splitting
+      2. Determine split points by assigning durations to each fragment
+      3. Generate context-appropriate detailed descriptions for each fragment
+
+    When generating fragment descriptions, follow these rules:
+    - Preserve all key information from the original description, including:
+       1. Complete dialogue lines (must be preserved verbatim)
+       2. Each character's exclusive clothing traits (color, material, style)
+       3. Prop details (name, color, any visible text)
+       4. Environmental elements (lighting, weather, atmosphere)
+    - Distribute information in time logically: the first fragment should include the initial state; subsequent fragments should capture the progression.
+    - Ensure character, scene and prop consistency across fragments.
+    - Maintain emotional continuity.
+    - Do not introduce new elements that are not present in the original description.
+    - Do not lose any critical detail.
+    - Strictly distinguish different characters' clothing traits; do not assign A's traits to B.
+
+    Integrity checks (must pass):
+    - When concatenated, all fragment descriptions must contain the entire original description's information.
+    - Special attention: dialogue must be fully present in a single fragment; do not split a line across fragments that would render it incomplete.
+    - Each character's clothing color and visual traits must remain consistent across fragments and follow the script.
+
+    Splitting principles:
+      1. Action continuity: keep action sequences intact; split at natural pauses.
+      2. Dialogue integrity: split by complete sentences/units, not mid-sentence.
+      3. Scene consistency: keep visual style consistent within the same scene.
+      4. Character continuity: preserve character consistency in clothing and appearance.
+      5. Visual element continuity: keep background and props consistent between fragments.
+      6. Emotional continuity: avoid abrupt emotional jumps at splits.
+      7. Transition plausibility: choose split points that allow natural transitions.
+      8. Narrative coherence: ensure fragments remain coherent and avoid information loss or unnecessary repetition.
+      9. Visual style consistency: preserve the same visual style across fragments.
+      10. Pace control: assign fragment durations according to content.
+      11. Information completeness: do not drop or alter key information from the original description.
+      12. Prop consistency: identical prop name/color/text must be kept across all fragments.
+
+
+video_splitter_user:
+  name: &quot;video_splitter_user&quot;
+  description: &quot;User prompt: analyze whether a long shot should be split and produce the best splitting plan while keeping visual and narrative consistency&quot;
+  template: |
+    Analyze whether the shot below needs splitting and provide the best splitting plan.
+
+    Shot information:
+      ID: {shot_id}
+      Description: {description}
+      Duration: {duration} seconds
+      Type: {shot_type}
+      Main character: {main_character}
+
+    Scene context: {scene_info}
+    Previous shot: {prev_context}
+    Next shot: {next_context}
+
+    Continuity requirements [shot-specific]:
+      {continuity_notes}
+
+    Split parameters:
+      Split threshold: consider splitting shots longer than {split_threshold} seconds
+      Min fragment duration: {min_segment} seconds
+      Max fragment duration: {max_segment} seconds
+
+    [Global context - KEY elements that must be preserved]
+      {global_context}
+
+    Important checks:
+      - If this shot involves any elements from [Global context], those elements must be fully preserved in the resulting fragments.
+      - Costumes must strictly follow definitions in [Global context].
+      - If the shot contains a complete dialogue line, ensure that line remains wholly contained within one fragment.
+      - If splitting, every fragment must include portions of the original shot's key information, and the concatenation of fragments must reconstruct the original information.
+      - Do not misattribute one character's clothing traits to another character.
+
+    After splitting, perform integrity checks:
+      1. Are all dialogue lines intact within a fragment?
+      2. Are all props (book, lending card, ticket stub, etc.) described consistently?
+      3. Are character costumes consistent and correctly assigned?
+      4. Does concatenating all fragment descriptions reproduce the original shot description completely?
+
+    Output format (must be strict JSON):
+    {{
+      &quot;needs_split&quot;: true/false,
+      &quot;reason&quot;: &quot;Detailed reason for splitting or for keeping the shot intact&quot;,
+      &quot;segments&quot;: [
+        {{
+          &quot;duration&quot;: &quot;seconds (must be within {min_segment}-{max_segment})&quot;,
+          &quot;description&quot;: &quot;Detailed description for the fragment (context-aware, preserves key visual elements)&quot;,
+          &quot;key_frames&quot;: [&quot;key frame description 1&quot;, &quot;key frame description 2&quot;],
+          &quot;continuity_hints&quot;: [&quot;visual elements to preserve&quot;, &quot;character traits to preserve&quot;, &quot;emotional continuity hints&quot;]
+        }}
+      ],
+      &quot;continuity_plan&quot;: {{
+        &quot;character_consistency&quot;: &quot;How to preserve character consistency (including clothing color, accessories)&quot;,
+        &quot;scene_consistency&quot;: &quot;How to preserve scene consistency&quot;,
+        &quot;transition_suggestions&quot;: [&quot;transition suggestion 1&quot;, &quot;how to avoid abrupt cuts&quot;]
+      }}
+    }}
+
+    Important constraints:
+      - Concatenated fragment descriptions must contain all key information from the original shot.
+      - Elements from [Global context] appearing in this shot must be fully preserved.
+      - Maintain the original visual elements, character traits and emotional tone.
+      - Ensure split points align with natural pauses and do not break narrative flow.
+      - Dialogue must be preserved verbatim and not split across fragments.
+
+    Return a valid JSON object only; do not include any extra explanatory text or symbols.
+</code></pre>
+<h3 id="bp-prompt_converter_promptyaml">B.P · <code>prompt_converter_prompt.yaml</code></h3>
+<pre><code class="language-yaml">version: &quot;1.5&quot;
+
+prompt_converter_system:
+  name: &quot;prompt_converter_system&quot;
+  description: &quot;System prompt guiding the AI to simultaneously produce video and audio prompts&quot;
+  template: |
+    You are a top-tier AI video &amp; audio prompt conversion expert who converts scene descriptions into prompts suitable for diffusion and audio generation models.
+
+    Follow these requirements when converting:
+      1. Avoid vague or overused words such as &quot;beautiful&quot;, &quot;nice&quot;, or &quot;good&quot;; prefer concrete adjectives and nouns.
+      2. Avoid negations like &quot;not&quot;, &quot;no&quot;, or &quot;without&quot;; use positive descriptions where possible.
+      3. Avoid highly technical jargon; keep prompts accessible and model-friendly.
+      4. Keep prompts concise and avoid overly long or complex sentences.
+      5. Prefer concrete visual elements over abstract concepts.
+      6. Keep prompts objective and avoid overly subjective or emotional language.
+      7. Preserve all key elements from the original description; do not omit or alter critical information.
+      8. The two language variants (original language and English) must convey exactly the same visual elements, actions and emotions.
+
+    Video prompt requirements:
+      - Preserve all key information from the original description without loss or alteration.
+      - Dialog lines must be preserved verbatim; do not omit, summarize, or rewrite lines.
+      - Each character's visual traits (clothing color, material, style, etc.) must be accurately transmitted and not changed.
+      - Do not assign one character's clothing features to another character.
+      - Prop details (name, color, visible text) must be kept intact.
+
+    Audio prompt requirements:
+      - Based on provided character info, audio context and fragment duration, generate complete audio parameters.
+      - All parameters must conform to the target model's expected schema.
+      - Ensure audio duration strictly matches the video duration.
+
+
+prompt_converter_user:
+  name: &quot;prompt_converter_user&quot;
+  description: &quot;User prompt: convert a video fragment description into bilingual AI prompts for video and audio generation&quot;
+  template: |
+    Convert the following video fragment description into bilingual AI video prompts (English primary) and generate full audio prompt parameters.
+
+    [Current fragment]
+    Fragment ID: {fragment_id}
+    Duration: {duration} seconds
+    Character(s): {character}
+    Location: {location}
+    Original language: {original_language}
+
+    Original description: {description}
+
+    [Scene context]
+    {scene_info}
+
+    [Original fragment elements]
+    {element_info}
+
+    [Audio context]
+    {audio_context}
+
+    [All characters in the script]
+    {characters_json}
+
+    [Global context]
+    {global_context}
+
+    [Full script timeline]
+    {full_script_context}
+
+    [Important instructions]
+    - Video prompts must preserve all dialog lines and visual elements exactly.
+    - Audio prompts must select appropriate timbre/voice parameters based on character info and ensure audio duration equals the video duration ({duration} seconds).
+    - The prompts in both languages must express identical visual elements, actions and emotions.
+    - Prompts must not include sensitive or inappropriate content.
+    - Keep prompts specific and clear; avoid vague or abstract descriptions.
+    - Prompt length should be moderate: detailed enough to guide the model, but concise ({min_length}-{max_length} words recommended).
+    - Video and audio prompts should complement each other to ensure consistency.
+
+    Return JSON with this structure:
+    {{
+      &quot;prompt&quot;: &quot;Generated English video prompt, tuned for model {dm_model}, style: {video_style}&quot;,
+      &quot;original_prompt&quot;: &quot;Original {original_language} video prompt&quot;,
+      &quot;negative_prompt&quot;: &quot;Video negative prompt&quot;,
+      &quot;style_hint&quot;: &quot;Video style hint&quot;,
+      &quot;audio&quot;: {{
+        &quot;prompt&quot;: &quot;Audio prompt text, must match the chosen audio model&quot;,
+        &quot;original_prompt&quot;: &quot;Original {original_language} audio prompt&quot;,
+        &quot;negative_prompt&quot;: &quot;Audio negative prompt&quot;,
+        &quot;model_type&quot;: &quot;XTTSv2/AudioLDM_3/Bark/ElevenLabs/Azure_TTS/OpenAI_TTS&quot;,
+        &quot;voice_type&quot;: &quot;character_dialogue/narration/announcer/creative&quot;,
+        &quot;audio_style&quot;: &quot;cinematic/realistic/anime/commercial&quot;,
+        &quot;voice_character&quot;: &quot;character name (optional)&quot;,
+        &quot;voice_description&quot;: &quot;Voice timbre description (English)&quot;,
+        &quot;speed&quot;: 1.0,
+        &quot;pitch_shift&quot;: 0,
+        &quot;emotion&quot;: &quot;neutral/happy/sad/angry/tender&quot;,
+        &quot;stability&quot;: 0.7,
+        &quot;duration_seconds&quot;: {duration},
+        &quot;sound_attributes&quot;: {{&quot;intensity&quot;: 0.8, &quot;reverb&quot;: 0.3}},
+        &quot;format&quot;: &quot;wav/mp3/flac&quot;,
+        &quot;sample_rate&quot;: 24000,
+        &quot;seed&quot;: &quot;random seed for reproducibility&quot;,
+        &quot;scene_context&quot;: &quot;Scene description (English)&quot;
+      }}
+    }}
+
+    Return a valid JSON object only; do not add any extra explanatory text or symbols.
+</code></pre>
+<h3 id="bq-quality_auditor_promptyaml">B.Q · <code>quality_auditor_prompt.yaml</code></h3>
+<pre><code class="language-yaml">version: &quot;1.2&quot;
+
+quality_auditor_system:
+  name: &quot;quality_auditor_system&quot;
+  description: &quot;System prompt guiding the AI to audit storyboard quality and ensure prompt consistency&quot;
+  template: |
+    You are an experienced film director and AI prompt specialist.
+    Professionally audit the provided AI video-generation instructions, focusing on the following aspects:
+
+    1. Truncation: Are prompts complete or truncated?
+    2. Scene references: Are scene references valid and transitions reasonable?
+    3. Weather consistency: Are weather descriptions consistent and free of contradictions?
+    4. Character consistency: Are character traits consistent, relationships clear, and costume assignments correct?
+    5. Action continuity: Are action descriptions coherent with no jumps?
+    6. Prompt quality: Are descriptions clear and specific?
+    7. Duration: Are fragment durations reasonable (recommended 1–5.5 seconds)?
+    8. Style consistency: Is the visual style consistent across fragments?
+    9. Prop consistency: Do key props (book titles, lending cards, ticket stubs, etc.) remain consistent across fragments?
+    10. Dialogue completeness: Are key dialogue lines present and not omitted or summarized?
+
+    Provide an objective, accurate assessment and avoid overly sensitive judgments.
+
+quality_auditor_user:
+  name: &quot;quality_auditor_user&quot;
+  description: &quot;User prompt: provide detailed storyboard data for comprehensive audit and concrete fix suggestions&quot;
+  template: |
+    Please perform a comprehensive audit of the following AI video-generation instructions:
+
+    Project info:
+    Title: {title}
+    Fragment count: {fragment_count}
+    Total duration: {total_duration} seconds
+
+    Fragment list:
+    {fragments_list}
+
+    Check these aspects:
+      1. Are prompts clear and specific? Any truncation?
+      2. Are durations reasonable (each fragment 0.5-5.5 seconds)?
+      3. Are style, scene, and character consistent?
+      4. Any obvious contradictions or problems?
+      5. Weather/time logic consistency
+      6. Character continuity and action flow
+      7. Costume consistency: Are clothing color and style consistent across fragments?
+      8. Costume assignment correctness: Are A's clothing features incorrectly assigned to B?
+      9. Dialogue completeness: Are all dialogues fully represented without omission?
+      10. Other issues that may affect generation quality
+      11. Provide concrete repair suggestions
+      12. Summarize the audit and provide an overall quality rating
+
+    The return format must strictly follow JSON and use the enumerated KEY values below:
+      status must be one of:
+      - PASSED
+      - NEEDS_REVIEW
+      - WARNING
+      - FAILED
+
+      type must be one of:
+      - TRUNCATION
+      - SCENE
+      - WEATHER
+      - CHARACTER
+      - ACTION
+      - PROMPT
+      - DURATION
+      - STYLE
+      - OTHER
+
+      severity must be one of:
+      - INFO
+      - WARNING
+      - MODERATE
+      - MAJOR
+      - CRITICAL
+      - ERROR
+
+    {{
+      &quot;status&quot;: &quot;PASSED&quot;,
+      &quot;issues&quot;: [
+        {{
+          &quot;type&quot;: &quot;CHARACTER&quot;,
+          &quot;description&quot;: &quot;description of the issue&quot;,
+          &quot;severity&quot;: &quot;WARNING&quot;,
+          &quot;fragment_id&quot;: &quot;affected fragment id&quot;,
+          &quot;suggestion&quot;: &quot;repair suggestion&quot;
+        }}
+      ],
+      &quot;fragments_checked&quot;: [&quot;list of fragment ids&quot;],
+      &quot;summary&quot;: &quot;audit summary&quot;
+    }}
+
+    Return a valid JSON object only; do not add any extra explanatory text or symbols.
+</code></pre>
+<hr />
+<h2 id="c-el-texto-literal-paso-por-paso-con-un-guion-real">C. El texto literal, paso por paso, con un guion real</h2>
+<p>Lo que sigue lo volcó el propio motor (no está escrito a mano): el encargo a PenShot, los planos que
+devolvió, la traducción de cada uno, y el prompt final que recibe el motor de imagen y el de video.</p>
+<h2 id="0-el-material-del-negocio-lo-unico-que-el-sistema-sabe-de-el">0. El material del negocio (lo único que el sistema sabe de él)</h2>
+<p>Verificación continua de activos del mundo real (RWA) para instituciones y estados: torres del DIFC de Dubái, puertos y cadenas de custodia en Singapur, oro en Gauteng, litio y agua en Atacama, bonos de carbono en la Amazonía, plantas industriales en el Ruhr, energía offshore en Bergen, campo en la Pampa, tierras raras en el Gobi, madera en la Columbia Británica. Verificación por satélite, sensores de campo y auditoría en sitio.</p>
+<h3 id="1-el-encargo-que-nuestro-motor-le-manda-a-penshot-guion-contexto">1. El encargo que NUESTRO motor le manda a PenShot (guion + contexto)</h3>
+<pre><code>Contexto de la pieza: aviso para redes en video vertical 9:16.
+Se habla en español de Colombia y todo lo que aparezca en pantalla va en español de Colombia.
+La pieza dura 30 segundos en total y cada plano dura 5 segundos o menos. Devolvé EXACTAMENTE 6 planos, uno por cada línea del guion, y que la suma de sus duraciones NO pase de 30 segundos.
+El tono del negocio es «Profesional y formal».
+El negocio hace: Verificación continua de activos del mundo real (RWA) para instituciones y estados: torres del DIFC de Dubái, puertos y cadenas de custodia en Singapur, oro en Gauteng, litio y agua en Atacama, bonos de carbono en la Amazonía, plantas industriales en el Ruhr, energía offshore en Bergen, campo en la Pampa, tierras raras en el Gobi, madera en la Columbia Británica. Verificación por satélite, sensores de campo y auditoría en sitio..
+Cada plano muestra LO QUE ESA LÍNEA DICE, con el sujeto concreto de la frase: quién hace, qué hace y con qué.
+Describe CADA PLANO con SOLO estos cuatro datos, sin adornos:
+  1) QUIÉN HACE QUÉ: personas reales en medio del trabajo, con la acción en curso y concreta (un topógrafo apuntando, un auditor revisando, un operario cargando). Sin poses, sin mirar a cámara;
+  2) DÓNDE: el lugar real y concreto, con sus señales de uso (polvo, huellas, herramientas, cableado, andamios, muelle, campo);
+  3) CON QUÉ: los objetos que se ven en el cuadro, apoyados y quietos;
+  4) CUÁNTO DURA: 5 segundos o menos.
+NO escribas la luz, la hora del día, la óptica, el movimiento de cámara ni el acabado: de eso se encarga el motor, y lo que escribas se descarta.
+BUSCA EL MUNDO REAL DEL NEGOCIO, no su metáfora: si vende verificación de activos, el plano es una torre en obra, un muelle con contenedores, una mina, una bodega de lingotes, un campo de cultivo o una sala de control — lo que el negocio realmente toca, y con lo que su material ya cuenta.
+PROHIBIDO el look de folleto tecnológico: nada de globos azules, íconos flotantes, hologramas, cadenas de bloques, «streams de datos», planetas de neón ni dibujos 3D. Si el negocio es serio, se muestra con cosas que existen.
+PROHIBIDO el relleno: nada de mesas con objetos, ventanas vacías ni pasillos si la línea habla de otra cosa.
+Sin texto legible: ni carteles, ni etiquetas, ni rótulos, ni marcas, ni títulos (el generador convierte cualquier texto en letras deformes).
+Cada plano dura 5 segundos o menos y tiene que poder ANIMARSE: se prefiere una acción en curso antes que una naturaleza muerta. No cambies el texto del guion.
+EVITÁ EL PLANO MUY CERRADO DE MANOS MANIPULANDO UN APARATO: es lo que peor resuelve cualquier generador (los dedos se funden con el objeto). Preferí un plano medio o general donde la acción se lea en el cuerpo entero —caminar, mirar, señalar, cargar—, o un detalle de textura SIN manos (el metal, la madera, el suelo).
+NO APOYES EL PLANO EN UN OBJETO CHICO EN LA MANO (un escáner, un teléfono, una llave, una herramienta): al animarse cambia de forma, se agranda o desaparece, y el cuadro entero se cae. Si hace falta el objeto, que esté apoyado y quieto, no en la mano.
+ESQUIVÁ LAS SUPERFICIES ROTULADAS: contenedores con códigos, carteles, máquinas con placas, envases con etiquetas. Cualquier letra que traiga el lugar sale inventada y encima se deforma al moverse. Preferí lugares de superficies limpias (obra, campo, muelle vacío, sala con paredes lisas).
+
+Guion, tal cual (cada línea es un tramo):
+Usted ya tokenizo sus activos del mundo real.
+
+Pero nadie le verifica que sigan existiendo.
+
+Un satelite, sensores de campo y auditoria en sitio lo confirman.
+
+La IA revisa que la informacion del activo sea coherente.
+
+Su historia verificable queda custodiada con un score de confianza.
+
+Escriba por Facebook
+</code></pre>
+<p><em>por qué: PenShot desglosa sin contexto si no se le da: el formato, la duración, el idioma, el país y el tono van en un encabezado corto, y el guion va literal para que no lo reescriba.</em></p>
+<h2 id="2-los-planos-de-penshot-19-planos-6464s-el-motor-usa-los-primeros-6">2. Los planos de PenShot (19 planos · 64.64s · el motor usa los primeros 6)</h2>
+<h3 id="plano-1-39s">Plano 1 · 3.9s</h3>
+<p><strong>a) lo que PenShot escribe (281 caracteres):</strong></p>
+<pre><code>wide shot, cinematic, Dubai morning, clear sky, high-rise building under construction, dense scaffolding covering exterior walls, towering crane on top, dusty ground construction site, clear machinery track marks, Fujifilm ETERNA grading, natural overcast, 35mm lens, static camera
+</code></pre>
+<p><strong>b) el negativo que trae el plano:</strong></p>
+<pre><code>blurry, text, watermark, people, cartoon, anime, night, rain, snow, fog, low quality, distorted
+</code></pre>
+<p><strong>c) después de la traducción al inglés (282 caracteres):</strong></p>
+<pre><code>Wide shot, cinematic, Dubai morning, clear sky, high-rise building under construction, dense scaffolding covering exterior walls, towering crane on top, dusty ground construction site, clear machinery track marks, Fujifilm ETERNA grading, natural overcast, 35mm lens, static camera.
+</code></pre>
+<p><strong>d) LO QUE RECIBE EL MOTOR DE IMAGEN (718 caracteres) — imagen-flux-dev:</strong></p>
+<pre><code>Dubai, clear sky, high-rise building under construction, dense scaffolding covering exterior walls, towering, dusty ground construction site, clear machinery track marks, natural, wide establishing shot, shot on a 24mm wide lens, deep focus, everything sharp, golden hour, low warm sun raking across the scene, long shadows, locked-off tripod, no camera movement, restrained film grade, Fujifilm ETERNA emulation, muted greens, neutral skin tones, fine film grain, 35mm negative texture, candid documentary moment, photographed on location, natural imperfections, worn tools and surfaces, real working environment, incidental unmarked equipment, surfaces without lettering, vertical 9:16 framing, muted neutral palette
+</code></pre>
+<p><strong>e) negativo que va con la imagen:</strong> <code>(vacío: FLUX es de guía destilada y no usa negativo)</code></p>
+<p><em>por qué así: FLUX.1-dev es el modelo bueno (guía 3,5 en su propio nodo y unos 22 pasos contra los 4 del destilado): atiende mejor la escena y el oficio, pero como todo FLUX muestrea sin negativo, así que lo que no se quiere se pide en positivo («cuadro limpio, superficies lisas, sin rótulos») y la escena se pidió en inglés (es lo que leen estos modelos).</em></p>
+<p><strong>f) LO QUE RECIBE EL MOTOR DE VIDEO (329 caracteres):</strong></p>
+<pre><code>Dubai, clear sky, high-rise building under construction, dense scaffolding covering exterior walls, towering, dusty ground construction site, clear machinery track marks, natural., crane on top, the action continues naturally through the whole shot, real movement between frames, subtle motion of people, hands and drifting light
+</code></pre>
+<h3 id="plano-2-2s">Plano 2 · 2s</h3>
+<p><strong>a) lo que PenShot escribe (394 caracteres):</strong></p>
+<pre><code>medium shot, cinematic, a male surveyor standing with back to camera, wearing yellow hard hat, orange reflective vest, khaki work pants, field boots, right hand holding a gray survey staff with metal tip pointing toward a distant construction tower, dusty ground, scaffolding and crane in background, natural overcast light, Fujifilm ETERNA grading, 35mm lens, static camera, subtle motion blur
+</code></pre>
+<p><strong>b) el negativo que trae el plano:</strong></p>
+<pre><code>blurry, text, watermark, cartoon, anime, smiling, facing camera, wrong vest color, missing hard hat, missing survey staff, indoor, night
+</code></pre>
+<p><strong>c) después de la traducción al inglés (411 caracteres):</strong></p>
+<pre><code>Medium shot, cinematic, a male surveyor standing with his back to the camera, wearing a yellow hard hat, orange reflective vest, khaki work pants, field boots, right hand holding a gray survey staff with a metal tip pointing toward a distant construction tower, dusty ground, scaffolding and crane in the background, natural overcast light, Fujifilm ETERNA grading, 35mm lens, static camera, subtle motion blur.
+</code></pre>
+<p><strong>d) LO QUE RECIBE EL MOTOR DE IMAGEN (824 caracteres) — imagen-flux-dev:</strong></p>
+<pre><code>a male surveyor standing with his back to the camera, wearing a yellow hard hat, orange reflective vest, khaki work pants, field boots, right hand holding a gray survey staff with a metal tip pointing toward a distant construction tower, dusty ground, scaffolding and, natural, subtle, wide establishing shot, shot on a 24mm wide lens, deep focus, everything sharp, golden hour, low warm sun raking across the scene, long shadows, locked-off tripod, no camera movement, restrained film grade, Fujifilm ETERNA emulation, muted greens, neutral skin tones, fine film grain, 35mm negative texture, candid documentary moment, photographed on location, natural imperfections, worn tools and surfaces, real working environment, incidental unmarked equipment, surfaces without lettering, vertical 9:16 framing, muted neutral palette
+</code></pre>
+<p><strong>e) negativo que va con la imagen:</strong> <code>(vacío: FLUX es de guía destilada y no usa negativo)</code></p>
+<p><em>por qué así: FLUX.1-dev es el modelo bueno (guía 3,5 en su propio nodo y unos 22 pasos contra los 4 del destilado): atiende mejor la escena y el oficio, pero como todo FLUX muestrea sin negativo, así que lo que no se quiere se pide en positivo («cuadro limpio, superficies lisas, sin rótulos») y la escena se pidió en inglés (es lo que leen estos modelos).</em></p>
+<p><strong>f) LO QUE RECIBE EL MOTOR DE VIDEO (429 caracteres):</strong></p>
+<pre><code>a male surveyor standing with his back to the camera, wearing a yellow hard hat, orange reflective vest, khaki work pants, field boots, right hand holding a gray survey staff with a metal tip pointing toward a distant construction tower, dusty ground, scaffolding and, natural, subtle., camera, the action continues naturally through the whole shot, real movement between frames, subtle motion of people, hands and drifting light
+</code></pre>
+<h3 id="plano-3-45s">Plano 3 · 4.5s</h3>
+<p><strong>a) lo que PenShot escribe (353 caracteres):</strong></p>
+<pre><code>extreme close-up, cinematic, back of male surveyor in yellow hard hat and orange reflective vest, gray surveyor staff with metallic tip pointing toward distant tower, blurred scaffolding and construction crane in background, dusty ground, natural overcast light, Fujifilm ETERNA grading, 35mm lens, shallow depth of field, static camera, subtle handheld
+</code></pre>
+<p><strong>b) el negativo que trae el plano:</strong></p>
+<pre><code>blurry staff, wrong vest color, missing hard hat, clear background, text on surfaces, cartoon style, smiling face
+</code></pre>
+<p><strong>c) después de la traducción al inglés (354 caracteres):</strong></p>
+<pre><code>Extreme close-up, cinematic, back of male surveyor in yellow hard hat and orange reflective vest, gray surveyor staff with metallic tip pointing toward distant tower, blurred scaffolding and construction crane in background, dusty ground, natural overcast light, Fujifilm ETERNA grading, 35mm lens, shallow depth of field, static camera, subtle handheld.
+</code></pre>
+<p><strong>d) LO QUE RECIBE EL MOTOR DE IMAGEN (745 caracteres) — imagen-flux-dev:</strong></p>
+<pre><code>back of male surveyor in yellow hard hat and orange reflective vest, gray surveyor staff with metallic tip pointing toward distant tower, blurred scaffolding and construction, dusty ground, natural, subtle, wide establishing shot, shot on a 24mm wide lens, deep focus, everything sharp, golden hour, low warm sun raking across the scene, long shadows, locked-off tripod, no camera movement, restrained film grade, Fujifilm ETERNA emulation, muted greens, neutral skin tones, fine film grain, 35mm negative texture, candid documentary moment, photographed on location, natural imperfections, worn tools and surfaces, real working environment, incidental unmarked equipment, surfaces without lettering, vertical 9:16 framing, muted neutral palette
+</code></pre>
+<p><strong>e) negativo que va con la imagen:</strong> <code>(vacío: FLUX es de guía destilada y no usa negativo)</code></p>
+<p><em>por qué así: FLUX.1-dev es el modelo bueno (guía 3,5 en su propio nodo y unos 22 pasos contra los 4 del destilado): atiende mejor la escena y el oficio, pero como todo FLUX muestrea sin negativo, así que lo que no se quiere se pide en positivo («cuadro limpio, superficies lisas, sin rótulos») y la escena se pidió en inglés (es lo que leen estos modelos).</em></p>
+<p><strong>f) LO QUE RECIBE EL MOTOR DE VIDEO (363 caracteres):</strong></p>
+<pre><code>back of male surveyor in yellow hard hat and orange reflective vest, gray surveyor staff with metallic tip pointing toward distant tower, blurred scaffolding and construction, dusty ground, natural, subtle., crane in background, the action continues naturally through the whole shot, real movement between frames, subtle motion of people, hands and drifting light
+</code></pre>
+<h3 id="plano-4-39s">Plano 4 · 3.9s</h3>
+<p><strong>a) lo que PenShot escribe (451 caracteres):</strong></p>
+<pre><code>wide shot, cinematic, overcast sky, Singapore port dock, stacked shipping containers in neat rows, tall cranes standing in background, an auditor wearing white hard hat, yellow reflective vest, light blue long-sleeve shirt, dark trousers, standing beside containers, holding black tablet with both hands, gazing toward containers, clean dock surface, Fujifilm ETERNA grading, natural overcast lighting, 35mm lens, static camera, subtle handheld motion
+</code></pre>
+<p><strong>b) el negativo que trae el plano:</strong></p>
+<pre><code>blurry, text on containers, wrong vest color, missing hard hat, smiling, cartoon style, extra limbs, distorted tablet
+</code></pre>
+<p><strong>c) después de la traducción al inglés (406 caracteres):</strong></p>
+<pre><code>Wide shot, cinematic, overcast sky, Singapore port dock, stacked shipping containers in neat rows, tall cranes standing in background, an auditor wearing a white hard hat, yellow reflective vest, light blue long-sleeve shirt, dark trousers, standing beside containers, holding a black tablet with both hands, gazing toward containers, clean dock surface, Fujifilm ETERNA grading, natural overcast lighting.
+</code></pre>
+<p><strong>d) LO QUE RECIBE EL MOTOR DE IMAGEN (836 caracteres) — imagen-flux-dev:</strong></p>
+<pre><code>Singapore port dock, stacked shipping containers in neat rows, tall cranes standing in background, an auditor wearing a white hard hat, yellow reflective vest, dark trousers, standing beside containers, holding a black tablet with both hands, gazing toward containers, clean dock surface, natural, wide establishing shot, shot on a 24mm wide lens, deep focus, everything sharp, golden hour, low warm sun raking across the scene, long shadows, locked-off tripod, no camera movement, restrained film grade, Fujifilm ETERNA emulation, muted greens, neutral skin tones, fine film grain, 35mm negative texture, candid documentary moment, photographed on location, natural imperfections, worn tools and surfaces, real working environment, incidental unmarked equipment, surfaces without lettering, vertical 9:16 framing, muted neutral palette
+</code></pre>
+<p><strong>e) negativo que va con la imagen:</strong> <code>(vacío: FLUX es de guía destilada y no usa negativo)</code></p>
+<p><em>por qué así: FLUX.1-dev es el modelo bueno (guía 3,5 en su propio nodo y unos 22 pasos contra los 4 del destilado): atiende mejor la escena y el oficio, pero como todo FLUX muestrea sin negativo, así que lo que no se quiere se pide en positivo («cuadro limpio, superficies lisas, sin rótulos») y la escena se pidió en inglés (es lo que leen estos modelos).</em></p>
+<p><strong>f) LO QUE RECIBE EL MOTOR DE VIDEO (464 caracteres):</strong></p>
+<pre><code>Singapore port dock, stacked shipping containers in neat rows, tall cranes standing in background, an auditor wearing a white hard hat, yellow reflective vest, dark trousers, standing beside containers, holding a black tablet with both hands, gazing toward containers, clean dock surface, natural., cranes standing in background, the action continues naturally through the whole shot, real movement between frames, subtle motion of people, hands and drifting light
+</code></pre>
+<h3 id="plano-5-2s">Plano 5 · 2s</h3>
+<p><strong>a) lo que PenShot escribe (457 caracteres):</strong></p>
+<pre><code>medium shot, auditor standing beside stacked shipping containers, wearing white hard hat and yellow reflective vest over light blue long-sleeve shirt and dark trousers, head bowed, both hands holding black tablet, fingers sliding across screen, overcast diffused daylight, Fujifilm ETERNA cool low-saturation grading, 35mm lens, static camera, subtle handheld sway, port dock with container stacks and crane silhouettes in background, shallow depth of field
+</code></pre>
+<p><strong>b) el negativo que trae el plano:</strong></p>
+<pre><code>blurry fingers, text on tablet screen, wrong vest color, orange vest, missing hard hat, smiling, cartoon style, bright sunlight, harsh shadows, distorted hands
+</code></pre>
+<p><strong>c) después de la traducción al inglés (428 caracteres):</strong></p>
+<pre><code>Medium shot, auditor standing beside stacked shipping containers, wearing a white hard hat and a yellow reflective vest over a light blue long-sleeve shirt and dark trousers, head bowed, both hands holding a black tablet, fingers sliding across the screen, overcast diffused daylight, Fujifilm ETERNA cool low-saturation grading, 35mm lens, static camera, subtle handheld sway, port dock with container stacks in the background.
+</code></pre>
+<p><strong>d) LO QUE RECIBE EL MOTOR DE IMAGEN (794 caracteres) — imagen-flux-dev:</strong></p>
+<pre><code>auditor standing beside stacked shipping containers, wearing a white hard hat and a yellow reflective vest over a, head bowed, both hands holding a black tablet, fingers sliding across the screen, subtle, port dock with container stacks in the background, wide establishing shot, shot on a 24mm wide lens, deep focus, everything sharp, golden hour, low warm sun raking across the scene, long shadows, locked-off tripod, no camera movement, restrained film grade, Fujifilm ETERNA emulation, muted greens, neutral skin tones, fine film grain, 35mm negative texture, candid documentary moment, photographed on location, natural imperfections, worn tools and surfaces, real working environment, incidental unmarked equipment, surfaces without lettering, vertical 9:16 framing, muted neutral palette
+</code></pre>
+<p><strong>e) negativo que va con la imagen:</strong> <code>(vacío: FLUX es de guía destilada y no usa negativo)</code></p>
+<p><em>por qué así: FLUX.1-dev es el modelo bueno (guía 3,5 en su propio nodo y unos 22 pasos contra los 4 del destilado): atiende mejor la escena y el oficio, pero como todo FLUX muestrea sin negativo, así que lo que no se quiere se pide en positivo («cuadro limpio, superficies lisas, sin rótulos») y la escena se pidió en inglés (es lo que leen estos modelos).</em></p>
+<p><strong>f) LO QUE RECIBE EL MOTOR DE VIDEO (399 caracteres):</strong></p>
+<pre><code>auditor standing beside stacked shipping containers, wearing a white hard hat and a yellow reflective vest over a, head bowed, both hands holding a black tablet, fingers sliding across the screen, subtle, port dock with container stacks in the background., camera, the action continues naturally through the whole shot, real movement between frames, subtle motion of people, hands and drifting light
+</code></pre>
+<h3 id="plano-6-45s">Plano 6 · 4.5s</h3>
+<p><strong>a) lo que PenShot escribe (339 caracteres):</strong></p>
+<pre><code>extreme close-up of female auditor's face, white hard hat, yellow reflective vest, light blue long-sleeve shirt, blurred stacked shipping containers in background, professional and formal expression, natural overcast lighting, shallow depth of field, Fujifilm ETERNA grading, 35mm lens, static camera, subtle motion blur 0.3, frame rate 24
+</code></pre>
+<p><strong>b) el negativo que trae el plano:</strong></p>
+<pre><code>blurry face, distorted features, text on containers, wrong vest color, missing hard hat, cartoon style, oversaturated colors, smiling, casual clothing
+</code></pre>
+<p><strong>c) después de la traducción al inglés (346 caracteres):</strong></p>
+<pre><code>Extreme close-up of a female auditor s face, white hard hat, yellow reflective vest, light blue long-sleeve shirt, blurred stacked shipping containers in the background, professional and formal expression, natural overcast lighting, shallow depth of field, Fujifilm ETERNA grading, 35mm lens, static camera, subtle motion blur 0.3, frame rate 24.
+</code></pre>
+<p><strong>d) LO QUE RECIBE EL MOTOR DE IMAGEN (652 caracteres) — imagen-flux-dev:</strong></p>
+<pre><code>white hard hat, yellow reflective vest, blurred stacked shipping containers in the background, natural, subtle.3, wide establishing shot, shot on a 24mm wide lens, deep focus, everything sharp, golden hour, low warm sun raking across the scene, long shadows, locked-off tripod, no camera movement, restrained film grade, Fujifilm ETERNA emulation, muted greens, neutral skin tones, fine film grain, 35mm negative texture, candid documentary moment, photographed on location, natural imperfections, worn tools and surfaces, real working environment, incidental unmarked equipment, surfaces without lettering, vertical 9:16 framing, muted neutral palette
+</code></pre>
+<p><strong>e) negativo que va con la imagen:</strong> <code>(vacío: FLUX es de guía destilada y no usa negativo)</code></p>
+<p><em>por qué así: FLUX.1-dev es el modelo bueno (guía 3,5 en su propio nodo y unos 22 pasos contra los 4 del destilado): atiende mejor la escena y el oficio, pero como todo FLUX muestrea sin negativo, así que lo que no se quiere se pide en positivo («cuadro limpio, superficies lisas, sin rótulos») y la escena se pidió en inglés (es lo que leen estos modelos).</em></p>
+<p><strong>f) LO QUE RECIBE EL MOTOR DE VIDEO (257 caracteres):</strong></p>
+<pre><code>white hard hat, yellow reflective vest, blurred stacked shipping containers in the background, natural, subtle.3., camera, the action continues naturally through the whole shot, real movement between frames, subtle motion of people, hands and drifting light
+</code></pre>
+<h3 id="3-lo-que-lee-la-voz-voz-subtitulos-salen-de-aca">3. Lo que lee la voz (voz + subtítulos salen de acá)</h3>
+<pre><code>Usted ya tokenizo sus activos del mundo real. Pero nadie le verifica que sigan existiendo. Un satelite sensores de campo y auditoria en sitio lo confirman. La IA revisa que la informacion del activo sea coherente. Su historia verificable queda custodiada con un score de confianza. Escriba por Facebook.
+</code></pre>
+<p>voz elegida: <strong>en-GB-RyanNeural</strong> · ritmo 0.92 → -8% · la pieza va en inglés con tono institucional: voz sobria de registro británico</p>
+<p>se le quitó antes de leerlo: nada — Edge TTS lee lo que le pongan: se limpia la forma (emojis, numerales, enlaces, markdown, viñetas, comillas) y el contenido queda igual. Los renglones se cierran con punto para que no encadene dos bloques.</p>
+<hr />
+<h2 id="d-lo-que-queda-por-decidir-nada-de-esto-gasta-gpu">D. Lo que queda por decidir (nada de esto gasta GPU)</h2>
+<ol>
+<li><strong>Quién es el dueño del prompt visual → RESUELTO: el motor.</strong> PenShot aporta las variables duras (quién
+   hace qué, dónde, con qué, cuánto dura) y <strong>el motor decide el cine</strong> (<code>cineDeLaPieza</code>): tamaño de plano,
+   óptica, luz que avanza con la pieza y <strong>un solo etalonaje</strong>. Lo que el plano diga de luz, cámara, óptica o
+   acabado <strong>se descarta</strong> (<code>soloVariablesDuras</code>), porque su instrucción es de continuidad («evitá la jerga
+   técnica», «sé conciso», 20-200 palabras) y no de dirección de fotografía. Medido después del cambio:
+   general 24mm hora dorada → medio 35mm → medio corto 85mm luz pareja → medio → general 24mm hora azul →
+   primer plano 85mm, con <strong>ETERNA en los seis</strong> y cero restos de su estética.</li>
+<li><strong>El guion necesita sujeto filmable en cada línea.</strong> Si la línea es «la trazabilidad se rompe», no hay
+   nada que filmar.</li>
+<li><strong>El motor de video necesita el movimiento escrito aparte</strong> (ya está hecho: <code>textoDeMovimiento</code>).</li>
+<li><strong>Medir sin gastar</strong>: la mesa de prueba (<code>pruebas/preview-prompts.ts</code>) recorre toda la cadena sin GPU.</li>
+</ol></section>
+</div>
+</body>
+</html>

@@ -390,6 +390,14 @@ todo listo**). Lo que falta está en §8.
 
 ## 8. Los costos en créditos
 
+> **OJO — LA TABLA VIGENTE ES OTRA.** Lo que sigue en este documento (120 la ronda, 16 la pieza, 16 la
+> variante) es el cálculo de cuando una pieza costaba lo mismo fuera video o imagen. La tarifa que rige
+> ahora está en el código —`apps/api/src/services/creditos.ts`, el único dueño del precio— y es **por tipo
+> de contenido**: video 48 · reel con animación 24 · reel de imágenes 20 · imagen con texto 12 · título
+> animado 8 · evaluar una pieza 8 · el público 0. Una ronda son 5 contenidos, **como máximo 2 videos**, y se
+> cobra la suma de lo que salió (una ronda con 2 videos y los tres tipos de 24+12+8 = **140 al crear + 40 al
+> evaluar = 180**). Los totales de este capítulo quedan como el cálculo de esa etapa, no como la tarifa de hoy.
+
 ### 8.1 La regla
 
 > **Se cobra por producir y por evaluar. Atender y mirar son gratis.**

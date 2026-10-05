@@ -380,6 +380,11 @@ El dashboard muestra créditos en 4 vistas. Sin esto no hay producto, hay demo.
 Cada fase termina con algo **visible y verificable en el dashboard**, no con "el back quedó
 listo".
 
+> **GPU alquilada (hecho, 30-sep-2026).** La máquina que pinta las imágenes se maneja con
+> `sinkroo-gpu encender|apagar|estado` (`/usr/local/bin/sinkroo-gpu`). Es el único gasto que sigue corriendo si
+> alguien se olvida, así que el dueño pidió su **apagado manual en el panel de administración**: queda anotado
+> como módulo 16 en `10-backend-modulos.md` y detallado en `17-gpu-alquilada-y-apagado.md`.
+
 ### Fase 0 — Cimientos (bloqueante de todo)
 Tenants + RLS · auth real (email + OAuth Google/Facebook) · membresías y roles · auditoría ·
 contrato de API (`data`/`meta`/`error`) · migraciones versionadas · seed de demo por tenant.

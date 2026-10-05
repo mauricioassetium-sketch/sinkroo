@@ -73,6 +73,7 @@ verdad) en vez de un mes de trabajo invisible.
 | 13 | **Verificación (KYC)** | Documento y selfie, quién revisa y en qué estado está: es obligatorio para pautar. |
 | 14 | **Cobros y referidos** | Suscripción, recarga de créditos, recompensas de referidos y su historial. |
 | 15 | **Avisos y bitácora** | Avisos al negocio por WhatsApp y correo; bitácora de lo que hizo el motor con opción de revertir. |
+| 16 | **Panel de administración** | Lo que ve el dueño del sistema: negocios, consumo de créditos, salud de los servicios y **el apagado manual de la GPU alquilada** (es el único gasto que sigue corriendo si alguien se olvida). El comando del sistema ya está hecho: ver `17-gpu-alquilada-y-apagado.md`. |
 
 ---
 
