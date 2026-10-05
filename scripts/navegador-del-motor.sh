@@ -27,7 +27,9 @@ set -euo pipefail
 PUESTO_BASE="${CDP_PUERTO_BASE:-9222}"
 PUESTOS="${NAVEGADORES:-10}"
 PERFIL_BASE="${PERFIL_NAVEGADOR:-/var/lib/sinkroo-navegador}"
-CERROJOS=/run/sinkroo-navegador
+# Los cerrojos de los puestos: en /var/lib y no en /run, porque /run es memoria y se borra al reiniciar
+# (con la carpeta vacía, cada lector cree que los diez puestos están libres y se apilan).
+CERROJOS=/var/lib/sinkroo/puestos
 LOG=/var/log/sinkroo-navegador.log
 BIN="$(find /root/.cache/ms-playwright -maxdepth 3 -name chrome -type f 2>/dev/null | head -1)"
 [ -n "$BIN" ] || BIN="$(find /root/.cache/ms-playwright -maxdepth 4 -name headless_shell -type f 2>/dev/null | head -1)"

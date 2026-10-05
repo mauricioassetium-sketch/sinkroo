@@ -23,7 +23,7 @@ import { mkdirSync, readFileSync, unlinkSync, writeFileSync, existsSync } from '
 import { execSync } from 'node:child_process';
 
 const PUERTOS = Array.from({ length: 10 }, (_, i) => 9222 + i);
-const DIR_CERROJO = '/run/sinkroo-navegador';
+const DIR_CERROJO = '/var/lib/sinkroo/puestos';
 const POR_CONSULTA = 6;          // resultados que se guardan de cada consulta
 const ESPERA_MS = 9000;          // lo que se le da a la página para traer sus resultados
 

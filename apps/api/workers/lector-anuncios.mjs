@@ -34,7 +34,9 @@ import pg from 'pg';
 // cada uno, si lo necesita, use su propio navegador».
 const PUESTOS = Number(process.env.NAVEGADORES || 10);
 const PUERTO_BASE = Number(process.env.CDP_PUERTO_BASE || 9222);
-const CERROJOS = process.env.CERROJOS_NAVEGADOR || '/run/sinkroo-navegador';
+// Los cerrojos viven acá y NO en /run: /run es memoria y se borra, y cuando se borraba cada lector creía que
+// los diez puestos estaban libres —medido: tres lectores apilados sobre el mismo negocio, todos en cero fichas—.
+const CERROJOS = process.env.CERROJOS_NAVEGADOR || '/var/lib/sinkroo/puestos';
 let CDP = process.env.CDP_URL || 'http://127.0.0.1:' + PUERTO_BASE;
 
 /** Toma el primer puesto libre: devuelve su número y su puerto, o null si están todos ocupados. */
