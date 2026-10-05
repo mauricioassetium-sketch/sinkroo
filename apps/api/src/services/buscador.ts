@@ -35,8 +35,12 @@ const SISTEMA_CONSULTAS = [
   'Eres el investigador de mercado de un sistema de mercadeo. Tu trabajo es averiguar DE DÓNDE VIENEN los',
   'clientes de un negocio: qué mercados emisores, qué nacionalidades, de qué países sale el dinero que paga.',
   'Trabajas con lo que está publicado: informes de turismo, estadísticas, noticias de la industria.',
-  'Escribes consultas de búsqueda cortas y en inglés (ahí están las fuentes buenas).',
-  'Devuelves SOLO un objeto JSON: {"consultas": ["...", "...", "...", "..."]} — cuatro consultas, sin explicarlas.',
+  'Escribes cuatro consultas de búsqueda cortas: TRES en inglés (ahí están las fuentes de la industria) y UNA en',
+  'español. La consulta en español importa: los mercados hispanohablantes no salen en las fuentes de la industria',
+  '—medido: el informe nombraba a los compradores de India, China, Rusia y el Reino Unido, y ningún país de',
+  'América Latina, aunque entre las fuentes leídas había una nota en español sobre los compradores colombianos—.',
+  'Devuelves SOLO un objeto JSON: {"consultas": ["...", "...", "...", "..."]} — cuatro consultas, sin explicarlas,',
+  'tres en inglés y la última en español.',
 ].join(' ');
 
 const SISTEMA_LECTURA = [
@@ -46,6 +50,9 @@ const SISTEMA_LECTURA = [
   'con el título del resultado del que lo sacaste. No inventas cifras ni países.',
   'Devuelves SOLO un objeto JSON: {"paises": [{"pais": "Rusia", "porque": "una línea", "fuente": "título del resultado"}],',
   '"resumen": "una frase de qué muestra el conjunto"}.',
+  'NOMBRA TODOS los mercados que las fuentes mencionen, no sólo los tres primeros: si aparece Europa, Rusia, los',
+  'Estados Unidos o América Latina, van en la lista —aunque sean mercados chicos—. Es peor dejar afuera un mercado',
+  'que existe que incluir uno secundario.',
 ].join(' ');
 
 /** El negocio y lo que se sabe de él, en una sola línea, para que el modelo sepa de qué está hablando. */
@@ -66,6 +73,32 @@ function retrato(negocio: {
  * Rastrea la demanda de un negocio: escribe las consultas, sale a buscar y deduce los países con su fuente.
  * Devuelve null si no hay modelo o si la búsqueda no dejó nada (nunca lanza: la corrida sigue sin esto).
  */
+const SISTEMA_PAISES_DEL_INFORME = [
+  'Eres el investigador de mercado de un sistema de mercadeo. Te dan un informe ya escrito y sacas de él DE QUÉ',
+  'PAÍSES vienen los clientes que pagan: los mercados emisores, las nacionalidades que compran, de dónde sale el',
+  'dinero. Trabajas sólo con lo que el informe dice: si un país no está en el informe, no lo pones.',
+  'Devuelves SOLO un objeto JSON: {"paises": [{"pais": "Rusia", "porque": "la frase del informe que lo sostiene"}]}.',
+  'Si el informe no nombra ningún país, devuelves {"paises": []}.',
+].join(' ');
+
+/**
+ * LOS PAÍSES QUE NOMBRA UN INFORME PROFUNDO. El rastreo liviano lee titulares y de ahí saca los mercados; el
+ * informe, en cambio, nombra nacionalidades con datos y fuentes, y hasta ahora se quedaba guardado sin alimentar
+ * el mapa —medido: el informe decía «los países de la CEI, que incluyen a Rusia» y Rusia no quedaba cargada—.
+ * Esto lee el informe y devuelve sus países para que cuenten como mercados declarados.
+ */
+export async function paisesDelInforme(informe: string): Promise<Fuente[]> {
+  if (!informe || informe.length < 300) return [];
+  const leido = await pedirJson(SISTEMA_PAISES_DEL_INFORME, informe.slice(0, 18_000), 60_000);
+  if (!Array.isArray(leido?.paises)) return [];
+  const vistos = new Set<string>();
+  return (leido!.paises as unknown[]).map(p => p as Fuente)
+    .filter(p => p && typeof p.pais === 'string' && p.pais.length > 1 && p.pais.length < 60)
+    .filter(p => { const k = codigoDePais(p.pais) || p.pais.toLowerCase().trim(); if (vistos.has(k)) return false; vistos.add(k); return true; })
+    .map(p => ({ pais: p.pais, porque: String(p.porque || '').slice(0, 300), fuente: 'el informe profundo' }))
+    .slice(0, 12);
+}
+
 /**
  * EL ESTUDIO PROFUNDO — el investigador que lee las páginas enteras.
  *
@@ -147,7 +180,7 @@ export async function rastrearLaDemanda(
     ? (leido!.paises as unknown[]).map(p => p as Fuente)
         .filter(p => p && typeof p.pais === 'string' && p.pais.length > 1 && p.pais.length < 60)
         .filter(p => { const k = codigoDePais(p.pais) || p.pais.toLowerCase().trim(); if (vistos.has(k)) return false; vistos.add(k); return true; })
-        .slice(0, 8)
+        .slice(0, 12)
     : [];
   if (!paises.length) return null;
 

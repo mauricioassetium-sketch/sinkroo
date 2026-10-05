@@ -24,7 +24,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { escribirLaPieza } from './escritor.js';
 import { aJson, sinSueltos } from '../lib/json-seguro.js';
-import { rastrearLaDemanda, investigarProfundo } from './buscador.js';
+import { rastrearLaDemanda, investigarProfundo, paisesDelInforme } from './buscador.js';
 
 /** Lo que el material del negocio dice de él viene en texto o en lista: acá se vuelve una línea. */
 const aTexto = (v: unknown): string => (Array.isArray(v) ? v.map(x => String(x)).join(', ') : String(v ?? '')).slice(0, 400);
@@ -822,6 +822,24 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
     if (profundo) {
       // El informe viene de páginas web y trae emojis cortados y caracteres de control: sin limpiarlos, Postgres
       // rechaza el insert y el informe se perdía en silencio (medido: 21.000 caracteres leídos, cero guardados).
+      // Y el informe TAMBIÉN deja sus países: es el que más datos tiene (nacionalidades, cifras, fuentes). Sin
+      // esto quedaba guardado sin alimentar el mapa —medido: decía «los países de la CEI, que incluyen a Rusia»
+      // y Rusia no aparecía—.
+      const delInforme = await paisesDelInforme(profundo.informe).catch(() => []);
+      const cargados: string[] = [];
+      for (const p of delInforme) {
+        const codigo = codigoDePais(p.pais);
+        if (!codigo) continue;
+        await db.query(
+          `INSERT INTO mercados_rastreados (business_id, pais_codigo, pais, porque, fuente, corrida_id)
+           VALUES ($1, $2, $3, $4, $5, $6)
+           ON CONFLICT (business_id, pais_codigo)
+           DO UPDATE SET pais = EXCLUDED.pais, porque = EXCLUDED.porque, fuente = EXCLUDED.fuente,
+                         corrida_id = EXCLUDED.corrida_id, created_at = now()`,
+          [ctx.businessId, codigo, p.pais.slice(0, 60), p.porque.slice(0, 300), p.fuente.slice(0, 300), corridaId])
+          .catch(() => {});
+        cargados.push(`${p.pais} (${codigo})`);
+      }
       const guardado = await db.query<{ id: string }>(
         `INSERT INTO informes_profundos (business_id, pregunta, informe, fuentes, segundos, corrida_id)
          VALUES ($1, $2, $3, $4::jsonb, $5, $6) RETURNING id`,
@@ -837,6 +855,7 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
           pregunta_que_se_investigo: profundo.pregunta,
           informe_guardado: guardado.rows[0]?.id ? 'sí: queda como informe profundo de este negocio' : 'no se pudo guardar, pero el informe se leyó',
           fuentes: profundo.fuentes.slice(0, 10),
+          paises_que_dejo_el_informe: cargados.length ? cargados : 'el informe no nombra países de origen',
           primeras_lineas_del_informe: profundo.informe.slice(0, 700),
           como_lo_hizo: 'un investigador propio (gpt-researcher, corriendo aparte en el servidor) arma sus sub-preguntas, entra a cada fuente y redacta el informe con la cita al lado de cada dato',
           porque: 'Es la diferencia entre saber que India y China están en la lista y saber QUE los indios son el 22% de la compra extranjera, con el registro de tierras como fuente. Eso es lo que se le puede mostrar a un cliente.',
