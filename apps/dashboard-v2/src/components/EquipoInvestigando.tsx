@@ -132,7 +132,8 @@ export function EquipoInvestigando({ setToast, irAGaleria }: PropsEquipo) {
    */
   const porAgente = new Map<string, { t: TareaCorrida; c: Corrida }>();
   for (const c of corridas) for (const t of c.tareas ?? []) if (!porAgente.has(t.agente)) porAgente.set(t.agente, { t, c });
-  const tareasTotales = corridas.reduce((s, c) => s + (c.tareas?.length ?? 0), 0);
+  // Las corridas viejas ya no traen sus tareas (pesaban 621 KB): traen su cuenta, y acá se usa la cuenta.
+  const tareasTotales = corridas.reduce((s, c) => s + (c.tareas_total ?? c.tareas?.length ?? 0), 0);
 
   /** Pide una corrida de verdad y vuelve a leer el back: lo que aparezca después es lo que hay. */
   const correr = async () => {
@@ -371,7 +372,7 @@ export function EquipoInvestigando({ setToast, irAGaleria }: PropsEquipo) {
                       <div key={c.id} className="tiny" style={{ display: 'flex', gap: 7, flexWrap: 'wrap', alignItems: 'baseline' }}>
                         <b>{horaDe(c.empezada_at)}</b>
                         <span className="muted">
-                          {c.motivo || 'sin motivo cargado'} · {estadoTxt(c.estado)} · {(c.tareas ?? []).length}{(c.tareas ?? []).length === 1 ? ' tarea' : ' tareas'}
+                          {c.motivo || 'sin motivo cargado'} · {estadoTxt(c.estado)} · {c.tareas_total ?? (c.tareas ?? []).length}{((c.tareas_total ?? (c.tareas ?? []).length) === 1) ? ' tarea' : ' tareas'}
                           {typeof c.creditos === 'number' ? ` · ${c.creditos} créditos` : ''}
                         </span>
                       </div>

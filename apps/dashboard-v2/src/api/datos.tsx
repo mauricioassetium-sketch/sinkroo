@@ -38,7 +38,14 @@ export type Pieza = {
 };
 export type Evaluacion = { id: string; titulo: string; puntaje: number; orden: number | null; total_publico: number; created_at: string };
 export type Hallazgo = { id: string; tipo: string; titulo: string; dato: string; porque: string; fuente: string; created_at: string };
-export type Corrida = { id: string; motivo: string; estado: string; creditos: number; empezada_at: string; tareas: TareaCorrida[] };
+/**
+ * Una corrida del motor. `tareas_total` viene siempre; el arreglo `tareas` —con el resultado entero de cada
+ * agente— viaja sólo para las tres últimas corridas: con las veinte eran 621 KB en cada refresco del panel.
+ */
+export type Corrida = {
+  id: string; motivo: string; estado: string; creditos: number; empezada_at: string;
+  terminada_at?: string | null; tareas_total?: number; tareas: TareaCorrida[];
+};
 export type TareaCorrida = { agente: string; que: string; resultado: Record<string, unknown>; orden: number };
 export type Publico = { total: number; por_estilo: { estilo: string; n: number }[]; por_edad: { rango: string; n: number }[]; muestra: any[] };
 export type Conversacion = { id: string; lead_phone: string; stage: string; status: string; lead_score: number; last_message_at: string; ultimo: string | null };

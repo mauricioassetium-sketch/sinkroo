@@ -223,15 +223,25 @@ export async function motorRoutes(app: FastifyInstance, db: Pool) {
   /** Las corridas con lo que hizo cada agente: es la bitácora que se ve en el panel. */
   app.get('/api/agentes/corridas', async (req, reply) => {
     const u = await exigirSesion(req, reply); if (!u || !u.business_id) return;
+    // EL PESO SE MIDE: con las veinte corridas y TODAS sus tareas (veinte cada una, con el resultado entero de
+    // cada agente) esta respuesta era de 621 KB, y el panel la pide entera cada veinte segundos.
+    // El panel necesita tres cosas: la lista de corridas (con cuántas tareas tuvo cada una), las tareas de LA
+    // ÚLTIMA —que es la que muestra renglón por renglón— y la última tarea de cada agente, que sale de las
+    // últimas corridas. Así que las tareas viajan sólo para las tres últimas: el resto lleva su cuenta.
     const corridas = await db.query(
-      `SELECT id, motivo, estado, creditos, empezada_at, terminada_at FROM corridas
+      `SELECT id, motivo, estado, creditos, empezada_at, terminada_at,
+              (SELECT count(*) FROM tareas_corrida t WHERE t.corrida_id = c.id)::int AS tareas_total
+         FROM corridas c
         WHERE business_id = $1 ORDER BY empezada_at DESC LIMIT 20`, [u.business_id]);
     if (!corridas.rows.length) return { corridas: [] };
+    const conTareas = corridas.rows.slice(0, 3).map(c => c.id);
     const tareas = await db.query(
       `SELECT corrida_id, agente, que, resultado, creditos, orden FROM tareas_corrida
-        WHERE corrida_id = ANY($1::uuid[]) ORDER BY orden`, [corridas.rows.map(c => c.id)]);
+        WHERE corrida_id = ANY($1::uuid[]) ORDER BY orden`, [conTareas]);
     return {
-      corridas: corridas.rows.map(c => ({ ...c, tareas: tareas.rows.filter(t => t.corrida_id === c.id) })),
+      corridas: corridas.rows.map(c => ({
+        ...c, tareas: tareas.rows.filter(t => t.corrida_id === c.id),
+      })),
     };
   });
 
@@ -489,10 +499,12 @@ export async function motorRoutes(app: FastifyInstance, db: Pool) {
    */
   app.get('/api/prompts', async (req, reply) => {
     const u = await exigirSesion(req, reply); if (!u || !u.business_id) return;
+    // EL PESO SE MIDE: esta respuesta era de 546 KB, y 411 de esos KB eran la columna `detalle`, que ninguna
+    // pantalla dibuja (el panel muestra el prompt, su negativo y los parámetros). Se saca y se acotan a veinte.
     const r = await db.query(
-      `SELECT id, pieza, plaza, tipo, estilo, proporcion, prompt, prompt_negativo, parametros, detalle, created_at
+      `SELECT id, pieza, plaza, tipo, estilo, proporcion, prompt, prompt_negativo, parametros, created_at
          FROM prompts_generacion WHERE business_id = $1
-        ORDER BY created_at DESC, plaza LIMIT 40`, [u.business_id]);
+        ORDER BY created_at DESC, plaza LIMIT 20`, [u.business_id]);
     return { prompts: r.rows, generador: 'todavía no hay ninguno conectado: estos prompts quedan listos para el que se conecte' };
   });
 
