@@ -1196,17 +1196,19 @@
 .mapa-punto { fill: var(--purple3); opacity: .55; }
 /* Tres estados del punto: verificado (fijo), pendiente (un mercado declarado que falta leer) y el que se está
    mirando ahora (verde y latiendo). */
-/* Los tres estados, con el color que pidió el dueño: VERDE mientras busca (latiendo), AZUL cuando ya terminó,
-   y gris apagado el mercado que está en la lista y todavía no se leyó. */
+/* Los tres estados del PUNTO, con el color que pidió el dueño: VERDE mientras busca (latiendo), AZUL cuando ya
+   terminó, y gris apagado el mercado que está en la lista y todavía no se leyó. El nombre va en un solo color
+   para todos: si cada estado cambiaba el texto, el mapa se veía saturado. */
 .mapa-lugar.verificado .mapa-punto { fill: var(--blue); opacity: .95; }
 .mapa-lugar.pendiente .mapa-punto { fill: var(--muted); opacity: .45; }
-.mapa-nombre.verificado { fill: var(--blue); font-weight: 600; }
-.mapa-nombre.pendiente { fill: var(--muted); }
+
 .mapa-lugar.activo .mapa-punto { fill: var(--green); opacity: 1; }
 .mapa-halo { fill: none; stroke: var(--green); stroke-width: .8; animation: mapa-pulso 1.8s ease-out infinite; }
 @keyframes mapa-pulso { 0% { r: 2.2; opacity: .9; } 100% { r: 11; opacity: 0; } }
-.mapa-nombre { font-size: 4.4px; fill: var(--txt); paint-order: stroke; stroke: var(--bg2); stroke-width: 1.2; }
-.mapa-nombre.activo { fill: var(--green); font-weight: 700; }
+/* El nombre tiene que LEERSE pero sin saturar: a 4,4 px no se veía y a 7 px con blanco se comía el mapa.
+   Queda más chico, en un solo color para todos (morado, que resalta sobre el fondo oscuro) y con el borde del
+   fondo apenas marcado para que no se pierda sobre los continentes. El ESTADO lo dice el punto, no el texto. */
+.mapa-nombre { font-size: 5.6px; font-weight: 500; fill: var(--purple2); paint-order: stroke; stroke: var(--bg2); stroke-width: 1.1; }
 .mapa-pie { margin-top: 6px; }
 
 /* --- La barra del agente que está trabajando AHORA, dentro de su propia tarjeta: dice qué hace y cuánto
