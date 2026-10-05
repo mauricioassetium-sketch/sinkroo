@@ -95,6 +95,11 @@ function elEncargo(d: {
     'CÓMO SE ESCRIBE (esto se revisa; si no se cumple, la pieza no sirve):',
     '1. Frases CORTAS y con punto. Una idea por frase. Nada de renglones corridos.',
     '2. Las líneas van en el orden en que se dicen: la primera frena (es el problema del cliente, en sus palabras), las del medio muestran qué cambia con esto, y la última es el botón.',
+    // LOS PRIMEROS TRES SEGUNDOS (manual de hooks del repositorio de manuales de mercadeo, traducido y aplicado
+    // a lo que devuelve esta pieza). La pieza tiene tres cosas que trabajan AL MISMO TIEMPO —el título, la primera
+    // línea y la escena de la línea 1— y el error clásico es que las tres digan lo mismo: ahí se desperdician dos.
+    '   · LOS PRIMEROS TRES SEGUNDOS: el título, la primera línea y lo que se ve en la línea 1 trabajan juntos y NO dicen lo mismo. El título ancla la promesa para quien mira sin sonido; la primera línea abre la historia para quien escucha; la escena la muestra. Tres ángulos de lo mismo, no la misma frase tres veces.',
+    '   · La primera línea NO explica: frena. El que explica en la primera línea pierde al que venía pasando.',
     d.esVideo
       ? '3. Devuelva entre 4 y 6 líneas. Cada línea es una escena del video: tiene que poder verse algo distinto en cada una. TODO el guion se dice en voz alta en 30 segundos: no pase de unos 330 caracteres contando la primera línea y el cierre (si se pasa, la voz no entra en la pieza).'
       : '3. Devuelva entre 2 y 4 líneas.',
