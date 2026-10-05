@@ -23,8 +23,8 @@ import { animarFoto, armarPieza, hayMotorDeVideo, liberarElMotorDeImagen } from 
 import fs from 'node:fs';
 import path from 'node:path';
 import { escribirLaPieza } from './escritor.js';
-import { aJson } from '../lib/json-seguro.js';
-import { rastrearLaDemanda } from './buscador.js';
+import { aJson, sinSueltos } from '../lib/json-seguro.js';
+import { rastrearLaDemanda, investigarProfundo } from './buscador.js';
 
 /** Lo que el material del negocio dice de él viene en texto o en lista: acá se vuelve una línea. */
 const aTexto = (v: unknown): string => (Array.isArray(v) ? v.map(x => String(x)).join(', ') : String(v ?? '')).slice(0, 400);
@@ -746,7 +746,7 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
   // no es de Dubái: viene de India, de Pakistán, de Arabia Saudí, del Reino Unido, de Europa. Eso no está en su
   // web —está en los informes de turismo, en las noticias y en las estadísticas de quién compra—.
   //
-  // Lo hace Rex, que es el de la demanda. Escribe sus consultas a partir del negocio, sale a internet con un
+  // Lo hace Lux, que es el del mercado. Escribe sus consultas a partir del negocio, sale a internet con un
   // navegador de la flota y vuelve con los países y su fuente. Los países que traen fuente quedan guardados y
   // CUENTAN COMO DECLARADOS: el mapa los muestra y la lectura de anuncios los busca en la próxima vuelta.
   // Nunca inventa: si la búsqueda no deja nada que sostener, lo dice y el estudio sigue como estaba.
@@ -771,7 +771,7 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
         guardados.push(`${p.pais} (${codigo})`);
       }
       anotar({
-        agente: 'rex', orden: 1,
+        agente: 'lux', orden: 1,
         que: `Rastreó de dónde viene su demanda: ${rastro.paises.slice(0, 4).map(p => p.pais).join(', ')}${rastro.paises.length > 4 ? ` y ${rastro.paises.length - 4} más` : ''}`,
         resultado: {
           fuente_tipo: 'lo que está publicado: informes de mercado, noticias de la industria y estadísticas de quién compra',
@@ -787,7 +787,7 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
       });
     } else {
       anotar({
-        agente: 'rex', orden: 1,
+        agente: 'lux', orden: 1,
         que: 'Salió a rastrear de dónde viene su demanda y no encontró nada que se pueda sostener con una fuente',
         resultado: {
           fuente_tipo: 'lo que está publicado: informes, noticias y estadísticas',
@@ -798,9 +798,65 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
     }
   } catch (e) {
     anotar({
-      agente: 'rex', orden: 1,
+      agente: 'lux', orden: 1,
       que: 'El rastreo de la demanda no se pudo hacer en esta corrida',
       resultado: { motivo: String(e).slice(0, 200), porque: 'El estudio sigue sin este paso; no frena la corrida.' },
+    });
+  }
+
+  // ---------------------------------------------------------------------------------------------------------
+  // EL ESTUDIO PROFUNDO — el investigador que lee las páginas enteras (gpt-researcher).
+  //
+  // El paso de arriba lee titulares y extractos; este lee las fuentes completas y devuelve un informe con citas.
+  // MEDIDO con World Key: 30 segundos, 14 fuentes, 16.000 caracteres — el informe dice que los inversores indios
+  // son el 22% de la compra extranjera en Dubái, con el Departamento de Tierras de Dubái como fuente.
+  //
+  // Corre aparte (servicio Python en /opt/gpt-researcher) y SI NO ESTÁ, la corrida sigue sin él: es un lujo,
+  // no un requisito. El informe queda guardado para que el estudio y el panel lo puedan citar.
+  // ---------------------------------------------------------------------------------------------------------
+  try {
+    const profundo = await investigarProfundo(ctx.businessId, {
+      nombre: ctx.nombre, rubro: leido.rubro || ctx.rubro, categoria: ctx.categoria || null, zona: ctx.zona,
+      ofrece: aTexto(leido.queVende), le_vende_a: aTexto(leido.aQuien),
+    });
+    if (profundo) {
+      // El informe viene de páginas web y trae emojis cortados y caracteres de control: sin limpiarlos, Postgres
+      // rechaza el insert y el informe se perdía en silencio (medido: 21.000 caracteres leídos, cero guardados).
+      const guardado = await db.query<{ id: string }>(
+        `INSERT INTO informes_profundos (business_id, pregunta, informe, fuentes, segundos, corrida_id)
+         VALUES ($1, $2, $3, $4::jsonb, $5, $6) RETURNING id`,
+        // Los segundos vienen con decimales (32.4) y la columna es entera: si se pasan tal cual, Postgres rechaza
+        // el insert entero y el informe se pierde en silencio. Se redondea acá, no en la base.
+        [ctx.businessId, sinSueltos(profundo.pregunta).slice(0, 600), sinSueltos(profundo.informe),
+         aJson(profundo.fuentes), Math.round(profundo.segundos), corridaId]).catch(() => ({ rows: [] }));
+      anotar({
+        agente: 'lux', orden: 2,
+        que: `Estudio profundo: leyó ${profundo.fuentes.length} fuentes enteras y escribió un informe de ${Math.round(profundo.informe.length / 1000)} mil caracteres${guardado.rows[0]?.id ? ' (guardado)' : ' (no se pudo guardar)'}`,
+        resultado: {
+          fuente_tipo: 'las páginas completas de informes, estadísticas y prensa de la industria (no los titulares)',
+          pregunta_que_se_investigo: profundo.pregunta,
+          informe_guardado: guardado.rows[0]?.id ? 'sí: queda como informe profundo de este negocio' : 'no se pudo guardar, pero el informe se leyó',
+          fuentes: profundo.fuentes.slice(0, 10),
+          primeras_lineas_del_informe: profundo.informe.slice(0, 700),
+          como_lo_hizo: 'un investigador propio (gpt-researcher, corriendo aparte en el servidor) arma sus sub-preguntas, entra a cada fuente y redacta el informe con la cita al lado de cada dato',
+          porque: 'Es la diferencia entre saber que India y China están en la lista y saber QUE los indios son el 22% de la compra extranjera, con el registro de tierras como fuente. Eso es lo que se le puede mostrar a un cliente.',
+          fuente: `${profundo.fuentes.length} fuentes leídas enteras · ${profundo.segundos} s`,
+        },
+      });
+    } else {
+      anotar({
+        agente: 'lux', orden: 2,
+        que: 'El estudio profundo no corrió (el investigador no está disponible en este momento)',
+        resultado: {
+          porque: 'El investigador profundo vive aparte del motor y se lo llama cuando hace falta; si no responde, el estudio sigue con el rastreo de titulares, que ya dejó sus países y sus fuentes.',
+        },
+      });
+    }
+  } catch (e) {
+    anotar({
+      agente: 'lux', orden: 2,
+      que: 'El estudio profundo falló en esta corrida',
+      resultado: { motivo: String(e).slice(0, 200), porque: 'No frena la corrida: el rastreo liviano ya dejó lo suyo.' },
     });
   }
 

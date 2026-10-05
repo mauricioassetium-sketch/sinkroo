@@ -264,6 +264,23 @@ export async function migrate(db: Pool): Promise<void> {
 
     CREATE UNIQUE INDEX IF NOT EXISTS idx_mercados_rastreados_clave ON mercados_rastreados(business_id, pais_codigo);
 
+    -- EL INFORME DEL BUSCADOR PROFUNDO (gpt-researcher). Es el estudio largo: el investigador arma sus propias
+    -- sub-preguntas, LEE LAS PÁGINAS ENTERAS y devuelve un informe con citas. Tarda ~30 s y pesa memoria, así que
+    -- vive en su tabla y no en mercado_informes: ese payload lo dibuja el panel tal como está, y esto es otra cosa.
+    CREATE TABLE IF NOT EXISTS informes_profundos (
+      id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+      pregunta    TEXT NOT NULL,
+      informe     TEXT NOT NULL,
+      fuentes     JSONB NOT NULL DEFAULT '[]',
+      segundos    INT NOT NULL DEFAULT 0,
+      corrida_id  UUID,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_informes_profundos_business
+      ON informes_profundos(business_id, created_at DESC);
+
     CREATE UNIQUE INDEX IF NOT EXISTS idx_preguntas_clave ON preguntas_del_motor(business_id, clave);
     CREATE INDEX IF NOT EXISTS idx_preguntas_abiertas ON preguntas_del_motor(business_id, respondida_at);
 

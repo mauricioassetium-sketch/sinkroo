@@ -20,6 +20,7 @@
 import { execFile } from 'node:child_process';
 import { readFileSync, existsSync, unlinkSync } from 'node:fs';
 import { pedirJson } from './escritor.js';
+import { codigoDePais } from '../lib/paises.js';
 
 type Fuente = { pais: string; porque: string; fuente: string };
 export type RastreoDeDemanda = {
@@ -65,6 +66,47 @@ function retrato(negocio: {
  * Rastrea la demanda de un negocio: escribe las consultas, sale a buscar y deduce los países con su fuente.
  * Devuelve null si no hay modelo o si la búsqueda no dejó nada (nunca lanza: la corrida sigue sin esto).
  */
+/**
+ * EL ESTUDIO PROFUNDO — el investigador que lee las páginas enteras.
+ *
+ * Por qué es otro camino y no el mismo: el rastreo de arriba es liviano (cuatro consultas, los extractos, 40
+ * segundos) y alcanza para saber de dónde viene la demanda. Esto es un investigador hecho y derecho
+ * (gpt-researcher, corriendo aparte en /opt/gpt-researcher): arma sus propias sub-preguntas, lee las páginas
+ * completas y devuelve un informe largo CON CITAS. MEDIDO con World Key: 30 s, 14 fuentes, 16.000 caracteres.
+ *
+ * Si el servicio no está instalado o no responde, devuelve null y la corrida sigue: el estudio profundo es un
+ * lujo, no un requisito.
+ */
+export type InformeProfundo = { pregunta: string; informe: string; fuentes: { titulo?: string; enlace: string }[]; segundos: number };
+
+export async function investigarProfundo(
+  businessId: string,
+  negocio: Parameters<typeof retrato>[0],
+): Promise<InformeProfundo | null> {
+  const casa = '/opt/gpt-researcher';
+  const piton = `${casa}/.venv/bin/python`;
+  const trabajador = new URL('../../workers/buscador-profundo.py', import.meta.url).pathname;
+  if (!existsSync(piton)) return null;                 // no está instalado: la corrida sigue sin esto
+  const salida = `/tmp/profundo-${businessId.slice(0, 8)}.json`;
+  try { if (existsSync(salida)) unlinkSync(salida); } catch { /* da igual */ }
+  const pregunta = [
+    `¿De dónde vienen los clientes que pagan por ${negocio.rubro || negocio.categoria || 'este negocio'}`,
+    `en ${[negocio.ciudad, negocio.zona].filter(Boolean).join(', ') || 'su ciudad'}?`,
+    'Quiero los mercados emisores y las nacionalidades que compran, con datos publicados',
+    '(informes, estadísticas y noticias de la industria) y de dónde sale el dinero. Sin estimaciones.',
+  ].join(' ');
+  await new Promise<void>(res => {
+    execFile(piton, [trabajador, '--pregunta', pregunta, '--salida', salida],
+      { timeout: 600_000, maxBuffer: 8 * 1024 * 1024, cwd: casa }, () => res());
+  });
+  if (!existsSync(salida)) return null;
+  try {
+    const d = JSON.parse(readFileSync(salida, 'utf8')) as InformeProfundo;
+    if (!d?.informe || d.informe.length < 300) return null;
+    return d;
+  } catch { return null; }
+}
+
 export async function rastrearLaDemanda(
   businessId: string,
   negocio: Parameters<typeof retrato>[0],
@@ -98,9 +140,13 @@ export async function rastrearLaDemanda(
     .map((r, i) => `${i + 1}. ${r.titulo}\n   ${r.extracto.slice(0, 220)}`).join('\n');
   const leido = await pedirJson(SISTEMA_LECTURA,
     `${retrato(negocio)}\n\nResultados de búsqueda:\n${paraLeer}`, 60_000);
+  // Sin repetidos: el modelo devuelve el mismo país más de una vez (medido: «Emiratos Árabes Unidos» tres veces
+  // en la misma respuesta) y así salía tres veces en la tarjeta y en el conteo del mapa. La clave es el código.
+  const vistos = new Set<string>();
   const paises = Array.isArray(leido?.paises)
     ? (leido!.paises as unknown[]).map(p => p as Fuente)
         .filter(p => p && typeof p.pais === 'string' && p.pais.length > 1 && p.pais.length < 60)
+        .filter(p => { const k = codigoDePais(p.pais) || p.pais.toLowerCase().trim(); if (vistos.has(k)) return false; vistos.add(k); return true; })
         .slice(0, 8)
     : [];
   if (!paises.length) return null;
