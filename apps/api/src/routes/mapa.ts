@@ -118,10 +118,10 @@ export async function mapaRoutes(app: FastifyInstance, db: Pool) {
     //      punto: el mapa tiene que mostrar el conjunto de mercados que declaró (Primeros pasos), marcando cuál
     //      se está verificando, cuál ya se verificó y cuál falta. Antes sólo se dibujaba lo ya leído y el dueño
     //      veía «un solo punto» en un negocio global.
-    // Los declarados en Primeros pasos MÁS los que el motor rastreó en internet con fuente (Rex). Una sola
-    // fuente para los dos: la misma función que usa la lectura de anuncios, para que el mapa y la lectura
-    // nunca digan cosas distintas.
-    const declaradosTodos = await paisesDeclarados(db, u.business_id);
+    // Los declarados en Primeros pasos MÁS los que el motor rastreó en internet con fuente, MÁS los que dejó el
+    // informe profundo. Una sola función, con el tope alto: el mapa muestra todos los mercados cargados, y el
+    // tope de diez es del plan de lectura (si no, un mercado cargado como Estados Unidos quedaba sin dibujar).
+    const declaradosTodos = await paisesDeclarados(db, u.business_id, 40);
     for (const codigo of declaradosTodos) {
       agregar(codigo, codigo === codigoPlaza ? ciudadDeLaPlaza : '', {
         verificando: verificando.has(codigo), anuncios: 0, cuando: '',

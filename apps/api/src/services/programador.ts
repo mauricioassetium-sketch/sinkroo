@@ -79,7 +79,7 @@ export async function loQueDedujoVera(db: Pool, businessId: string): Promise<{ p
  * eligió, expandidos a sus mercados principales. Si no declaró nada, se devuelve vacío: el sistema es
  * global y no da por sentado ningún país.
  */
-export async function paisesDeclarados(db: Pool, businessId: string): Promise<string[]> {
+export async function paisesDeclarados(db: Pool, businessId: string, tope = 10): Promise<string[]> {
   try {
     const r = await db.query('SELECT datos FROM onboarding WHERE business_id = $1', [businessId]);
     const datos = (r.rows[0]?.datos ?? {}) as Record<string, unknown>;
@@ -96,10 +96,12 @@ export async function paisesDeclarados(db: Pool, businessId: string): Promise<st
     // LA PLAZA DEL NEGOCIO VA PRIMERO: es la ciudad donde está, el mercado que siempre importa. Con diez cupos y
     // trece mercados, si no va adelante queda afuera y la lectura empieza por un mercado secundario.
     const laPlaza = paisesDeLaZona(datos.zona ?? '');
-    // DIEZ mercados: es lo que pidió el dueño para las búsquedas globales («cuando sean búsquedas globales sería
-    // bueno poner 10 opciones para trabajar»). Un negocio local declara uno y el techo no lo toca.
+    // DIEZ mercados PARA TRABAJAR: es lo que pidió el dueño para las búsquedas globales («cuando sean búsquedas
+    // globales sería bueno poner 10 opciones para trabajar»). El tope es del PLAN DE LECTURA, no del mapa: el
+    // mapa muestra todos los mercados cargados (el dueño notó que Estados Unidos no salía —estaba cargado en el
+    // puesto 16 y el mapa cortaba en diez—). Quien dibuja el mapa pide un tope más alto.
     return [...new Set([...laPlaza, ...sueltos, ...delContinente, ...delRastreo])]
-      .filter(p => /^[A-Z]{2}$/.test(p)).slice(0, 10);
+      .filter(p => /^[A-Z]{2}$/.test(p)).slice(0, tope);
   } catch { return []; }
 }
 
