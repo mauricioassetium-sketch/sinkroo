@@ -22,6 +22,21 @@ export const PAISES: Record<string, string> = {
   NI: 'Nicaragua', NL: 'Países Bajos', PA: 'Panamá', PE: 'Perú', PR: 'Puerto Rico', PT: 'Portugal',
   PY: 'Paraguay', QA: 'Catar', SA: 'Arabia Saudita', SE: 'Suecia', SG: 'Singapur', SV: 'El Salvador',
   TR: 'Turquía', US: 'Estados Unidos', UY: 'Uruguay', VE: 'Venezuela', AE: 'Emiratos Árabes Unidos',
+  // LOS QUE APARECEN CUANDO EL MOTOR RASTREA LA DEMANDA EN INTERNET. La lista de arriba son los países donde el
+  // producto ya tiene negocios; un negocio global, rastreado a internet, devuelve cualquier mercado del mundo.
+  // Faltaba Rusia y quedaba sin cargar en el mapa aunque la fuente la nombrara.
+  RU: 'Rusia', PK: 'Pakistán', UA: 'Ucrania', KZ: 'Kazajistán', UZ: 'Uzbekistán', AZ: 'Azerbaiyán',
+  CH: 'Suiza', AT: 'Austria', BE: 'Bélgica', DK: 'Dinamarca', NO: 'Noruega', FI: 'Finlandia',
+  IE: 'Irlanda', CZ: 'Chequia', RO: 'Rumanía', HU: 'Hungría', BG: 'Bulgaria', HR: 'Croacia',
+  RS: 'Serbia', CY: 'Chipre', IL: 'Israel', JO: 'Jordania', LB: 'Líbano', KW: 'Kuwait',
+  BH: 'Bahréin', OM: 'Omán', IQ: 'Irak', IR: 'Irán', NZ: 'Nueva Zelanda',
+  BD: 'Bangladés', LK: 'Sri Lanka', TH: 'Tailandia', VN: 'Vietnam', PH: 'Filipinas',
+  MY: 'Malasia', KR: 'Corea del Sur',
+  GH: 'Ghana', SN: 'Senegal', CM: 'Camerún', ET: 'Etiopía', TZ: 'Tanzania', UG: 'Uganda',
+  DZ: 'Argelia', TN: 'Túnez', LY: 'Libia', AO: 'Angola', MZ: 'Mozambique', ZW: 'Zimbabue',
+  // ESTOS SEIS TENÍAN COORDENADAS Y CONTINENTE PERO NO NOMBRE: se podían leer por su código («ZA») pero no
+  // por su nombre («Sudáfrica»), así que un país que la investigación nombraba quedaba sin cargar.
+  ZA: 'Sudáfrica', NG: 'Nigeria', KE: 'Kenia', GR: 'Grecia', PL: 'Polonia', ID: 'Indonesia',
 };
 
 /**
@@ -31,10 +46,11 @@ export const PAISES: Record<string, string> = {
 export const PAISES_DEL_CONTINENTE: Record<string, string[]> = {
   latinoamerica: ['CO', 'MX', 'AR', 'CL', 'PE', 'BR', 'EC', 'PA'],
   'america del norte': ['US', 'CA', 'MX'],
-  europa: ['ES', 'GB', 'DE', 'FR', 'IT', 'NL'],
-  'medio oriente': ['AE', 'SA', 'QA', 'KW'],
-  asia: ['SG', 'JP', 'IN', 'ID'],
-  africa: ['ZA', 'NG', 'KE'],
+  europa: ['ES', 'GB', 'DE', 'FR', 'IT', 'NL', 'PT', 'SE', 'PL', 'GR', 'CH', 'AT', 'BE', 'DK', 'NO',
+           'FI', 'IE', 'CZ', 'RO', 'HU', 'BG', 'HR', 'RS', 'CY', 'UA', 'RU'],
+  'medio oriente': ['AE', 'SA', 'QA', 'KW', 'OM', 'BH', 'IL', 'JO', 'LB', 'IQ', 'IR', 'TR'],
+  asia: ['SG', 'JP', 'IN', 'ID', 'CN', 'PK', 'BD', 'LK', 'TH', 'VN', 'PH', 'MY', 'KR', 'KZ', 'UZ', 'AZ'],
+  africa: ['ZA', 'NG', 'KE', 'GH', 'SN', 'CM', 'ET', 'TZ', 'UG', 'DZ', 'TN', 'LY', 'AO', 'MZ', 'ZW'],
   oceania: ['AU', 'NZ'],
 };
 
@@ -55,6 +71,16 @@ export const COORDENADAS: Record<string, [number, number]> = {
   AR: [-38.4, -63.6], CL: [-35.7, -71.5], CN: [35.9, 104.2], IN: [20.6, 79.0], JP: [36.2, 138.3],
   SG: [1.4, 103.8], ID: [-0.8, 113.9], AU: [-25.3, 133.8], NZ: [-40.9, 174.9],
   ZA: [-30.6, 22.9], NG: [9.1, 8.7], KE: [-0.0, 37.9],
+  RU: [61.5, 105.3], PK: [30.4, 69.3], UA: [48.4, 31.2], KZ: [48.0, 66.9], UZ: [41.4, 64.6],
+  AZ: [40.1, 47.6], CH: [46.8, 8.2], AT: [47.5, 14.6], BE: [50.5, 4.5], DK: [56.3, 9.5],
+  NO: [60.5, 8.5], FI: [61.9, 25.7], IE: [53.4, -8.2], CZ: [49.8, 15.5], RO: [45.9, 25.0],
+  HU: [47.2, 19.5], BG: [42.7, 25.5], HR: [45.1, 15.2], RS: [44.0, 21.0], CY: [35.1, 33.4],
+  JO: [30.6, 36.2], LB: [33.9, 35.9], IQ: [33.2, 43.7], IR: [32.4, 53.7],
+  BD: [23.7, 90.4], LK: [7.9, 80.8], TH: [15.9, 100.9], VN: [14.1, 108.3], PH: [12.9, 121.8],
+  MY: [4.2, 101.9], KR: [35.9, 127.8],
+  GH: [7.9, -1.0], SN: [14.5, -14.5], CM: [7.4, 12.4], ET: [9.1, 40.5], TZ: [-6.4, 34.9],
+  UG: [1.4, 32.3], DZ: [28.0, 1.7], TN: [33.9, 9.6], LY: [26.3, 17.2], AO: [-11.2, 17.9],
+  MZ: [-18.7, 35.5], ZW: [-19.0, 29.2],
 };
 
 /** Las ciudades que se usan como plaza, para que el punto caiga en la ciudad y no en el centro del país. */
@@ -83,9 +109,15 @@ export function coordenadasDe(codigoPais: unknown, ciudad?: unknown): [number, n
   return COORDENADAS[codigo] ?? null;
 }
 
-/** Cómo se escribe cada nombre en el material del negocio → su código. */
+/**
+ * Cómo se escribe cada nombre en el material del negocio → su código.
+ *
+ * Las claves van SIN TILDES, igual que los alias y que lo que se escribe al buscar: con la tilde puesta,
+ * «Sudáfrica» o «Kazajistán» no se reconocían y el país quedaba sin código (o sea, sin mercado). México y
+ * Panamá funcionaban sólo porque estaban repetidos en los alias sin tilde.
+ */
 const CODIGO_DE: Record<string, string> = Object.fromEntries(
-  Object.entries(PAISES).map(([c, n]) => [n.toLowerCase(), c]),
+  Object.entries(PAISES).map(([c, n]) => [n.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(), c]),
 );
 
 /** Varios nombres como se escriben de verdad (sin tilde, en corto, en inglés). */
@@ -94,7 +126,19 @@ const ALIAS: Record<string, string> = {
   'reino unido': 'GB', uk: 'GB', 'united kingdom': 'GB', inglaterra: 'GB',
   'emiratos arabes unidos': 'AE', 'emiratos arabes': 'AE', uae: 'AE', dubai: 'AE', emiratos: 'AE',
   espana: 'ES', mexico: 'MX', brasil: 'BR', panama: 'PA', peru: 'PE', japon: 'JP',
-  'arabia saudi': 'SA', catar: 'QA', qatar: 'QA', turquia: 'TR', canada: 'CA',
+  'arabia saudi': 'SA', 'arabia saudita': 'SA', 'saudi arabia': 'SA', catar: 'QA', qatar: 'QA',
+  turquia: 'TR', canada: 'CA',
+  // Los nombres en inglés: el rastreo de la demanda lee fuentes en inglés y devuelve «Russia», no «Rusia».
+  russia: 'RU', pakistan: 'PK', ukraine: 'UA', kazakhstan: 'KZ', uzbekistan: 'UZ', azerbaijan: 'AZ',
+  switzerland: 'CH', austria: 'AT', belgium: 'BE', denmark: 'DK', norway: 'NO', finland: 'FI',
+  ireland: 'IE', 'czech republic': 'CZ', czechia: 'CZ', romania: 'RO', hungary: 'HU', bulgaria: 'BG',
+  croatia: 'HR', serbia: 'RS', cyprus: 'CY', israel: 'IL', jordan: 'JO', lebanon: 'LB',
+  bahrain: 'BH', oman: 'OM', iraq: 'IQ', iran: 'IR', 'new zealand': 'NZ',
+  bangladesh: 'BD', 'sri lanka': 'LK', thailand: 'TH', vietnam: 'VN', philippines: 'PH',
+  malaysia: 'MY', 'south korea': 'KR', korea: 'KR',
+  ghana: 'GH', senegal: 'SN', cameroon: 'CM', ethiopia: 'ET', tanzania: 'TZ', uganda: 'UG',
+  algeria: 'DZ', tunisia: 'TN', libya: 'LY', angola: 'AO', mozambique: 'MZ', zimbabwe: 'ZW',
+  'south africa': 'ZA', kenya: 'KE', nigeria: 'NG', greece: 'GR', poland: 'PL', indonesia: 'ID',
   // LAS CIUDADES TAMBIÉN DICEN EL PAÍS. Un negocio escribe su ciudad sin el país («Medellín») y sin esto se
   // quedaba sin país: sin país no hay lectura de anuncios ni mercados donde buscar. Son las ciudades donde el
   // producto ya tiene negocios y las capitales del mundo hispano y del Golfo.

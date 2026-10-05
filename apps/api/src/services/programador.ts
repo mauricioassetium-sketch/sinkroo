@@ -87,7 +87,13 @@ export async function paisesDeclarados(db: Pool, businessId: string): Promise<st
     const delContinente = Array.isArray(datos.continentes)
       ? (datos.continentes as string[]).flatMap(c => PAISES_DEL_CONTINENTE[String(c).toLowerCase().trim()] || [])
       : [];
-    return [...new Set([...sueltos, ...delContinente])].filter(p => /^[A-Z]{2}$/.test(p)).slice(0, 6);
+    // Y LOS QUE RASTREÓ EL MOTOR: los países de donde viene la demanda según lo publicado, con su fuente. No
+    // salen de lo que el cliente contó de sí mismo —eso deja el estudio en dos países— sino de los informes y
+    // las noticias que el motor fue a leer. Tope de 8: cada mercado es una lectura de ~3 minutos.
+    const rastreados = await db.query<{ pais_codigo: string }>(
+      'SELECT pais_codigo FROM mercados_rastreados WHERE business_id = $1 ORDER BY created_at', [businessId]);
+    const delRastreo = rastreados.rows.map(r => String(r.pais_codigo).toUpperCase());
+    return [...new Set([...sueltos, ...delContinente, ...delRastreo])].filter(p => /^[A-Z]{2}$/.test(p)).slice(0, 8);
   } catch { return []; }
 }
 

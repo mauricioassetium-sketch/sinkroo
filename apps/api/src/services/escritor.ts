@@ -181,8 +181,11 @@ export async function escenaEnIngles(escena: string, timeoutMs = 25_000): Promis
  * Escribe el copy de una pieza. Devuelve null si no hay llave, si el modelo no responde o si lo que devolvió
  * no pasa la revisión (JSON roto, líneas de más, cifras inventadas). Nunca lanza.
  */
-/** Una llamada corta al modelo, para las reparaciones (no lleva el encargo largo). */
-async function pedirJson(sistema: string, usuario: string, timeoutMs: number): Promise<Record<string, unknown> | null> {
+/**
+ * Una llamada corta al modelo, para las reparaciones y para las tareas que no llevan el encargo largo (el
+ * rastreo de la demanda). Devuelve el JSON ya leído, o null si no hay llave o el modelo no respondió.
+ */
+export async function pedirJson(sistema: string, usuario: string, timeoutMs: number): Promise<Record<string, unknown> | null> {
   const llave = llaveDelModelo();
   if (!llave) return null;
   try {

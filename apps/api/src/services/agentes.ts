@@ -24,6 +24,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { escribirLaPieza } from './escritor.js';
 import { aJson } from '../lib/json-seguro.js';
+import { rastrearLaDemanda } from './buscador.js';
+
+/** Lo que el material del negocio dice de él viene en texto o en lista: acá se vuelve una línea. */
+const aTexto = (v: unknown): string => (Array.isArray(v) ? v.map(x => String(x)).join(', ') : String(v ?? '')).slice(0, 400);
 
 // =============================================================================================
 // LOS SEIS AGENTES DEL EQUIPO — la investigación del mercado, con trabajo REAL.
@@ -733,6 +737,72 @@ export async function correrInvestigacion(db: Pool, ctx: Contexto, motivo = 'inv
       fuente: `material del negocio: ${links.length} ${links.length === 1 ? 'enlace' : 'enlaces'} y ${archivosLeidos.fuentes.length} ${archivosLeidos.fuentes.length === 1 ? 'archivo' : 'archivos'}`,
     },
   });
+
+  // ---------------------------------------------------------------------------------------------------------
+  // LA DEMANDA, RASTREADA EN INTERNET — el paso que le faltaba a un negocio global.
+  //
+  // El problema que resuelve: el estudio se armaba con lo que el cliente cuenta de sí mismo, así que un negocio
+  // global quedaba en los dos países que alguien nombró. Pero quien le paga a una conserjería de lujo en Dubái
+  // no es de Dubái: viene de India, de Pakistán, de Arabia Saudí, del Reino Unido, de Europa. Eso no está en su
+  // web —está en los informes de turismo, en las noticias y en las estadísticas de quién compra—.
+  //
+  // Lo hace Rex, que es el de la demanda. Escribe sus consultas a partir del negocio, sale a internet con un
+  // navegador de la flota y vuelve con los países y su fuente. Los países que traen fuente quedan guardados y
+  // CUENTAN COMO DECLARADOS: el mapa los muestra y la lectura de anuncios los busca en la próxima vuelta.
+  // Nunca inventa: si la búsqueda no deja nada que sostener, lo dice y el estudio sigue como estaba.
+  // ---------------------------------------------------------------------------------------------------------
+  try {
+    const rastro = await rastrearLaDemanda(ctx.businessId, {
+      nombre: ctx.nombre, rubro: leido.rubro || ctx.rubro, categoria: ctx.categoria || null, zona: ctx.zona,
+      ofrece: aTexto(leido.queVende), le_vende_a: aTexto(leido.aQuien),
+    });
+    if (rastro) {
+      const guardados: string[] = [];
+      for (const p of rastro.paises) {
+        const codigo = codigoDePais(p.pais);
+        if (!codigo) continue;
+        await db.query(
+          `INSERT INTO mercados_rastreados (business_id, pais_codigo, pais, porque, fuente, corrida_id)
+           VALUES ($1, $2, $3, $4, $5, $6)
+           ON CONFLICT (business_id, pais_codigo)
+           DO UPDATE SET pais = EXCLUDED.pais, porque = EXCLUDED.porque, fuente = EXCLUDED.fuente,
+                         corrida_id = EXCLUDED.corrida_id, created_at = now()`,
+          [ctx.businessId, codigo, p.pais.slice(0, 60), p.porque.slice(0, 300), p.fuente.slice(0, 300), corridaId]);
+        guardados.push(`${p.pais} (${codigo})`);
+      }
+      anotar({
+        agente: 'rex', orden: 1,
+        que: `Rastreó de dónde viene su demanda: ${rastro.paises.slice(0, 4).map(p => p.pais).join(', ')}${rastro.paises.length > 4 ? ` y ${rastro.paises.length - 4} más` : ''}`,
+        resultado: {
+          fuente_tipo: 'lo que está publicado: informes de mercado, noticias de la industria y estadísticas de quién compra',
+          consultas_que_armo: rastro.consultas,
+          de_donde_viene_la_demanda: rastro.paises.map(p => ({ pais: p.pais, codigo: codigoDePais(p.pais), porque: p.porque, fuente: p.fuente })),
+          resumen: rastro.resumen,
+          mercados_que_quedan_cargados: guardados,
+          como_lo_hizo: 'el modelo escribió las consultas a partir del negocio → un navegador de la flota las buscó en internet (la búsqueda directa recibe un muro anti-robot) → el modelo leyó los resultados y sacó los países, cada uno con la fuente que lo sostiene',
+          porque: 'El negocio es global y no le vende a su ciudad: le vende a quien llega. Sin este paso el estudio se queda con los países que alguien nombró y el mapa muestra dos puntos cuando el mercado son diez.',
+          fuente: `${rastro.consultas.length} consultas · ${rastro.resultados} resultados leídos · ${rastro.segundos} s`,
+          falta: 'los países quedan cargados como mercados declarados: la lectura de anuncios los busca en la vuelta siguiente',
+        },
+      });
+    } else {
+      anotar({
+        agente: 'rex', orden: 1,
+        que: 'Salió a rastrear de dónde viene su demanda y no encontró nada que se pueda sostener con una fuente',
+        resultado: {
+          fuente_tipo: 'lo que está publicado: informes, noticias y estadísticas',
+          porque: 'Se prefiere no tener el dato a tenerlo sin fuente: una cifra inventada contamina todo el estudio.',
+          que_haria_falta: 'que el cliente cargue en qué países están sus clientes, o que haya más material del negocio para armar mejores consultas',
+        },
+      });
+    }
+  } catch (e) {
+    anotar({
+      agente: 'rex', orden: 1,
+      que: 'El rastreo de la demanda no se pudo hacer en esta corrida',
+      resultado: { motivo: String(e).slice(0, 200), porque: 'El estudio sigue sin este paso; no frena la corrida.' },
+    });
+  }
 
   // ---------------- LEX · LAS LENGUAS: en qué lengua se busca su mercado ----------------
   // El mismo negocio no se busca igual en cada plaza: el texto que se busca tiene que estar en la lengua del

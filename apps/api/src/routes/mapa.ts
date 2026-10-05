@@ -21,7 +21,7 @@ import type { FastifyInstance } from 'fastify';
 import type { Pool } from 'pg';
 import { exigirSesion } from '../lib/auth.js';
 import { coordenadasDe, nombreDePais, paisesDeLaZona, PAISES_DEL_CONTINENTE } from '../lib/paises.js';
-import { lecturaEnCurso } from '../services/programador.js';
+import { lecturaEnCurso, paisesDeclarados } from '../services/programador.js';
 
 /** Los países que el negocio declaró (sueltos y por continente), ya expandidos a códigos. */
 async function queryPaises(db: Pool, businessId: string): Promise<string[]> {
@@ -118,7 +118,10 @@ export async function mapaRoutes(app: FastifyInstance, db: Pool) {
     //      punto: el mapa tiene que mostrar el conjunto de mercados que declaró (Primeros pasos), marcando cuál
     //      se está verificando, cuál ya se verificó y cuál falta. Antes sólo se dibujaba lo ya leído y el dueño
     //      veía «un solo punto» en un negocio global.
-    const declaradosTodos = (await queryPaises(db, u.business_id));
+    // Los declarados en Primeros pasos MÁS los que el motor rastreó en internet con fuente (Rex). Una sola
+    // fuente para los dos: la misma función que usa la lectura de anuncios, para que el mapa y la lectura
+    // nunca digan cosas distintas.
+    const declaradosTodos = await paisesDeclarados(db, u.business_id);
     for (const codigo of declaradosTodos) {
       agregar(codigo, codigo === codigoPlaza ? ciudadDeLaPlaza : '', {
         verificando: verificando.has(codigo), anuncios: 0, cuando: '',
@@ -131,7 +134,7 @@ export async function mapaRoutes(app: FastifyInstance, db: Pool) {
       'SELECT datos FROM onboarding WHERE business_id = $1', [u.business_id]).catch(() => ({ rows: [] }))).rows[0];
     const datos = onb?.datos ?? {};
     const declarado = String(datos.alcance_comercial ?? '').trim();
-    const mercados = [...new Set([...verificando, ...leidos.map(l => String(l.pais).toUpperCase())])].filter(Boolean);
+    const mercados = [...new Set([...verificando, ...declaradosTodos, ...leidos.map(l => String(l.pais).toUpperCase())])].filter(Boolean);
     const esGlobal = /global/i.test(declarado) || mercados.length > 1;
     // El motivo dice lo que PASA: si no hay ninguna lectura corriendo, no se dice «está verificando».
     const ocupado = verificando.size > 0;

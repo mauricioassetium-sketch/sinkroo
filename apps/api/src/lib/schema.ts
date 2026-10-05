@@ -248,6 +248,22 @@ export async function migrate(db: Pool): Promise<void> {
 
     CREATE INDEX IF NOT EXISTS idx_lecturas_business ON lecturas_de_anuncios(business_id, empezada_at DESC);
 
+    -- LOS MERCADOS QUE EL MOTOR RASTREÓ EN INTERNET. No son los que el cliente nombró: son los países de donde
+    -- viene su demanda según lo que está publicado (informes, noticias, estadísticas de quién compra). Cada uno
+    -- guarda con qué fuente se sostiene. Cuentan como declarados: el mapa los muestra y la lectura los busca.
+    CREATE TABLE IF NOT EXISTS mercados_rastreados (
+      id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+      pais_codigo TEXT NOT NULL,
+      pais        TEXT NOT NULL DEFAULT '',
+      porque      TEXT NOT NULL DEFAULT '',
+      fuente      TEXT NOT NULL DEFAULT '',
+      corrida_id  UUID,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_mercados_rastreados_clave ON mercados_rastreados(business_id, pais_codigo);
+
     CREATE UNIQUE INDEX IF NOT EXISTS idx_preguntas_clave ON preguntas_del_motor(business_id, clave);
     CREATE INDEX IF NOT EXISTS idx_preguntas_abiertas ON preguntas_del_motor(business_id, respondida_at);
 
