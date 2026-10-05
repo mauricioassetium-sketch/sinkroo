@@ -89,11 +89,17 @@ export async function paisesDeclarados(db: Pool, businessId: string): Promise<st
       : [];
     // Y LOS QUE RASTREÓ EL MOTOR: los países de donde viene la demanda según lo publicado, con su fuente. No
     // salen de lo que el cliente contó de sí mismo —eso deja el estudio en dos países— sino de los informes y
-    // las noticias que el motor fue a leer. Tope de 8: cada mercado es una lectura de ~3 minutos.
+    // las noticias que el motor fue a leer.
     const rastreados = await db.query<{ pais_codigo: string }>(
       'SELECT pais_codigo FROM mercados_rastreados WHERE business_id = $1 ORDER BY created_at', [businessId]);
     const delRastreo = rastreados.rows.map(r => String(r.pais_codigo).toUpperCase());
-    return [...new Set([...sueltos, ...delContinente, ...delRastreo])].filter(p => /^[A-Z]{2}$/.test(p)).slice(0, 8);
+    // LA PLAZA DEL NEGOCIO VA PRIMERO: es la ciudad donde está, el mercado que siempre importa. Con diez cupos y
+    // trece mercados, si no va adelante queda afuera y la lectura empieza por un mercado secundario.
+    const laPlaza = paisesDeLaZona(datos.zona ?? '');
+    // DIEZ mercados: es lo que pidió el dueño para las búsquedas globales («cuando sean búsquedas globales sería
+    // bueno poner 10 opciones para trabajar»). Un negocio local declara uno y el techo no lo toca.
+    return [...new Set([...laPlaza, ...sueltos, ...delContinente, ...delRastreo])]
+      .filter(p => /^[A-Z]{2}$/.test(p)).slice(0, 10);
   } catch { return []; }
 }
 
@@ -178,7 +184,12 @@ export function lanzarLecturaDeAnuncios(
   // negocio, para leer mercados que no cambian de un día para el otro. Se acota a TRES mercados —los primeros,
   // que son la plaza del negocio y los que el cliente declaró— con DOS palabras de su categoría cada uno:
   // seis consultas, y queda dicho en el registro qué se leyó y qué quedó afuera.
-  const maxPaises = 3, maxPalabras = 2;
+  // EL DUEÑO PIDIÓ DIEZ PARA LAS GLOBALES. Un negocio global junta sus mercados del rastreo y del informe (hoy:
+  // trece) y conviene trabajarlos todos, no tres. Con dos palabras de su categoría son veinte consultas y ~1 hora
+  // de lectura que corre en segundo plano —no frena la corrida—. Un negocio LOCAL sigue con su plaza y poco más:
+  // leer el mundo entero para quien vende en una ciudad sería gastar sin motivo.
+  const esGlobal = paises.length > 1;
+  const maxPaises = esGlobal ? 10 : 3, maxPalabras = 2;
   const paisesLeidos = paises.slice(0, maxPaises);
   const palabrasLeidas = palabras.slice(0, maxPalabras);
   const args = [new URL('../../workers/lector-anuncios.mjs', import.meta.url).pathname,
