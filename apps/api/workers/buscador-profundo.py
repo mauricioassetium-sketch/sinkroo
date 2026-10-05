@@ -74,6 +74,14 @@ async def investigar(pregunta: str, tipo: str) -> dict:
                         break
     except Exception:
         pass
+    # El nombre de cada fuente: la librería no siempre lo entrega suelto, pero EL INFORME SÍ lo cita, en formato
+    # markdown —[Noticias de Emiratos, 2026](https://...)—. Se lee de ahí: es el nombre que el lector va a ver.
+    citas = {}
+    for nombre_cita, url_cita in re.findall(r"\[([^\]]{2,140})\]\((https?://[^)\s]+)\)", informe):
+        citas.setdefault(url_cita.rstrip("/"), nombre_cita.strip())
+    for f in fuentes:
+        if not f.get("titulo"):
+            f["titulo"] = citas.get(f["enlace"].rstrip("/"), "")
     return {
         "pregunta": pregunta,
         "informe": informe,
